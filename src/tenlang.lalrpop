@@ -21,7 +21,7 @@ FunctionDeclaration: Box<GlobalStatement> = {
 
 pub Statement: Box<Statement> = {
     <m: VariableDeclarationMutability> <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, e)),
-    "return " <Expression> => Box::new(Statement::Return(<>)),
+    "return" <Expression> => Box::new(Statement::Return(<>)),
 //    Identifier => Box::new(Statement::VariableLookup(<>)),  // TODO Ask lexer for help
     Expression => Box::new(Statement::Expression(<>)),
 };
