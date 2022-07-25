@@ -1,16 +1,22 @@
 use std::fmt::{Debug, Error, Formatter};
 
+pub struct Program {
+    pub global_statements: Vec<Box<GlobalStatement>>
+}
+
 pub enum GlobalStatement {
     FunctionDeclaration(String, Vec<Box<Statement>>),
 }
 
 pub enum Statement {
     VariableDeclaration(Mutability, String, Box<Expression>),
+    Expression(Box<Expression>),
 }
 
 pub enum Expression {
     Number(i32),
     BinaryOperator(Box<Expression>, Opcode, Box<Expression>),
+    FunctionCall(String),
     Error,
 }
 
@@ -28,12 +34,22 @@ pub enum Mutability {
     Mutable,
 }
 
+impl Debug for Program {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        for item in self.global_statements.iter() {
+            write!(fmt, "{:?};\n\n", item)?
+        };
+        return Ok(())
+    }
+}
+
 impl Debug for Statement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Statement::*;
         match self {
             VariableDeclaration(Mutability::Mutable, id, expr) => write!(fmt, "var {} = {:?}", id, expr),
             VariableDeclaration(Mutability::Immutable, id, expr) => write!(fmt, "let {} = {:?}", id, expr),
+            Expression(ref expression) => write!(fmt, "{:?}", expression),
         }
     }
 }
@@ -41,9 +57,10 @@ impl Debug for Statement {
 impl Debug for Expression {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Expression::*;
-        match *self {
+        match self {
             Number(n) => write!(fmt, "{:?}", n),
             BinaryOperator(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
+            FunctionCall(id) => write!(fmt, "{}()", id),
             Error => write!(fmt, "error"),
         }
     }
@@ -65,7 +82,12 @@ impl Debug for GlobalStatement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::GlobalStatement::*;
         match self {
-            FunctionDeclaration(id, stmts) => write!(fmt, "fn {}() {{{:?}}}", id, stmts),
+            FunctionDeclaration(id, stmts) => {
+                write!(fmt, "fn {}() {{\n", id);
+                for item in stmts { write!(fmt, "    {:?};\n", item)? };
+                write!(fmt, "}}");
+                return Ok(())
+            },
         }
     }
 }

@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::ast::{Expression, Opcode, Statement, GlobalStatement, Mutability};
+use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutability};
 
 grammar;
 
@@ -7,7 +7,9 @@ OptionalFinalSeparatorList<E,S>: Vec<E> =
     <v0:(<E> S)*> <e1:E?> =>
         v0.into_iter().chain(e1).collect();
 
-pub Program: Vec<Box<GlobalStatement>> = OptionalFinalSeparatorList<GlobalStatement, ";">;
+pub Program: Program = {
+    <stmts: OptionalFinalSeparatorList<GlobalStatement, ";">> => Program { global_statements: stmts },
+};
 
 pub GlobalStatement: Box<GlobalStatement> = {
     FunctionDeclaration,
@@ -20,16 +22,17 @@ FunctionDeclaration: Box<GlobalStatement> = {
 pub StatementList: Vec<Box<Statement>> = OptionalFinalSeparatorList<Statement, ";">;
 
 pub Statement: Box<Statement> = {
-    <m: VariableDeclarationMutability> <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, e))
+    <m: VariableDeclarationMutability> <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, e)),
+    Expression => Box::new(Statement::Expression(<>)),
 };
 
-BinaryTier<Operator,NextTier>: Box<Expression> = {
-    BinaryTier<Operator,NextTier> Operator NextTier => Box::new(Expression::BinaryOperator(<>)),
-    NextTier
+BinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
+    BinaryOperator<Operator, NextOperatorLevel> Operator NextOperatorLevel => Box::new(Expression::BinaryOperator(<>)),
+    NextOperatorLevel
 };
 
-Expression = BinaryTier<ExpressionOperator, Factor>;
-Factor = BinaryTier<FactorOperator, Term>;
+Expression = BinaryOperator<ExpressionOperator, Factor>;
+Factor = BinaryOperator<FactorOperator, Term>;
 
 ExpressionOperator: Opcode = { // (3)
     "+" => Opcode::Add,
