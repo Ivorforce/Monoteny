@@ -1,0 +1,12 @@
+[package]
+name = "TenLangCompiler"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[build-dependencies]
+lalrpop = { version = "^0.19.8" }
+
+[dependencies]
+lalrpop-util = { version = "^0.19.8", features = ["lexer"] }
+regex = "1"

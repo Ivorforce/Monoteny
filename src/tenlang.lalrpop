@@ -1,0 +1,60 @@
+use std::str::FromStr;
+use crate::ast::{Expression, Opcode, Statement, GlobalStatement, Mutability};
+
+grammar;
+
+OptionalFinalSeparatorList<E,S>: Vec<E> =
+    <v0:(<E> S)*> <e1:E?> =>
+        v0.into_iter().chain(e1).collect();
+
+pub Program: Vec<Box<GlobalStatement>> = OptionalFinalSeparatorList<GlobalStatement, ";">;
+
+pub GlobalStatement: Box<GlobalStatement> = {
+    FunctionDeclaration,
+};
+
+FunctionDeclaration: Box<GlobalStatement> = {
+    "fn" <i: Identifier> "()" "{" <stmnts: StatementList> "}" => Box::new(GlobalStatement::FunctionDeclaration(i, stmnts)),
+};
+
+pub StatementList: Vec<Box<Statement>> = OptionalFinalSeparatorList<Statement, ";">;
+
+pub Statement: Box<Statement> = {
+    <m: VariableDeclarationMutability> <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, e))
+};
+
+BinaryTier<Operator,NextTier>: Box<Expression> = {
+    BinaryTier<Operator,NextTier> Operator NextTier => Box::new(Expression::BinaryOperator(<>)),
+    NextTier
+};
+
+Expression = BinaryTier<ExpressionOperator, Factor>;
+Factor = BinaryTier<FactorOperator, Term>;
+
+ExpressionOperator: Opcode = { // (3)
+    "+" => Opcode::Add,
+    "-" => Opcode::Subtract,
+};
+
+FactorOperator: Opcode = {
+    "*" => Opcode::Multiply,
+    "/" => Opcode::Divide,
+};
+
+VariableDeclarationMutability: Mutability = {
+    "let" => Mutability::Immutable,
+    "var" => Mutability::Mutable,
+};
+
+Term: Box<Expression> = {
+    Num => Box::new(Expression::Number(<>)),
+    "(" <Expression> ")"
+};
+
+Num: i32 = {
+    r"[0-9]+" => i32::from_str(<>).unwrap()
+};
+
+Identifier: String = {
+    r"[a-zA-Z][a-zA-Z0-9]*" => format!("{}", <>)
+};
