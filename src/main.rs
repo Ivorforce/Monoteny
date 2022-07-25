@@ -6,12 +6,11 @@ mod ast;
 
 const PROGRAM: &str = "\
 fn square() {
-    let a = 22 * 44 +  66;
-    var b = 10;
-};
+    return 2 * 2;
+}
 
 fn main() {
-    let a = 2 * 44 +  66;
+    let a = 2 * 3;
     var b = 5;
 }";
 

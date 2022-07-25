@@ -11,12 +11,14 @@ pub enum GlobalStatement {
 pub enum Statement {
     VariableDeclaration(Mutability, String, Box<Expression>),
     Expression(Box<Expression>),
+    Return(Box<Expression>),
 }
 
 pub enum Expression {
     Number(i32),
     BinaryOperator(Box<Expression>, Opcode, Box<Expression>),
-    FunctionCall(String),
+    FunctionCall(Box<Expression>),
+    VariableLookup(String),
     Error,
 }
 
@@ -49,6 +51,7 @@ impl Debug for Statement {
         match self {
             VariableDeclaration(Mutability::Mutable, id, expr) => write!(fmt, "var {} = {:?}", id, expr),
             VariableDeclaration(Mutability::Immutable, id, expr) => write!(fmt, "let {} = {:?}", id, expr),
+            Return(ref expression) => write!(fmt, "return {:?}", expression),
             Expression(ref expression) => write!(fmt, "{:?}", expression),
         }
     }
@@ -60,7 +63,8 @@ impl Debug for Expression {
         match self {
             Number(n) => write!(fmt, "{:?}", n),
             BinaryOperator(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
-            FunctionCall(id) => write!(fmt, "{}()", id),
+            FunctionCall(expression) => write!(fmt, "{:?}()", expression),
+            VariableLookup(id) => write!(fmt, "{}", id),
             Error => write!(fmt, "error"),
         }
     }

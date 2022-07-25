@@ -3,12 +3,12 @@ use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutabi
 
 grammar;
 
-OptionalFinalSeparatorList<E,S>: Vec<E> =
-    <v0:(<E> S)*> <e1:E?> =>
-        v0.into_iter().chain(e1).collect();
+//OptionalFinalSeparatorList<E,S>: Vec<E> =
+//    <v0:(<E> S)*> <e1:E?> =>
+//        v0.into_iter().chain(e1).collect();
 
 pub Program: Program = {
-    <stmts: OptionalFinalSeparatorList<GlobalStatement, ";">> => Program { global_statements: stmts },
+    <stmts: (<GlobalStatement>)*> => Program { global_statements: stmts }
 };
 
 pub GlobalStatement: Box<GlobalStatement> = {
@@ -16,13 +16,13 @@ pub GlobalStatement: Box<GlobalStatement> = {
 };
 
 FunctionDeclaration: Box<GlobalStatement> = {
-    "fn" <i: Identifier> "()" "{" <stmnts: StatementList> "}" => Box::new(GlobalStatement::FunctionDeclaration(i, stmnts)),
+    "fn" <i: Identifier> "()" "{" <stmnts: (<Statement> ";")*> "}" => Box::new(GlobalStatement::FunctionDeclaration(i, stmnts)),
 };
-
-pub StatementList: Vec<Box<Statement>> = OptionalFinalSeparatorList<Statement, ";">;
 
 pub Statement: Box<Statement> = {
     <m: VariableDeclarationMutability> <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, e)),
+    "return " <Expression> => Box::new(Statement::Return(<>)),
+//    Identifier => Box::new(Statement::VariableLookup(<>)),  // TODO Ask lexer for help
     Expression => Box::new(Statement::Expression(<>)),
 };
 
@@ -31,10 +31,10 @@ BinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
     NextOperatorLevel
 };
 
-Expression = BinaryOperator<ExpressionOperator, Factor>;
+Expression = BinaryOperator<SumOperator, Factor>;
 Factor = BinaryOperator<FactorOperator, Term>;
 
-ExpressionOperator: Opcode = { // (3)
+SumOperator: Opcode = { // (3)
     "+" => Opcode::Add,
     "-" => Opcode::Subtract,
 };
