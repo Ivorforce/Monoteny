@@ -57,7 +57,7 @@ pub enum Mutability {
 impl Debug for Program {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         for item in self.global_statements.iter() {
-            write!(fmt, "{:?};\n\n", item)?
+            write!(fmt, "{:?}\n\n", item)?
         };
         return Ok(())
     }
