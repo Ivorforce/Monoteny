@@ -16,7 +16,7 @@ fn square(_ a: Int32) {
 fn main() {
     var b = copy_3_times(a: 5 * 2 + 1);
     let b = b.square();
-    print(b);
+    print(b[0]);
 }";
 
 fn main() {

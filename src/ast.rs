@@ -41,7 +41,7 @@ pub enum Statement {
 pub enum Expression {
     Number(i32),
     BinaryOperator(Box<Expression>, Opcode, Box<Expression>),
-    FunctionCall(Box<Expression>, Vec<Box<PassedArgument>>),
+    FunctionCall(FunctionCallType, Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
     VariableLookup(String),
     ArrayLiteral(Vec<Box<Expression>>),
@@ -65,6 +65,12 @@ pub enum Opcode {
 pub enum Mutability {
     Immutable,
     Mutable,
+}
+
+#[derive(Copy, Clone)]
+pub enum FunctionCallType {
+    Call,
+    Subscript,
 }
 
 // =============================== String =====================================
@@ -98,10 +104,11 @@ impl Debug for Expression {
         match self {
             Number(n) => write!(fmt, "{:?}", n),
             BinaryOperator(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
-            FunctionCall(expression, args) => {
-                write!(fmt, "{:?}(", expression);
+            FunctionCall(call_type, expression, args) => {
+                let brackets = call_type.bracket_str();
+                write!(fmt, "{:?}{}", expression, brackets.chars().nth(0).unwrap());
                 for item in args { write!(fmt, "{:?},", item)? };
-                write!(fmt, ")");
+                write!(fmt, "{}", brackets.chars().nth(1).unwrap());
                 return Ok(())
             },
             VariableLookup(id) => write!(fmt, "{}", id),
@@ -189,3 +196,12 @@ impl Mutability {
     }
 }
 
+impl FunctionCallType {
+    fn bracket_str(&self) -> &str {
+        use self::FunctionCallType::*;
+        return match *self {
+            Call => "()",
+            Subscript => "[]",
+        };
+    }
+}

@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutability, Function, ParameterDeclaration, TypeDeclaration, PassedArgument};
+use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutability, Function, ParameterDeclaration, TypeDeclaration, PassedArgument, FunctionCallType};
 
 grammar;
 
@@ -82,7 +82,8 @@ BinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
 Expression: Box<Expression> = FunctionCallElement;
 
 FunctionCallElement = {
-    <Expression> "(" <OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall(<>)),
+    <Expression> "(" <OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall(FunctionCallType::Call, <>)),
+    <Expression> "[" <OptionalFinalSeparatorList<PassedArgument, ",">> "]" => Box::new(Expression::FunctionCall(FunctionCallType::Subscript, <>)),
     <Expression> "." <Identifier> => Box::new(Expression::MemberLookup(<>)),
     SumElement
 }
