@@ -37,7 +37,7 @@ pub enum MemberStatement {
 
 pub enum TypeDeclaration {
     Identifier(String),
-    NDArray(String, Vec<Box<Expression>>)
+    NDArray(Box<TypeDeclaration>, Vec<Box<Expression>>)
 }
 
 // =============================== Body =====================================
@@ -141,8 +141,8 @@ impl Debug for TypeDeclaration {
         use self::TypeDeclaration::*;
         match self {
             Identifier(name) => write!(fmt, "{}", name),
-            NDArray(name, dimensions) => {
-                write!(fmt, "{}[", name)?;
+            NDArray(atom, dimensions) => {
+                write!(fmt, "{:?}[", atom)?;
                 for item in dimensions { write!(fmt, "{:?},", item)? };
                 write!(fmt, "]")?;
                 return Ok(())

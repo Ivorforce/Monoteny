@@ -40,7 +40,8 @@ pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
 pub fn analyze_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
     Box::new(match syntax.borrow() {
         abstract_syntax::TypeDeclaration::Identifier(id) => Type::Identifier(id.clone()),
-        // TODO We need to parse the actual ndarray shape
-        abstract_syntax::TypeDeclaration::NDArray(_, _) => Type::NDArray(Box::new(Type::Identifier(String::from("Int32"))))
+        abstract_syntax::TypeDeclaration::NDArray(identifier, _) => {
+            Type::NDArray(analyze_type(&identifier))
+        }
     })
 }

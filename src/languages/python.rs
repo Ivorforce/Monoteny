@@ -29,11 +29,17 @@ impl PythonTranspiler {
             Type::Identifier(t) => {
                 match t.as_str() {
                     "Int32" => String::from("np.int32"),
+                    "Int64" => String::from("np.int64"),
+                    "Float32" => String::from("np.float32"),
+                    "Float64" => String::from("np.float64"),
                     _ => t.clone()
                 }
             },
-            Type::NDArray(_) => {
-                format!("np.ndarray")
+            Type::NDArray(atom) => {
+                match atom.as_ref() {
+                    Type::Identifier(_) => format!("np.ndarray"),
+                    Type::NDArray(_) => panic!("Numpy does not support nested ndarrays.")
+                }
             }
         }
     }

@@ -1,8 +1,9 @@
+#include <cstdint>
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Tensor>
 
 
-VectorXf copy_3_times() {
+Tensor<int32_t, 1> copy_3_times() {
 
 }
 

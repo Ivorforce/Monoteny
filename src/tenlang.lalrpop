@@ -69,7 +69,7 @@ pub MemberStatement: Box<MemberStatement> = {
 
 TypeDeclaration: Box<TypeDeclaration> = {
     Identifier => Box::new(TypeDeclaration::Identifier(<>)),
-    <Identifier> "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(TypeDeclaration::NDArray(<>))
+    <TypeDeclaration> "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(TypeDeclaration::NDArray(<>))
 }
 
 
