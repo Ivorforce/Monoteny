@@ -3,7 +3,7 @@ fn copy_3_times(a: Int32) -> Int32[3] {
 }
 
 extension Int32 {
-    fn square() {
+    fn square() -> Int32 {
         return self * self;
     }
 }

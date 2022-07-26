@@ -6,17 +6,24 @@ pub struct Program {
 }
 
 pub struct Function {
-    pub identifier: String
+    pub identifier: String,
+    pub return_type: Option<Box<Type>>
+}
+
+pub enum Type {
+    Identifier(String),
+    NDArray(Box<Type>),
 }
 
 pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
     let mut functions: Vec<Box<Function>> = Vec::new();
 
     for statement in syntax.global_statements {
-        match statement.borrow() {
+        match *statement {
             abstract_syntax::GlobalStatement::FunctionDeclaration(function) => {
                 functions.push(Box::new(Function {
-                    identifier: function.identifier.clone()
+                    identifier: function.identifier.clone(),
+                    return_type: function.return_type.map(|x| analyze_type(&x))
                 }));
             }
             abstract_syntax::GlobalStatement::Extension(extension) => {
@@ -28,4 +35,12 @@ pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
     return Program {
         functions
     }
+}
+
+pub fn analyze_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
+    Box::new(match syntax.borrow() {
+        abstract_syntax::TypeDeclaration::Identifier(id) => Type::Identifier(id.clone()),
+        // TODO We need to parse the actual ndarray shape
+        abstract_syntax::TypeDeclaration::NDArray(_, _) => Type::NDArray(Box::new(Type::Identifier(String::from("Int32"))))
+    })
 }

@@ -1,8 +1,10 @@
-int copy_3_times() {
+#include <stdint.h>
+
+int32_t* copy_3_times() {
 
 }
 
-int main() {
+void main() {
 
 }
 
