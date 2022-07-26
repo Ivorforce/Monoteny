@@ -84,6 +84,41 @@ impl Debug for Program {
     }
 }
 
+impl Debug for GlobalStatement {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::GlobalStatement::*;
+        match self {
+            FunctionDeclaration(function) => write!(fmt, "{:?}", function),
+        }
+    }
+}
+
+impl Debug for Function {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "fn {}(", self.identifier);
+        for item in self.parameters.iter() { write!(fmt, "{:?},", item)? };
+        write!(fmt, ") -> {:?} {{\n", self.return_type);
+        for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };
+        write!(fmt, "}}");
+        return Ok(())
+    }
+}
+
+impl Debug for TypeDeclaration {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::TypeDeclaration::*;
+        match self {
+            Identifier(name) => write!(fmt, "{}", name),
+            NDArray(name, dimensions) => {
+                write!(fmt, "{}[", name);
+                for item in dimensions { write!(fmt, "{:?},", item)? };
+                write!(fmt, "]");
+                return Ok(())
+            },
+        }
+    }
+}
+
 impl Debug for Statement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Statement::*;
@@ -132,41 +167,6 @@ impl Debug for Opcode {
             Divide => write!(fmt, "/"),
             Add => write!(fmt, "+"),
             Subtract => write!(fmt, "-"),
-        }
-    }
-}
-
-impl Debug for GlobalStatement {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::GlobalStatement::*;
-        match self {
-            FunctionDeclaration(function) => write!(fmt, "{:?}", function),
-        }
-    }
-}
-
-impl Debug for Function {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "fn {}(", self.identifier);
-        for item in self.parameters.iter() { write!(fmt, "{:?},", item)? };
-        write!(fmt, ") -> {:?} {{{{\n", self.return_type);
-        for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };
-        write!(fmt, "}}");
-        return Ok(())
-    }
-}
-
-impl Debug for TypeDeclaration {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::TypeDeclaration::*;
-        match self {
-            Identifier(name) => write!(fmt, "{}", name),
-            NDArray(name, dimensions) => {
-                write!(fmt, "{}[", name);
-                for item in dimensions { write!(fmt, "{:?},", item)? };
-                write!(fmt, "]");
-                return Ok(())
-            },
         }
     }
 }
