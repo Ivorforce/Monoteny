@@ -14,7 +14,7 @@ match {
     "return",
     "(", ")", "{", "}", "[",  "]",
     ";", ",", ":",
-    "=",
+    "=", "?",
     "+", "-", "*", "/",
     "let", "var",
     "fn",
@@ -73,7 +73,7 @@ BinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
 Expression: Box<Expression> = FunctionCallElement;
 
 FunctionCallElement = {
-    <Expression> "(" <PassedArgument*> ")" => Box::new(Expression::FunctionCall(<>)),
+    <Expression> "(" <OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall(<>)),
     <Expression> "." <Identifier> => Box::new(Expression::MemberLookup(<>)),
     SumElement
 }
@@ -81,7 +81,8 @@ SumElement = BinaryOperator<SumOperator, MultiplicationElement>;
 MultiplicationElement = BinaryOperator<FactorOperator, Term>;
 
 PassedArgument: Box<PassedArgument> = {
-    <name: Identifier> ":" <value: Expression> => Box::new(PassedArgument { name, value })
+    <name: Identifier> ":" <value: Expression> => Box::new(PassedArgument { name: Some(name), value }),
+    <value: Expression> => Box::new(PassedArgument { name: None, value })
 }
 
 SumOperator: Opcode = { // (3)

@@ -42,7 +42,7 @@ pub enum Expression {
 }
 
 pub struct PassedArgument {
-    pub name: String,
+    pub name: Option<String>,
     pub value: Box<Expression>,
 }
 
@@ -75,9 +75,9 @@ impl Debug for Statement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Statement::*;
         match self {
-            VariableDeclaration(mutability, id, type_name, expr) => {
-                let mutabilityString = mutability.variableDeclarationKeyword();
-                write!(fmt, "{} {}: {:?} = {:?}", mutabilityString, id, type_name, expr)
+            VariableDeclaration(mutability, id, type_decl, expr) => {
+                let mutability_string = mutability.variable_declaration_keyword();
+                write!(fmt, "{} {}: {:?} = {:?}", mutability_string, id, type_decl, expr)
             },
             Return(ref expression) => write!(fmt, "return {:?}", expression),
             Expression(ref expression) => write!(fmt, "{:?}", expression),
@@ -155,7 +155,10 @@ impl Debug for TypeDeclaration {
 
 impl Debug for PassedArgument {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{}: {:?}", self.name, self.value)
+        match &self.name {
+            Some(name) => write!(fmt, "{}: {:?}", name, self.value),
+            None => write!(fmt, "{:?}", self.value)
+        }
     }
 }
 
@@ -166,7 +169,7 @@ impl Debug for ParameterDeclaration {
 }
 
 impl Mutability {
-    fn variableDeclarationKeyword(&self) -> &str {
+    fn variable_declaration_keyword(&self) -> &str {
         use self::Mutability::*;
         return match *self {
             Mutable => "var",
