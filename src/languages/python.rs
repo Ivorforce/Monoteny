@@ -36,37 +36,39 @@ impl PythonTranspiler {
         return Ok(())
     }
 
+    pub fn transpile_atom_type(&self, type_def: &str) -> TypeInformation {
+        match type_def {
+            "Int32" => TypeInformation {
+                python_type: String::from("np.int32"),
+                docstring_type: String::from("int32")
+            },
+            "Int64" => TypeInformation {
+                python_type: String::from("np.int64"),
+                docstring_type: String::from("int64")
+            },
+            "Float32" => TypeInformation {
+                python_type: String::from("np.float32"),
+                docstring_type: String::from("float32")
+            },
+            "Float64" => TypeInformation {
+                python_type: String::from("np.float64"),
+                docstring_type: String::from("float64")
+            },
+            _ => TypeInformation {
+                python_type: String::from(type_def),
+                docstring_type: String::from(type_def)
+            }
+        }
+    }
+
     pub fn transpile_type(&self, type_def: &Type) -> TypeInformation {
         match type_def.borrow() {
-            Type::Identifier(t) => {
-                match t.as_str() {
-                    "Int32" => TypeInformation {
-                        python_type: String::from("np.int32"),
-                        docstring_type: String::from("int32")
-                    },
-                    "Int64" => TypeInformation {
-                        python_type: String::from("np.int64"),
-                        docstring_type: String::from("int64")
-                    },
-                    "Float32" => TypeInformation {
-                        python_type: String::from("np.float32"),
-                        docstring_type: String::from("float32")
-                    },
-                    "Float64" => TypeInformation {
-                        python_type: String::from("np.float64"),
-                        docstring_type: String::from("float64")
-                    },
-                    _ => TypeInformation {
-                        python_type: t.clone(),
-                        docstring_type: t.clone()
-                    }
-                }
-            },
+            Type::Identifier(atom) => self.transpile_atom_type(atom.as_str()),
             Type::NDArray(atom) => {
                 match atom.as_ref() {
                     Type::Identifier(atom) => TypeInformation {
                         python_type: String::from("np.ndarray"),
-                        docstring_type: String::from(format!("{}[?]", atom))
+                        docstring_type: String::from(format!("{}[?]", self.transpile_atom_type(atom.as_str()).docstring_type))
                     },
                     Type::NDArray(_) => panic!("Numpy does not support nested ndarrays.")
                 }
