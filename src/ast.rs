@@ -7,7 +7,14 @@ pub struct Program {
 }
 
 pub enum GlobalStatement {
-    FunctionDeclaration(String, Vec<Box<ParameterDeclaration>>, Vec<Box<Statement>>),
+    FunctionDeclaration(Box<Function>),
+}
+
+pub struct Function {
+    pub identifier: String,
+    pub parameters: Vec<Box<ParameterDeclaration>>,
+    pub return_type: Option<Box<TypeDeclaration>>,
+    pub body: Vec<Box<Statement>>
 }
 
 pub struct ParameterDeclaration {
@@ -126,15 +133,19 @@ impl Debug for GlobalStatement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::GlobalStatement::*;
         match self {
-            FunctionDeclaration(id, params, stmts) => {
-                write!(fmt, "fn {}(", id);
-                for item in params { write!(fmt, "{:?},", item)? };
-                write!(fmt, ") {{\n");
-                for item in stmts { write!(fmt, "    {:?};\n", item)? };
-                write!(fmt, "}}");
-                return Ok(())
-            },
+            FunctionDeclaration(function) => write!(fmt, "{:?}", function),
         }
+    }
+}
+
+impl Debug for Function {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "fn {}(", self.identifier);
+        for item in self.parameters.iter() { write!(fmt, "{:?},", item)? };
+        write!(fmt, ") -> {:?} {{{{\n", self.return_type);
+        for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };
+        write!(fmt, "}}");
+        return Ok(())
     }
 }
 

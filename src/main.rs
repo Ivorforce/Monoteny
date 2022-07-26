@@ -5,13 +5,16 @@ lalrpop_mod!(pub tenlang);
 mod ast;
 
 const PROGRAM: &str = "\
+fn copy_3_times(a: Int32) -> Int32[3] {
+    return [a, a, a];
+}
+
 fn square(_ a: Int32) {
     return a * a;
 }
 
 fn main() {
-    let a: Int32[3] = [1 + 2, 5 * 3, 2];
-    var b = square(a);
+    var b = copy_3_times(a: 5 * 2 + 1);
     let b = b.square();
     print(b);
 }";

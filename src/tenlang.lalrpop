@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutability, ParameterDeclaration, TypeDeclaration, PassedArgument};
+use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutability, Function, ParameterDeclaration, TypeDeclaration, PassedArgument};
 
 grammar;
 
@@ -36,8 +36,14 @@ pub GlobalStatement: Box<GlobalStatement> = {
 };
 
 FunctionDeclaration: Box<GlobalStatement> = {
-    "fn" <i: Identifier> "(" <parameters: OptionalFinalSeparatorList<ParameterDeclaration, ",">> ")" "{" <stmnts: (<Statement> ";")*> "}" => Box::new(GlobalStatement::FunctionDeclaration(i, parameters, stmnts)),
+    Function => Box::new(GlobalStatement::FunctionDeclaration(<>))
 };
+
+Function: Box<Function> = {
+    "fn" <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<ParameterDeclaration, ",">> ")" <return_type: ("->" <TypeDeclaration>)?> "{" <body: (<Statement> ";")*> "}" => Box::new(Function {
+        identifier, parameters, return_type, body
+    }),
+}
 
 ParameterDeclaration: Box<ParameterDeclaration> = {
     <name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(ParameterDeclaration {
