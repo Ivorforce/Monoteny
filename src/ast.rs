@@ -24,6 +24,7 @@ pub enum Expression {
     Number(i32),
     BinaryOperator(Box<Expression>, Opcode, Box<Expression>),
     FunctionCall(Box<Expression>, Vec<Box<PassedArgument>>),
+    MemberLookup(Box<Expression>, String),
     VariableLookup(String),
     Error,
 }
@@ -81,6 +82,7 @@ impl Debug for Expression {
                 return Ok(())
             },
             VariableLookup(id) => write!(fmt, "{}", id),
+            MemberLookup(expression, id) => write!(fmt, "{:?}.{}", expression, id),
             Error => write!(fmt, "error"),
         }
     }

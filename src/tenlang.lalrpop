@@ -54,6 +54,7 @@ Expression: Box<Expression> = FunctionCallElement;
 
 FunctionCallElement = {
     <Expression> "(" <PassedArgument*> ")" => Box::new(Expression::FunctionCall(<>)),
+    <Expression> "." <Identifier> => Box::new(Expression::MemberLookup(<>)),
     SumElement
 }
 SumElement = BinaryOperator<SumOperator, MultiplicationElement>;
