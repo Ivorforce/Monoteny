@@ -11,13 +11,17 @@ pub enum GlobalStatement {
 pub struct ParameterDeclaration {
     pub internal_name: String,
     pub external_name: String,
-    pub type_name: String,
+    pub param_type: Box<TypeDeclaration>,
 }
 
 pub enum Statement {
-    VariableDeclaration(Mutability, String, Box<Expression>),
+    VariableDeclaration(Mutability, String, Box<Option<TypeDeclaration>>, Box<Expression>),
     Expression(Box<Expression>),
     Return(Box<Expression>),
+}
+
+pub enum TypeDeclaration {
+    Identifier(String)
 }
 
 pub enum Expression {
@@ -62,8 +66,10 @@ impl Debug for Statement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Statement::*;
         match self {
-            VariableDeclaration(Mutability::Mutable, id, expr) => write!(fmt, "var {} = {:?}", id, expr),
-            VariableDeclaration(Mutability::Immutable, id, expr) => write!(fmt, "let {} = {:?}", id, expr),
+            VariableDeclaration(mutability, id, type_name, expr) => {
+                let mutabilityString = mutability.variableDeclarationKeyword();
+                write!(fmt, "{} {}: {:?} = {:?}", mutabilityString, id, type_name, expr)
+            },
             Return(ref expression) => write!(fmt, "return {:?}", expression),
             Expression(ref expression) => write!(fmt, "{:?}", expression),
         }
@@ -123,6 +129,15 @@ impl Debug for GlobalStatement {
     }
 }
 
+impl Debug for TypeDeclaration {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::TypeDeclaration::*;
+        match self {
+            Identifier(name) => write!(fmt, "{}", name),
+        }
+    }
+}
+
 impl Debug for PassedArgument {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "{}: {:?}", self.name, self.value)
@@ -131,6 +146,17 @@ impl Debug for PassedArgument {
 
 impl Debug for ParameterDeclaration {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{} {}: {}", self.external_name, self.internal_name, self.type_name)
+        write!(fmt, "{} {}: {:?}", self.external_name, self.internal_name, self.param_type)
     }
 }
+
+impl Mutability {
+    fn variableDeclarationKeyword(&self) -> &str {
+        use self::Mutability::*;
+        return match *self {
+            Mutable => "var",
+            Immutable => "let",
+        };
+    }
+}
+
