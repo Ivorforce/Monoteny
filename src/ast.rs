@@ -15,13 +15,14 @@ pub struct ParameterDeclaration {
 }
 
 pub enum Statement {
-    VariableDeclaration(Mutability, String, Box<Option<TypeDeclaration>>, Box<Expression>),
+    VariableDeclaration(Mutability, String, Option<Box<TypeDeclaration>>, Box<Expression>),
     Expression(Box<Expression>),
     Return(Box<Expression>),
 }
 
 pub enum TypeDeclaration {
-    Identifier(String)
+    Identifier(String),
+    NDArray(String, Vec<Box<Expression>>)
 }
 
 pub enum Expression {
@@ -134,6 +135,12 @@ impl Debug for TypeDeclaration {
         use self::TypeDeclaration::*;
         match self {
             Identifier(name) => write!(fmt, "{}", name),
+            NDArray(name, dimensions) => {
+                write!(fmt, "{}[", name);
+                for item in dimensions { write!(fmt, "{:?},", item)? };
+                write!(fmt, "]");
+                return Ok(())
+            },
         }
     }
 }

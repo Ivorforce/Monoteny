@@ -10,7 +10,7 @@ fn square(a: Int32) {
 }
 
 fn main() {
-    let a = [1 + 2, 5 * 3, 2];
+    let a: Int32[3] = [1 + 2, 5 * 3, 2];
     var b = square(a: a);
     let b = b.square();
 }";

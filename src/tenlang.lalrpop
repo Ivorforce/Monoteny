@@ -40,11 +40,13 @@ ParameterDeclaration: Box<ParameterDeclaration> = {
 }
 
 TypeDeclaration: Box<TypeDeclaration> = {
-    Identifier => Box::new(TypeDeclaration::Identifier(<>))
+    Identifier => Box::new(TypeDeclaration::Identifier(<>)),
+    <Identifier> "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(TypeDeclaration::NDArray(<>))
 }
 
 pub Statement: Box<Statement> = {
-    <m: VariableDeclarationMutability> <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, Box::new(None), e)),
+    <m: VariableDeclarationMutability> <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, None, e)),
+    <m: VariableDeclarationMutability> <i: Identifier> ":" <t: TypeDeclaration> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, Some(t), e)),
     "return" <Expression> => Box::new(Statement::Return(<>)),
     Expression => Box::new(Statement::Expression(<>)),
 };
