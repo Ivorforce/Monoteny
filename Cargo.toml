@@ -1,5 +1,5 @@
 [package]
-name = "TenLangCompiler"
+name = "ten_lang_compiler"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"

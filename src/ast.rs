@@ -126,11 +126,11 @@ impl Debug for Extension {
 
 impl Debug for Function {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "fn {}(", self.identifier);
+        write!(fmt, "fn {}(", self.identifier)?;
         for item in self.parameters.iter() { write!(fmt, "{:?},", item)? };
-        write!(fmt, ") -> {:?} {{\n", self.return_type);
+        write!(fmt, ") -> {:?} {{\n", self.return_type)?;
         for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };
-        write!(fmt, "}}");
+        write!(fmt, "}}")?;
         return Ok(())
     }
 }
@@ -141,9 +141,9 @@ impl Debug for TypeDeclaration {
         match self {
             Identifier(name) => write!(fmt, "{}", name),
             NDArray(name, dimensions) => {
-                write!(fmt, "{}[", name);
+                write!(fmt, "{}[", name)?;
                 for item in dimensions { write!(fmt, "{:?},", item)? };
-                write!(fmt, "]");
+                write!(fmt, "]")?;
                 return Ok(())
             },
         }
@@ -172,17 +172,17 @@ impl Debug for Expression {
             BinaryOperator(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
             FunctionCall(call_type, expression, args) => {
                 let brackets = call_type.bracket_str();
-                write!(fmt, "{:?}{}", expression, brackets.chars().nth(0).unwrap());
+                write!(fmt, "{:?}{}", expression, brackets.chars().nth(0).unwrap())?;
                 for item in args { write!(fmt, "{:?},", item)? };
-                write!(fmt, "{}", brackets.chars().nth(1).unwrap());
+                write!(fmt, "{}", brackets.chars().nth(1).unwrap())?;
                 return Ok(())
             },
             VariableLookup(id) => write!(fmt, "{}", id),
             MemberLookup(expression, id) => write!(fmt, "{:?}.{}", expression, id),
             ArrayLiteral(items) => {
-                write!(fmt, "[");
+                write!(fmt, "[")?;
                 for item in items { write!(fmt, "{:?},", item)? };
-                write!(fmt, "]");
+                write!(fmt, "]")?;
                 return Ok(())
             },
             Error => write!(fmt, "error"),
