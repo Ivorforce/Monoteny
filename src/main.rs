@@ -6,7 +6,6 @@ mod abstract_syntax;
 mod computation_tree;
 mod languages;
 
-use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::path::PathBuf;
@@ -64,22 +63,10 @@ fn main() {
             let output_path = sub_matches.get_one::<PathBuf>("OUTPUT").unwrap();
             let should_output_all = sub_matches.is_present("ALL");
 
-            let mut transpilers: HashMap<PathBuf, Box<dyn languages::transpiler::Transpiler>> = HashMap::new();
-
-            if should_output_all {
-                transpilers.insert(output_path.with_extension("py"), Box::new(languages::python::PythonTranspiler {}));
-                transpilers.insert(output_path.with_extension("c"), Box::new(languages::c::CTranspiler {}));
-            }
-            else {
-                match output_path.extension().and_then(OsStr::to_str) {
-                    Some("py") => transpilers.insert(output_path.clone(), Box::new(languages::python::PythonTranspiler {})),
-                    Some("c") => transpilers.insert(output_path.clone(), Box::new(languages::c::CTranspiler {})),
-                    _ => {
-                        println!("Output path must have a known extension.");
-                        exit(1)
-                    }
-                };
-            }
+            let output_extensions: Vec<&str> = match should_output_all {
+                true => vec!["py", "cpp"],
+                false => vec![output_path.extension().and_then(OsStr::to_str).unwrap()]
+            };
 
             let content = std::fs::read_to_string(&input_path)
                 .expect("could not read file");
@@ -90,11 +77,39 @@ fn main() {
 
             let computation_tree = computation_tree::analyze_program(abstract_syntax_tree);
 
-            for (path, transpiler) in transpilers {
-                let mut f = File::create(path.clone()).expect("Unable to create file");
-                transpiler.transpile(&computation_tree, &mut f).expect("Error when writing to file");
+            for output_extension in output_extensions {
+                match output_extension {
+                    "py" => {
+                        let python_path = output_path.with_extension("py");
+                        let mut f = File::create(python_path.clone()).expect("Unable to create file");
 
-                println!("Transpiled file to {:?}", path);
+                        let transpiler = languages::python::PythonTranspiler {};
+                        transpiler.transpile(
+                            &computation_tree,
+                            &mut f
+                        ).expect("Error when writing to file");
+
+                        println!("{:?}", python_path);
+                    },
+                    "cpp" => {
+                        let header_path = output_path.with_extension("hpp");
+                        let source_path = output_path.with_extension("cpp");
+
+                        let mut f_header = File::create(header_path.clone()).expect("Unable to create file");
+                        let mut f_source = File::create(source_path.clone()).expect("Unable to create file");
+
+                        let transpiler = languages::cpp::CPPTranspiler {};
+                        transpiler.transpile(
+                            &computation_tree,
+                            &mut f_header,
+                            &mut f_source
+                        ).expect("Error when writing to file");
+
+                        println!("{:?}", header_path);
+                        println!("{:?}", source_path);
+                    },
+                    _ => unreachable!()
+                };
             }
         },
         _ => unreachable!(),
