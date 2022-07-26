@@ -42,7 +42,10 @@ FunctionDeclaration: Box<GlobalStatement> = {
 ParameterDeclaration: Box<ParameterDeclaration> = {
     <name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(ParameterDeclaration {
         internal_name: name.clone(), external_name: name.clone(), param_type
-  })
+    }),
+    <external_name: Identifier> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(ParameterDeclaration {
+        internal_name, external_name, param_type
+    }),
 }
 
 

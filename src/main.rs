@@ -5,13 +5,13 @@ lalrpop_mod!(pub tenlang);
 mod ast;
 
 const PROGRAM: &str = "\
-fn square(a: Int32) {
+fn square(_ a: Int32) {
     return a * a;
 }
 
 fn main() {
     let a: Int32[3] = [1 + 2, 5 * 3, 2];
-    var b = square(a: a);
+    var b = square(a);
     let b = b.square();
     print(b);
 }";
