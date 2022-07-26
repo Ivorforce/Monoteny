@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutability, Function, ParameterDeclaration, TypeDeclaration, PassedArgument, FunctionCallType};
+use crate::ast::{Program, Extension, Expression, Opcode, Statement, GlobalStatement, MemberStatement, Mutability, Function, ParameterDeclaration, TypeDeclaration, PassedArgument, FunctionCallType};
 
 grammar;
 
@@ -17,7 +17,7 @@ match {
     "=", "?",
     "+", "-", "*", "/",
     "let", "var",
-    "fn",
+    "fn", "extension",
 } else {
     r"[a-zA-Z_]\w*" => _Identifier,
     _
@@ -32,11 +32,8 @@ pub Program: Program = {
 };
 
 pub GlobalStatement: Box<GlobalStatement> = {
-    FunctionDeclaration,
-};
-
-FunctionDeclaration: Box<GlobalStatement> = {
-    Function => Box::new(GlobalStatement::FunctionDeclaration(<>))
+    Function => Box::new(GlobalStatement::FunctionDeclaration(<>)),
+    Extension => Box::new(GlobalStatement::Extension(<>))
 };
 
 Function: Box<Function> = {
@@ -54,6 +51,17 @@ ParameterDeclaration: Box<ParameterDeclaration> = {
     }),
 }
 
+// =============================== Member =====================================
+
+pub Extension: Box<Extension> = {
+    "extension" <type_declaration: TypeDeclaration> "{" <statements: (<MemberStatement>)*> "}" => Box::new(Extension {
+        type_declaration, statements
+    })
+};
+
+pub MemberStatement: Box<MemberStatement> = {
+    Function => Box::new(MemberStatement::FunctionDeclaration(<>)),
+};
 
 // =============================== Type =====================================
 

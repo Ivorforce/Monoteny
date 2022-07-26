@@ -9,8 +9,10 @@ fn copy_3_times(a: Int32) -> Int32[3] {
     return [a, a, a];
 }
 
-fn square(_ a: Int32) {
-    return a * a;
+extension Int32 {
+    fn square() {
+        return self * self;
+    }
 }
 
 fn main() {

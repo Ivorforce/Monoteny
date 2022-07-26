@@ -8,6 +8,7 @@ pub struct Program {
 
 pub enum GlobalStatement {
     FunctionDeclaration(Box<Function>),
+    Extension(Box<Extension>),
 }
 
 pub struct Function {
@@ -21,6 +22,15 @@ pub struct ParameterDeclaration {
     pub internal_name: String,
     pub external_name: String,
     pub param_type: Box<TypeDeclaration>,
+}
+
+pub struct Extension {
+    pub type_declaration: Box<TypeDeclaration>,
+    pub statements: Vec<Box<MemberStatement>>
+}
+
+pub enum MemberStatement {
+    FunctionDeclaration(Box<Function>),
 }
 
 // =============================== Type =====================================
@@ -89,7 +99,28 @@ impl Debug for GlobalStatement {
         use self::GlobalStatement::*;
         match self {
             FunctionDeclaration(function) => write!(fmt, "{:?}", function),
+            Extension(extension) => write!(fmt, "{:?}", extension),
         }
+    }
+}
+
+impl Debug for MemberStatement {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::MemberStatement::*;
+        match self {
+            FunctionDeclaration(function) => write!(fmt, "{:?}", function),
+        }
+    }
+}
+
+impl Debug for Extension {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "extension {:?} {{", self.type_declaration)?;
+        for item in self.statements.iter() {
+            write!(fmt, "\n{:?}\n", item)?
+        };
+        write!(fmt, "}}")?;
+        return Ok(())
     }
 }
 
