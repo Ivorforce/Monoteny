@@ -26,6 +26,7 @@ pub enum Expression {
     FunctionCall(Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
     VariableLookup(String),
+    ArrayLiteral(Vec<Box<Expression>>),
     Error,
 }
 
@@ -83,6 +84,12 @@ impl Debug for Expression {
             },
             VariableLookup(id) => write!(fmt, "{}", id),
             MemberLookup(expression, id) => write!(fmt, "{:?}.{}", expression, id),
+            ArrayLiteral(items) => {
+                write!(fmt, "[");
+                for item in items { write!(fmt, "{:?},", item)? };
+                write!(fmt, "]");
+                return Ok(())
+            },
             Error => write!(fmt, "error"),
         }
     }

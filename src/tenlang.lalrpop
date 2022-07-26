@@ -82,7 +82,8 @@ VariableDeclarationMutability: Mutability = {
 Term: Box<Expression> = {
     Num => Box::new(Expression::Number(<>)),
     Identifier => Box::new(Expression::VariableLookup(<>)),
-    "(" <Expression> ")"
+    "(" <Expression> ")",
+    "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(Expression::ArrayLiteral(<>)),
 };
 
 Num: i32 = {
