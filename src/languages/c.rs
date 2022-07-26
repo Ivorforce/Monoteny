@@ -4,14 +4,14 @@ use crate::computation_tree::Program;
 
 use crate::languages::transpiler::Transpiler;
 
-pub struct PythonTranspiler {
+pub struct CTranspiler {
 
 }
 
-impl Transpiler for PythonTranspiler {
+impl Transpiler for CTranspiler {
     fn transpile(&self, program: &Program, stream: &mut (dyn Write)) -> Result<(), std::io::Error> {
         for function in program.functions.iter() {
-            write!(stream, "def {}():\n    pass\n\n", function.identifier)?;
+            write!(stream, "int {}() {{\n\n}}\n\n", function.identifier)?;
         }
 
         return Ok(())

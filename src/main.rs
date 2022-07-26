@@ -6,6 +6,7 @@ mod abstract_syntax;
 mod computation_tree;
 mod languages;
 
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::path::PathBuf;
@@ -31,6 +32,7 @@ fn cli() -> Command<'static> {
                 .arg_required_else_help(true)
                 .arg(arg!(<INPUT> "file to transpile").value_parser(clap::value_parser!(PathBuf)).long("input").short('i'))
                 .arg(arg!(<OUTPUT> "output file path").value_parser(clap::value_parser!(PathBuf)).long("output").short('o'))
+                .arg(arg!(<ALL> "output using all available transpilers").required(false).takes_value(false).long("all"))
         )
 }
 
@@ -60,14 +62,24 @@ fn main() {
         Some(("transpile", sub_matches)) => {
             let input_path = sub_matches.get_one::<PathBuf>("INPUT").unwrap();
             let output_path = sub_matches.get_one::<PathBuf>("OUTPUT").unwrap();
+            let should_output_all = sub_matches.is_present("ALL");
 
-            let transpiler: Box<dyn languages::transpiler::Transpiler> = match output_path.extension().and_then(OsStr::to_str) {
-                Some("py") => Box::new(languages::python::PythonTranspiler {}),
-                _ => {
-                    println!("Output path must have a known extension.");
-                    exit(1)
-                }
-            };
+            let mut transpilers: HashMap<PathBuf, Box<dyn languages::transpiler::Transpiler>> = HashMap::new();
+
+            if should_output_all {
+                transpilers.insert(output_path.with_extension("py"), Box::new(languages::python::PythonTranspiler {}));
+                transpilers.insert(output_path.with_extension("c"), Box::new(languages::c::CTranspiler {}));
+            }
+            else {
+                match output_path.extension().and_then(OsStr::to_str) {
+                    Some("py") => transpilers.insert(output_path.clone(), Box::new(languages::python::PythonTranspiler {})),
+                    Some("c") => transpilers.insert(output_path.clone(), Box::new(languages::c::CTranspiler {})),
+                    _ => {
+                        println!("Output path must have a known extension.");
+                        exit(1)
+                    }
+                };
+            }
 
             let content = std::fs::read_to_string(&input_path)
                 .expect("could not read file");
@@ -78,10 +90,12 @@ fn main() {
 
             let computation_tree = computation_tree::analyze_program(abstract_syntax_tree);
 
-            let mut f = File::create(output_path).expect("Unable to create file");
-            transpiler.transpile(computation_tree, &mut f).expect("Error when writing to file");
+            for (path, transpiler) in transpilers {
+                let mut f = File::create(path.clone()).expect("Unable to create file");
+                transpiler.transpile(&computation_tree, &mut f).expect("Error when writing to file");
 
-            println!("Transpiled file to {:?}!", output_path);
+                println!("Transpiled file to {:?}", path);
+            }
         },
         _ => unreachable!(),
     }

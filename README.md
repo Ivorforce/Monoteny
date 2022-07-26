@@ -17,7 +17,7 @@ Many excellent tools and complex infrastructure exists in other ecosystems. As a
 Instead, TenLang transpiles to insert into these ecosystems. Hereby, any frameworks built in TenLang will be available in *all* of the ecosystems. The transpilation targets are:
 
 * [WIP] Python with NumPy
-* [Future] C
+* [WIP] C
 * [Future] Octave / MatLab
 * [Future] R
 * [Future] C++ with Eigen
