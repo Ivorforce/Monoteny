@@ -11,7 +11,8 @@ fn square(a: Int32) {
 
 fn main() {
     let a = 1 + 2 * 3;
-    var b = square(a: a.b);
+    var b = square(a: a);
+    let b = b.square();
 }";
 
 fn main() {
