@@ -7,6 +7,7 @@ mod computation_tree;
 mod languages;
 
 use std::ffi::OsStr;
+use std::fs::File;
 use std::path::PathBuf;
 use std::process::exit;
 
@@ -77,10 +78,8 @@ fn main() {
 
             let computation_tree = computation_tree::analyze_program(abstract_syntax_tree);
 
-            let transpiled_file = transpiler.transpile(computation_tree);
-
-            std::fs::write(output_path, transpiled_file)
-                .expect("Unable to write file");
+            let mut f = File::create(output_path).expect("Unable to create file");
+            transpiler.transpile(computation_tree, &mut f).expect("Error when writing to file");
 
             println!("Transpiled file to {:?}!", output_path);
         },
