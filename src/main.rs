@@ -5,12 +5,12 @@ lalrpop_mod!(pub tenlang);
 mod ast;
 
 const PROGRAM: &str = "\
-fn square() {
-    return 2 * 2;
+fn square(a: Int32) {
+    return a * a;
 }
 
 fn main() {
-    let a = 2 * 3;
+    let a = 1 + 2 * 3;
     var b = 5;
 }";
 

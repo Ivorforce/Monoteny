@@ -8,6 +8,12 @@ pub enum GlobalStatement {
     FunctionDeclaration(String, Vec<Box<Statement>>),
 }
 
+pub struct ParameterDeclaration {
+    pub internal_name: String,
+    pub external_name: String,
+    pub type_name: String,
+}
+
 pub enum Statement {
     VariableDeclaration(Mutability, String, Box<Expression>),
     Expression(Box<Expression>),

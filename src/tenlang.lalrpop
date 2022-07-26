@@ -1,11 +1,25 @@
 use std::str::FromStr;
-use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutability};
+use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutability, ParameterDeclaration};
 
 grammar;
 
-//OptionalFinalSeparatorList<E,S>: Vec<E> =
-//    <v0:(<E> S)*> <e1:E?> =>
-//        v0.into_iter().chain(e1).collect();
+OptionalFinalSeparatorList<E,S>: Vec<E> =
+    <v0:(<E> S)*> <e1:E?> =>
+        v0.into_iter().chain(e1).collect();
+
+match {
+    r"[0-9]+" => _Number,
+    "return",
+    "(", ")", "{", "}", "[",  "]",
+    ";", ",", ":",
+    "=",
+    "+", "-", "*", "/",
+    "let", "var",
+    "fn",
+} else {
+    r"[a-zA-Z_]\w*" => _Identifier,
+    _
+}
 
 pub Program: Program = {
     <stmts: (<GlobalStatement>)*> => Program { global_statements: stmts }
@@ -16,13 +30,18 @@ pub GlobalStatement: Box<GlobalStatement> = {
 };
 
 FunctionDeclaration: Box<GlobalStatement> = {
-    "fn" <i: Identifier> "()" "{" <stmnts: (<Statement> ";")*> "}" => Box::new(GlobalStatement::FunctionDeclaration(i, stmnts)),
+    "fn" <i: Identifier> "(" <parameters: OptionalFinalSeparatorList<ParameterDeclaration, ",">> ")" "{" <stmnts: (<Statement> ";")*> "}" => Box::new(GlobalStatement::FunctionDeclaration(i, stmnts)),
 };
+
+ParameterDeclaration: Box<ParameterDeclaration> = {
+    <name: Identifier> ":" <type_name: Identifier> => Box::new(ParameterDeclaration {
+        internal_name: name.clone(), external_name: name.clone(), type_name
+  })
+}
 
 pub Statement: Box<Statement> = {
     <m: VariableDeclarationMutability> <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, e)),
     "return" <Expression> => Box::new(Statement::Return(<>)),
-//    Identifier => Box::new(Statement::VariableLookup(<>)),  // TODO Ask lexer for help
     Expression => Box::new(Statement::Expression(<>)),
 };
 
@@ -31,8 +50,10 @@ BinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
     NextOperatorLevel
 };
 
-Expression = BinaryOperator<SumOperator, Factor>;
-Factor = BinaryOperator<FactorOperator, Term>;
+Expression = SumElement;
+
+SumElement = BinaryOperator<SumOperator, MultiplicationElement>;
+MultiplicationElement = BinaryOperator<FactorOperator, Term>;
 
 SumOperator: Opcode = { // (3)
     "+" => Opcode::Add,
@@ -51,13 +72,14 @@ VariableDeclarationMutability: Mutability = {
 
 Term: Box<Expression> = {
     Num => Box::new(Expression::Number(<>)),
+    Identifier => Box::new(Expression::VariableLookup(<>)),
     "(" <Expression> ")"
 };
 
 Num: i32 = {
-    r"[0-9]+" => i32::from_str(<>).unwrap()
+    _Number => i32::from_str(<>).unwrap()
 };
 
 Identifier: String = {
-    r"[a-zA-Z][a-zA-Z0-9]*" => format!("{}", <>)
+    _Identifier => format!("{}", <>)
 };
