@@ -5,7 +5,7 @@ pub struct Program {
 }
 
 pub enum GlobalStatement {
-    FunctionDeclaration(String, Vec<Box<Statement>>),
+    FunctionDeclaration(String, Vec<Box<ParameterDeclaration>>, Vec<Box<Statement>>),
 }
 
 pub struct ParameterDeclaration {
@@ -23,9 +23,14 @@ pub enum Statement {
 pub enum Expression {
     Number(i32),
     BinaryOperator(Box<Expression>, Opcode, Box<Expression>),
-    FunctionCall(Box<Expression>),
+    FunctionCall(Box<Expression>, Vec<Box<PassedArgument>>),
     VariableLookup(String),
     Error,
+}
+
+pub struct PassedArgument {
+    pub name: String,
+    pub value: Box<Expression>,
 }
 
 #[derive(Copy, Clone)]
@@ -69,7 +74,12 @@ impl Debug for Expression {
         match self {
             Number(n) => write!(fmt, "{:?}", n),
             BinaryOperator(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
-            FunctionCall(expression) => write!(fmt, "{:?}()", expression),
+            FunctionCall(expression, args) => {
+                write!(fmt, "{:?}(", expression);
+                for item in args { write!(fmt, "{:?},", item)? };
+                write!(fmt, ")");
+                return Ok(())
+            },
             VariableLookup(id) => write!(fmt, "{}", id),
             Error => write!(fmt, "error"),
         }
@@ -92,12 +102,26 @@ impl Debug for GlobalStatement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::GlobalStatement::*;
         match self {
-            FunctionDeclaration(id, stmts) => {
-                write!(fmt, "fn {}() {{\n", id);
+            FunctionDeclaration(id, params, stmts) => {
+                write!(fmt, "fn {}(", id);
+                for item in params { write!(fmt, "{:?},", item)? };
+                write!(fmt, ") {{\n");
                 for item in stmts { write!(fmt, "    {:?};\n", item)? };
                 write!(fmt, "}}");
                 return Ok(())
             },
         }
+    }
+}
+
+impl Debug for PassedArgument {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "{}: {:?}", self.name, self.value)
+    }
+}
+
+impl Debug for ParameterDeclaration {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "{} {}: {}", self.external_name, self.internal_name, self.type_name)
     }
 }

@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutability, ParameterDeclaration};
+use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutability, ParameterDeclaration, PassedArgument};
 
 grammar;
 
@@ -30,7 +30,7 @@ pub GlobalStatement: Box<GlobalStatement> = {
 };
 
 FunctionDeclaration: Box<GlobalStatement> = {
-    "fn" <i: Identifier> "(" <parameters: OptionalFinalSeparatorList<ParameterDeclaration, ",">> ")" "{" <stmnts: (<Statement> ";")*> "}" => Box::new(GlobalStatement::FunctionDeclaration(i, stmnts)),
+    "fn" <i: Identifier> "(" <parameters: OptionalFinalSeparatorList<ParameterDeclaration, ",">> ")" "{" <stmnts: (<Statement> ";")*> "}" => Box::new(GlobalStatement::FunctionDeclaration(i, parameters, stmnts)),
 };
 
 ParameterDeclaration: Box<ParameterDeclaration> = {
@@ -50,10 +50,18 @@ BinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
     NextOperatorLevel
 };
 
-Expression = SumElement;
+Expression: Box<Expression> = FunctionCallElement;
 
+FunctionCallElement = {
+    <Expression> "(" <PassedArgument*> ")" => Box::new(Expression::FunctionCall(<>)),
+    SumElement
+}
 SumElement = BinaryOperator<SumOperator, MultiplicationElement>;
 MultiplicationElement = BinaryOperator<FactorOperator, Term>;
+
+PassedArgument: Box<PassedArgument> = {
+    <name: Identifier> ":" <value: Expression> => Box::new(PassedArgument { name, value })
+}
 
 SumOperator: Opcode = { // (3)
     "+" => Opcode::Add,
