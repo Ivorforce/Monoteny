@@ -4,27 +4,48 @@ extern crate lalrpop_util;
 lalrpop_mod!(pub tenlang);
 mod ast;
 
-const PROGRAM: &str = "\
-fn copy_3_times(a: Int32) -> Int32[3] {
-    return [a, a, a];
+use std::ffi::OsString;
+use std::path::PathBuf;
+
+use clap::{arg, Command};
+
+fn cli() -> Command<'static> {
+    Command::new("tenlang")
+        .about("A cli implementation for the tenlang language.")
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        .allow_external_subcommands(true)
+        .subcommand(
+            Command::new("check")
+                .about("Parse files to check for validity.")
+                .arg_required_else_help(true)
+                .arg(arg!(<PATH> ... "files to check").value_parser(clap::value_parser!(PathBuf))),
+        )
 }
 
-extension Int32 {
-    fn square() {
-        return self * self;
+fn main() {
+    let matches = cli().get_matches();
+    match matches.subcommand() {
+        Some(("check", sub_matches)) => {
+            let paths = sub_matches
+                .get_many::<PathBuf>("PATH")
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>();
+
+            for path in paths {
+                println!("Checking {:?}...", path);
+
+                let content = std::fs::read_to_string(&path)
+                    .expect("could not read file");
+
+                let _ = tenlang::ProgramParser::new()
+                    .parse(content.as_str())
+                    .unwrap();
+            }
+
+            println!("All files are valid .tenlang!");
+        },
+        _ => unreachable!(),
     }
-}
-
-fn main() {
-    var b = copy_3_times(a: 5 * 2 + 1);
-    let b = b.square();
-    print(b[0]);
-}";
-
-fn main() {
-    let program = tenlang::ProgramParser::new()
-        .parse(PROGRAM)
-        .unwrap();
-
-    println!("{:?}", program);
 }

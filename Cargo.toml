@@ -8,5 +8,6 @@ build = "build.rs"
 lalrpop = { version = "^0.19.8" }
 
 [dependencies]
+clap = "3.2.15"
 lalrpop-util = { version = "^0.19.8", features = ["lexer"] }
 regex = "1"
