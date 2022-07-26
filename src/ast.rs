@@ -1,5 +1,7 @@
 use std::fmt::{Debug, Error, Formatter};
 
+// =============================== Global =====================================
+
 pub struct Program {
     pub global_statements: Vec<Box<GlobalStatement>>
 }
@@ -14,15 +16,19 @@ pub struct ParameterDeclaration {
     pub param_type: Box<TypeDeclaration>,
 }
 
-pub enum Statement {
-    VariableDeclaration(Mutability, String, Option<Box<TypeDeclaration>>, Box<Expression>),
-    Expression(Box<Expression>),
-    Return(Box<Expression>),
-}
+// =============================== Type =====================================
 
 pub enum TypeDeclaration {
     Identifier(String),
     NDArray(String, Vec<Box<Expression>>)
+}
+
+// =============================== Body =====================================
+
+pub enum Statement {
+    VariableDeclaration(Mutability, String, Option<Box<TypeDeclaration>>, Box<Expression>),
+    Expression(Box<Expression>),
+    Return(Box<Expression>),
 }
 
 pub enum Expression {
@@ -53,6 +59,8 @@ pub enum Mutability {
     Immutable,
     Mutable,
 }
+
+// =============================== String =====================================
 
 impl Debug for Program {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {

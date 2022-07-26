@@ -3,6 +3,8 @@ use crate::ast::{Program, Expression, Opcode, Statement, GlobalStatement, Mutabi
 
 grammar;
 
+// =============================== Util =====================================
+
 OptionalFinalSeparatorList<E,S>: Vec<E> =
     <v0:(<E> S)*> <e1:E?> =>
         v0.into_iter().chain(e1).collect();
@@ -20,6 +22,10 @@ match {
     r"[a-zA-Z_]\w*" => _Identifier,
     _
 }
+
+
+// =============================== Global =====================================
+
 
 pub Program: Program = {
     <stmts: (<GlobalStatement>)*> => Program { global_statements: stmts }
@@ -39,10 +45,18 @@ ParameterDeclaration: Box<ParameterDeclaration> = {
   })
 }
 
+
+// =============================== Type =====================================
+
+
 TypeDeclaration: Box<TypeDeclaration> = {
     Identifier => Box::new(TypeDeclaration::Identifier(<>)),
     <Identifier> "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(TypeDeclaration::NDArray(<>))
 }
+
+
+// =============================== Body =====================================
+
 
 pub Statement: Box<Statement> = {
     <m: VariableDeclarationMutability> <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, None, e)),
@@ -91,6 +105,10 @@ Term: Box<Expression> = {
     "(" <Expression> ")",
     "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(Expression::ArrayLiteral(<>)),
 };
+
+
+// =============================== Primitive =====================================
+
 
 Num: i32 = {
     _Number => i32::from_str(<>).unwrap()
