@@ -396,7 +396,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ten_lang_compiler"
+name = "tenlang"
 version = "0.1.0"
 dependencies = [
  "lalrpop",
