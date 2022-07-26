@@ -55,6 +55,7 @@ pub enum Expression {
     MemberLookup(Box<Expression>, String),
     VariableLookup(String),
     ArrayLiteral(Vec<Box<Expression>>),
+    StringLiteral(String),
     Error,
 }
 
@@ -185,6 +186,7 @@ impl Debug for Expression {
                 write!(fmt, "]")?;
                 return Ok(())
             },
+            StringLiteral(string) => write!(fmt, "{:?}", string),
             Error => write!(fmt, "error"),
         }
     }

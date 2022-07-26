@@ -11,5 +11,5 @@ extension Int32 {
 fn main() {
     var b = copy_3_times(a: 5 * 2 + 1);
     let b = b.square();
-    print(b[0]);
+    print("b: ", b[0]);
 }
