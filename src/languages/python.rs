@@ -3,7 +3,7 @@ use std::io::Write;
 use std::iter::zip;
 use crate::abstract_syntax::Parameter;
 use crate::computation_tree;
-use crate::computation_tree::{Program, Type};
+use crate::computation_tree::{Program, Type, Variable};
 
 pub struct PythonTranspiler {
 
@@ -21,8 +21,9 @@ impl PythonTranspiler {
         for function in program.functions.iter() {
             let return_info = function.return_type.as_ref()
                 .map(|t| self.transpile_type(&t));
+
             let parameters_type_info: Vec<TypeInformation> = function.parameters.iter()
-                .map(|x| self.transpile_type(&x.type_declaration))
+                .map(|x| self.transpile_type(&x.variable.type_declaration))
                 .collect();
 
             write!(stream, "\n\ndef {}(", function.identifier)?;
@@ -56,7 +57,7 @@ impl PythonTranspiler {
             write!(stream, "    \"\"\"\n")?;
 
             for (parameter, type_info) in zip(function.parameters.iter(), parameters_type_info.iter()) {
-                match parameter.type_declaration.borrow() {
+                match parameter.variable.type_declaration.borrow() {
                     Type::NDArray(atom) => {
                         // Can't be ndarray at this point
                         if let Type::Identifier(atom) = atom.as_ref() {
