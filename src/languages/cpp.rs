@@ -27,7 +27,7 @@ impl CPPTranspiler {
             write!(header_stream, "{} {}(", return_type, function.identifier)?;
 
             for parameter in function.parameters.iter() {
-                write!(header_stream, "{} {},", self.transpile_type(&parameter.variable.type_declaration), parameter.external_name)?;
+                write!(header_stream, "{} {},", self.transpile_type(&parameter.type_declaration), parameter.external_name)?;
             }
 
             write!(header_stream, ") {{\n\n}}\n\n")?;

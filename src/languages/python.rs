@@ -22,7 +22,7 @@ impl PythonTranspiler {
             let return_info = function.return_type.as_ref()
                 .map(|t| self.transpile_type(&t));
             let parameters_type_info: Vec<TypeInformation> = function.parameters.iter()
-                .map(|x| self.transpile_type(&x.variable.type_declaration))
+                .map(|x| self.transpile_type(&x.type_declaration))
                 .collect();
 
             write!(stream, "\n\ndef {}(", function.identifier)?;

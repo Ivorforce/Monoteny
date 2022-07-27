@@ -13,12 +13,12 @@ pub struct Function {
 
 pub struct Parameter {
     pub external_name: String,
+    pub type_declaration: Box<Type>,
     pub variable: Box<Variable>
 }
 
 pub struct Variable {
     pub name: String,
-    pub type_declaration: Box<Type>
 }
 
 pub enum Type {
@@ -52,9 +52,9 @@ pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
 pub fn analyze_parameter(syntax: &abstract_syntax::Parameter) -> Box<Parameter> {
     Box::new(Parameter {
         external_name: syntax.external_name.clone(),
+        type_declaration: analyze_type(syntax.param_type.as_ref()),
         variable: Box::new(Variable {
             name: syntax.internal_name.clone(),
-            type_declaration: analyze_type(syntax.param_type.as_ref())
         })
     })
 }
