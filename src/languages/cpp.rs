@@ -24,7 +24,13 @@ impl CPPTranspiler {
                 .map(|x| self.transpile_type(&x))
                 .unwrap_or_else(|| String::from("void"));
 
-            write!(header_stream, "{} {}() {{\n\n}}\n\n", return_type, function.identifier)?;
+            write!(header_stream, "{} {}(", return_type, function.identifier)?;
+
+            for parameter in function.parameters.iter() {
+                write!(header_stream, "{} {},", self.transpile_type(&parameter.variable.type_declaration), parameter.external_name)?;
+            }
+
+            write!(header_stream, ") {{\n\n}}\n\n")?;
         }
 
         return Ok(())

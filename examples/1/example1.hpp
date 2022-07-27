@@ -3,7 +3,7 @@
 #include <Eigen/Tensor>
 
 
-Tensor<int32_t, 1> copy_3_times() {
+Tensor<int32_t, 1> copy_3_times(int32_t a,) {
 
 }
 
