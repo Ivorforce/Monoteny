@@ -73,12 +73,13 @@ TypeDeclaration: Box<TypeDeclaration> = {
 }
 
 
-// =============================== Body =====================================
+// =============================== Code =====================================
 
 
 pub Statement: Box<Statement> = {
-    <m: VariableDeclarationMutability> <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, None, e)),
     <m: VariableDeclarationMutability> <i: Identifier> ":" <t: TypeDeclaration> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, Some(t), e)),
+    <m: VariableDeclarationMutability> <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableDeclaration(m, i, None, e)),
+    <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableAssignment(i, e)),
     "return" <Expression> => Box::new(Statement::Return(<>)),
     Expression => Box::new(Statement::Expression(<>)),
 };

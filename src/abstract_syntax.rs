@@ -40,10 +40,11 @@ pub enum TypeDeclaration {
     NDArray(Box<TypeDeclaration>, Vec<Box<Expression>>)
 }
 
-// =============================== Body =====================================
+// =============================== Code =====================================
 
 pub enum Statement {
     VariableDeclaration(Mutability, String, Option<Box<TypeDeclaration>>, Box<Expression>),
+    VariableAssignment(String, Box<Expression>),
     Expression(Box<Expression>),
     Return(Box<Expression>),
 }
@@ -158,6 +159,9 @@ impl Debug for Statement {
             VariableDeclaration(mutability, id, type_decl, expr) => {
                 let mutability_string = mutability.variable_declaration_keyword();
                 write!(fmt, "{} {}: {:?} = {:?}", mutability_string, id, type_decl, expr)
+            },
+            VariableAssignment(id, expr) => {
+                write!(fmt, "{} = {:?}", id, expr)
             },
             Return(ref expression) => write!(fmt, "return {:?}", expression),
             Expression(ref expression) => write!(fmt, "{:?}", expression),

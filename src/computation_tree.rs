@@ -5,6 +5,8 @@ use std::rc::Rc;
 use uuid::Uuid;
 use crate::abstract_syntax;
 
+// ================================ Global ==============================
+
 pub struct Program {
     pub functions: Vec<Box<Function>>,
     pub variables: HashMap<Uuid, Rc<Variable>>,
@@ -13,8 +15,10 @@ pub struct Program {
 pub struct Function {
     pub identifier: String,
     pub parameters: Vec<Box<Parameter>>,
+    pub return_type: Option<Box<Type>>,
+
     pub variables: HashMap<Uuid, Rc<Variable>>,
-    pub return_type: Option<Box<Type>>
+    pub statements: Vec<Box<Statement>>,
 }
 
 pub struct Parameter {
@@ -22,10 +26,7 @@ pub struct Parameter {
     pub variable: Rc<Variable>
 }
 
-#[derive(Copy, Clone)]
-pub enum VariableHome {
-    Local, Global
-}
+// ================================ Type ==============================
 
 #[derive(Clone)]
 pub struct Variable {
@@ -39,6 +40,48 @@ pub struct Variable {
 pub enum Type {
     Identifier(String),
     NDArray(Box<Type>),
+}
+
+// ================================ Code ==============================
+
+#[derive(Copy, Clone)]
+pub enum VariableHome {
+    Local, Global
+}
+
+pub enum Statement {
+    VariableAssignment(String, Box<Expression>),
+    Expression(Box<Expression>),
+    Return(Box<Expression>),
+}
+
+pub enum Expression {
+    Number(i32),
+    BinaryOperator(Box<Expression>, Opcode, Box<Expression>),
+    FunctionCall(FunctionCallType, Box<Expression>, Vec<Box<PassedArgument>>),
+    MemberLookup(Box<Expression>, String),
+    VariableLookup(Rc<Variable>),
+    ArrayLiteral(Vec<Box<Expression>>),
+    StringLiteral(String),
+}
+
+pub struct PassedArgument {
+    pub name: Option<String>,
+    pub value: Box<Expression>,
+}
+
+#[derive(Copy, Clone)]
+pub enum Opcode {
+    Multiply,
+    Divide,
+    Add,
+    Subtract,
+}
+
+#[derive(Copy, Clone)]
+pub enum FunctionCallType {
+    Call,
+    Subscript,
 }
 
 pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
@@ -84,6 +127,7 @@ pub fn analyze_function(function: &abstract_syntax::Function) -> Box<Function> {
         identifier: function.identifier.clone(),
         parameters,
         variables,
+        statements: Vec::new(),
         return_type: function.return_type.as_ref().map(|x| analyze_type(&x))
     });
 }
