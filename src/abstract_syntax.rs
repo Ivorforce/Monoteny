@@ -13,12 +13,12 @@ pub enum GlobalStatement {
 
 pub struct Function {
     pub identifier: String,
-    pub parameters: Vec<Box<ParameterDeclaration>>,
+    pub parameters: Vec<Box<Parameter>>,
     pub return_type: Option<Box<TypeDeclaration>>,
     pub body: Vec<Box<Statement>>
 }
 
-pub struct ParameterDeclaration {
+pub struct Parameter {
     pub internal_name: String,
     pub external_name: String,
     pub param_type: Box<TypeDeclaration>,
@@ -213,7 +213,7 @@ impl Debug for PassedArgument {
     }
 }
 
-impl Debug for ParameterDeclaration {
+impl Debug for Parameter {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "{} {}: {:?}", self.external_name, self.internal_name, self.param_type)
     }

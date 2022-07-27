@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::abstract_syntax::{Program, Extension, Expression, Opcode, Statement, GlobalStatement, MemberStatement, Mutability, Function, ParameterDeclaration, TypeDeclaration, PassedArgument, FunctionCallType};
+use crate::abstract_syntax::{Program, Extension, Expression, Opcode, Statement, GlobalStatement, MemberStatement, Mutability, Function, Parameter, TypeDeclaration, PassedArgument, FunctionCallType};
 
 grammar;
 
@@ -38,16 +38,16 @@ pub GlobalStatement: Box<GlobalStatement> = {
 };
 
 Function: Box<Function> = {
-    "fn" <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<ParameterDeclaration, ",">> ")" <return_type: ("->" <TypeDeclaration>)?> "{" <body: (<Statement> ";")*> "}" => Box::new(Function {
+    "fn" <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<Parameter, ",">> ")" <return_type: ("->" <TypeDeclaration>)?> "{" <body: (<Statement> ";")*> "}" => Box::new(Function {
         identifier, parameters, return_type, body
     }),
 }
 
-ParameterDeclaration: Box<ParameterDeclaration> = {
-    <name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(ParameterDeclaration {
+Parameter: Box<Parameter> = {
+    <name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(Parameter {
         internal_name: name.clone(), external_name: name.clone(), param_type
     }),
-    <external_name: Identifier> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(ParameterDeclaration {
+    <external_name: Identifier> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(Parameter {
         internal_name, external_name, param_type
     }),
 }

@@ -1,5 +1,7 @@
 use std::borrow::Borrow;
 use std::io::Write;
+use std::iter::zip;
+use crate::abstract_syntax::Parameter;
 use crate::computation_tree;
 use crate::computation_tree::{Program, Type};
 
@@ -17,14 +19,35 @@ impl PythonTranspiler {
         writeln!(stream, "import numpy as np")?;
 
         for function in program.functions.iter() {
-            write!(stream, "\n\ndef {}()", function.identifier)?;
-            let return_info = function.return_type.as_ref().map(|t| self.transpile_type(&t));
+            let return_info = function.return_type.as_ref()
+                .map(|t| self.transpile_type(&t));
+            let parameters_type_info: Vec<TypeInformation> = function.parameters.iter()
+                .map(|x| self.transpile_type(&x.variable.type_declaration))
+                .collect();
+
+            write!(stream, "\n\ndef {}(", function.identifier)?;
+
+            for (parameter, type_info) in zip(function.parameters.iter(), parameters_type_info.iter()) {
+                write!(stream, "{}: {},", parameter.external_name, type_info.python_type)?;
+            }
+
+            write!(stream, ")")?;
 
             if let Some(return_info) = &return_info {
                 write!(stream, " -> {}", return_info.python_type)?;
             }
 
             write!(stream, ":\n    \"\"\"\n    <Docstring TODO!>\n")?;
+
+            if !function.parameters.is_empty() {
+                write!(stream, "\n    Args:\n")?;
+
+                for (parameter, type_info) in zip(function.parameters.iter(), parameters_type_info.iter()) {
+                    write!(stream, "        {}: {}", parameter.external_name, type_info.docstring_type)?;
+                }
+
+                write!(stream, "\n")?;
+            }
 
             if let Some(return_info) = &return_info {
                 write!(stream, "\n    Returns: {}\n", return_info.docstring_type)?;

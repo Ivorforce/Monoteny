@@ -7,7 +7,18 @@ pub struct Program {
 
 pub struct Function {
     pub identifier: String,
+    pub parameters: Vec<Box<Parameter>>,
     pub return_type: Option<Box<Type>>
+}
+
+pub struct Parameter {
+    pub external_name: String,
+    pub variable: Box<Variable>
+}
+
+pub struct Variable {
+    pub name: String,
+    pub type_declaration: Box<Type>
 }
 
 pub enum Type {
@@ -23,6 +34,7 @@ pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
             abstract_syntax::GlobalStatement::FunctionDeclaration(function) => {
                 functions.push(Box::new(Function {
                     identifier: function.identifier.clone(),
+                    parameters: function.parameters.into_iter().map(|x| analyze_parameter(&x)).collect(),
                     return_type: function.return_type.map(|x| analyze_type(&x))
                 }));
             }
@@ -35,6 +47,16 @@ pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
     return Program {
         functions
     }
+}
+
+pub fn analyze_parameter(syntax: &abstract_syntax::Parameter) -> Box<Parameter> {
+    Box::new(Parameter {
+        external_name: syntax.external_name.clone(),
+        variable: Box::new(Variable {
+            name: syntax.internal_name.clone(),
+            type_declaration: analyze_type(syntax.param_type.as_ref())
+        })
+    })
 }
 
 pub fn analyze_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
