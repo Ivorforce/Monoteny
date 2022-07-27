@@ -67,8 +67,12 @@ impl PythonTranspiler {
                         }
                     },
                     _ => {
+                        if parameter.variable.name == parameter.external_name {
+                            continue
+                        }
+
                         writeln!(
-                            stream, "    {} = {}({})", parameter.variable.name, type_info.python_type, parameter.external_name,
+                            stream, "    {} = {}", parameter.variable.name, parameter.external_name,
                         )?;
                     }
                 }
