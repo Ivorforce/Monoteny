@@ -10,6 +10,7 @@ def copy_3_times(a: np.int32,) -> np.ndarray:
 
     Returns: int32[?]
     """
+    a = np.int32(a)
     pass
 
 

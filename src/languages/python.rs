@@ -53,7 +53,28 @@ impl PythonTranspiler {
                 write!(stream, "\n    Returns: {}\n", return_info.docstring_type)?;
             }
 
-            write!(stream, "    \"\"\"\n    pass\n")?;
+            write!(stream, "    \"\"\"\n")?;
+
+            for (parameter, type_info) in zip(function.parameters.iter(), parameters_type_info.iter()) {
+                match parameter.type_declaration.borrow() {
+                    Type::NDArray(atom) => {
+                        // Can't be ndarray at this point
+                        if let Type::Identifier(atom) = atom.as_ref() {
+                            writeln!(
+                                stream, "    {} = np.asarray({}, dtype={}),",
+                                parameter.variable.name, parameter.external_name, self.transpile_atom_type(atom.as_str()).python_type
+                            )?;
+                        }
+                    },
+                    _ => {
+                        writeln!(
+                            stream, "    {} = {}({})", parameter.variable.name, type_info.python_type, parameter.external_name,
+                        )?;
+                    }
+                }
+            }
+
+            write!(stream, "    pass\n")?;
         }
 
         return Ok(())
