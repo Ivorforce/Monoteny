@@ -43,7 +43,12 @@ pub enum TypeDeclaration {
 // =============================== Code =====================================
 
 pub enum Statement {
-    VariableDeclaration(Mutability, String, Option<Box<TypeDeclaration>>, Box<Expression>),
+    VariableDeclaration {
+        mutability: Mutability,
+        identifier: String,
+        type_declaration: Option<Box<TypeDeclaration>>,
+        expression: Box<Expression>
+    },
     VariableAssignment(String, Box<Expression>),
     Expression(Box<Expression>),
     Return(Box<Expression>),
@@ -156,9 +161,9 @@ impl Debug for Statement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Statement::*;
         match self {
-            VariableDeclaration(mutability, id, type_decl, expr) => {
+            VariableDeclaration { mutability, identifier, type_declaration, expression} => {
                 let mutability_string = mutability.variable_declaration_keyword();
-                write!(fmt, "{} {}: {:?} = {:?}", mutability_string, id, type_decl, expr)
+                write!(fmt, "{} {}: {:?} = {:?}", mutability_string, identifier, type_declaration, expression)
             },
             VariableAssignment(id, expr) => {
                 write!(fmt, "{} = {:?}", id, expr)

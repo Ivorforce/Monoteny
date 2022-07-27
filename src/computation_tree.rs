@@ -123,11 +123,29 @@ pub fn analyze_function(function: &abstract_syntax::Function) -> Box<Function> {
         }));
     }
 
+    // Gather the variables
+
+    for statement in function.body.iter() {
+        match statement {
+            // TODO
+            _ => {}
+        }
+    }
+
+    // Analyze statements
+    let mut statements: Vec<Box<Statement>> = Vec::new();
+    for statement in function.body.iter() {
+        match statement {
+            // TODO
+            _ => {}
+        }
+    }
+
     return Box::new(Function {
         identifier: function.identifier.clone(),
         parameters,
         variables,
-        statements: Vec::new(),
+        statements,
         return_type: function.return_type.as_ref().map(|x| analyze_type(&x))
     });
 }
