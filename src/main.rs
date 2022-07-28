@@ -10,7 +10,6 @@ mod languages;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::path::PathBuf;
-use std::process::exit;
 
 use clap::{arg, Command};
 

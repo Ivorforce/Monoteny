@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::linker::computation_tree::{FunctionInterface, Parameter, ParameterKey, Primitive, Type, Variable};
+use crate::abstract_syntax::Mutability;
+use crate::linker::computation_tree::*;
 
 pub struct TenLangBuiltins {
     pub operators: TenLangBuiltinOperators,
@@ -33,7 +34,8 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
         let var = Rc::new(Variable {
             id: Uuid::new_v4(),
             name: String::from(name),
-            type_declaration: Box::new(Type::Function(interface.clone()))
+            type_declaration: Box::new(Type::Function(interface.clone())),
+            mutability: Mutability::Immutable,
         });
         constants.insert(var.name.clone(), Rc::clone(&var));
 
@@ -50,7 +52,8 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                 variable: Rc::new(Variable {
                     id: Uuid::new_v4(),
                     name: String::from(*name),
-                    type_declaration: generic_type.clone()
+                    type_declaration: generic_type.clone(),
+                    mutability: Mutability::Immutable,
                 })
             })).collect();
 
@@ -73,7 +76,8 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                             variable: Rc::new(Variable {
                                 id: Uuid::new_v4(),
                                 name: String::from("object"),
-                                type_declaration: Box::new(Type::Identifier(String::from("Any")))
+                                type_declaration: Box::new(Type::Identifier(String::from("Any"))),
+                                mutability: Mutability::Immutable,
                             })
                         })
                     ], None

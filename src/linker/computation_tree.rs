@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use uuid::Uuid;
+use crate::abstract_syntax::Mutability;
 
 use crate::linker::builtins::TenLangBuiltins;
 
@@ -44,6 +45,7 @@ pub struct Variable {
     pub id: Uuid,
     pub name: String,
     pub type_declaration: Box<Type>,
+    pub mutability: Mutability,
 }
 
 #[derive(Clone, PartialEq)]

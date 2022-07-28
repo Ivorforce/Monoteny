@@ -2,14 +2,12 @@ pub mod computation_tree;
 pub mod builtins;
 
 use std::borrow::Borrow;
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use uuid::Uuid;
 
 use crate::abstract_syntax;
-use crate::abstract_syntax::Opcode;
+use crate::abstract_syntax::{Mutability, Opcode};
 use crate::linker::computation_tree::*;
 use crate::linker::builtins::*;
 
@@ -38,7 +36,8 @@ pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
                 global_variables.insert(interface.name.clone(), Rc::new(Variable {
                     id: Uuid::new_v4(),
                     name: interface.name.clone(),
-                    type_declaration: Box::new(Type::Function(Rc::clone(&interface)))
+                    type_declaration: Box::new(Type::Function(Rc::clone(&interface))),
+                    mutability: Mutability::Immutable,
                 }));
             }
             abstract_syntax::GlobalStatement::Extension(_) => {
@@ -72,6 +71,7 @@ pub fn resolve_function_interface(function: &abstract_syntax::Function) -> Rc<Fu
             id: Uuid::new_v4(),
             name: parameter.internal_name.clone(),
             type_declaration: resolve_type(parameter.param_type.as_ref()),
+            mutability: Mutability::Immutable,
         });
 
         parameters.push(Box::new(Parameter {
@@ -131,12 +131,13 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
                     id: Uuid::new_v4(),
                     name: identifier.clone(),
                     type_declaration: inferred_type.clone(),
+                    mutability: mutability.clone(),
                 });
 
                 statements.push(Box::new(
                     Statement::VariableAssignment(Rc::clone(&variable), expression)
                 ));
-                local_variables.insert(variable.name.clone(), variable);
+                local_variables.insert(identifier.clone(), variable);
             },
             abstract_syntax::Statement::Return(None) => {
                 statements.push(Box::new(Statement::Return(None)));
@@ -156,7 +157,20 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
                 let expression: Box<Expression> = resolve_expression(&expression, &variables, builtins);
                 statements.push(Box::new(Statement::Expression(expression)));
             }
-            _ => todo!()
+            abstract_syntax::Statement::VariableAssignment(name, expression) => {
+                let variables = global_variables.subscope(&local_variables);
+                let variable = variables.resolve(name);
+
+                if variable.mutability == Mutability::Immutable {
+                    panic!("Cannot assign to immutable variable '{}'.", name);
+                }
+
+                let expression: Box<Expression> = resolve_expression(&expression, &variables, builtins);
+
+                statements.push(Box::new(
+                    Statement::VariableAssignment(Rc::clone(&variable), expression)
+                ));
+            }
         }
     }
 
@@ -223,7 +237,7 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
             }
         },
         abstract_syntax::Expression::VariableLookup(identifier) => {
-            let variable = variables.resolve(identifier.clone());
+            let variable = variables.resolve(identifier);
 
             Expression {
                 operation: Box::new(ExpressionOperation::VariableLookup(variable.clone())),
@@ -299,9 +313,9 @@ pub fn resolve_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
 }
 
 impl <'a> ScopedVariables<'a> {
-    pub fn resolve(&self, variable_name: String) -> Rc<Variable> {
+    pub fn resolve(&self, variable_name: &String) -> Rc<Variable> {
         for scope in self.scopes.iter() {
-            if let Some(variable) = scope.get(&variable_name) {
+            if let Some(variable) = scope.get(variable_name) {
                 return variable.clone()
             }
         }

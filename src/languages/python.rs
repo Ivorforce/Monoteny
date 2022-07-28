@@ -1,7 +1,5 @@
 use std::borrow::Borrow;
 use std::io::Write;
-use std::iter::zip;
-use std::rc::Rc;
 use guard::guard;
 use crate::linker::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::*;
