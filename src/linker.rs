@@ -144,11 +144,13 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
             }
         },
         abstract_syntax::Expression::ArrayLiteral(raw_elements) => {
-            let elements= raw_elements.iter()
+            let elements: Vec<Box<Expression>>= raw_elements.iter()
                 .map(|x| resolve_expression(x, variables, builtins))
                 .collect();
 
-            let supertype = resolve_common_supertype(&elements);
+            let supertype = resolve_common_supertype(
+                &elements.iter().map(|x| x.result_type.as_ref().unwrap()).collect()
+            ).clone();
 
             Expression {
                 operation: Box::new(ExpressionOperation::ArrayLiteral(elements)),
@@ -232,8 +234,19 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
     })
 }
 
-pub fn resolve_common_supertype(expressions: &Vec<Box<Expression>>) -> Box<Type> {
-    todo!()
+pub fn resolve_common_supertype<'a>(types: &Vec<&'a Box<Type>>) -> &'a Box<Type> {
+    if types.is_empty() {
+        panic!("Empty (inferred) array types are not supported for now.");
+    }
+
+    let reference = types[0];
+    for other in types.iter().skip(1) {
+        if *other != reference {
+            panic!("Supertype inferral is not supported yet.")
+        }
+    }
+
+    return reference;
 }
 
 pub fn resolve_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {

@@ -10,4 +10,5 @@ fn main() {
     let b = 5;
     print("b: ");
     print(b);
+    print([b, b, 2]);
 }

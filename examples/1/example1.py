@@ -27,3 +27,4 @@ def main():
     b = 5
     print("b: ",)
     print(b,)
+    print([b,b,2,],)

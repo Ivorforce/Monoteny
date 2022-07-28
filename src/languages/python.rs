@@ -185,7 +185,14 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
         }
         ExpressionOperation::DynamicFunctionCall(_, _) => todo!(),
         ExpressionOperation::MemberLookup(_, _) => todo!(),
-        ExpressionOperation::ArrayLiteral(_) => todo!(),
+        ExpressionOperation::ArrayLiteral(expressions) => {
+            write!(stream, "[")?;
+            for expression in expressions {
+                transpile_expression(stream, expression, builtins)?;
+                write!(stream, ",")?;
+            }
+            write!(stream, "]")?;
+        },
         ExpressionOperation::StringLiteral(string) => {
             write!(stream, "\"{}\"", escape_string(string))?;
         }
