@@ -9,6 +9,7 @@ fn square(0 a: Int32) -> Int32 {
 fn main() {
     var b = 5;
     b = 3;
+    let b = 2;
     print("b: ");
     print(b);
     print([b, square(0: b), 2]);
