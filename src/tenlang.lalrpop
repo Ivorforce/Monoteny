@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::abstract_syntax::{Program, Extension, Expression, Opcode, Statement, GlobalStatement, MemberStatement, ParameterKey, Mutability, Function, Parameter, TypeDeclaration, PassedArgument, FunctionCallType};
+use crate::abstract_syntax::*;
 
 grammar;
 
