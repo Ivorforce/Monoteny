@@ -27,4 +27,4 @@ def main():
     b = np.int32(5)
     print("b: ")
     print(b)
-    print([b, square(a=b), np.int32(2)])
+    print([b, square(b), np.int32(2)])

@@ -19,9 +19,15 @@ pub struct Function {
 }
 
 pub struct Parameter {
+    pub key: ParameterKey,
     pub internal_name: String,
-    pub external_name: String,
     pub param_type: Box<TypeDeclaration>,
+}
+
+#[derive(Clone)]
+pub enum ParameterKey {
+    Name(String),
+    Int(i32),
 }
 
 pub struct Extension {
@@ -66,7 +72,7 @@ pub enum Expression {
 }
 
 pub struct PassedArgument {
-    pub name: Option<String>,
+    pub key: Option<ParameterKey>,
     pub value: Box<Expression>,
 }
 
@@ -204,7 +210,7 @@ impl Debug for Expression {
 impl Debug for Opcode {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Opcode::*;
-        match *self {
+        match self {
             Multiply => write!(fmt, "*"),
             Divide => write!(fmt, "/"),
             Add => write!(fmt, "+"),
@@ -215,16 +221,23 @@ impl Debug for Opcode {
 
 impl Debug for PassedArgument {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match &self.name {
-            Some(name) => write!(fmt, "{}: {:?}", name, self.value),
-            None => write!(fmt, "{:?}", self.value)
-        }
+        write!(fmt, "{:?}: {:?}", self.key, self.value)
     }
 }
 
 impl Debug for Parameter {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{} {}: {:?}", self.external_name, self.internal_name, self.param_type)
+        write!(fmt, "{:?} {}: {:?}", self.key, self.internal_name, self.param_type)
+    }
+}
+
+impl Debug for ParameterKey {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::ParameterKey::*;
+        match self {
+            Int(value) => write!(fmt, "{}", value),
+            Name(value) => write!(fmt, "{}", value),
+        }
     }
 }
 

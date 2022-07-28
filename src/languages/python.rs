@@ -179,7 +179,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
                 // TODO We should make sure it calls the correct function even when shadowed.
                 write!(stream, "{}(", function.name)?;
                 for (idx, argument) in arguments.iter().enumerate() {
-                    if let ParameterKey::String(name) = &argument.key {
+                    if let ParameterKey::Name(name) = &argument.key {
                         write!(stream, "{}=", name)?;
                     }
                     transpile_expression(stream, &argument.value, builtins)?;
@@ -238,8 +238,8 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Funct
 
 pub fn get_external_name(parameter: &Parameter) -> String {
     match &parameter.external_key {
-        // TODO This is temporary and should instead honour *, args, **, kwargs type calling
-        ParameterKey::Keyless => parameter.variable.name.clone(),
-        ParameterKey::String(key) => key.clone(),
+        ParameterKey::Name(key) => key.clone(),
+        // Int keying is not supported in python. Just use the variable name.
+        ParameterKey::Int(_) => parameter.variable.name.clone(),
     }
 }

@@ -26,7 +26,7 @@ Instead, TenLang transpiles to insert into these ecosystems. Hereby, any framewo
 - [x] Project Skeleton
 - [x] Primitives
 - [x] Function Interfaces
-- [ ] Primitive call / subscript keying
+- [x] Int call / subscript keying
 - [ ] Type Inheritance
 - [ ] Generic Type Inferral
 - [ ] Overloading & Call Type Checking

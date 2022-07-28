@@ -67,7 +67,7 @@ pub fn resolve_function_interface(function: &abstract_syntax::Function) -> Rc<Fu
 
     let mut parameters: Vec<Box<Parameter>> = Vec::new();
 
-    for parameter in function.parameters.iter() {
+    for (idx, parameter) in function.parameters.iter().enumerate() {
         let variable = Rc::new(Variable {
             id: Uuid::new_v4(),
             name: parameter.internal_name.clone(),
@@ -75,7 +75,7 @@ pub fn resolve_function_interface(function: &abstract_syntax::Function) -> Rc<Fu
         });
 
         parameters.push(Box::new(Parameter {
-            external_key: ParameterKey::String(parameter.external_name.clone()),
+            external_key: resolve_parameter_key(&parameter.key, idx),
             variable
         }));
     }
@@ -86,6 +86,19 @@ pub fn resolve_function_interface(function: &abstract_syntax::Function) -> Rc<Fu
         parameters,
         return_type
     });
+}
+
+pub fn resolve_parameter_key(key: &abstract_syntax::ParameterKey, index: usize) -> ParameterKey {
+    match key {
+        abstract_syntax::ParameterKey::Int(n) => ParameterKey::Int(*n),
+        abstract_syntax::ParameterKey::Name(n) => {
+            match n.as_str() {
+                // When _ a: SomeType is declared, it is keyed by its index.
+                "_" => ParameterKey::Int(index as i32),
+                _ => ParameterKey::Name(n.clone())
+            }
+        },
+    }
 }
 
 pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interface: Rc<FunctionInterface>, global_variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Rc<Function> {
@@ -224,8 +237,11 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
 
             let callee = resolve_expression(callee, variables, builtins);
             let arguments = arguments.iter()
-                .map(|x| Box::new(PassedArgument {
-                    key: x.name.clone().map(|x| ParameterKey::String(x)).unwrap_or_else(|| ParameterKey::Keyless),
+                .enumerate()
+                .map(|(idx, x)| Box::new(PassedArgument {
+                    key: x.key.as_ref()
+                        .map(|key| resolve_parameter_key(&key, idx))
+                        .unwrap_or_else(|| ParameterKey::Int(idx as i32)),
                     value: resolve_expression(&x.value, variables, builtins)
                 }))
                 .collect();

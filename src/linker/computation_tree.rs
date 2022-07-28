@@ -33,8 +33,8 @@ pub struct Parameter {
 
 #[derive(Clone)]
 pub enum ParameterKey {
-    Keyless,
-    String(String)
+    Name(String),
+    Int(i32),
 }
 
 // ================================ Type ==============================

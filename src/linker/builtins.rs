@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::linker::computation_tree::{FunctionInterface, Parameter, ParameterKey, Type, Variable};
+use crate::linker::computation_tree::{FunctionInterface, Parameter, ParameterKey, Primitive, Type, Variable};
 
 pub struct TenLangBuiltins {
     pub operators: TenLangBuiltinOperators,
@@ -44,9 +44,9 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
     let mut add_binary_operator = |name: &str| -> Rc<FunctionInterface> {
         let generic_type = Box::new(Type::Generic(Uuid::new_v4()));
 
-        let parameters: Vec<Box<Parameter>> = vec!["lhs", "rhs"].iter()
-            .map(|name| Box::new(Parameter {
-                external_key: ParameterKey::Keyless,
+        let parameters: Vec<Box<Parameter>> = vec!["lhs", "rhs"].iter().enumerate()
+            .map(|(idx, name)| Box::new(Parameter {
+                external_key: ParameterKey::Int(idx as i32),
                 variable: Rc::new(Variable {
                     id: Uuid::new_v4(),
                     name: String::from(*name),
@@ -69,7 +69,7 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                 print: add_function(
                     "print", vec![
                         Box::new(Parameter {
-                            external_key: ParameterKey::Keyless,
+                            external_key: ParameterKey::Int(0),
                             variable: Rc::new(Variable {
                                 id: Uuid::new_v4(),
                                 name: String::from("object"),

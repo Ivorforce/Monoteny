@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::abstract_syntax::{Program, Extension, Expression, Opcode, Statement, GlobalStatement, MemberStatement, Mutability, Function, Parameter, TypeDeclaration, PassedArgument, FunctionCallType};
+use crate::abstract_syntax::{Program, Extension, Expression, Opcode, Statement, GlobalStatement, MemberStatement, ParameterKey, Mutability, Function, Parameter, TypeDeclaration, PassedArgument, FunctionCallType};
 
 grammar;
 
@@ -43,11 +43,14 @@ Function: Box<Function> = {
 }
 
 Parameter: Box<Parameter> = {
-    <name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(Parameter {
-        internal_name: name.clone(), external_name: name.clone(), param_type
+    <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(Parameter {
+        key: ParameterKey::Name(internal_name.clone()), internal_name, param_type
     }),
-    <external_name: Identifier> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(Parameter {
-        internal_name, external_name, param_type
+    <key: Number> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(Parameter {
+        key: ParameterKey::Int(key), internal_name, param_type
+    }),
+    <key: Identifier> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(Parameter {
+        key: ParameterKey::Name(key), internal_name, param_type
     }),
 }
 
@@ -101,8 +104,9 @@ SumElement = BinaryOperator<SumOperator, MultiplicationElement>;
 MultiplicationElement = BinaryOperator<FactorOperator, Term>;
 
 PassedArgument: Box<PassedArgument> = {
-    <name: Identifier> ":" <value: Expression> => Box::new(PassedArgument { name: Some(name), value }),
-    <value: Expression> => Box::new(PassedArgument { name: None, value })
+    <name: Number> ":" <value: Expression> => Box::new(PassedArgument { key: Some(ParameterKey::Int(name)), value }),
+    <name: Identifier> ":" <value: Expression> => Box::new(PassedArgument { key: Some(ParameterKey::Name(name)), value }),
+    <value: Expression> => Box::new(PassedArgument { key: None, value })
 }
 
 SumOperator: Opcode = { // (3)
@@ -121,7 +125,7 @@ VariableDeclarationMutability: Mutability = {
 };
 
 Term: Box<Expression> = {
-    Num => Box::new(Expression::Number(<>)),
+    Number => Box::new(Expression::Number(<>)),
     Identifier => Box::new(Expression::VariableLookup(<>)),
     "(" <Expression> ")",
     "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(Expression::ArrayLiteral(<>)),
@@ -135,7 +139,7 @@ Term: Box<Expression> = {
 // =============================== Primitive =====================================
 
 
-Num: i32 = {
+Number: i32 = {
     _Number => i32::from_str(<>).unwrap()
 };
 
