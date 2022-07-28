@@ -24,7 +24,7 @@ def main():
     """
     <Docstring TODO!>
     """
-    b = 5
+    b = np.int32(5)
     print("b: ",)
     print(b,)
-    print([b,b,2,],)
+    print([b,square(a=b,),np.int32(2),],)

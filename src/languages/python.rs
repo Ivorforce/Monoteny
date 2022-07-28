@@ -17,9 +17,9 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program) -> Result<
 }
 
 pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
-    write!(stream, "\n\ndef {}(", function.name)?;
+    write!(stream, "\n\ndef {}(", function.interface.name)?;
 
-    for parameter in function.parameters.iter() {
+    for parameter in function.interface.parameters.iter() {
         write!(stream, "{}: ", get_external_name(&parameter))?;
         transpile_type(stream, &parameter.variable.type_declaration)?;
         write!(stream, ",")?;
@@ -27,24 +27,24 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
 
     write!(stream, ")")?;
 
-    if let Some(return_type) = &function.return_type {
+    if let Some(return_type) = &function.interface.return_type {
         write!(stream, " -> ", )?;
         transpile_type(stream, return_type)?;
     }
 
     write!(stream, ":\n    \"\"\"\n    <Docstring TODO!>\n")?;
 
-    if !function.parameters.is_empty() {
+    if !function.interface.parameters.is_empty() {
         write!(stream, "\n    Args:\n")?;
 
-        for parameter in function.parameters.iter() {
+        for parameter in function.interface.parameters.iter() {
             write!(stream, "        {}: ", get_external_name(&parameter))?;
             transpile_type_for_docstring(stream, &parameter.variable.type_declaration)?;
             write!(stream, "\n")?;
         }
     }
 
-    if let Some(return_type) = &function.return_type {
+    if let Some(return_type) = &function.interface.return_type {
         write!(stream, "\n    Returns: ")?;
         transpile_type_for_docstring(stream, return_type)?;
         write!(stream, "\n")?;
@@ -58,7 +58,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
         return Ok(())
     }
 
-    for parameter in function.parameters.iter() {
+    for parameter in function.interface.parameters.iter() {
         match parameter.variable.type_declaration.borrow() {
             Type::NDArray(atom) => {
                 if let Type::Identifier(atom) = atom.as_ref() {
@@ -160,8 +160,16 @@ pub fn transpile_type_for_docstring(stream: &mut (dyn Write), type_def: &Type) -
 
 pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     match &expression.operation.as_ref() {
-        ExpressionOperation::Number(value ) => {
-            write!(stream, "{}", value)?;
+        ExpressionOperation::NumberLiteral(literal) => {
+            match literal {
+                NumberLiteral::Float32(n) => write!(stream, "np.float32({})", n)?,
+                NumberLiteral::Float64(n) => write!(stream, "np.float64({})", n)?,
+                NumberLiteral::Int8(n) => write!(stream, "np.int8({})", n)?,
+                NumberLiteral::Int16(n) => write!(stream, "np.int16({})", n)?,
+                NumberLiteral::Int32(n) => write!(stream, "np.int32({})", n)?,
+                NumberLiteral::Int64(n) => write!(stream, "np.int64({})", n)?,
+                NumberLiteral::Int128(n) => write!(stream, "np.int128({})", n)?,
+            }
         }
         ExpressionOperation::VariableLookup(variable) => {
             write!(stream, "{}", variable.name)?;
@@ -207,20 +215,20 @@ pub fn escape_string(string: &String) -> String {
     return string
 }
 
-pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Function, arguments: &Vec<Box<PassedArgument>>, builtins: &TenLangBuiltins) -> Result<bool, std::io::Error> {
+pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &FunctionInterface, arguments: &Vec<Box<PassedArgument>>, builtins: &TenLangBuiltins) -> Result<bool, std::io::Error> {
     guard!(let [lhs, rhs] = &arguments[..] else {
         return Ok(false);
     });
 
     if
-        function == builtins.operators.add.as_ref()
-        || function == builtins.operators.subtract.as_ref()
-        || function == builtins.operators.multiply.as_ref()
-        || function == builtins.operators.divide.as_ref()
+        interface == builtins.operators.add.as_ref()
+        || interface == builtins.operators.subtract.as_ref()
+        || interface == builtins.operators.multiply.as_ref()
+        || interface == builtins.operators.divide.as_ref()
     {
         write!(stream, "(")?;
         transpile_expression(stream, &lhs.value, builtins)?;
-        write!(stream, " {} ", function.name)?;
+        write!(stream, " {} ", interface.name)?;
         transpile_expression(stream, &rhs.value, builtins)?;
         write!(stream, ")")?;
     }

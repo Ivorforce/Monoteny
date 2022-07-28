@@ -18,23 +18,42 @@ pub struct ScopedVariables<'a> {
 }
 
 pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
-    let mut functions: Vec<Rc<Function>> = Vec::new();
-
     let (builtins, builtins_variables) = create_builtins();
-    let global_variable_scope = ScopedVariables {
+    let builtin_variable_scope = ScopedVariables {
         scopes: vec![&builtins_variables],
     };
 
-    for statement in syntax.global_statements {
-        match *statement {
+    let mut functions_with_bodies: Vec<(Rc<FunctionInterface>, &Vec<Box<abstract_syntax::Statement>>)> = Vec::new();
+    let mut global_variables: HashMap<String, Rc<Variable>> = HashMap::new();
+
+    // Resolve things in global scope
+    for statement in &syntax.global_statements {
+        match statement.as_ref() {
             abstract_syntax::GlobalStatement::FunctionDeclaration(function) => {
-                functions.push(resolve_function(&function, &global_variable_scope, &builtins));
+                let interface = resolve_function_interface(&function);
+
+                functions_with_bodies.push((Rc::clone(&interface), &function.body));
+
+                // Create a variable for the function
+                global_variables.insert(interface.name.clone(), Rc::new(Variable {
+                    id: Uuid::new_v4(),
+                    name: interface.name.clone(),
+                    type_declaration: Box::new(Type::Function(Rc::clone(&interface)))
+                }));
             }
-            abstract_syntax::GlobalStatement::Extension(extension) => {
-                // TODO
+            abstract_syntax::GlobalStatement::Extension(_) => {
+                todo!()
             }
         }
     }
+
+    let global_variable_scope = builtin_variable_scope.subscope(&global_variables);
+
+    // Resolve function bodies
+    let mut functions: Vec<Rc<Function>> = functions_with_bodies.into_iter().map(
+        |(interface, statements)|
+        resolve_function_body(statements, interface, &global_variable_scope, &builtins)
+    ).collect();
 
     return Program {
         variables: HashMap::new(),
@@ -43,34 +62,43 @@ pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
     }
 }
 
-pub fn resolve_function(function: &abstract_syntax::Function, global_variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Rc<Function> {
+pub fn resolve_function_interface(function: &abstract_syntax::Function) -> Rc<FunctionInterface> {
     let return_type = function.return_type.as_ref().map(|x| resolve_type(&x));
-
-    let mut local_variables: HashMap<String, Rc<Variable>> = HashMap::new();
 
     let mut parameters: Vec<Box<Parameter>> = Vec::new();
 
     for parameter in function.parameters.iter() {
         let variable = Rc::new(Variable {
             id: Uuid::new_v4(),
-            home: VariableHome::Local,
             name: parameter.internal_name.clone(),
             type_declaration: resolve_type(parameter.param_type.as_ref()),
         });
 
-        local_variables.insert(variable.name.clone(), variable.clone());
         parameters.push(Box::new(Parameter {
             external_key: ParameterKey::String(parameter.external_name.clone()),
             variable
         }));
     }
 
-    // println!("{:?}", local_variables.borrow().keys());
-    // println!("{:?}", variables.scopes[0].borrow().keys());
+    return Rc::new(FunctionInterface {
+        id: Uuid::new_v4(),
+        name: function.identifier.clone(),
+        parameters,
+        return_type
+    });
+}
+
+pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interface: Rc<FunctionInterface>, global_variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Rc<Function> {
+    let mut local_variables: HashMap<String, Rc<Variable>> = HashMap::new();
+
+    for parameter in &interface.parameters {
+        let variable = &parameter.variable;
+        local_variables.insert(variable.name.clone(), variable.clone());
+    }
 
     let mut statements: Vec<Box<Statement>> = Vec::new();
 
-    for statement in function.body.iter() {
+    for statement in body.iter() {
         match statement.as_ref() {
             abstract_syntax::Statement::VariableDeclaration {
                 mutability, identifier, type_declaration, expression
@@ -80,7 +108,7 @@ pub fn resolve_function(function: &abstract_syntax::Function, global_variables: 
                 let inferred_type = expression.result_type.as_ref().unwrap();
 
                 if let Some(type_declaration) = type_declaration {
-                    let type_declaration = resolve_type(type_declaration);
+                    let type_declaration = resolve_type(&type_declaration);
                     if &type_declaration != inferred_type {
                         panic!("Declared type of variable '{}' is not equal to inferred type '{:?}'", identifier, inferred_type);
                     }
@@ -88,7 +116,6 @@ pub fn resolve_function(function: &abstract_syntax::Function, global_variables: 
 
                 let variable = Rc::new(Variable {
                     id: Uuid::new_v4(),
-                    home: VariableHome::Local,
                     name: identifier.clone(),
                     type_declaration: inferred_type.clone(),
                 });
@@ -105,7 +132,7 @@ pub fn resolve_function(function: &abstract_syntax::Function, global_variables: 
                 let variables = global_variables.subscope(&local_variables);
                 let expression: Box<Expression> = resolve_expression(&expression, &variables, builtins);
 
-                if return_type != expression.result_type {
+                if interface.return_type != expression.result_type {
                     panic!("Declared type of return statement is not equal to function return type '{:?}'", expression.result_type);
                 }
 
@@ -121,20 +148,17 @@ pub fn resolve_function(function: &abstract_syntax::Function, global_variables: 
     }
 
     return Rc::new(Function {
-        id: Uuid::new_v4(),
-        name: function.identifier.clone(),
-        parameters,
+        interface,
         variables: local_variables.values().map(|variable| (variable.id, variable.clone())).collect(),
         statements,
-        return_type
     });
 }
 
 pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Box<Expression> {
     Box::new(match syntax {
         abstract_syntax::Expression::Number(n) => Expression {
-            operation: Box::new(ExpressionOperation::Number(n.clone())),
-            // TODO Numbers should be postfixed with the type for now, maybe later inferred
+            // TODO The type should be inferred
+            operation: Box::new(ExpressionOperation::NumberLiteral(NumberLiteral::Int32(n.clone()))),
             result_type: Some(Box::new(Type::Identifier(String::from("Int32"))))
         },
         abstract_syntax::Expression::StringLiteral(string) => {

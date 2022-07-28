@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::linker::computation_tree::{Function, Parameter, ParameterKey, Type, Variable, VariableHome::*};
+use crate::linker::computation_tree::{FunctionInterface, Parameter, ParameterKey, Type, Variable};
 
 pub struct TenLangBuiltins {
     pub operators: TenLangBuiltinOperators,
@@ -9,44 +9,39 @@ pub struct TenLangBuiltins {
 }
 
 pub struct TenLangBuiltinOperators {
-    pub add: Rc<Function>,
-    pub subtract: Rc<Function>,
-    pub multiply: Rc<Function>,
-    pub divide: Rc<Function>,
+    pub add: Rc<FunctionInterface>,
+    pub subtract: Rc<FunctionInterface>,
+    pub multiply: Rc<FunctionInterface>,
+    pub divide: Rc<FunctionInterface>,
 }
 
 pub struct TenLangBuiltinFunctions {
-    pub print: Rc<Function>
+    pub print: Rc<FunctionInterface>
 }
 
 pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
     let mut constants: HashMap<String, Rc<Variable>> = HashMap::new();
 
-    let mut add_function = |name: &str, parameters: Vec<Box<Parameter>>, return_type: Option<Box<Type>>| -> Rc<Function> {
-        let function = Rc::new(Function {
+    let mut add_function = |name: &str, parameters: Vec<Box<Parameter>>, return_type: Option<Box<Type>>| -> Rc<FunctionInterface> {
+        let interface = Rc::new(FunctionInterface {
             id: Uuid::new_v4(),
             name: String::from(name),
             return_type,
-            variables: parameters.iter()
-                .map(|x| (x.variable.id, x.variable.clone()))
-                .collect(),
             parameters,
-            statements: vec![]
         });
 
         let var = Rc::new(Variable {
             id: Uuid::new_v4(),
-            home: Global,
             name: String::from(name),
-            type_declaration: Box::new(Type::Function(function.clone()))
+            type_declaration: Box::new(Type::Function(interface.clone()))
         });
         constants.insert(var.name.clone(), Rc::clone(&var));
 
-        return function
+        return interface
     };
 
     // For now it's ok to assume the 3 types to be equal
-    let mut add_binary_operator = |name: &str| -> Rc<Function> {
+    let mut add_binary_operator = |name: &str| -> Rc<FunctionInterface> {
         let generic_type = Box::new(Type::Generic(Uuid::new_v4()));
 
         let parameters: Vec<Box<Parameter>> = vec!["lhs", "rhs"].iter()
@@ -54,7 +49,6 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                 external_key: ParameterKey::Keyless,
                 variable: Rc::new(Variable {
                     id: Uuid::new_v4(),
-                    home: Local,
                     name: String::from(*name),
                     type_declaration: generic_type.clone()
                 })
@@ -78,7 +72,6 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                             external_key: ParameterKey::Keyless,
                             variable: Rc::new(Variable {
                                 id: Uuid::new_v4(),
-                                home: Local,
                                 name: String::from("object"),
                                 type_declaration: Box::new(Type::Identifier(String::from("Any")))
                             })

@@ -10,5 +10,5 @@ fn main() {
     let b = 5;
     print("b: ");
     print(b);
-    print([b, b, 2]);
+    print([b, square(a: b), 2]);
 }

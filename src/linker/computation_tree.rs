@@ -13,12 +13,15 @@ pub struct Program {
     pub builtins: TenLangBuiltins,
 }
 
-pub struct Function {
+pub struct FunctionInterface {
     pub id: Uuid,
     pub name: String,
     pub parameters: Vec<Box<Parameter>>,
     pub return_type: Option<Box<Type>>,
+}
 
+pub struct Function {
+    pub interface: Rc<FunctionInterface>,
     pub variables: HashMap<Uuid, Rc<Variable>>,
     pub statements: Vec<Box<Statement>>,
 }
@@ -39,7 +42,6 @@ pub enum ParameterKey {
 #[derive(Clone)]
 pub struct Variable {
     pub id: Uuid,
-    pub home: VariableHome,
     pub name: String,
     pub type_declaration: Box<Type>,
 }
@@ -48,16 +50,11 @@ pub struct Variable {
 pub enum Type {
     Identifier(String),
     NDArray(Box<Type>),
-    Function(Rc<Function>),
+    Function(Rc<FunctionInterface>),
     Generic(Uuid),
 }
 
 // ================================ Code ==============================
-
-#[derive(Copy, Clone)]
-pub enum VariableHome {
-    Local, Global
-}
 
 pub enum Statement {
     VariableAssignment(Rc<Variable>, Box<Expression>),
@@ -71,13 +68,23 @@ pub struct Expression {
 }
 
 pub enum ExpressionOperation {
-    Number(i32),
-    StaticFunctionCall { function: Rc<Function>, arguments: Vec<Box<PassedArgument>> },
+    NumberLiteral(NumberLiteral),
+    StaticFunctionCall { function: Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>> },
     DynamicFunctionCall(Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
     VariableLookup(Rc<Variable>),
     ArrayLiteral(Vec<Box<Expression>>),
     StringLiteral(String),
+}
+
+pub enum NumberLiteral {
+    Float32(f32),
+    Float64(f64),
+    Int8(i8),
+    Int16(i16),
+    Int32(i32),
+    Int64(i64),
+    Int128(i128),
 }
 
 pub struct PassedArgument {
@@ -93,7 +100,7 @@ impl PartialEq for Variable {
     }
 }
 
-impl PartialEq for Function {
+impl PartialEq for FunctionInterface {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }

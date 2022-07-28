@@ -13,13 +13,13 @@ pub fn transpile_program(
     write!(header_stream, "\n\n")?;
 
     for function in program.functions.iter() {
-        let return_type = function.return_type.as_ref()
+        let return_type = function.interface.return_type.as_ref()
             .map(|x| transpile_type(&x))
             .unwrap_or_else(|| String::from("void"));
 
-        write!(header_stream, "{} {}(", return_type, function.name)?;
+        write!(header_stream, "{} {}(", return_type, function.interface.name)?;
 
-        for parameter in function.parameters.iter() {
+        for parameter in function.interface.parameters.iter() {
             // External names do not exist in C
             write!(header_stream, "{} {},", transpile_type(&parameter.variable.type_declaration), parameter.variable.name)?;
         }
