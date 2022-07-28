@@ -84,10 +84,9 @@ fn main() {
                         let python_path = output_path.with_extension("py");
                         let mut f = File::create(python_path.clone()).expect("Unable to create file");
 
-                        let transpiler = languages::python::PythonTranspiler {};
-                        transpiler.transpile(
+                        languages::python::transpile_program(
+                            &mut f,
                             &computation_tree,
-                            &mut f
                         ).expect("Error when writing to file");
 
                         println!("{:?}", python_path);
@@ -99,8 +98,7 @@ fn main() {
                         let mut f_header = File::create(header_path.clone()).expect("Unable to create file");
                         let mut f_source = File::create(source_path.clone()).expect("Unable to create file");
 
-                        let transpiler = languages::cpp::CPPTranspiler {};
-                        transpiler.transpile(
+                        languages::cpp::transpile_program(
                             &computation_tree,
                             &mut f_header,
                             &mut f_source
