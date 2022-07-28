@@ -25,4 +25,5 @@ def main():
     <Docstring TODO!>
     """
     b = 5
+    print("b: ",)
     print(b,)

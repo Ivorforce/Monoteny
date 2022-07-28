@@ -11,7 +11,6 @@ OptionalFinalSeparatorList<E,S>: Vec<E> =
 
 match {
     r"[0-9]+" => _Number,
-    r"\x22[^\x22]*\x22" => String,
     "return",
     "(", ")", "{", "}", "[",  "]",
     ";", ",", ":",
@@ -126,7 +125,10 @@ Term: Box<Expression> = {
     Identifier => Box::new(Expression::VariableLookup(<>)),
     "(" <Expression> ")",
     "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(Expression::ArrayLiteral(<>)),
-    String => Box::new(Expression::StringLiteral(String::from(<>)))
+    r"\x22[^\x22]*\x22" => {
+        let s = <>;
+        Box::new(Expression::StringLiteral(String::from(&s[1..(s.len() - 1)])))
+    }
 };
 
 

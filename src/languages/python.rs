@@ -183,13 +183,21 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
                 write!(stream, ")")?;
             }
         }
-        ExpressionOperation::DynamicFunctionCall(_, _) => {}
-        ExpressionOperation::MemberLookup(_, _) => {}
-        ExpressionOperation::ArrayLiteral(_) => {}
-        ExpressionOperation::StringLiteral(_) => {}
+        ExpressionOperation::DynamicFunctionCall(_, _) => todo!(),
+        ExpressionOperation::MemberLookup(_, _) => todo!(),
+        ExpressionOperation::ArrayLiteral(_) => todo!(),
+        ExpressionOperation::StringLiteral(string) => {
+            write!(stream, "\"{}\"", escape_string(string))?;
+        }
     }
 
     Ok(())
+}
+
+pub fn escape_string(string: &String) -> String {
+    let string = string.replace("\\", "\\\\");
+    let string = string.replace("\"", "\\\"");
+    return string
 }
 
 pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Function, arguments: &Vec<Box<PassedArgument>>, builtins: &TenLangBuiltins) -> Result<bool, std::io::Error> {

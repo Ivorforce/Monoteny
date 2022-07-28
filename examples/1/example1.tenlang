@@ -8,5 +8,6 @@ fn square(a: Int32) -> Int32 {
 
 fn main() {
     let b = 5;
+    print("b: ");
     print(b);
 }
