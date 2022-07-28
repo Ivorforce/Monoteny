@@ -24,27 +24,29 @@ Instead, TenLang transpiles to insert into these ecosystems. Hereby, any framewo
 ## Roadmap
 
 - [x] Project Skeleton
-- [x] Primitives
+- [x] Number Primitives
+- [x] String Primitives
+- [x] Array Literals
 - [x] Function Interfaces
 - [x] Int call / subscript keying
 - [ ] Type Inheritance
 - [ ] Overloading & Call Type Checking
-- [ ] Varargs
+- [ ] If / Else, Guard
 - [ ] Generic Type Inferral
 - [ ] Structs
 - [ ] Interfaces
 - [ ] Extensions
 - [ ] Exceptions
 - [ ] Dynamic calls / subscript
-- [ ] Dynamic Shapes/ Optional Lookups
 - [ ] Staggered Dimensions
-- [ ] Dictionaries
-- [ ] Sets
 - [ ] Implicit tensor building
 - [ ] NDArrays
 - [ ] Tuple Dimension Index
+- [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
 - [ ] Int Range Dimension Index
 - [ ] Auto Broadcast
 - [ ] Optionals
+- [ ] String comprehension
+- [ ] Sets
 - [ ] Standard Library
 - [ ] System Callback API / Permission Contexts
