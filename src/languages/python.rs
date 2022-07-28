@@ -130,7 +130,7 @@ pub fn transpile_type_atom(stream: &mut (dyn Write), type_def: &String) -> Resul
 pub fn transpile_type(stream: &mut (dyn Write), type_def: &Type) -> Result<(), std::io::Error> {
     match type_def.borrow() {
         Type::Identifier(atom) => transpile_type_atom(stream, &atom)?,
-        Type::NDArray(atom) => write!(stream, "np.ndarray")?,
+        Type::NDArray(_) => write!(stream, "np.ndarray")?,
         Type::Function(_) => todo!(),
         Type::Generic(_) => todo!(),
     }

@@ -49,7 +49,7 @@ pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
     let global_variable_scope = builtin_variable_scope.subscope(&global_variables);
 
     // Resolve function bodies
-    let mut functions: Vec<Rc<Function>> = functions_with_bodies.into_iter().map(
+    let functions: Vec<Rc<Function>> = functions_with_bodies.into_iter().map(
         |(interface, statements)|
         resolve_function_body(statements, interface, &global_variable_scope, &builtins)
     ).collect();

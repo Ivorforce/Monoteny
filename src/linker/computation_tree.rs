@@ -125,7 +125,7 @@ impl PartialEq for FunctionInterface {
 }
 
 impl Debug for Type {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         todo!()
     }
 }
