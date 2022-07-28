@@ -3,8 +3,8 @@ use std::io::Write;
 use std::iter::zip;
 use std::rc::Rc;
 use guard::guard;
-use crate::semantic_analysis::builtins::TenLangBuiltins;
-use crate::semantic_analysis::computation_tree::*;
+use crate::linker::builtins::TenLangBuiltins;
+use crate::linker::computation_tree::*;
 
 pub struct PythonTranspiler {
 

@@ -10,14 +10,14 @@ use uuid::Uuid;
 
 use crate::abstract_syntax;
 use crate::abstract_syntax::Opcode;
-use crate::semantic_analysis::computation_tree::*;
-use crate::semantic_analysis::builtins::*;
+use crate::linker::computation_tree::*;
+use crate::linker::builtins::*;
 
 pub struct ScopedVariables<'a> {
     pub scopes: Vec<&'a HashMap<String, Rc<Variable>>>,
 }
 
-pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
+pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
     let mut functions: Vec<Rc<Function>> = Vec::new();
 
     let (builtins, builtins_variables) = create_builtins();
@@ -28,7 +28,7 @@ pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
     for statement in syntax.global_statements {
         match *statement {
             abstract_syntax::GlobalStatement::FunctionDeclaration(function) => {
-                functions.push(analyze_function(&function, &global_variable_scope, &builtins));
+                functions.push(resolve_function(&function, &global_variable_scope, &builtins));
             }
             abstract_syntax::GlobalStatement::Extension(extension) => {
                 // TODO
@@ -43,8 +43,8 @@ pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
     }
 }
 
-pub fn analyze_function(function: &abstract_syntax::Function, global_variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Rc<Function> {
-    let return_type = function.return_type.as_ref().map(|x| analyze_type(&x));
+pub fn resolve_function(function: &abstract_syntax::Function, global_variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Rc<Function> {
+    let return_type = function.return_type.as_ref().map(|x| resolve_type(&x));
 
     let mut local_variables: HashMap<String, Rc<Variable>> = HashMap::new();
 
@@ -55,7 +55,7 @@ pub fn analyze_function(function: &abstract_syntax::Function, global_variables: 
             id: Uuid::new_v4(),
             home: VariableHome::Local,
             name: parameter.internal_name.clone(),
-            type_declaration: analyze_type(parameter.param_type.as_ref()),
+            type_declaration: resolve_type(parameter.param_type.as_ref()),
         });
 
         local_variables.insert(variable.name.clone(), variable.clone());
@@ -76,11 +76,11 @@ pub fn analyze_function(function: &abstract_syntax::Function, global_variables: 
                 mutability, identifier, type_declaration, expression
             } => {
                 let variables = global_variables.subscope(&local_variables);
-                let expression: Box<Expression> = analyze_expression(&expression, &variables, builtins);
+                let expression: Box<Expression> = resolve_expression(&expression, &variables, builtins);
                 let inferred_type = expression.result_type.as_ref().unwrap();
 
                 if let Some(type_declaration) = type_declaration {
-                    let type_declaration = analyze_type(type_declaration);
+                    let type_declaration = resolve_type(type_declaration);
                     if &type_declaration != inferred_type {
                         panic!("Declared type of variable '{}' is not equal to inferred type '{:?}'", identifier, inferred_type);
                     }
@@ -103,7 +103,7 @@ pub fn analyze_function(function: &abstract_syntax::Function, global_variables: 
             },
             abstract_syntax::Statement::Return(Some(expression)) => {
                 let variables = global_variables.subscope(&local_variables);
-                let expression: Box<Expression> = analyze_expression(&expression, &variables, builtins);
+                let expression: Box<Expression> = resolve_expression(&expression, &variables, builtins);
 
                 if return_type != expression.result_type {
                     panic!("Declared type of return statement is not equal to function return type '{:?}'", expression.result_type);
@@ -113,7 +113,7 @@ pub fn analyze_function(function: &abstract_syntax::Function, global_variables: 
             },
             abstract_syntax::Statement::Expression(expression) => {
                 let variables = global_variables.subscope(&local_variables);
-                let expression: Box<Expression> = analyze_expression(&expression, &variables, builtins);
+                let expression: Box<Expression> = resolve_expression(&expression, &variables, builtins);
                 statements.push(Box::new(Statement::Expression(expression)));
             }
             _ => todo!()
@@ -130,7 +130,7 @@ pub fn analyze_function(function: &abstract_syntax::Function, global_variables: 
     });
 }
 
-pub fn analyze_expression(syntax: &abstract_syntax::Expression, variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Box<Expression> {
+pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Box<Expression> {
     Box::new(match syntax {
         abstract_syntax::Expression::Number(n) => Expression {
             operation: Box::new(ExpressionOperation::Number(n.clone())),
@@ -145,10 +145,10 @@ pub fn analyze_expression(syntax: &abstract_syntax::Expression, variables: &Scop
         },
         abstract_syntax::Expression::ArrayLiteral(raw_elements) => {
             let elements= raw_elements.iter()
-                .map(|x| analyze_expression(x, variables, builtins))
+                .map(|x| resolve_expression(x, variables, builtins))
                 .collect();
 
-            let supertype = common_supertype(&elements);
+            let supertype = resolve_common_supertype(&elements);
 
             Expression {
                 operation: Box::new(ExpressionOperation::ArrayLiteral(elements)),
@@ -156,8 +156,8 @@ pub fn analyze_expression(syntax: &abstract_syntax::Expression, variables: &Scop
             }
         },
         abstract_syntax::Expression::BinaryOperator(lhs_raw, operator, rhs_raw) => {
-            let lhs = analyze_expression(lhs_raw, variables, builtins);
-            let rhs = analyze_expression(rhs_raw, variables, builtins);
+            let lhs = resolve_expression(lhs_raw, variables, builtins);
+            let rhs = resolve_expression(rhs_raw, variables, builtins);
 
             // TODO This is obviously bullshit, but we don't have static operators with concrete return types yet.
             if &lhs.result_type.clone() != &rhs.result_type.clone() {
@@ -196,11 +196,11 @@ pub fn analyze_expression(syntax: &abstract_syntax::Expression, variables: &Scop
                 panic!("Subscript not supported yet");
             }
 
-            let callee = analyze_expression(callee, variables, builtins);
+            let callee = resolve_expression(callee, variables, builtins);
             let arguments = arguments.iter()
                 .map(|x| Box::new(PassedArgument {
                     key: x.name.clone().map(|x| ParameterKey::String(x)).unwrap_or_else(|| ParameterKey::Keyless),
-                    value: analyze_expression(&x.value, variables, builtins)
+                    value: resolve_expression(&x.value, variables, builtins)
                 }))
                 .collect();
 
@@ -232,15 +232,15 @@ pub fn analyze_expression(syntax: &abstract_syntax::Expression, variables: &Scop
     })
 }
 
-pub fn common_supertype(expressions: &Vec<Box<Expression>>) -> Box<Type> {
+pub fn resolve_common_supertype(expressions: &Vec<Box<Expression>>) -> Box<Type> {
     todo!()
 }
 
-pub fn analyze_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
+pub fn resolve_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
     Box::new(match syntax.borrow() {
         abstract_syntax::TypeDeclaration::Identifier(id) => Type::Identifier(id.clone()),
         abstract_syntax::TypeDeclaration::NDArray(identifier, _) => {
-            Type::NDArray(analyze_type(&identifier))
+            Type::NDArray(resolve_type(&identifier))
         }
     })
 }

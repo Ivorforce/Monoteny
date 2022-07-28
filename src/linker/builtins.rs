@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::semantic_analysis::computation_tree::{Function, Parameter, ParameterKey, Type, Variable, VariableHome::*};
+use crate::linker::computation_tree::{Function, Parameter, ParameterKey, Type, Variable, VariableHome::*};
 
 pub struct TenLangBuiltins {
     pub operators: TenLangBuiltinOperators,

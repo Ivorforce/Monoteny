@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::io::Write;
-use crate::semantic_analysis::computation_tree::*;
+use crate::linker::computation_tree::*;
 
 pub struct CPPTranspiler {
 

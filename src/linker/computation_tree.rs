@@ -3,7 +3,7 @@ use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use uuid::Uuid;
 
-use crate::semantic_analysis::builtins::TenLangBuiltins;
+use crate::linker::builtins::TenLangBuiltins;
 
 // ================================ Global ==============================
 
