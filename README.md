@@ -30,19 +30,20 @@ Instead, TenLang transpiles to insert into these ecosystems. Hereby, any framewo
 - [ ] Type Inheritance
 - [ ] Generic Type Inferral
 - [ ] Overloading & Call Type Checking
-- [ ] Tuples
 - [ ] Structs
 - [ ] Interfaces
 - [ ] Extensions
 - [ ] Exceptions
 - [ ] Dynamic calls / subscript
-- [ ] Optionals
 - [ ] Dynamic Shapes/ Optional Lookups
 - [ ] Staggered Dimensions
 - [ ] Dictionaries
 - [ ] Sets
 - [ ] Implicit tensor building
-- [ ] Int NDArrays
+- [ ] NDArrays
+- [ ] Tuple Dimension Index
+- [ ] Int Range Dimension Index
 - [ ] Auto Broadcast
+- [ ] Optionals
 - [ ] Standard Library
 - [ ] System Callback API / Permission Contexts
