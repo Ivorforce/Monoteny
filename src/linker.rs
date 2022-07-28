@@ -158,12 +158,12 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
     Box::new(match syntax {
         abstract_syntax::Expression::Number(n) => Expression {
             // TODO The type should be inferred
-            operation: Box::new(ExpressionOperation::NumberLiteral(NumberLiteral::Int32(n.clone()))),
+            operation: Box::new(ExpressionOperation::Primitive(Primitive::Int32(n.clone()))),
             result_type: Some(Box::new(Type::Identifier(String::from("Int32"))))
         },
         abstract_syntax::Expression::StringLiteral(string) => {
             Expression {
-                operation: Box::new(ExpressionOperation::StringLiteral(string.clone())),
+                operation: Box::new(ExpressionOperation::Primitive(Primitive::String(string.clone()))),
                 result_type: Some(Box::new(Type::Identifier(String::from("String"))))
             }
         },

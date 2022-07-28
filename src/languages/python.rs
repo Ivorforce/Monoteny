@@ -115,10 +115,14 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
 
 pub fn transpile_type_atom(stream: &mut (dyn Write), type_def: &String) -> Result<(), std::io::Error> {
     match type_def.as_str() {
+        "Int8" => write!(stream, "np.int8")?,
+        "Int16" => write!(stream, "np.int16")?,
         "Int32" => write!(stream, "np.int32")?,
         "Int64" => write!(stream, "np.int64")?,
+        "Int128" => write!(stream, "np.int128")?,
         "Float32" => write!(stream, "np.float32")?,
         "Float64" => write!(stream, "np.float64")?,
+        "String" => write!(stream, "str")?,
         _ => write!(stream, "{}", type_def)?
     }
 
@@ -138,15 +142,7 @@ pub fn transpile_type(stream: &mut (dyn Write), type_def: &Type) -> Result<(), s
 
 pub fn transpile_type_for_docstring(stream: &mut (dyn Write), type_def: &Type) -> Result<(), std::io::Error> {
     match type_def.borrow() {
-        Type::Identifier(atom) => {
-            match atom.as_str() {
-                "Int32" => write!(stream, "int32")?,
-                "Int64" => write!(stream, "int64")?,
-                "Float32" => write!(stream, "float32")?,
-                "Float64" => write!(stream, "float64")?,
-                _ => write!(stream, "{}", atom)?
-            }
-        },
+        Type::Identifier(atom) => transpile_type_atom(stream, atom)?,
         Type::NDArray(atom) => {
             transpile_type_for_docstring(stream, atom)?;
             write!(stream, "[?]")?;
@@ -160,15 +156,16 @@ pub fn transpile_type_for_docstring(stream: &mut (dyn Write), type_def: &Type) -
 
 pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     match &expression.operation.as_ref() {
-        ExpressionOperation::NumberLiteral(literal) => {
-            match literal {
-                NumberLiteral::Float32(n) => write!(stream, "np.float32({})", n)?,
-                NumberLiteral::Float64(n) => write!(stream, "np.float64({})", n)?,
-                NumberLiteral::Int8(n) => write!(stream, "np.int8({})", n)?,
-                NumberLiteral::Int16(n) => write!(stream, "np.int16({})", n)?,
-                NumberLiteral::Int32(n) => write!(stream, "np.int32({})", n)?,
-                NumberLiteral::Int64(n) => write!(stream, "np.int64({})", n)?,
-                NumberLiteral::Int128(n) => write!(stream, "np.int128({})", n)?,
+        ExpressionOperation::Primitive(literal) => {
+            match &literal {
+                Primitive::Float32(n) => write!(stream, "np.float32({})", n)?,
+                Primitive::Float64(n) => write!(stream, "np.float64({})", n)?,
+                Primitive::Int8(n) => write!(stream, "np.int8({})", n)?,
+                Primitive::Int16(n) => write!(stream, "np.int16({})", n)?,
+                Primitive::Int32(n) => write!(stream, "np.int32({})", n)?,
+                Primitive::Int64(n) => write!(stream, "np.int64({})", n)?,
+                Primitive::Int128(n) => write!(stream, "np.int128({})", n)?,
+                Primitive::String(string) => write!(stream, "\"{}\"", escape_string(&string))?,
             }
         }
         ExpressionOperation::VariableLookup(variable) => {
@@ -201,9 +198,6 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
             }
             write!(stream, "]")?;
         },
-        ExpressionOperation::StringLiteral(string) => {
-            write!(stream, "\"{}\"", escape_string(string))?;
-        }
     }
 
     Ok(())

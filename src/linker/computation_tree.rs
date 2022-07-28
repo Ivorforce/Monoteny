@@ -54,6 +54,18 @@ pub enum Type {
     Generic(Uuid),
 }
 
+#[derive(Clone, PartialEq)]
+pub enum Primitive {
+    Float32(f32),
+    Float64(f64),
+    Int8(i8),
+    Int16(i16),
+    Int32(i32),
+    Int64(i64),
+    Int128(i128),
+    String(String),
+}
+
 // ================================ Code ==============================
 
 pub enum Statement {
@@ -68,23 +80,12 @@ pub struct Expression {
 }
 
 pub enum ExpressionOperation {
-    NumberLiteral(NumberLiteral),
+    Primitive(Primitive),
     StaticFunctionCall { function: Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>> },
     DynamicFunctionCall(Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
     VariableLookup(Rc<Variable>),
     ArrayLiteral(Vec<Box<Expression>>),
-    StringLiteral(String),
-}
-
-pub enum NumberLiteral {
-    Float32(f32),
-    Float64(f64),
-    Int8(i8),
-    Int16(i16),
-    Int32(i32),
-    Int64(i64),
-    Int128(i128),
 }
 
 pub struct PassedArgument {
@@ -93,6 +94,21 @@ pub struct PassedArgument {
 }
 
 // Impl
+
+impl Primitive {
+    fn native_type(&self) -> Type {
+        Type::Identifier(String::from(match self {
+            Primitive::Float32(_) => "Float32",
+            Primitive::Float64(_) => "Float64",
+            Primitive::Int8(_) => "Int8",
+            Primitive::Int16(_) => "Int16",
+            Primitive::Int32(_) => "Int32",
+            Primitive::Int64(_) => "Int64",
+            Primitive::Int128(_) => "Int128",
+            Primitive::String(_) => "String",
+        }))
+    }
+}
 
 impl PartialEq for Variable {
     fn eq(&self, other: &Self) -> bool {

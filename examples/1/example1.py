@@ -13,9 +13,9 @@ def square(a: np.int32,) -> np.int32:
     <Docstring TODO!>
 
     Args:
-        a: int32
+        a: np.int32
 
-    Returns: int32
+    Returns: np.int32
     """
     return (a * a)
 
