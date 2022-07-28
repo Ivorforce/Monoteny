@@ -70,7 +70,7 @@ pub struct PassedArgument {
     pub value: Box<Expression>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Opcode {
     Multiply,
     Divide,
@@ -78,13 +78,13 @@ pub enum Opcode {
     Subtract,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Mutability {
     Immutable,
     Mutable,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum FunctionCallType {
     Call,
     Subscript,

@@ -23,10 +23,11 @@ impl CPPTranspiler {
                 .map(|x| self.transpile_type(&x))
                 .unwrap_or_else(|| String::from("void"));
 
-            write!(header_stream, "{} {}(", return_type, function.identifier)?;
+            write!(header_stream, "{} {}(", return_type, function.name)?;
 
             for parameter in function.parameters.iter() {
-                write!(header_stream, "{} {},", self.transpile_type(&parameter.variable.type_declaration), parameter.external_name)?;
+                // External names do not exist in C
+                write!(header_stream, "{} {},", self.transpile_type(&parameter.variable.type_declaration), parameter.variable.name)?;
             }
 
             write!(header_stream, ") {{\n\n}}\n\n")?;
@@ -50,6 +51,8 @@ impl CPPTranspiler {
                 // TODO Shape
                 format!("Tensor<{}, 1>", self.transpile_type(atom))
             }
+            Type::Function(_) => todo!(),
+            Type::Generic(_) => todo!()
         }
     }
 }

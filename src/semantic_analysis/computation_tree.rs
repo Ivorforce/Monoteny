@@ -8,13 +8,14 @@ use crate::semantic_analysis::builtins::TenLangBuiltins;
 // ================================ Global ==============================
 
 pub struct Program {
-    pub functions: Vec<Box<Function>>,
+    pub functions: Vec<Rc<Function>>,
     pub variables: HashMap<Uuid, Rc<Variable>>,
     pub builtins: TenLangBuiltins,
 }
 
 pub struct Function {
-    pub identifier: String,
+    pub id: Uuid,
+    pub name: String,
     pub parameters: Vec<Box<Parameter>>,
     pub return_type: Option<Box<Type>>,
 
@@ -23,8 +24,14 @@ pub struct Function {
 }
 
 pub struct Parameter {
-    pub external_name: String,
+    pub external_key: ParameterKey,
     pub variable: Rc<Variable>
+}
+
+#[derive(Clone)]
+pub enum ParameterKey {
+    Keyless,
+    String(String)
 }
 
 // ================================ Type ==============================
@@ -41,6 +48,8 @@ pub struct Variable {
 pub enum Type {
     Identifier(String),
     NDArray(Box<Type>),
+    Function(Rc<Function>),
+    Generic(Uuid),
 }
 
 // ================================ Code ==============================
@@ -51,19 +60,20 @@ pub enum VariableHome {
 }
 
 pub enum Statement {
-    VariableAssignment(String, Box<Expression>),
+    VariableAssignment(Rc<Variable>, Box<Expression>),
     Expression(Box<Expression>),
     Return(Option<Box<Expression>>),
 }
 
 pub struct Expression {
-    pub result_type: Box<Type>,
+    pub result_type: Option<Box<Type>>,
     pub operation: Box<ExpressionOperation>,
 }
 
 pub enum ExpressionOperation {
     Number(i32),
-    FunctionCall(Box<Expression>, Vec<Box<PassedArgument>>),
+    StaticFunctionCall { function: Rc<Function>, arguments: Vec<Box<PassedArgument>> },
+    DynamicFunctionCall(Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
     VariableLookup(Rc<Variable>),
     ArrayLiteral(Vec<Box<Expression>>),
@@ -71,17 +81,11 @@ pub enum ExpressionOperation {
 }
 
 pub struct PassedArgument {
-    pub name: Option<String>,
+    pub key: ParameterKey,
     pub value: Box<Expression>,
 }
 
-// String
-
-impl Debug for Type {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}
+// Impl
 
 impl PartialEq for Variable {
     fn eq(&self, other: &Self) -> bool {
@@ -89,3 +93,14 @@ impl PartialEq for Variable {
     }
 }
 
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Debug for Type {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}

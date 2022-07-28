@@ -5,3 +5,8 @@ fn no_op() {
 fn square(a: Int32) -> Int32 {
     return a * a;
 }
+
+fn main() {
+    let b = 5;
+    print(b);
+}

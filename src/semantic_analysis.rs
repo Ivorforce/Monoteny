@@ -9,6 +9,7 @@ use std::rc::Rc;
 use uuid::Uuid;
 
 use crate::abstract_syntax;
+use crate::abstract_syntax::Opcode;
 use crate::semantic_analysis::computation_tree::*;
 use crate::semantic_analysis::builtins::*;
 
@@ -17,7 +18,7 @@ pub struct ScopedVariables<'a> {
 }
 
 pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
-    let mut functions: Vec<Box<Function>> = Vec::new();
+    let mut functions: Vec<Rc<Function>> = Vec::new();
 
     let (builtins, builtins_variables) = create_builtins();
     let global_variable_scope = ScopedVariables {
@@ -27,7 +28,7 @@ pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
     for statement in syntax.global_statements {
         match *statement {
             abstract_syntax::GlobalStatement::FunctionDeclaration(function) => {
-                functions.push(analyze_function(&function, &global_variable_scope));
+                functions.push(analyze_function(&function, &global_variable_scope, &builtins));
             }
             abstract_syntax::GlobalStatement::Extension(extension) => {
                 // TODO
@@ -42,7 +43,7 @@ pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
     }
 }
 
-pub fn analyze_function(function: &abstract_syntax::Function, global_variables: &ScopedVariables) -> Box<Function> {
+pub fn analyze_function(function: &abstract_syntax::Function, global_variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Rc<Function> {
     let return_type = function.return_type.as_ref().map(|x| analyze_type(&x));
 
     let mut local_variables: HashMap<String, Rc<Variable>> = HashMap::new();
@@ -59,7 +60,7 @@ pub fn analyze_function(function: &abstract_syntax::Function, global_variables: 
 
         local_variables.insert(variable.name.clone(), variable.clone());
         parameters.push(Box::new(Parameter {
-            external_name: parameter.external_name.clone(),
+            external_key: ParameterKey::String(parameter.external_name.clone()),
             variable
         }));
     }
@@ -75,12 +76,12 @@ pub fn analyze_function(function: &abstract_syntax::Function, global_variables: 
                 mutability, identifier, type_declaration, expression
             } => {
                 let variables = global_variables.subscope(&local_variables);
-                let expression: Box<Expression> = analyze_expression(&expression, &variables);
-                let inferred_type = expression.result_type;
+                let expression: Box<Expression> = analyze_expression(&expression, &variables, builtins);
+                let inferred_type = expression.result_type.as_ref().unwrap();
 
                 if let Some(type_declaration) = type_declaration {
                     let type_declaration = analyze_type(type_declaration);
-                    if type_declaration != inferred_type {
+                    if &type_declaration != inferred_type {
                         panic!("Declared type of variable '{}' is not equal to inferred type '{:?}'", identifier, inferred_type);
                     }
                 }
@@ -89,8 +90,12 @@ pub fn analyze_function(function: &abstract_syntax::Function, global_variables: 
                     id: Uuid::new_v4(),
                     home: VariableHome::Local,
                     name: identifier.clone(),
-                    type_declaration: inferred_type,
+                    type_declaration: inferred_type.clone(),
                 });
+
+                statements.push(Box::new(
+                    Statement::VariableAssignment(Rc::clone(&variable), expression)
+                ));
                 local_variables.insert(variable.name.clone(), variable);
             },
             abstract_syntax::Statement::Return(None) => {
@@ -98,25 +103,26 @@ pub fn analyze_function(function: &abstract_syntax::Function, global_variables: 
             },
             abstract_syntax::Statement::Return(Some(expression)) => {
                 let variables = global_variables.subscope(&local_variables);
-                let expression: Box<Expression> = analyze_expression(&expression, &variables);
+                let expression: Box<Expression> = analyze_expression(&expression, &variables, builtins);
 
-                if let Some(return_type) = return_type.clone() {
-                    if return_type != expression.result_type {
-                        panic!("Declared type of return statement is not equal to function return type '{:?}'", expression.result_type);
-                    }
-                }
-                else {
-                    panic!("return statement offers a value when the function does not return anything.");
+                if return_type != expression.result_type {
+                    panic!("Declared type of return statement is not equal to function return type '{:?}'", expression.result_type);
                 }
 
                 statements.push(Box::new(Statement::Return(Some(expression))));
+            },
+            abstract_syntax::Statement::Expression(expression) => {
+                let variables = global_variables.subscope(&local_variables);
+                let expression: Box<Expression> = analyze_expression(&expression, &variables, builtins);
+                statements.push(Box::new(Statement::Expression(expression)));
             }
-            _ => {}
+            _ => todo!()
         }
     }
 
-    return Box::new(Function {
-        identifier: function.identifier.clone(),
+    return Rc::new(Function {
+        id: Uuid::new_v4(),
+        name: function.identifier.clone(),
         parameters,
         variables: local_variables.values().map(|variable| (variable.id, variable.clone())).collect(),
         statements,
@@ -124,55 +130,56 @@ pub fn analyze_function(function: &abstract_syntax::Function, global_variables: 
     });
 }
 
-pub fn analyze_expression(syntax: &abstract_syntax::Expression, variables: &ScopedVariables) -> Box<Expression> {
+pub fn analyze_expression(syntax: &abstract_syntax::Expression, variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Box<Expression> {
     Box::new(match syntax {
         abstract_syntax::Expression::Number(n) => Expression {
             operation: Box::new(ExpressionOperation::Number(n.clone())),
             // TODO Numbers should be postfixed with the type for now, maybe later inferred
-            result_type: Box::new(Type::Identifier(String::from("Int32")))
+            result_type: Some(Box::new(Type::Identifier(String::from("Int32"))))
         },
         abstract_syntax::Expression::StringLiteral(string) => {
             Expression {
                 operation: Box::new(ExpressionOperation::StringLiteral(string.clone())),
-                result_type: Box::new(Type::Identifier(String::from("String")))
+                result_type: Some(Box::new(Type::Identifier(String::from("String"))))
             }
         },
         abstract_syntax::Expression::ArrayLiteral(raw_elements) => {
             let elements= raw_elements.iter()
-                .map(|x| analyze_expression(x, variables))
+                .map(|x| analyze_expression(x, variables, builtins))
                 .collect();
 
             let supertype = common_supertype(&elements);
 
             Expression {
                 operation: Box::new(ExpressionOperation::ArrayLiteral(elements)),
-                result_type: supertype
+                result_type: Some(supertype)
             }
         },
         abstract_syntax::Expression::BinaryOperator(lhs_raw, operator, rhs_raw) => {
-            let lhs = analyze_expression(lhs_raw, variables);
-            let rhs = analyze_expression(rhs_raw, variables);
+            let lhs = analyze_expression(lhs_raw, variables, builtins);
+            let rhs = analyze_expression(rhs_raw, variables, builtins);
 
-            // TODO This is obviously bullshit, but we don't have static operators yet.
+            // TODO This is obviously bullshit, but we don't have static operators with concrete return types yet.
             if &lhs.result_type.clone() != &rhs.result_type.clone() {
                 panic!("binary operator sides must be of the same result type")
             }
             let result_type = lhs.result_type.clone();
 
-            let function_expression = Expression {
-                operation: Box::new(ExpressionOperation::VariableLookup(variables.resolve(format!("{:?}", operator)))),
-                // TODO Functions should be typed individually
-                result_type: Box::new(Type::Identifier(String::from("Function")))
-            };
+            let operator_function = Rc::clone(match operator {
+                Opcode::Multiply => &builtins.operators.multiply,
+                Opcode::Divide => &builtins.operators.divide,
+                Opcode::Add => &builtins.operators.add,
+                Opcode::Subtract => &builtins.operators.subtract,
+            });
 
             Expression {
-                operation: Box::new(ExpressionOperation::FunctionCall(
-                    Box::new(function_expression),
-                    vec![
-                        Box::new(PassedArgument { name: None, value: lhs }),
-                        Box::new(PassedArgument { name: None, value: rhs }),
-                    ]
-                )),
+                operation: Box::new(ExpressionOperation::StaticFunctionCall {
+                    arguments: vec![
+                        Box::new(PassedArgument { key: operator_function.parameters[0].external_key.clone(), value: lhs }),
+                        Box::new(PassedArgument { key: operator_function.parameters[1].external_key.clone(), value: rhs }),
+                    ],
+                    function: operator_function,
+                }),
                 result_type
             }
         },
@@ -181,10 +188,47 @@ pub fn analyze_expression(syntax: &abstract_syntax::Expression, variables: &Scop
 
             Expression {
                 operation: Box::new(ExpressionOperation::VariableLookup(variable.clone())),
-                result_type: variable.type_declaration.clone()
+                result_type: Some(variable.type_declaration.clone())
             }
         },
-        _ => todo!()
+        abstract_syntax::Expression::FunctionCall(call_type, callee, arguments) => {
+            if call_type == &abstract_syntax::FunctionCallType::Subscript {
+                panic!("Subscript not supported yet");
+            }
+
+            let callee = analyze_expression(callee, variables, builtins);
+            let arguments = arguments.iter()
+                .map(|x| Box::new(PassedArgument {
+                    key: x.name.clone().map(|x| ParameterKey::String(x)).unwrap_or_else(|| ParameterKey::Keyless),
+                    value: analyze_expression(&x.value, variables, builtins)
+                }))
+                .collect();
+
+            match callee.operation.as_ref() {
+                ExpressionOperation::VariableLookup(variable) => {
+                    if let Type::Function(function) = &variable.type_declaration.as_ref() {
+                        // Can translate to static call!
+                        return Box::new(Expression {
+                            result_type: function.return_type.clone(),
+                            operation: Box::new(ExpressionOperation::StaticFunctionCall {
+                                function: Rc::clone(function),
+                                arguments
+                            })
+                        })
+                    }
+                }
+                _ => {}
+            }
+
+            // No static function call, must be dynamic!
+            panic!("Dynamic function calls not yet implemented!")
+        }
+        abstract_syntax::Expression::MemberLookup(_, _) => {
+            todo!()
+        }
+        abstract_syntax::Expression::Error => {
+            todo!()
+        }
     })
 }
 

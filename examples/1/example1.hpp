@@ -11,3 +11,7 @@ int32_t square(int32_t a,) {
 
 }
 
+void main() {
+
+}
+
