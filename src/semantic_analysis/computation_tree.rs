@@ -3,11 +3,14 @@ use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use uuid::Uuid;
 
+use crate::semantic_analysis::builtins::TenLangBuiltins;
+
 // ================================ Global ==============================
 
 pub struct Program {
     pub functions: Vec<Box<Function>>,
     pub variables: HashMap<Uuid, Rc<Variable>>,
+    pub builtins: TenLangBuiltins,
 }
 
 pub struct Function {
@@ -77,6 +80,12 @@ pub struct PassedArgument {
 impl Debug for Type {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         todo!()
+    }
+}
+
+impl PartialEq for Variable {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
     }
 }
 

@@ -1,4 +1,5 @@
 pub mod computation_tree;
+pub mod builtins;
 
 use std::borrow::Borrow;
 use std::cell::RefCell;
@@ -9,38 +10,18 @@ use uuid::Uuid;
 
 use crate::abstract_syntax;
 use crate::semantic_analysis::computation_tree::*;
+use crate::semantic_analysis::builtins::*;
 
 pub struct ScopedVariables<'a> {
     pub scopes: Vec<&'a HashMap<String, Rc<Variable>>>,
 }
 
-// TODO This function obviously makes no long-term sense lol
-pub fn create_globals() -> HashMap<String, Rc<Variable>> {
-    fn new_global(name: &str, type_id: &str) -> Rc<Variable> {
-        Rc::new(Variable {
-            id: Uuid::new_v4(),
-            home: VariableHome::Global,
-            name: String::from(name),
-            type_declaration: Box::new(Type::Identifier(String::from(type_id)))
-        })
-    }
-
-    let mut globals: Vec<Rc<Variable>> = vec![
-        new_global("*", "Function"),
-        new_global("-", "Function"),
-        new_global("*", "Function"),
-        new_global("/", "Function"),
-    ];
-
-    return globals.into_iter().map(|x| (x.name.clone(), x)).collect()
-}
-
 pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
     let mut functions: Vec<Box<Function>> = Vec::new();
 
-    let mut global_variables: HashMap<String, Rc<Variable>> = create_globals();
+    let (builtins, builtins_variables) = create_builtins();
     let global_variable_scope = ScopedVariables {
-        scopes: vec![&global_variables],
+        scopes: vec![&builtins_variables],
     };
 
     for statement in syntax.global_statements {
@@ -56,7 +37,8 @@ pub fn analyze_program(syntax: abstract_syntax::Program) -> Program {
 
     return Program {
         variables: HashMap::new(),
-        functions
+        functions,
+        builtins
     }
 }
 

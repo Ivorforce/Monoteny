@@ -1,7 +1,10 @@
 use std::borrow::Borrow;
 use std::io::Write;
 use std::iter::zip;
+use std::rc::Rc;
+use guard::guard;
 use crate::abstract_syntax::Parameter;
+use crate::semantic_analysis::builtins::TenLangBuiltins;
 use crate::semantic_analysis::computation_tree::*;
 
 pub struct PythonTranspiler {
@@ -88,7 +91,7 @@ impl PythonTranspiler {
                 match statement.as_ref() {
                     Statement::Return(Some(expression)) => {
                         write!(stream, "    return ")?;
-                        self.transpile_expression(&expression, stream);
+                        self.transpile_expression(stream, &expression, &program.builtins)?;
                         write!(stream, "\n")?;
                     }
                     Statement::Return(None) => {
@@ -142,19 +145,48 @@ impl PythonTranspiler {
         }
     }
 
-    pub fn transpile_expression(&self, expression: &Expression, stream: &mut (dyn Write)) {
-        match &expression.operation.as_ref() {
+    pub fn transpile_expression(&self, stream: &mut (dyn Write), expression: &Expression, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
+        Ok(match &expression.operation.as_ref() {
             ExpressionOperation::VariableLookup(variable) => {
-                write!(stream, "{}", variable.name);
+                write!(stream, "{}", variable.name)?;
             }
             ExpressionOperation::FunctionCall(function, arguments) => {
-                match function.operation {
-                    _ => {
-                        // Normal function call
+                if self.try_transpile_binary_operator(stream, function, arguments, builtins)? {
+                    // no-op
+                }
+                else {
+                    self.transpile_expression(stream, function, builtins)?;
+                    write!(stream, "(")?;
+                    for argument in arguments {
+                        if let Some(name) = &argument.name {
+                            write!(stream, "{}=", name)?;
+                        }
+                        self.transpile_expression(stream, &argument.value, builtins)?;
+                        write!(stream, ",")?;
                     }
+                    write!(stream, ")")?;
                 }
             }
             _ => todo!()
+        })
+    }
+
+    pub fn try_transpile_binary_operator(&self, stream: &mut (dyn Write), function: &Box<Expression>, arguments: &Vec<Box<PassedArgument>>, builtins: &TenLangBuiltins) -> Result<bool, std::io::Error> {
+        guard!(let ExpressionOperation::VariableLookup(variable) = function.operation.as_ref() else {
+            return Ok(false);
+        });
+        guard!(let [lhs, rhs] = &arguments[..] else {
+            return Ok(false);
+        });
+
+        if variable == &builtins.operators.add || variable == &builtins.operators.subtract || variable == &builtins.operators.multiply || variable == &builtins.operators.divide {
+            write!(stream, "(")?;
+            self.transpile_expression(stream, &lhs.value, builtins)?;
+            write!(stream, " {} ", variable.name)?;
+            self.transpile_expression(stream, &rhs.value, builtins)?;
+            write!(stream, ")")?;
         }
+
+        return Ok(true);
     }
 }

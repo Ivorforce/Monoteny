@@ -17,4 +17,4 @@ def square(a: np.int32,) -> np.int32:
 
     Returns: int32
     """
-    return 
+    return (a * a)
