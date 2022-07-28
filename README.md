@@ -24,7 +24,25 @@ Instead, TenLang transpiles to insert into these ecosystems. Hereby, any framewo
 ## Roadmap
 
 - [x] Project Skeleton
-- [x] Type Inheritance
-- [x] Generic Type Inferral
-- [x] Parser Skeleton
-
+- [x] Primitives
+- [x] Function Interfaces
+- [ ] Primitive call / subscript keying
+- [ ] Type Inheritance
+- [ ] Generic Type Inferral
+- [ ] Overloading & Call Type Checking
+- [ ] Tuples
+- [ ] Structs
+- [ ] Interfaces
+- [ ] Extensions
+- [ ] Exceptions
+- [ ] Dynamic calls / subscript
+- [ ] Optionals
+- [ ] Dynamic Shapes/ Optional Lookups
+- [ ] Staggered Dimensions
+- [ ] Dictionaries
+- [ ] Sets
+- [ ] Implicit tensor building
+- [ ] Int NDArrays
+- [ ] Auto Broadcast
+- [ ] Standard Library
+- [ ] System Callback API / Permission Contexts
