@@ -178,12 +178,15 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
             else {
                 // TODO We should make sure it calls the correct function even when shadowed.
                 write!(stream, "{}(", function.name)?;
-                for argument in arguments {
+                for (idx, argument) in arguments.iter().enumerate() {
                     if let ParameterKey::String(name) = &argument.key {
                         write!(stream, "{}=", name)?;
                     }
                     transpile_expression(stream, &argument.value, builtins)?;
-                    write!(stream, ",")?;
+
+                    if idx < arguments.len() -1 {
+                        write!(stream, ", ")?;
+                    }
                 }
                 write!(stream, ")")?;
             }
@@ -192,9 +195,12 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
         ExpressionOperation::MemberLookup(_, _) => todo!(),
         ExpressionOperation::ArrayLiteral(expressions) => {
             write!(stream, "[")?;
-            for expression in expressions {
+            for (idx, expression) in expressions.iter().enumerate() {
                 transpile_expression(stream, expression, builtins)?;
-                write!(stream, ",")?;
+
+                if idx < expressions.len() -1 {
+                    write!(stream, ", ")?;
+                }
             }
             write!(stream, "]")?;
         },
