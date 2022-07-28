@@ -1,16 +1,7 @@
-fn copy_3_times(a: Int32) -> Int32[3] {
-    return [a, a, a];
+fn no_op() {
+    return;
 }
 
-extension Int32 {
-    fn square() -> Int32 {
-        return self * self;
-    }
-}
-
-fn main() {
-    var b = copy_3_times(a: 5 * 2 + 1);
-    b = b.square().square();
-    let b = b.square();
-    print("b: ", b[0]);
+fn square(a: Int32) -> Int32 {
+    return a * a;
 }

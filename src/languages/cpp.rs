@@ -1,7 +1,6 @@
 use std::borrow::Borrow;
 use std::io::Write;
-use crate::computation_tree;
-use crate::computation_tree::{Program, Type};
+use crate::semantic_analysis::computation_tree::*;
 
 pub struct CPPTranspiler {
 

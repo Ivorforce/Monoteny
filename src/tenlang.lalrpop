@@ -80,7 +80,8 @@ pub Statement: Box<Statement> = {
     <mutability: VariableDeclarationMutability> <identifier: Identifier> ":" <type_declaration: TypeDeclaration> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: Some(type_declaration), expression }),
     <mutability: VariableDeclarationMutability> <identifier: Identifier> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: None, expression }),
     <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableAssignment(i, e)),
-    "return" <Expression> => Box::new(Statement::Return(<>)),
+    "return" <Expression> => Box::new(Statement::Return(Some(<>))),
+    "return" => Box::new(Statement::Return(None)),
     Expression => Box::new(Statement::Expression(<>)),
 };
 

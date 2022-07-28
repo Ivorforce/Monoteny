@@ -2,8 +2,7 @@ use std::borrow::Borrow;
 use std::io::Write;
 use std::iter::zip;
 use crate::abstract_syntax::Parameter;
-use crate::computation_tree;
-use crate::computation_tree::{Program, Type, Variable};
+use crate::semantic_analysis::computation_tree::*;
 
 pub struct PythonTranspiler {
 
@@ -56,6 +55,12 @@ impl PythonTranspiler {
 
             write!(stream, "    \"\"\"\n")?;
 
+            if function.statements.is_empty() {
+                // No need to do conversions or anything else if we don't have a body.
+                write!(stream, "    pass\n")?;
+                continue
+            }
+
             for (parameter, type_info) in zip(function.parameters.iter(), parameters_type_info.iter()) {
                 match parameter.variable.type_declaration.borrow() {
                     Type::NDArray(atom) => {
@@ -79,7 +84,19 @@ impl PythonTranspiler {
                 }
             }
 
-            write!(stream, "    pass\n")?;
+            for statement in function.statements.iter() {
+                match statement.as_ref() {
+                    Statement::Return(Some(expression)) => {
+                        write!(stream, "    return ")?;
+                        self.transpile_expression(&expression, stream);
+                        write!(stream, "\n")?;
+                    }
+                    Statement::Return(None) => {
+                        write!(stream, "    return\n")?;
+                    }
+                    _ => todo!()
+                }
+            }
         }
 
         return Ok(())
@@ -122,6 +139,22 @@ impl PythonTranspiler {
                     Type::NDArray(_) => panic!("Numpy does not support nested ndarrays.")
                 }
             }
+        }
+    }
+
+    pub fn transpile_expression(&self, expression: &Expression, stream: &mut (dyn Write)) {
+        match &expression.operation.as_ref() {
+            ExpressionOperation::VariableLookup(variable) => {
+                write!(stream, "{}", variable.name);
+            }
+            ExpressionOperation::FunctionCall(function, arguments) => {
+                match function.operation {
+                    _ => {
+                        // Normal function call
+                    }
+                }
+            }
+            _ => todo!()
         }
     }
 }

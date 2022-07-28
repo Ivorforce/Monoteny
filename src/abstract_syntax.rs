@@ -51,7 +51,7 @@ pub enum Statement {
     },
     VariableAssignment(String, Box<Expression>),
     Expression(Box<Expression>),
-    Return(Box<Expression>),
+    Return(Option<Box<Expression>>),
 }
 
 pub enum Expression {

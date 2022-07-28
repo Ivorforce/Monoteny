@@ -1,9 +1,10 @@
 #[macro_use]
 extern crate lalrpop_util;
+extern crate core;
 
 lalrpop_mod!(pub tenlang);
 mod abstract_syntax;
-mod computation_tree;
+mod semantic_analysis;
 mod languages;
 
 use std::ffi::OsStr;
@@ -75,7 +76,7 @@ fn main() {
                 .parse(content.as_str())
                 .unwrap();
 
-            let computation_tree = computation_tree::analyze_program(abstract_syntax_tree);
+            let computation_tree = semantic_analysis::analyze_program(abstract_syntax_tree);
 
             for output_extension in output_extensions {
                 match output_extension {
