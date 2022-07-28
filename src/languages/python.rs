@@ -40,8 +40,6 @@ impl PythonTranspiler {
                     self.transpile_type_for_docstring(stream, &parameter.variable.type_declaration)?;
                     write!(stream, "\n")?;
                 }
-
-                write!(stream, "\n")?;
             }
 
             if let Some(return_type) = &function.return_type {

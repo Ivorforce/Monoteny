@@ -15,7 +15,6 @@ def square(a: np.int32,) -> np.int32:
     Args:
         a: int32
 
-
     Returns: int32
     """
     return (a * a)
