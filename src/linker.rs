@@ -272,12 +272,11 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
                             })
                         })
                     }
-                }
-                _ => {}
-            }
 
-            // No static function call, must be dynamic!
-            panic!("Dynamic function calls not yet implemented!")
+                    panic!("Cannot call '{}'. It is not a function; dynamic calls are not yet supported.", &variable.name)
+                }
+                _ => panic!("Cannot call a non-function; dynamic calls are not yet supported.")
+            }
         }
         abstract_syntax::Expression::MemberLookup(_, _) => {
             todo!()

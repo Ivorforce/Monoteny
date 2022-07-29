@@ -29,8 +29,8 @@ Instead, TenLang transpiles to insert into these ecosystems. Hereby, any framewo
 - [x] Array Literals
 - [x] Function Interfaces
 - [x] Int call / subscript keying
+- [x] Overloading & Call Type Checking
 - [ ] Type Inheritance
-- [ ] Overloading & Call Type Checking
 - [ ] If / Else, Guard
 - [ ] Generic Type Inferral
 - [ ] Structs

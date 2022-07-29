@@ -84,7 +84,6 @@ pub struct Expression {
 pub enum ExpressionOperation {
     Primitive(Primitive),
     StaticFunctionCall { function: Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>> },
-    DynamicFunctionCall(Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
     VariableLookup(Rc<Variable>),
     ArrayLiteral(Vec<Box<Expression>>),

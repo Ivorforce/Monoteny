@@ -189,7 +189,6 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
                 write!(stream, ")")?;
             }
         }
-        ExpressionOperation::DynamicFunctionCall(_, _) => todo!(),
         ExpressionOperation::MemberLookup(_, _) => todo!(),
         ExpressionOperation::ArrayLiteral(expressions) => {
             write!(stream, "[")?;
