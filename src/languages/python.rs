@@ -251,6 +251,7 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &Functi
         return Ok(false);
     });
 
+    // TODO We can probably avoid unnecessary parentheses here and in the other operators if we ask the expression for its (python) precedence, and compare it with ours.
     let mut transpile_unary_operator = |name: &str| -> Result<bool, std::io::Error> {
         write!(stream, "{}(", name)?;
         transpile_expression(stream, &expression.value, builtins)?;
