@@ -57,7 +57,7 @@ pub enum Type {
     Generic(Uuid),
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Primitive {
     Bool(bool),
     Int8(i8),
