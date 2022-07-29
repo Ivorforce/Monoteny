@@ -37,9 +37,9 @@ Instead, TenLang transpiles to insert into these ecosystems. Hereby, any framewo
 - [ ] Interfaces
 - [ ] Extensions
 - [ ] Exceptions
-- [ ] Dynamic calls / subscript
 - [ ] Staggered Dimensions
 - [ ] Implicit tensor building
+- [ ] Abstract functions + Higher order functions
 - [ ] NDArrays
 - [ ] Tuple Dimension Index
 - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
@@ -50,3 +50,18 @@ Instead, TenLang transpiles to insert into these ecosystems. Hereby, any framewo
 - [ ] Sets
 - [ ] Standard Library
 - [ ] System Callback API / Permission Contexts
+
+### Currently not planned
+
+- OOP / Polymorphism / Classes
+  - Very complex and of limited use for most mathematical applications.
+- Variadic parameters
+  - Seldom used in practice. Passing array primitives is more versatile.
+- for / for-each loops
+  - .map / .forEach calls do the same. Instead, there will be a strong callable integration allowing for return / break / continue statements inside an anonymous closure. 
+- Global (mutable) variables
+  - Global variables are usually bad practice. Instead, TenLang encourages context objects.
+- System I/O (input, GUI, filesystem, streams etc.)
+  - Very complex. TenLang encourages building that part of the program in the target ecosystem.
+- Multithreading
+  - Very complex, and of limited use for (pure) mathematical applications.
