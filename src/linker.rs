@@ -30,6 +30,10 @@ pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
             abstract_syntax::GlobalStatement::FunctionDeclaration(function) => {
                 let interface = resolve_function_interface(&function);
 
+                if global_variables.contains_key(&interface.name) {
+                    panic!("Duplicate definition for global '{}'", interface.name);
+                }
+
                 functions_with_bodies.push((Rc::clone(&interface), &function.body));
 
                 // Create a variable for the function

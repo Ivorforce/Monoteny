@@ -2,7 +2,7 @@ fn no_op() {
     return;
 }
 
-fn square(0 a: Int32) -> Int32 {
+fn square(_ a: Int32) -> Int32 {
     return a * a;
 }
 
