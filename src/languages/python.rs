@@ -182,7 +182,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
     match &expression.operation.as_ref() {
         ExpressionOperation::Primitive(literal) => {
             match &literal {
-                Primitive::Bool(n) => write!(stream, "np.bool({})", n)?,
+                Primitive::Bool(n) => write!(stream, "{}", (if *n { "True" } else { "False" }))?,
                 Primitive::Int8(n) => write!(stream, "np.int8({})", n)?,
                 Primitive::Int16(n) => write!(stream, "np.int16({})", n)?,
                 Primitive::Int32(n) => write!(stream, "np.int32({})", n)?,

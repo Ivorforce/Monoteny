@@ -28,5 +28,5 @@ def main():
     b = np.int32(3)
     b = np.int32(2)
     print("b: ")
-    print(b)
+    print(True)
     print([b, square(b), np.int32(2)])
