@@ -1,5 +1,6 @@
-pub mod computation_tree;
 pub mod builtins;
+pub mod computation_tree;
+pub mod scopes;
 
 use std::borrow::Borrow;
 use std::collections::HashMap;
@@ -8,12 +9,10 @@ use guard::guard;
 use uuid::Uuid;
 
 use crate::abstract_syntax;
-use crate::linker::computation_tree::*;
 use crate::linker::builtins::*;
+use crate::linker::computation_tree::*;
+use crate::linker::scopes::*;
 
-pub struct ScopedVariables<'a> {
-    pub scopes: Vec<&'a HashMap<String, Rc<Variable>>>,
-}
 
 pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
     let (builtins, builtins_variables) = create_builtins();
@@ -370,25 +369,4 @@ pub fn resolve_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
             Type::NDArray(resolve_type(&identifier))
         }
     })
-}
-
-impl <'a> ScopedVariables<'a> {
-    pub fn resolve(&self, variable_name: &String) -> Rc<Variable> {
-        for scope in self.scopes.iter() {
-            if let Some(variable) = scope.get(variable_name) {
-                return variable.clone()
-            }
-        }
-
-        panic!("Variable '{}' could not be resolved", variable_name)
-    }
-
-    pub fn subscope(&self, new_scope: &'a HashMap<String, Rc<Variable>>) -> ScopedVariables<'a> {
-        let mut scopes: Vec<&'a HashMap<String, Rc<Variable>>> = Vec::new();
-
-        scopes.push(new_scope);
-        scopes.extend(self.scopes.iter());
-
-        ScopedVariables { scopes }
-    }
 }
