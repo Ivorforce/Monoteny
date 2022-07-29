@@ -9,7 +9,6 @@ fn square(_ a: Int32) -> Int32 {
 fn main() {
     var b = 5;
     b = 3;
-    let b = 2;
     print("b: ");
     print(5 > 2 ** 3 * 2);
     print(false || true);

@@ -5,9 +5,24 @@ grammar;
 
 // =============================== Util =====================================
 
-OptionalFinalSeparatorList<E,S>: Vec<E> =
-    <v0:(<E> S)*> <e1:E?> =>
-        v0.into_iter().chain(e1).collect();
+OptionalFinalSeparatorList<Element, Separator>: Vec<Element> = {
+    <v0: (<Element> Separator)*> <e1: Element?> => v0.into_iter().chain(e1).collect()
+};
+
+UnassociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
+    NextOperatorLevel Operator NextOperatorLevel => Box::new(Expression::BinaryOperator(<>)),
+    NextOperatorLevel
+};
+
+LeftAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
+    LeftAssociativeBinaryOperator<Operator, NextOperatorLevel> Operator NextOperatorLevel => Box::new(Expression::BinaryOperator(<>)),
+    NextOperatorLevel
+};
+
+RightAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
+    NextOperatorLevel Operator RightAssociativeBinaryOperator<Operator, NextOperatorLevel> => Box::new(Expression::BinaryOperator(<>)),
+    NextOperatorLevel
+};
 
 match {
     r"[0-9]+" => _Number,
@@ -96,11 +111,6 @@ VariableDeclarationMutability: Mutability = {
     "var" => Mutability::Mutable,
 };
 
-BinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
-    BinaryOperator<Operator, NextOperatorLevel> Operator NextOperatorLevel => Box::new(Expression::BinaryOperator(<>)),
-    NextOperatorLevel
-};
-
 Expression: Box<Expression> = FunctionCallElement;
 
 FunctionCallElement = {
@@ -110,11 +120,11 @@ FunctionCallElement = {
     LogicalElement
 }
 
-LogicalElement = BinaryOperator<LogicalOperator, ComparisonElement>;
-ComparisonElement = BinaryOperator<ComparisonOperator, SumElement>;
-SumElement = BinaryOperator<SumOperator, MultiplicationElement>;
-MultiplicationElement = BinaryOperator<FactorOperator, PowerElement>;
-PowerElement = BinaryOperator<PowerOperator, Term>;
+LogicalElement = LeftAssociativeBinaryOperator<LogicalOperator, ComparisonElement>;
+ComparisonElement = UnassociativeBinaryOperator<ComparisonOperator, SumElement>;
+SumElement = LeftAssociativeBinaryOperator<SumOperator, MultiplicationElement>;
+MultiplicationElement = LeftAssociativeBinaryOperator<FactorOperator, PowerElement>;
+PowerElement = LeftAssociativeBinaryOperator<PowerOperator, Term>;
 
 PassedArgument: Box<PassedArgument> = {
     <name: Number> ":" <value: Expression> => Box::new(PassedArgument { key: Some(ParameterKey::Int(name)), value }),
