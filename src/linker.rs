@@ -146,18 +146,29 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
                 ));
                 local_variables.insert(identifier.clone(), variable);
             },
-            abstract_syntax::Statement::Return(None) => {
-                statements.push(Box::new(Statement::Return(None)));
-            },
-            abstract_syntax::Statement::Return(Some(expression)) => {
+            abstract_syntax::Statement::Return(expression) => {
                 let variables = global_variables.subscope(&local_variables);
-                let expression: Box<Expression> = resolve_expression(&expression, &variables, builtins);
+                let expression: Option<Box<Expression>> = expression.as_ref().map(|x| resolve_expression(x, &variables, builtins));
 
-                if interface.return_type != expression.result_type {
-                    panic!("Declared type of return statement is not equal to function return type '{:?}'", expression.result_type);
+                match (&interface.return_type, expression) {
+                    (Some(_), None) => panic!("Return statement offers no value when the function declares an object."),
+                    (None, Some(_)) => panic!("Return statement offers a value when the function declares void."),
+                    (None, None) => {
+                        statements.push(Box::new(Statement::Return(None)));
+                    },
+                    (Some(interface_return_type), Some(expression)) => {
+                        match &expression.result_type {
+                            None => panic!("Return statement expression resolves to void. Please move the expression into a separate line."),
+                            Some(result_type) => {
+                                if interface_return_type != result_type {
+                                    panic!("Return statement offers incompatible value of type: '{:?}' when function declares type: '{:?}'", result_type, interface_return_type);
+                                }
+
+                                statements.push(Box::new(Statement::Return(Some(expression))));
+                            }
+                        }
+                    }
                 }
-
-                statements.push(Box::new(Statement::Return(Some(expression))));
             },
             abstract_syntax::Statement::Expression(expression) => {
                 let variables = global_variables.subscope(&local_variables);
