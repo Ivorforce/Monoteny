@@ -37,7 +37,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Type Inheritance
 - [ ] If / Else, Guard
 - [ ] Generic Type Inferral
-- [ ] Multiple comparison syntax: a > b > c
+- [ ] Multiple comparison syntax: a > b > c and a == b == c
 - [ ] Structs
 - [ ] Interfaces
 - [ ] Extensions
