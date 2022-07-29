@@ -115,8 +115,8 @@ VariableDeclarationMutability: Mutability = {
 Expression: Box<Expression> = FunctionCallPrecedenceGroup;
 FunctionCallPrecedenceGroup = FunctionCallExpression<LogicalPrecedenceGroup>;
 LogicalPrecedenceGroup = LeftAssociativeBinaryOperator<LogicalOperator, ComparisonPrecedenceGroup>;
-ComparisonPrecedenceGroup = ComparisonExpression<SumPrecedenceGroup>;
-SumPrecedenceGroup = LeftAssociativeBinaryOperator<SumOperator, MultiplicationPrecedenceGroup>;
+ComparisonPrecedenceGroup = ComparisonExpression<AdditionPrecedenceGroup>;
+AdditionPrecedenceGroup = LeftAssociativeBinaryOperator<SumOperator, MultiplicationPrecedenceGroup>;
 MultiplicationPrecedenceGroup = LeftAssociativeBinaryOperator<FactorOperator, ExponentiationPrecedenceGroup>;
 ExponentiationPrecedenceGroup = RightAssociativeBinaryOperator<ExponentiationOperator, Term>;
 
