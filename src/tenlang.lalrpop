@@ -3,25 +3,7 @@ use crate::abstract_syntax::*;
 
 grammar;
 
-// =============================== Util =====================================
-
-OptionalFinalSeparatorList<Element, Separator>: Vec<Element> = {
-    <v0: (<Element> Separator)*> <e1: Element?> => v0.into_iter().chain(e1).collect()
-};
-
-AtLeastTwoElementsSeparatorList<Element, Separator>: Vec<Element> = {
-    <v0: (<Element> Separator)+> <e1: Element> => v0.into_iter().chain([e1]).collect()
-};
-
-LeftAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
-    LeftAssociativeBinaryOperator<Operator, NextOperatorLevel> Operator NextOperatorLevel => Box::new(Expression::BinaryOperator(<>)),
-    NextOperatorLevel
-};
-
-RightAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
-    NextOperatorLevel Operator RightAssociativeBinaryOperator<Operator, NextOperatorLevel> => Box::new(Expression::BinaryOperator(<>)),
-    NextOperatorLevel
-};
+// =============================== Lexer Precedence =====================================
 
 match {
     r"[0-9]+" => _Number,
@@ -41,6 +23,20 @@ match {
     _
 }
 
+// =============================== Primitive =====================================
+
+Number: i32 = {
+    _Number => i32::from_str(<>).unwrap()
+};
+
+BoolLiteral: bool = {
+    "true" => true,
+    "false" => false,
+};
+
+Identifier: String = {
+    _Identifier => format!("{}", <>)
+};
 
 // =============================== Global =====================================
 
@@ -162,11 +158,6 @@ UnaryOperator: UnaryOperator = {
     "!" => UnaryOperator::Not,
 };
 
-BoolLiteral: bool = {
-    "true" => true,
-    "false" => false,
-};
-
 FunctionCallExpression<NextOperatorLevel>: Box<Expression> = {
     <Expression> "(" <OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall(FunctionCallType::Call, <>)),
     <Expression> "[" <OptionalFinalSeparatorList<PassedArgument, ",">> "]" => Box::new(Expression::FunctionCall(FunctionCallType::Subscript, <>)),
@@ -187,13 +178,22 @@ ComparisonExpression<NextOperatorLevel>: Box<Expression> = {
 }
 
 
-// =============================== Primitive =====================================
+// =============================== Util =====================================
 
-
-Number: i32 = {
-    _Number => i32::from_str(<>).unwrap()
+OptionalFinalSeparatorList<Element, Separator>: Vec<Element> = {
+    <v0: (<Element> Separator)*> <e1: Element?> => v0.into_iter().chain(e1).collect()
 };
 
-Identifier: String = {
-    _Identifier => format!("{}", <>)
+AtLeastTwoElementsSeparatorList<Element, Separator>: Vec<Element> = {
+    <v0: (<Element> Separator)+> <e1: Element> => v0.into_iter().chain([e1]).collect()
+};
+
+LeftAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
+    LeftAssociativeBinaryOperator<Operator, NextOperatorLevel> Operator NextOperatorLevel => Box::new(Expression::BinaryOperator(<>)),
+    NextOperatorLevel
+};
+
+RightAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
+    NextOperatorLevel Operator RightAssociativeBinaryOperator<Operator, NextOperatorLevel> => Box::new(Expression::BinaryOperator(<>)),
+    NextOperatorLevel
 };
