@@ -93,7 +93,7 @@ TypeDeclaration: Box<TypeDeclaration> = {
 }
 
 
-// =============================== Code =====================================
+// =============================== Statement =====================================
 
 
 pub Statement: Box<Statement> = {
@@ -110,20 +110,27 @@ VariableDeclarationMutability: Mutability = {
     "var" => Mutability::Mutable,
 };
 
+// =============================== Expression =====================================
+
 Expression: Box<Expression> = FunctionCallElement;
-
-FunctionCallElement = {
-    <Expression> "(" <OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall(FunctionCallType::Call, <>)),
-    <Expression> "[" <OptionalFinalSeparatorList<PassedArgument, ",">> "]" => Box::new(Expression::FunctionCall(FunctionCallType::Subscript, <>)),
-    <Expression> "." <Identifier> => Box::new(Expression::MemberLookup(<>)),
-    LogicalElement
-}
-
+FunctionCallElement = FunctionCallExpression<LogicalElement>;
 LogicalElement = LeftAssociativeBinaryOperator<LogicalOperator, ComparisonElement>;
 ComparisonElement = ComparisonExpression<SumElement>;
 SumElement = LeftAssociativeBinaryOperator<SumOperator, MultiplicationElement>;
 MultiplicationElement = LeftAssociativeBinaryOperator<FactorOperator, PowerElement>;
 PowerElement = RightAssociativeBinaryOperator<PowerOperator, Term>;
+
+Term: Box<Expression> = {
+    Number => Box::new(Expression::Number(<>)),
+    BoolLiteral => Box::new(Expression::Bool(<>)),
+    Identifier => Box::new(Expression::VariableLookup(<>)),
+    "(" <Expression> ")",
+    "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(Expression::ArrayLiteral(<>)),
+    r"\x22[^\x22]*\x22" => {
+        let s = <>;
+        Box::new(Expression::StringLiteral(String::from(&s[1..(s.len() - 1)])))
+    }
+};
 
 PassedArgument: Box<PassedArgument> = {
     <name: Number> ":" <value: Expression> => Box::new(PassedArgument { key: Some(ParameterKey::Int(name)), value }),
@@ -160,6 +167,13 @@ BoolLiteral: bool = {
     "false" => false,
 };
 
+FunctionCallExpression<NextOperatorLevel>: Box<Expression> = {
+    <Expression> "(" <OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall(FunctionCallType::Call, <>)),
+    <Expression> "[" <OptionalFinalSeparatorList<PassedArgument, ",">> "]" => Box::new(Expression::FunctionCall(FunctionCallType::Subscript, <>)),
+    <Expression> "." <Identifier> => Box::new(Expression::MemberLookup(<>)),
+    NextOperatorLevel
+}
+
 ComparisonExpression<NextOperatorLevel>: Box<Expression> = {
     AtLeastTwoElementsSeparatorList<NextOperatorLevel, "=="> => Box::new(Expression::NAryOperator(NAryOperator::EqualTo, <>)),
     AtLeastTwoElementsSeparatorList<NextOperatorLevel, "!="> => Box::new(Expression::NAryOperator(NAryOperator::NotEqualTo, <>)),
@@ -171,18 +185,6 @@ ComparisonExpression<NextOperatorLevel>: Box<Expression> = {
 
     NextOperatorLevel,
 }
-
-Term: Box<Expression> = {
-    Number => Box::new(Expression::Number(<>)),
-    BoolLiteral => Box::new(Expression::Bool(<>)),
-    Identifier => Box::new(Expression::VariableLookup(<>)),
-    "(" <Expression> ")",
-    "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(Expression::ArrayLiteral(<>)),
-    r"\x22[^\x22]*\x22" => {
-        let s = <>;
-        Box::new(Expression::StringLiteral(String::from(&s[1..(s.len() - 1)])))
-    }
-};
 
 
 // =============================== Primitive =====================================
