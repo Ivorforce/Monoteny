@@ -86,6 +86,7 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                 equal_to: add_binary_operator("=="),
                 not_equal_to: add_binary_operator("!="),
 
+                // TODO These should be n-ary
                 greater_than: add_binary_operator(">"),
                 greater_than_or_equal_to: add_binary_operator(">="),
                 lesser_than: add_binary_operator("<"),
@@ -98,6 +99,7 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                 to_the_power_of: add_binary_operator("**"),
                 modulo: add_binary_operator("%"),
 
+                // TODO These should be unary
                 positive: add_binary_operator("+"),
                 negative: add_binary_operator("-"),
                 not: add_binary_operator("!"),

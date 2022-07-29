@@ -4,6 +4,7 @@ pub mod builtins;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::rc::Rc;
+use guard::guard;
 use uuid::Uuid;
 
 use crate::abstract_syntax;
@@ -184,6 +185,37 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
     });
 }
 
+pub fn resolve_static_function_call(function: &Rc<FunctionInterface>, arguments: &Vec<&Box<abstract_syntax::Expression>>, variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Expression {
+    let resolved_arguments: Vec<Box<Expression>> = arguments.into_iter()
+        .map(|x| resolve_expression(x, variables, builtins))
+        .collect();
+
+    guard!(let Some(reference) = resolved_arguments.first() else {
+        // TODO
+        panic!("operators without arguments are not supported yet - because generic return types are not supported yet.")
+    });
+
+    for other in resolved_arguments.iter().skip(1) {
+        if &other.result_type.clone() != &reference.result_type.clone() {
+            // TODO
+            panic!("operator sides must be of the same result type - because generic return types are not supported yet.")
+        }
+    }
+
+    let result_type = reference.result_type.clone();
+
+    Expression {
+        operation: Box::new(ExpressionOperation::StaticFunctionCall {
+            arguments: resolved_arguments.into_iter()
+                .enumerate()
+                .map(|(idx, argument)| Box::new(PassedArgument { key: function.parameters[idx].external_key.clone(), value: argument }))
+                .collect(),
+            function: function.clone(),
+        }),
+        result_type
+    }
+}
+
 pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Box<Expression> {
     Box::new(match syntax {
         abstract_syntax::Expression::Number(n) => {
@@ -218,43 +250,31 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
                 result_type: Some(supertype)
             }
         },
-        abstract_syntax::Expression::BinaryOperator(lhs_raw, operator, rhs_raw) => {
-            let lhs = resolve_expression(lhs_raw, variables, builtins);
-            let rhs = resolve_expression(rhs_raw, variables, builtins);
+        abstract_syntax::Expression::NAryOperator(operator, arguments) => {
+            let operator_function = match operator {
+                abstract_syntax::NAryOperator::EqualTo => &builtins.operators.equal_to,
+                abstract_syntax::NAryOperator::NotEqualTo => &builtins.operators.not_equal_to,
+                abstract_syntax::NAryOperator::GreaterThan => &builtins.operators.greater_than,
+                abstract_syntax::NAryOperator::GreaterThanOrEqualTo => &builtins.operators.greater_than_or_equal_to,
+                abstract_syntax::NAryOperator::LesserThan => &builtins.operators.lesser_than,
+                abstract_syntax::NAryOperator::LesserThanOrEqualTo => &builtins.operators.lesser_than_or_equal_to,
+            };
 
-            // TODO This is obviously bullshit, but we don't have static operators with concrete return types yet.
-            if &lhs.result_type.clone() != &rhs.result_type.clone() {
-                panic!("binary operator sides must be of the same result type")
-            }
-            let result_type = lhs.result_type.clone();
-
-            let operator_function = Rc::clone(match operator {
+            resolve_static_function_call(operator_function, &arguments.iter().collect(), variables, builtins)
+        },
+        abstract_syntax::Expression::BinaryOperator(lhs, operator, rhs) => {
+            let operator_function = match operator {
                 abstract_syntax::BinaryOperator::Or => &builtins.operators.or,
                 abstract_syntax::BinaryOperator::And => &builtins.operators.and,
                 abstract_syntax::BinaryOperator::Multiply => &builtins.operators.multiply,
                 abstract_syntax::BinaryOperator::Divide => &builtins.operators.divide,
                 abstract_syntax::BinaryOperator::Add => &builtins.operators.add,
                 abstract_syntax::BinaryOperator::Subtract => &builtins.operators.subtract,
-                abstract_syntax::BinaryOperator::EqualTo => &builtins.operators.equal_to,
-                abstract_syntax::BinaryOperator::NotEqualTo => &builtins.operators.not_equal_to,
-                abstract_syntax::BinaryOperator::GreaterThan => &builtins.operators.greater_than,
-                abstract_syntax::BinaryOperator::GreaterThanOrEqualTo => &builtins.operators.greater_than_or_equal_to,
-                abstract_syntax::BinaryOperator::LesserThan => &builtins.operators.lesser_than,
-                abstract_syntax::BinaryOperator::LesserThanOrEqualTo => &builtins.operators.lesser_than_or_equal_to,
                 abstract_syntax::BinaryOperator::ToThePowerOf => &builtins.operators.to_the_power_of,
                 abstract_syntax::BinaryOperator::Modulo => &builtins.operators.modulo,
-            });
+            };
 
-            Expression {
-                operation: Box::new(ExpressionOperation::StaticFunctionCall {
-                    arguments: vec![
-                        Box::new(PassedArgument { key: operator_function.parameters[0].external_key.clone(), value: lhs }),
-                        Box::new(PassedArgument { key: operator_function.parameters[1].external_key.clone(), value: rhs }),
-                    ],
-                    function: operator_function,
-                }),
-                result_type
-            }
+            resolve_static_function_call(operator_function, &vec![lhs, rhs], variables, builtins)
         },
         abstract_syntax::Expression::UnaryOperator(operator, expression) => {
             todo!()

@@ -65,6 +65,7 @@ pub enum Expression {
     Bool(bool),
     BinaryOperator(Box<Expression>, BinaryOperator, Box<Expression>),
     UnaryOperator(UnaryOperator, Box<Expression>),
+    NAryOperator(NAryOperator, Vec<Box<Expression>>),
     FunctionCall(FunctionCallType, Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
     VariableLookup(String),
@@ -89,6 +90,16 @@ pub enum BinaryOperator {
     Or,
     And,
 
+    Multiply,
+    Divide,
+    Add,
+    Subtract,
+    ToThePowerOf,
+    Modulo,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum NAryOperator {
     EqualTo,
     NotEqualTo,
 
@@ -96,13 +107,6 @@ pub enum BinaryOperator {
     GreaterThanOrEqualTo,
     LesserThan,
     LesserThanOrEqualTo,
-
-    Multiply,
-    Divide,
-    Add,
-    Subtract,
-    ToThePowerOf,
-    Modulo,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -208,6 +212,16 @@ impl Debug for Expression {
             Number(n) => write!(fmt, "{:?}", n),
             BinaryOperator(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
             UnaryOperator(op, expression) => write!(fmt, "{:?}{:?}", op, expression),
+            NAryOperator(op, args) => {
+                for (idx, item) in args.iter().enumerate() {
+                    write!(fmt, "{:?}", item)?;
+
+                    if idx < args.len() - 1 {
+                        write!(fmt, " {:?} ", op)?;
+                    }
+                };
+                return Ok(())
+            },
             FunctionCall(call_type, expression, args) => {
                 let brackets = call_type.bracket_str();
                 write!(fmt, "{:?}{}", expression, brackets.chars().nth(0).unwrap())?;
@@ -229,6 +243,20 @@ impl Debug for Expression {
     }
 }
 
+impl Debug for NAryOperator {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        use self::NAryOperator::*;
+        match self {
+            EqualTo => write!(fmt, "=="),
+            NotEqualTo => write!(fmt, "!="),
+            GreaterThan => write!(fmt, ">"),
+            GreaterThanOrEqualTo => write!(fmt, ">="),
+            LesserThan => write!(fmt, "<"),
+            LesserThanOrEqualTo => write!(fmt, "<="),
+        }
+    }
+}
+
 impl Debug for BinaryOperator {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::BinaryOperator::*;
@@ -239,12 +267,6 @@ impl Debug for BinaryOperator {
             Subtract => write!(fmt, "-"),
             Or => write!(fmt, "||"),
             And => write!(fmt, "&&"),
-            EqualTo => write!(fmt, "=="),
-            NotEqualTo => write!(fmt, "!="),
-            GreaterThan => write!(fmt, ">"),
-            GreaterThanOrEqualTo => write!(fmt, ">="),
-            LesserThan => write!(fmt, "<"),
-            LesserThanOrEqualTo => write!(fmt, "<="),
             ToThePowerOf => write!(fmt, "**"),
             Modulo => write!(fmt, "%"),
         }

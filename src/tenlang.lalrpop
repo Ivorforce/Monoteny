@@ -9,9 +9,8 @@ OptionalFinalSeparatorList<Element, Separator>: Vec<Element> = {
     <v0: (<Element> Separator)*> <e1: Element?> => v0.into_iter().chain(e1).collect()
 };
 
-UnassociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
-    NextOperatorLevel Operator NextOperatorLevel => Box::new(Expression::BinaryOperator(<>)),
-    NextOperatorLevel
+AtLeastTwoElementsSeparatorList<Element, Separator>: Vec<Element> = {
+    <v0: (<Element> Separator)+> <e1: Element> => v0.into_iter().chain([e1]).collect()
 };
 
 LeftAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
@@ -121,7 +120,7 @@ FunctionCallElement = {
 }
 
 LogicalElement = LeftAssociativeBinaryOperator<LogicalOperator, ComparisonElement>;
-ComparisonElement = UnassociativeBinaryOperator<ComparisonOperator, SumElement>;
+ComparisonElement = ComparisonExpression<SumElement>;
 SumElement = LeftAssociativeBinaryOperator<SumOperator, MultiplicationElement>;
 MultiplicationElement = LeftAssociativeBinaryOperator<FactorOperator, PowerElement>;
 PowerElement = LeftAssociativeBinaryOperator<PowerOperator, Term>;
@@ -139,16 +138,6 @@ PowerOperator: BinaryOperator = {
 LogicalOperator: BinaryOperator = {
     "||" => BinaryOperator::Or,
     "&&" => BinaryOperator::And,
-};
-
-ComparisonOperator: BinaryOperator = {
-    "==" => BinaryOperator::EqualTo,
-    "!=" => BinaryOperator::NotEqualTo,
-
-    ">" => BinaryOperator::GreaterThan,
-    ">=" => BinaryOperator::GreaterThanOrEqualTo,
-    "<" => BinaryOperator::LesserThan,
-    "<=" => BinaryOperator::LesserThanOrEqualTo,
 };
 
 SumOperator: BinaryOperator = {
@@ -170,6 +159,18 @@ BoolLiteral: bool = {
     "true" => true,
     "false" => false,
 };
+
+ComparisonExpression<NextOperatorLevel>: Box<Expression> = {
+    AtLeastTwoElementsSeparatorList<NextOperatorLevel, "=="> => Box::new(Expression::NAryOperator(NAryOperator::EqualTo, <>)),
+    AtLeastTwoElementsSeparatorList<NextOperatorLevel, "!="> => Box::new(Expression::NAryOperator(NAryOperator::NotEqualTo, <>)),
+
+    AtLeastTwoElementsSeparatorList<NextOperatorLevel, ">"> => Box::new(Expression::NAryOperator(NAryOperator::GreaterThan, <>)),
+    AtLeastTwoElementsSeparatorList<NextOperatorLevel, ">="> => Box::new(Expression::NAryOperator(NAryOperator::GreaterThanOrEqualTo, <>)),
+    AtLeastTwoElementsSeparatorList<NextOperatorLevel, "<"> => Box::new(Expression::NAryOperator(NAryOperator::LesserThan, <>)),
+    AtLeastTwoElementsSeparatorList<NextOperatorLevel, "<="> => Box::new(Expression::NAryOperator(NAryOperator::LesserThanOrEqualTo, <>)),
+
+    NextOperatorLevel,
+}
 
 Term: Box<Expression> = {
     Number => Box::new(Expression::Number(<>)),
