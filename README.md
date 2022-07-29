@@ -10,7 +10,9 @@ TenLang is an experimental language focusing on tensor math. It aims to streamli
 - All actions on an NDArray broadcast to their atoms, unless specified.
   - Yes, that includes function calls and member lookups.
 
-## Transpilation Targets
+## Roadmap
+
+### Transpilation Targets
 
 TenLang lacks many features required to build full apps. Luckily, many excellent ecosystems exist where it is possible to build such things. Therefore, TenLang aims to focus on its most vital feature: Being a modern imperative math programming language.
 
@@ -21,7 +23,7 @@ Therefore, instead of a compiler, TenLang will come with several different trans
 * [Future] Octave / MatLab
 * [Future] R
 
-## Roadmap
+### Language Features
 
 - [x] Project Skeleton
 - [x] Number Primitives
@@ -48,8 +50,16 @@ Therefore, instead of a compiler, TenLang will come with several different trans
 - [ ] Optionals
 - [ ] String comprehension
 - [ ] Sets
-- [ ] Standard Library
+- [ ] User-Defined Binary / Unary Operators (note: restricted to a set of characters like +^-=)
 - [ ] System Callback API / Permission Contexts
+
+### Standard Library
+
+- [ ] Standard unary + binary operators
+- [ ] String Handling
+- [ ] Common 0D-Math operations (pow, sqrt, etc.)
+- [ ] Common 1D-Math operations (sum, std, etc.)
+- [ ] Common timeseries data functions (filter, gaussian, running mean, etc.)
 
 ### Currently not planned
 
