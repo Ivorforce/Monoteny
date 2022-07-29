@@ -246,6 +246,31 @@ pub fn escape_string(string: &String) -> String {
     return string
 }
 
+pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &FunctionInterface, arguments: &Vec<Box<PassedArgument>>, builtins: &TenLangBuiltins) -> Result<bool, std::io::Error> {
+    guard!(let [expression] = &arguments[..] else {
+        return Ok(false);
+    });
+
+    let mut transpile_unary_operator = |name: &str| -> Result<bool, std::io::Error> {
+        write!(stream, "{}(", name)?;
+        transpile_expression(stream, &expression.value, builtins)?;
+        write!(stream, ")")?;
+        Ok(true)
+    };
+
+    if interface == builtins.operators.positive.as_ref() {
+        return transpile_unary_operator("+");
+    }
+    else if interface == builtins.operators.negative.as_ref() {
+        return transpile_unary_operator("-");
+    }
+    else if interface == builtins.operators.not.as_ref() {
+        return transpile_unary_operator("not ");
+    }
+
+    return Ok(false);
+}
+
 pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &FunctionInterface, arguments: &Vec<Box<PassedArgument>>, builtins: &TenLangBuiltins) -> Result<bool, std::io::Error> {
     guard!(let [lhs, rhs] = &arguments[..] else {
         return Ok(false);
@@ -254,7 +279,7 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Funct
     let mut transpile_binary_operator = |name: &str| -> Result<bool, std::io::Error> {
         write!(stream, "(")?;
         transpile_expression(stream, &lhs.value, builtins)?;
-        write!(stream, " {} ", name)?;
+        write!(stream, ") {} (", name)?;
         transpile_expression(stream, &rhs.value, builtins)?;
         write!(stream, ")")?;
 

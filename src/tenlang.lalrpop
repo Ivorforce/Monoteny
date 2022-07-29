@@ -16,9 +16,10 @@ match {
     "(", ")", "{", "}", "[",  "]",
     ";", ",", ":",
     "=", "?",
+    "!",
     "+", "-", "*", "/", "&&", "||",
-    "==", "!=", ">", ">=", "<", "<=",
     "**", "%",
+    "==", "!=", ">", ">=", "<", "<=",
     "let", "var",
     "fn", "extension",
 } else {
@@ -151,10 +152,18 @@ FactorOperator: BinaryOperator = {
     "%" => BinaryOperator::Modulo,
 };
 
+UnaryOperator: UnaryOperator = {
+    "!" => UnaryOperator::Not,
+};
+
+BoolLiteral: bool = {
+    "true" => true,
+    "false" => false,
+};
+
 Term: Box<Expression> = {
     Number => Box::new(Expression::Number(<>)),
-    "true" => Box::new(Expression::Bool(true)),
-    "false" => Box::new(Expression::Bool(false)),
+    BoolLiteral => Box::new(Expression::Bool(<>)),
     Identifier => Box::new(Expression::VariableLookup(<>)),
     "(" <Expression> ")",
     "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(Expression::ArrayLiteral(<>)),

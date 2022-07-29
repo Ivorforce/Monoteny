@@ -27,6 +27,10 @@ pub struct TenLangBuiltinOperators {
     pub divide: Rc<FunctionInterface>,
     pub to_the_power_of: Rc<FunctionInterface>,
     pub modulo: Rc<FunctionInterface>,
+
+    pub positive: Rc<FunctionInterface>,
+    pub negative: Rc<FunctionInterface>,
+    pub not: Rc<FunctionInterface>,
 }
 
 pub struct TenLangBuiltinFunctions {
@@ -93,6 +97,10 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                 divide: add_binary_operator("/"),
                 to_the_power_of: add_binary_operator("**"),
                 modulo: add_binary_operator("%"),
+
+                positive: add_binary_operator("+"),
+                negative: add_binary_operator("-"),
+                not: add_binary_operator("!"),
             },
             functions: TenLangBuiltinFunctions {
                 print: add_function(

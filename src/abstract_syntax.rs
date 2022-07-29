@@ -64,6 +64,7 @@ pub enum Expression {
     Number(i32),
     Bool(bool),
     BinaryOperator(Box<Expression>, BinaryOperator, Box<Expression>),
+    UnaryOperator(UnaryOperator, Box<Expression>),
     FunctionCall(FunctionCallType, Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
     VariableLookup(String),
@@ -74,6 +75,13 @@ pub enum Expression {
 pub struct PassedArgument {
     pub key: Option<ParameterKey>,
     pub value: Box<Expression>,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum UnaryOperator {
+    Not,
+    Positive,
+    Negative,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -199,6 +207,7 @@ impl Debug for Expression {
         match self {
             Number(n) => write!(fmt, "{:?}", n),
             BinaryOperator(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
+            UnaryOperator(op, expression) => write!(fmt, "{:?}{:?}", op, expression),
             FunctionCall(call_type, expression, args) => {
                 let brackets = call_type.bracket_str();
                 write!(fmt, "{:?}{}", expression, brackets.chars().nth(0).unwrap())?;
@@ -238,6 +247,17 @@ impl Debug for BinaryOperator {
             LesserThanOrEqualTo => write!(fmt, "<="),
             ToThePowerOf => write!(fmt, "**"),
             Modulo => write!(fmt, "%"),
+        }
+    }
+}
+
+impl Debug for UnaryOperator {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        use self::UnaryOperator::*;
+        match self {
+            Not => write!(fmt, "!"),
+            Positive => write!(fmt, "+"),
+            Negative => write!(fmt, "-"),
         }
     }
 }

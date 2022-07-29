@@ -256,6 +256,9 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
                 result_type
             }
         },
+        abstract_syntax::Expression::UnaryOperator(operator, expression) => {
+            todo!()
+        },
         abstract_syntax::Expression::VariableLookup(identifier) => {
             let variable = variables.resolve(identifier);
 
