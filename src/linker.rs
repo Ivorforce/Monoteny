@@ -260,6 +260,20 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
                 abstract_syntax::NAryOperator::LesserThanOrEqualTo => &builtins.operators.lesser_than_or_equal_to,
             };
 
+            if arguments.len() < 2 {
+                // We shouldn't get here if the parser works.
+                panic!("N-Ary operator needs at least two arguments.");
+            }
+            else if arguments.len() > 2 {
+                // TODO We can probably do this the easiest way by introducing a
+                //  helper function for each n-ary operator. It would accept (*args) and
+                //  simply do a for loop with window of size two, comparing elements.
+                //  The alternative, in-function evaluation, would mean introducing new temp variables,
+                //  which is certainly possible in a compiler but not easily in a transpiler.
+                // Transitive properties of arguments should ensure validity.
+                panic!("N-Ary operators support only two arguments (for now).");
+            }
+
             resolve_static_function_call(operator_function, &arguments.iter().collect(), variables, builtins)
         },
         abstract_syntax::Expression::BinaryOperator(lhs, operator, rhs) => {
