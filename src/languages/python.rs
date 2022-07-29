@@ -261,12 +261,35 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Funct
         Ok(true)
     };
 
+    // TODO And and Or exist but work only for boolean arguments, not tensors.
+    //  We could make use of them if the arguments are booleans and the result is too.
     if interface == builtins.operators.and.as_ref() {
-        return transpile_binary_operator("and");
+        return transpile_binary_operator("&");
     }
     else if interface == builtins.operators.or.as_ref() {
-        return transpile_binary_operator("or");
+        return transpile_binary_operator("|");
     }
+
+    else if interface == builtins.operators.equal_to.as_ref() {
+        return transpile_binary_operator("==");
+    }
+    else if interface == builtins.operators.not_equal_to.as_ref() {
+        return transpile_binary_operator("!=");
+    }
+
+    else if interface == builtins.operators.greater_than.as_ref() {
+        return transpile_binary_operator(">");
+    }
+    else if interface == builtins.operators.greater_than_or_equal_to.as_ref() {
+        return transpile_binary_operator(">=");
+    }
+    else if interface == builtins.operators.lesser_than.as_ref() {
+        return transpile_binary_operator("<");
+    }
+    else if interface == builtins.operators.lesser_than_or_equal_to.as_ref() {
+        return transpile_binary_operator("<=");
+    }
+
     else if interface == builtins.operators.add.as_ref() {
         return transpile_binary_operator("+");
     }
@@ -278,6 +301,12 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Funct
     }
     else if interface == builtins.operators.divide.as_ref() {
         return transpile_binary_operator("/");
+    }
+    else if interface == builtins.operators.to_the_power_of.as_ref() {
+        return transpile_binary_operator("**");
+    }
+    else if interface == builtins.operators.modulo.as_ref() {
+        return transpile_binary_operator("%");
     }
 
     return Ok(false);

@@ -11,6 +11,7 @@ fn main() {
     b = 3;
     let b = 2;
     print("b: ");
-    print(true || false);
+    print(5 > 2 ** 3 * 2);
+    print(false || true);
     print([b, square(0: b), 2]);
 }

@@ -31,8 +31,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Array Literals
 - [x] Function Interfaces
 - [x] Int call / subscript keying
-- [x] Binary operators: + - * / || &&
-- [ ] Binary operators: > < >= <= == != % **
+- [x] Binary operators: + - * / || && > < >= <= == != % **
 - [ ] Unary operators: - !
 - [ ] Overloading & Call Type Checking
 - [ ] Type Inheritance

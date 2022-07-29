@@ -12,10 +12,21 @@ pub struct TenLangBuiltins {
 pub struct TenLangBuiltinOperators {
     pub and: Rc<FunctionInterface>,
     pub or: Rc<FunctionInterface>,
+
+    pub equal_to: Rc<FunctionInterface>,
+    pub not_equal_to: Rc<FunctionInterface>,
+
+    pub greater_than: Rc<FunctionInterface>,
+    pub greater_than_or_equal_to: Rc<FunctionInterface>,
+    pub lesser_than: Rc<FunctionInterface>,
+    pub lesser_than_or_equal_to: Rc<FunctionInterface>,
+
     pub add: Rc<FunctionInterface>,
     pub subtract: Rc<FunctionInterface>,
     pub multiply: Rc<FunctionInterface>,
     pub divide: Rc<FunctionInterface>,
+    pub to_the_power_of: Rc<FunctionInterface>,
+    pub modulo: Rc<FunctionInterface>,
 }
 
 pub struct TenLangBuiltinFunctions {
@@ -67,10 +78,21 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
             operators: TenLangBuiltinOperators {
                 and: add_binary_operator("&&"),
                 or: add_binary_operator("||"),
+
+                equal_to: add_binary_operator("=="),
+                not_equal_to: add_binary_operator("!="),
+
+                greater_than: add_binary_operator(">"),
+                greater_than_or_equal_to: add_binary_operator(">="),
+                lesser_than: add_binary_operator("<"),
+                lesser_than_or_equal_to: add_binary_operator("<="),
+
                 add: add_binary_operator("+"),
                 subtract: add_binary_operator("-"),
                 multiply: add_binary_operator("*"),
                 divide: add_binary_operator("/"),
+                to_the_power_of: add_binary_operator("**"),
+                modulo: add_binary_operator("%"),
             },
             functions: TenLangBuiltinFunctions {
                 print: add_function(

@@ -80,10 +80,21 @@ pub struct PassedArgument {
 pub enum BinaryOperator {
     Or,
     And,
+
+    EqualTo,
+    NotEqualTo,
+
+    GreaterThan,
+    GreaterThanOrEqualTo,
+    LesserThan,
+    LesserThanOrEqualTo,
+
     Multiply,
     Divide,
     Add,
     Subtract,
+    ToThePowerOf,
+    Modulo,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -219,6 +230,14 @@ impl Debug for BinaryOperator {
             Subtract => write!(fmt, "-"),
             Or => write!(fmt, "||"),
             And => write!(fmt, "&&"),
+            EqualTo => write!(fmt, "=="),
+            NotEqualTo => write!(fmt, "!="),
+            GreaterThan => write!(fmt, ">"),
+            GreaterThanOrEqualTo => write!(fmt, ">="),
+            LesserThan => write!(fmt, "<"),
+            LesserThanOrEqualTo => write!(fmt, "<="),
+            ToThePowerOf => write!(fmt, "**"),
+            Modulo => write!(fmt, "%"),
         }
     }
 }

@@ -17,6 +17,8 @@ match {
     ";", ",", ":",
     "=", "?",
     "+", "-", "*", "/", "&&", "||",
+    "==", "!=", ">", ">=", "<", "<=",
+    "**", "%",
     "let", "var",
     "fn", "extension",
 } else {
@@ -88,6 +90,11 @@ pub Statement: Box<Statement> = {
     Expression => Box::new(Statement::Expression(<>)),
 };
 
+VariableDeclarationMutability: Mutability = {
+    "let" => Mutability::Immutable,
+    "var" => Mutability::Mutable,
+};
+
 BinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
     BinaryOperator<Operator, NextOperatorLevel> Operator NextOperatorLevel => Box::new(Expression::BinaryOperator(<>)),
     NextOperatorLevel
@@ -102,9 +109,11 @@ FunctionCallElement = {
     LogicalElement
 }
 
-LogicalElement = BinaryOperator<LogicalOperator, SumElement>;
+LogicalElement = BinaryOperator<LogicalOperator, ComparisonElement>;
+ComparisonElement = BinaryOperator<ComparisonOperator, SumElement>;
 SumElement = BinaryOperator<SumOperator, MultiplicationElement>;
-MultiplicationElement = BinaryOperator<FactorOperator, Term>;
+MultiplicationElement = BinaryOperator<FactorOperator, PowerElement>;
+PowerElement = BinaryOperator<PowerOperator, Term>;
 
 PassedArgument: Box<PassedArgument> = {
     <name: Number> ":" <value: Expression> => Box::new(PassedArgument { key: Some(ParameterKey::Int(name)), value }),
@@ -112,9 +121,23 @@ PassedArgument: Box<PassedArgument> = {
     <value: Expression> => Box::new(PassedArgument { key: None, value })
 }
 
+PowerOperator: BinaryOperator = {
+    "**" => BinaryOperator::ToThePowerOf,
+};
+
 LogicalOperator: BinaryOperator = {
     "||" => BinaryOperator::Or,
     "&&" => BinaryOperator::And,
+};
+
+ComparisonOperator: BinaryOperator = {
+    "==" => BinaryOperator::EqualTo,
+    "!=" => BinaryOperator::NotEqualTo,
+
+    ">" => BinaryOperator::GreaterThan,
+    ">=" => BinaryOperator::GreaterThanOrEqualTo,
+    "<" => BinaryOperator::LesserThan,
+    "<=" => BinaryOperator::LesserThanOrEqualTo,
 };
 
 SumOperator: BinaryOperator = {
@@ -125,11 +148,7 @@ SumOperator: BinaryOperator = {
 FactorOperator: BinaryOperator = {
     "*" => BinaryOperator::Multiply,
     "/" => BinaryOperator::Divide,
-};
-
-VariableDeclarationMutability: Mutability = {
-    "let" => Mutability::Immutable,
-    "var" => Mutability::Mutable,
+    "%" => BinaryOperator::Modulo,
 };
 
 Term: Box<Expression> = {
