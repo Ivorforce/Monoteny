@@ -12,9 +12,9 @@ TenLang is an experimental language focusing on tensor math. It aims to streamli
 
 ## Transpilation Targets
 
-Many excellent tools and complex infrastructure exists in other ecosystems. As a single-feature language, TenLang does not aim to build a new ecosystem.
+TenLang lacks many features required to build full apps. Luckily, many excellent ecosystems exist where it is possible to build such things. Therefore, TenLang aims to focus on its most vital feature: Being a modern imperative math programming language.
 
-Instead, TenLang transpiles to insert into these ecosystems. Hereby, any frameworks built in TenLang will be available in *all* of the ecosystems. The transpilation targets are:
+Therefore, instead of a compiler, TenLang will come with several different transpilers into existing ecosystems. Hereby, any frameworks built in TenLang will be usable in _any_ of those ecosystems. The transpilation targets are:
 
 * [WIP] Python with NumPy
 * [Future] C++ with Eigen
@@ -53,6 +53,8 @@ Instead, TenLang transpiles to insert into these ecosystems. Hereby, any framewo
 
 ### Currently not planned
 
+- Compiler / LLVM / Virtual Machine
+  - See [Transpilation Targets](#Transpilation Targets)
 - OOP / Polymorphism / Classes
   - Very complex and of limited use for most mathematical applications.
 - Variadic parameters
