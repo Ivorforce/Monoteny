@@ -183,14 +183,21 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
 
 pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Box<Expression> {
     Box::new(match syntax {
-        abstract_syntax::Expression::Number(n) => Expression {
+        abstract_syntax::Expression::Number(n) => {
             // TODO The type should be inferred
-            operation: Box::new(ExpressionOperation::Primitive(Primitive::Int32(n.clone()))),
-            result_type: Some(Box::new(Type::Identifier(String::from("Int32"))))
+            let primitive = Primitive::Int32(n.clone());
+            Expression {
+                result_type: Some(Box::new(Type::Primitive(primitive.primitive_type()))),
+                operation: Box::new(ExpressionOperation::Primitive(primitive)),
+            }
+        },
+        abstract_syntax::Expression::Bool(n) => Expression {
+            operation: Box::new(ExpressionOperation::Primitive(Primitive::Bool(n.clone()))),
+            result_type: Some(Box::new(Type::Primitive(PrimitiveType::Bool)))
         },
         abstract_syntax::Expression::StringLiteral(string) => {
             Expression {
-                operation: Box::new(ExpressionOperation::Primitive(Primitive::String(string.clone()))),
+                operation: Box::new(ExpressionOperation::StringLiteral(string.clone())),
                 result_type: Some(Box::new(Type::Identifier(String::from("String"))))
             }
         },
@@ -304,7 +311,25 @@ pub fn resolve_common_supertype<'a>(types: &Vec<&'a Box<Type>>) -> &'a Box<Type>
 
 pub fn resolve_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
     Box::new(match syntax.borrow() {
-        abstract_syntax::TypeDeclaration::Identifier(id) => Type::Identifier(id.clone()),
+        abstract_syntax::TypeDeclaration::Identifier(id) => {
+            use PrimitiveType::*;
+            match id.as_str() {
+                "Bool" => Type::Primitive(Bool),
+                "Int8" => Type::Primitive(Int8),
+                "Int16" => Type::Primitive(Int16),
+                "Int32" => Type::Primitive(Int32),
+                "Int64" => Type::Primitive(Int64),
+                "Int128" => Type::Primitive(Int128),
+                "UInt8" => Type::Primitive(UInt8),
+                "UInt16" => Type::Primitive(UInt16),
+                "UInt32" => Type::Primitive(UInt32),
+                "UInt64" => Type::Primitive(UInt64),
+                "UInt128" => Type::Primitive(UInt128),
+                "Float32" => Type::Primitive(Float32),
+                "Float64" => Type::Primitive(Float64),
+                _ => Type::Identifier(id.clone())
+            }
+        },
         abstract_syntax::TypeDeclaration::NDArray(identifier, _) => {
             Type::NDArray(resolve_type(&identifier))
         }

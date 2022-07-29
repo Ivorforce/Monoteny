@@ -62,6 +62,7 @@ pub enum Statement {
 
 pub enum Expression {
     Number(i32),
+    Bool(bool),
     BinaryOperator(Box<Expression>, Opcode, Box<Expression>),
     FunctionCall(FunctionCallType, Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
@@ -202,6 +203,7 @@ impl Debug for Expression {
                 return Ok(())
             },
             StringLiteral(string) => write!(fmt, "{:?}", string),
+            Bool(value) => write!(fmt, "{}", value),
             Error => write!(fmt, "error"),
         }
     }

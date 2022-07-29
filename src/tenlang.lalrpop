@@ -11,6 +11,7 @@ OptionalFinalSeparatorList<E,S>: Vec<E> =
 
 match {
     r"[0-9]+" => _Number,
+    "true", "false",
     "return",
     "(", ")", "{", "}", "[",  "]",
     ";", ",", ":",
@@ -126,6 +127,8 @@ VariableDeclarationMutability: Mutability = {
 
 Term: Box<Expression> = {
     Number => Box::new(Expression::Number(<>)),
+    "true" => Box::new(Expression::Bool(true)),
+    "false" => Box::new(Expression::Bool(false)),
     Identifier => Box::new(Expression::VariableLookup(<>)),
     "(" <Expression> ")",
     "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(Expression::ArrayLiteral(<>)),

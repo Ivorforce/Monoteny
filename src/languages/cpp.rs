@@ -30,14 +30,30 @@ pub fn transpile_program(
     return Ok(())
 }
 
+pub fn transpile_primitive_type(type_def: &PrimitiveType) -> String {
+    String::from(match type_def {
+        PrimitiveType::Bool => "bool",
+        PrimitiveType::Int8 => "int8_t",
+        PrimitiveType::Int16 => "int16_t",
+        PrimitiveType::Int32 => "int32_t",
+        PrimitiveType::Int64 => "int64_t",
+        PrimitiveType::Int128 => "int128_t",
+        PrimitiveType::UInt8 => "uint8_t",
+        PrimitiveType::UInt16 => "uint16_t",
+        PrimitiveType::UInt32 => "uint32_t",
+        PrimitiveType::UInt64 => "uint64_t",
+        PrimitiveType::UInt128 => "uint128_t",
+        PrimitiveType::Float32 => "float",
+        PrimitiveType::Float64 => "double",
+    })
+}
+
 pub fn transpile_type(type_def: &Type) -> String {
     match type_def.borrow() {
+        Type::Primitive(n) => transpile_primitive_type(n),
         Type::Identifier(t) => {
             match t.as_str() {
-                "Int32" => String::from("int32_t"),
-                "Int64" => String::from("int64_t"),
-                "Float32" => String::from("float_t"),
-                "Float64" => String::from("float64_t"),
+                "String" => todo!(),
                 _ => t.clone()
             }
         },
@@ -46,6 +62,6 @@ pub fn transpile_type(type_def: &Type) -> String {
             format!("Tensor<{}, 1>", transpile_type(atom))
         }
         Type::Function(_) => todo!(),
-        Type::Generic(_) => todo!()
+        Type::Generic(_) => todo!(),
     }
 }
