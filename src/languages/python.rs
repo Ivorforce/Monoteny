@@ -328,7 +328,7 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Funct
     else if interface == builtins.operators.divide.as_ref() {
         return transpile_binary_operator("/");
     }
-    else if interface == builtins.operators.to_the_power_of.as_ref() {
+    else if interface == builtins.operators.exponentiate.as_ref() {
         return transpile_binary_operator("**");
     }
     else if interface == builtins.operators.modulo.as_ref() {

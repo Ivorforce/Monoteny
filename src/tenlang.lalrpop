@@ -123,7 +123,7 @@ LogicalElement = LeftAssociativeBinaryOperator<LogicalOperator, ComparisonElemen
 ComparisonElement = ComparisonExpression<SumElement>;
 SumElement = LeftAssociativeBinaryOperator<SumOperator, MultiplicationElement>;
 MultiplicationElement = LeftAssociativeBinaryOperator<FactorOperator, PowerElement>;
-PowerElement = LeftAssociativeBinaryOperator<PowerOperator, Term>;
+PowerElement = RightAssociativeBinaryOperator<PowerOperator, Term>;
 
 PassedArgument: Box<PassedArgument> = {
     <name: Number> ":" <value: Expression> => Box::new(PassedArgument { key: Some(ParameterKey::Int(name)), value }),
@@ -132,7 +132,7 @@ PassedArgument: Box<PassedArgument> = {
 }
 
 PowerOperator: BinaryOperator = {
-    "**" => BinaryOperator::ToThePowerOf,
+    "**" => BinaryOperator::Exponentiate,
 };
 
 LogicalOperator: BinaryOperator = {

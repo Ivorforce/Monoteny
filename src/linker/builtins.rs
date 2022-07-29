@@ -25,7 +25,7 @@ pub struct TenLangBuiltinOperators {
     pub subtract: Rc<FunctionInterface>,
     pub multiply: Rc<FunctionInterface>,
     pub divide: Rc<FunctionInterface>,
-    pub to_the_power_of: Rc<FunctionInterface>,
+    pub exponentiate: Rc<FunctionInterface>,
     pub modulo: Rc<FunctionInterface>,
 
     pub positive: Rc<FunctionInterface>,
@@ -95,7 +95,7 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                 subtract: add_binary_operator("-"),
                 multiply: add_binary_operator("*"),
                 divide: add_binary_operator("/"),
-                to_the_power_of: add_binary_operator("**"),
+                exponentiate: add_binary_operator("**"),
                 modulo: add_binary_operator("%"),
 
                 // TODO These should be unary

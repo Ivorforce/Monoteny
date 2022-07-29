@@ -284,7 +284,7 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
                 abstract_syntax::BinaryOperator::Divide => &builtins.operators.divide,
                 abstract_syntax::BinaryOperator::Add => &builtins.operators.add,
                 abstract_syntax::BinaryOperator::Subtract => &builtins.operators.subtract,
-                abstract_syntax::BinaryOperator::ToThePowerOf => &builtins.operators.to_the_power_of,
+                abstract_syntax::BinaryOperator::Exponentiate => &builtins.operators.exponentiate,
                 abstract_syntax::BinaryOperator::Modulo => &builtins.operators.modulo,
             };
 

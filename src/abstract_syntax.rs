@@ -94,7 +94,7 @@ pub enum BinaryOperator {
     Divide,
     Add,
     Subtract,
-    ToThePowerOf,
+    Exponentiate,
     Modulo,
 }
 
@@ -267,7 +267,7 @@ impl Debug for BinaryOperator {
             Subtract => write!(fmt, "-"),
             Or => write!(fmt, "||"),
             And => write!(fmt, "&&"),
-            ToThePowerOf => write!(fmt, "**"),
+            Exponentiate => write!(fmt, "**"),
             Modulo => write!(fmt, "%"),
         }
     }
