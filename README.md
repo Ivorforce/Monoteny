@@ -32,15 +32,14 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Function Interfaces
 - [x] Int call / subscript keying
 - [x] Binary operators: + - * / || && > < >= <= == != % **
-- [ ] Unary operators: - !
+- [ ] Generic Type Inferral
 - [ ] Overloading & Call Type Checking
 - [ ] Type Inheritance
+- [ ] Unary operators: - !
 - [ ] If / Else, Guard
-- [ ] Generic Type Inferral
 - [ ] Multiple comparison syntax: a > b > c and a == b == c
 - [ ] Structs
-- [ ] Interfaces
-- [ ] Extensions
+- [ ] Interfaces + Extensions
 - [ ] Exceptions
 - [ ] Staggered Dimensions
 - [ ] Implicit tensor building

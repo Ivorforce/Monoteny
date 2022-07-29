@@ -40,12 +40,13 @@ pub struct TenLangBuiltinFunctions {
 pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
     let mut constants: HashMap<String, Rc<Variable>> = HashMap::new();
 
-    let mut add_function = |name: &str, parameters: Vec<Box<Parameter>>, return_type: Option<Box<Type>>| -> Rc<FunctionInterface> {
+    let mut add_function = |name: &str, parameters: Vec<Box<Parameter>>, generics: Vec<Rc<Generic>>, return_type: Option<Box<Type>>| -> Rc<FunctionInterface> {
         let interface = Rc::new(FunctionInterface {
             id: Uuid::new_v4(),
             name: String::from(name),
             return_type,
             parameters,
+            generics,
         });
 
         let var = Rc::new(Variable {
@@ -61,7 +62,11 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
 
     // For now it's ok to assume the 3 types to be equal
     let mut add_binary_operator = |name: &str| -> Rc<FunctionInterface> {
-        let generic_type = Box::new(Type::Generic(Uuid::new_v4()));
+        let generic = Rc::new(Generic {
+            name: String::from("Value"),
+            id: Uuid::new_v4(),
+        });
+        let generic_type = Box::new(Type::Generic(Rc::clone(&generic)));
 
         let parameters: Vec<Box<Parameter>> = vec!["lhs", "rhs"].iter().enumerate()
             .map(|(idx, name)| Box::new(Parameter {
@@ -74,7 +79,7 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                 })
             })).collect();
 
-        return add_function(name, parameters, Some(generic_type));
+        return add_function(name, parameters, vec![generic], Some(generic_type));
     };
 
     return (
@@ -83,6 +88,7 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                 and: add_binary_operator("&&"),
                 or: add_binary_operator("||"),
 
+                // These are n-ary in syntax but binary in implementation.
                 equal_to: add_binary_operator("=="),
                 not_equal_to: add_binary_operator("!="),
 
@@ -115,7 +121,9 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                                 mutability: Mutability::Immutable,
                             })
                         })
-                    ], None
+                    ],
+                    vec![],
+                    None
                 )
             }
         },

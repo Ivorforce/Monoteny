@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use uuid::Uuid;
@@ -17,7 +17,10 @@ pub struct Program {
 pub struct FunctionInterface {
     pub id: Uuid,
     pub name: String,
+
     pub parameters: Vec<Box<Parameter>>,
+    pub generics: Vec<Rc<Generic>>,
+
     pub return_type: Option<Box<Type>>,
 }
 
@@ -54,7 +57,13 @@ pub enum Type {
     Identifier(String),
     NDArray(Box<Type>),
     Function(Rc<FunctionInterface>),
-    Generic(Uuid),
+    Generic(Rc<Generic>),
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct Generic {
+    pub id: Uuid,
+    pub name: String,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -177,6 +186,48 @@ impl PartialEq for FunctionInterface {
 
 impl Debug for Type {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        use Type::*;
+        match self {
+            Primitive(p) => write!(fmt, "{}", p.identifier_string()),
+            Identifier(i) => write!(fmt, "{}", i),
+            NDArray(atom) => write!(fmt, "{:?}", atom),
+            Function(f) => write!(fmt, "(?) -> ({:?})", f.return_type),
+            Generic(g) => write!(fmt, "{}", g.name),
+        }
     }
+}
+
+impl Type {
+    pub fn collect_generics<'a>(&'a self, set: &mut HashSet<&'a Rc<Generic>>) {
+        match self {
+            Type::Primitive(_) => {}
+            Type::Identifier(_) => {}
+            Type::NDArray(atom) => {
+                atom.collect_generics(set);
+            }
+            Type::Function(fun) => {
+                if let Some(return_type) = &fun.return_type {
+                    return_type.collect_generics(set);
+                }
+            }
+            Type::Generic(generic) => {
+                &set.insert(generic);
+            }
+        }
+    }
+}
+
+pub fn get_common_supertype<'a>(types: &Vec<&'a Box<Type>>) -> &'a Box<Type> {
+    if types.is_empty() {
+        panic!("Empty (inferred) array types are not supported for now.");
+    }
+
+    let reference = types[0];
+    for other in types.iter().skip(1) {
+        if *other != reference {
+            panic!("Supertype inferral is not supported yet.")
+        }
+    }
+
+    return reference;
 }

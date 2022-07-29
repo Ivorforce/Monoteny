@@ -87,7 +87,11 @@ pub fn resolve_function_interface(function: &abstract_syntax::Function) -> Rc<Fu
     return Rc::new(FunctionInterface {
         id: Uuid::new_v4(),
         name: function.identifier.clone(),
+
         parameters,
+        // This is correct so far because syntax does not allow generics use yet.
+        generics: vec![],
+
         return_type
     });
 }
@@ -241,7 +245,7 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
                 .map(|x| resolve_expression(x, variables, builtins))
                 .collect();
 
-            let supertype = resolve_common_supertype(
+            let supertype = get_common_supertype(
                 &elements.iter().map(|x| x.result_type.as_ref().unwrap()).collect()
             ).clone();
 
@@ -339,21 +343,6 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
             todo!()
         }
     })
-}
-
-pub fn resolve_common_supertype<'a>(types: &Vec<&'a Box<Type>>) -> &'a Box<Type> {
-    if types.is_empty() {
-        panic!("Empty (inferred) array types are not supported for now.");
-    }
-
-    let reference = types[0];
-    for other in types.iter().skip(1) {
-        if *other != reference {
-            panic!("Supertype inferral is not supported yet.")
-        }
-    }
-
-    return reference;
 }
 
 pub fn resolve_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
