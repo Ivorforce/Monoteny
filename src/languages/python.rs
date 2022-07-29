@@ -3,6 +3,7 @@ use std::io::Write;
 use guard::guard;
 use crate::linker::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::*;
+use crate::linker::primitives::*;
 
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program) -> Result<(), std::io::Error> {
     writeln!(stream, "import numpy as np")?;
@@ -182,19 +183,19 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
     match &expression.operation.as_ref() {
         ExpressionOperation::Primitive(literal) => {
             match &literal {
-                Primitive::Bool(n) => write!(stream, "{}", (if *n { "True" } else { "False" }))?,
-                Primitive::Int8(n) => write!(stream, "np.int8({})", n)?,
-                Primitive::Int16(n) => write!(stream, "np.int16({})", n)?,
-                Primitive::Int32(n) => write!(stream, "np.int32({})", n)?,
-                Primitive::Int64(n) => write!(stream, "np.int64({})", n)?,
-                Primitive::Int128(n) => write!(stream, "np.int128({})", n)?,
-                Primitive::UInt8(n) => write!(stream, "np.uint8({})", n)?,
-                Primitive::UInt16(n) => write!(stream, "np.uint16({})", n)?,
-                Primitive::UInt32(n) => write!(stream, "np.uint32({})", n)?,
-                Primitive::UInt64(n) => write!(stream, "np.uint64({})", n)?,
-                Primitive::UInt128(n) => write!(stream, "np.uint128({})", n)?,
-                Primitive::Float32(n) => write!(stream, "np.float32({})", n)?,
-                Primitive::Float64(n) => write!(stream, "np.float64({})", n)?,
+                PrimitiveValue::Bool(n) => write!(stream, "{}", (if *n { "True" } else { "False" }))?,
+                PrimitiveValue::Int8(n) => write!(stream, "np.int8({})", n)?,
+                PrimitiveValue::Int16(n) => write!(stream, "np.int16({})", n)?,
+                PrimitiveValue::Int32(n) => write!(stream, "np.int32({})", n)?,
+                PrimitiveValue::Int64(n) => write!(stream, "np.int64({})", n)?,
+                PrimitiveValue::Int128(n) => write!(stream, "np.int128({})", n)?,
+                PrimitiveValue::UInt8(n) => write!(stream, "np.uint8({})", n)?,
+                PrimitiveValue::UInt16(n) => write!(stream, "np.uint16({})", n)?,
+                PrimitiveValue::UInt32(n) => write!(stream, "np.uint32({})", n)?,
+                PrimitiveValue::UInt64(n) => write!(stream, "np.uint64({})", n)?,
+                PrimitiveValue::UInt128(n) => write!(stream, "np.uint128({})", n)?,
+                PrimitiveValue::Float32(n) => write!(stream, "np.float32({})", n)?,
+                PrimitiveValue::Float64(n) => write!(stream, "np.float64({})", n)?,
             }
         }
         ExpressionOperation::StringLiteral(string) => {

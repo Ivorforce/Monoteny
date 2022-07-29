@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::abstract_syntax::Mutability;
 
 use crate::linker::builtins::TenLangBuiltins;
+use crate::linker::primitives::{PrimitiveType, PrimitiveValue};
 
 // ================================ Global ==============================
 
@@ -66,40 +67,6 @@ pub struct Generic {
     pub name: String,
 }
 
-#[derive(Copy, Clone, PartialEq)]
-pub enum Primitive {
-    Bool(bool),
-    Int8(i8),
-    Int16(i16),
-    Int32(i32),
-    Int64(i64),
-    Int128(i128),
-    UInt8(u8),
-    UInt16(u16),
-    UInt32(u32),
-    UInt64(u64),
-    UInt128(u128),
-    Float32(f32),
-    Float64(f64),
-}
-
-#[derive(Copy, Clone, PartialEq)]
-pub enum PrimitiveType {
-    Bool,
-    Int8,
-    Int16,
-    Int32,
-    Int64,
-    Int128,
-    UInt8,
-    UInt16,
-    UInt32,
-    UInt64,
-    UInt128,
-    Float32,
-    Float64,
-}
-
 // ================================ Code ==============================
 
 pub enum Statement {
@@ -114,7 +81,7 @@ pub struct Expression {
 }
 
 pub enum ExpressionOperation {
-    Primitive(Primitive),
+    Primitive(PrimitiveValue),
     StaticFunctionCall { function: Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>> },
     MemberLookup(Box<Expression>, String),
     VariableLookup(Rc<Variable>),
@@ -128,49 +95,6 @@ pub struct PassedArgument {
 }
 
 // Impl
-
-impl Primitive {
-    pub fn primitive_type(&self) -> PrimitiveType {
-        use Primitive::*;
-        match self {
-            Bool(_) => PrimitiveType::Bool,
-            Int8(_) => PrimitiveType::Int8,
-            Int16(_) => PrimitiveType::Int16,
-            Int32(_) => PrimitiveType::Int32,
-            Int64(_) => PrimitiveType::Int64,
-            Int128(_) => PrimitiveType::Int128,
-            UInt8(_) => PrimitiveType::UInt8,
-            UInt16(_) => PrimitiveType::UInt16,
-            UInt32(_) => PrimitiveType::UInt32,
-            UInt64(_) => PrimitiveType::UInt64,
-            UInt128(_) => PrimitiveType::UInt128,
-            Float32(_) => PrimitiveType::Float32,
-            Float64(_) => PrimitiveType::Float64,
-        }
-    }
-}
-
-
-impl PrimitiveType {
-    pub fn identifier_string(&self) -> String {
-        use PrimitiveType::*;
-        String::from(match self {
-            Bool => "Bool",
-            Int8 => "Int8",
-            Int16 => "Int16",
-            Int32 => "Int32",
-            Int64 => "Int64",
-            Int128 => "Int128",
-            UInt8 => "UInt8",
-            UInt16 => "UInt16",
-            UInt32 => "UInt32",
-            UInt64 => "UInt64",
-            UInt128 => "UInt128",
-            Float32 => "Float32",
-            Float64 => "Float64",
-        })
-    }
-}
 
 impl PartialEq for Variable {
     fn eq(&self, other: &Self) -> bool {
@@ -211,7 +135,7 @@ impl Type {
                 }
             }
             Type::Generic(generic) => {
-                &set.insert(generic);
+                let _ = &set.insert(generic);
             }
         }
     }

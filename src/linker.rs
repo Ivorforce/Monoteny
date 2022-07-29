@@ -1,7 +1,7 @@
 pub mod builtins;
 pub mod computation_tree;
 pub mod scopes;
-pub mod types;
+pub mod primitives;
 
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -12,7 +12,7 @@ use crate::abstract_syntax;
 use crate::linker::builtins::*;
 use crate::linker::computation_tree::*;
 use crate::linker::scopes::*;
-use crate::linker::types::*;
+use crate::linker::primitives::*;
 
 
 pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
@@ -224,14 +224,14 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
     Box::new(match syntax {
         abstract_syntax::Expression::Number(n) => {
             // TODO The type should be inferred
-            let primitive = Primitive::Int32(n.clone());
+            let primitive = PrimitiveValue::Int32(n.clone());
             Expression {
                 result_type: Some(Box::new(Type::Primitive(primitive.primitive_type()))),
                 operation: Box::new(ExpressionOperation::Primitive(primitive)),
             }
         },
         abstract_syntax::Expression::Bool(n) => Expression {
-            operation: Box::new(ExpressionOperation::Primitive(Primitive::Bool(n.clone()))),
+            operation: Box::new(ExpressionOperation::Primitive(PrimitiveValue::Bool(n.clone()))),
             result_type: Some(Box::new(Type::Primitive(PrimitiveType::Bool)))
         },
         abstract_syntax::Expression::StringLiteral(string) => {
@@ -341,6 +341,22 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
         }
         abstract_syntax::Expression::MemberLookup(_, _) => {
             todo!()
+        }
+    })
+}
+
+pub fn resolve_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
+    Box::new(match syntax {
+        abstract_syntax::TypeDeclaration::Identifier(id) => {
+            if let Some(primitive) = resolve_primitive_type(id) {
+                Type::Primitive(primitive)
+            }
+            else {
+                Type::Identifier(id.clone())
+            }
+        },
+        abstract_syntax::TypeDeclaration::NDArray(identifier, _) => {
+            Type::NDArray(resolve_type(&identifier))
         }
     })
 }
