@@ -10,6 +10,8 @@ pub struct TenLangBuiltins {
 }
 
 pub struct TenLangBuiltinOperators {
+    pub and: Rc<FunctionInterface>,
+    pub or: Rc<FunctionInterface>,
     pub add: Rc<FunctionInterface>,
     pub subtract: Rc<FunctionInterface>,
     pub multiply: Rc<FunctionInterface>,
@@ -63,6 +65,8 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
     return (
         TenLangBuiltins {
             operators: TenLangBuiltinOperators {
+                and: add_binary_operator("&&"),
+                or: add_binary_operator("||"),
                 add: add_binary_operator("+"),
                 subtract: add_binary_operator("-"),
                 multiply: add_binary_operator("*"),

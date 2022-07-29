@@ -16,7 +16,7 @@ match {
     "(", ")", "{", "}", "[",  "]",
     ";", ",", ":",
     "=", "?",
-    "+", "-", "*", "/",
+    "+", "-", "*", "/", "&&", "||",
     "let", "var",
     "fn", "extension",
 } else {
@@ -99,8 +99,10 @@ FunctionCallElement = {
     <Expression> "(" <OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall(FunctionCallType::Call, <>)),
     <Expression> "[" <OptionalFinalSeparatorList<PassedArgument, ",">> "]" => Box::new(Expression::FunctionCall(FunctionCallType::Subscript, <>)),
     <Expression> "." <Identifier> => Box::new(Expression::MemberLookup(<>)),
-    SumElement
+    LogicalElement
 }
+
+LogicalElement = BinaryOperator<LogicalOperator, SumElement>;
 SumElement = BinaryOperator<SumOperator, MultiplicationElement>;
 MultiplicationElement = BinaryOperator<FactorOperator, Term>;
 
@@ -110,14 +112,19 @@ PassedArgument: Box<PassedArgument> = {
     <value: Expression> => Box::new(PassedArgument { key: None, value })
 }
 
-SumOperator: Opcode = { // (3)
-    "+" => Opcode::Add,
-    "-" => Opcode::Subtract,
+LogicalOperator: BinaryOperator = {
+    "||" => BinaryOperator::Or,
+    "&&" => BinaryOperator::And,
 };
 
-FactorOperator: Opcode = {
-    "*" => Opcode::Multiply,
-    "/" => Opcode::Divide,
+SumOperator: BinaryOperator = {
+    "+" => BinaryOperator::Add,
+    "-" => BinaryOperator::Subtract,
+};
+
+FactorOperator: BinaryOperator = {
+    "*" => BinaryOperator::Multiply,
+    "/" => BinaryOperator::Divide,
 };
 
 VariableDeclarationMutability: Mutability = {

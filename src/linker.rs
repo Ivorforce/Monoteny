@@ -7,7 +7,6 @@ use std::rc::Rc;
 use uuid::Uuid;
 
 use crate::abstract_syntax;
-use crate::abstract_syntax::{Mutability, Opcode};
 use crate::linker::computation_tree::*;
 use crate::linker::builtins::*;
 
@@ -41,7 +40,7 @@ pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
                     id: Uuid::new_v4(),
                     name: interface.name.clone(),
                     type_declaration: Box::new(Type::Function(Rc::clone(&interface))),
-                    mutability: Mutability::Immutable,
+                    mutability: abstract_syntax::Mutability::Immutable,
                 }));
             }
             abstract_syntax::GlobalStatement::Extension(_) => {
@@ -75,7 +74,7 @@ pub fn resolve_function_interface(function: &abstract_syntax::Function) -> Rc<Fu
             id: Uuid::new_v4(),
             name: parameter.internal_name.clone(),
             type_declaration: resolve_type(parameter.param_type.as_ref()),
-            mutability: Mutability::Immutable,
+            mutability: abstract_syntax::Mutability::Immutable,
         });
 
         parameters.push(Box::new(Parameter {
@@ -165,7 +164,7 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
                 let variables = global_variables.subscope(&local_variables);
                 let variable = variables.resolve(name);
 
-                if variable.mutability == Mutability::Immutable {
+                if variable.mutability == abstract_syntax::Mutability::Immutable {
                     panic!("Cannot assign to immutable variable '{}'.", name);
                 }
 
@@ -230,10 +229,12 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
             let result_type = lhs.result_type.clone();
 
             let operator_function = Rc::clone(match operator {
-                Opcode::Multiply => &builtins.operators.multiply,
-                Opcode::Divide => &builtins.operators.divide,
-                Opcode::Add => &builtins.operators.add,
-                Opcode::Subtract => &builtins.operators.subtract,
+                abstract_syntax::BinaryOperator::Or => &builtins.operators.or,
+                abstract_syntax::BinaryOperator::And => &builtins.operators.and,
+                abstract_syntax::BinaryOperator::Multiply => &builtins.operators.multiply,
+                abstract_syntax::BinaryOperator::Divide => &builtins.operators.divide,
+                abstract_syntax::BinaryOperator::Add => &builtins.operators.add,
+                abstract_syntax::BinaryOperator::Subtract => &builtins.operators.subtract,
             });
 
             Expression {

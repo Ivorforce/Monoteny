@@ -63,7 +63,7 @@ pub enum Statement {
 pub enum Expression {
     Number(i32),
     Bool(bool),
-    BinaryOperator(Box<Expression>, Opcode, Box<Expression>),
+    BinaryOperator(Box<Expression>, BinaryOperator, Box<Expression>),
     FunctionCall(FunctionCallType, Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
     VariableLookup(String),
@@ -77,7 +77,9 @@ pub struct PassedArgument {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-pub enum Opcode {
+pub enum BinaryOperator {
+    Or,
+    And,
     Multiply,
     Divide,
     Add,
@@ -207,14 +209,16 @@ impl Debug for Expression {
     }
 }
 
-impl Debug for Opcode {
+impl Debug for BinaryOperator {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::Opcode::*;
+        use self::BinaryOperator::*;
         match self {
             Multiply => write!(fmt, "*"),
             Divide => write!(fmt, "/"),
             Add => write!(fmt, "+"),
             Subtract => write!(fmt, "-"),
+            Or => write!(fmt, "||"),
+            And => write!(fmt, "&&"),
         }
     }
 }

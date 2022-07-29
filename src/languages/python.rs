@@ -251,20 +251,36 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Funct
         return Ok(false);
     });
 
-    if
-        interface == builtins.operators.add.as_ref()
-        || interface == builtins.operators.subtract.as_ref()
-        || interface == builtins.operators.multiply.as_ref()
-        || interface == builtins.operators.divide.as_ref()
-    {
+    let mut transpile_binary_operator = |name: &str| -> Result<bool, std::io::Error> {
         write!(stream, "(")?;
         transpile_expression(stream, &lhs.value, builtins)?;
-        write!(stream, " {} ", interface.name)?;
+        write!(stream, " {} ", name)?;
         transpile_expression(stream, &rhs.value, builtins)?;
         write!(stream, ")")?;
+
+        Ok(true)
+    };
+
+    if interface == builtins.operators.and.as_ref() {
+        return transpile_binary_operator("and");
+    }
+    else if interface == builtins.operators.or.as_ref() {
+        return transpile_binary_operator("or");
+    }
+    else if interface == builtins.operators.add.as_ref() {
+        return transpile_binary_operator("+");
+    }
+    else if interface == builtins.operators.subtract.as_ref() {
+        return transpile_binary_operator("-");
+    }
+    else if interface == builtins.operators.multiply.as_ref() {
+        return transpile_binary_operator("*");
+    }
+    else if interface == builtins.operators.divide.as_ref() {
+        return transpile_binary_operator("/");
     }
 
-    return Ok(true);
+    return Ok(false);
 }
 
 pub fn get_external_name(parameter: &Parameter) -> String {

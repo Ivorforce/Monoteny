@@ -11,6 +11,6 @@ fn main() {
     b = 3;
     let b = 2;
     print("b: ");
-    print(true);
+    print(true || false);
     print([b, square(0: b), 2]);
 }
