@@ -112,13 +112,13 @@ VariableDeclarationMutability: Mutability = {
 
 // =============================== Expression =====================================
 
-Expression: Box<Expression> = FunctionCallElement;
-FunctionCallElement = FunctionCallExpression<LogicalElement>;
-LogicalElement = LeftAssociativeBinaryOperator<LogicalOperator, ComparisonElement>;
-ComparisonElement = ComparisonExpression<SumElement>;
-SumElement = LeftAssociativeBinaryOperator<SumOperator, MultiplicationElement>;
-MultiplicationElement = LeftAssociativeBinaryOperator<FactorOperator, PowerElement>;
-PowerElement = RightAssociativeBinaryOperator<PowerOperator, Term>;
+Expression: Box<Expression> = FunctionCallPrecedenceGroup;
+FunctionCallPrecedenceGroup = FunctionCallExpression<LogicalPrecedenceGroup>;
+LogicalPrecedenceGroup = LeftAssociativeBinaryOperator<LogicalOperator, ComparisonPrecedenceGroup>;
+ComparisonPrecedenceGroup = ComparisonExpression<SumPrecedenceGroup>;
+SumPrecedenceGroup = LeftAssociativeBinaryOperator<SumOperator, MultiplicationPrecedenceGroup>;
+MultiplicationPrecedenceGroup = LeftAssociativeBinaryOperator<FactorOperator, ExponentiationPrecedenceGroup>;
+ExponentiationPrecedenceGroup = RightAssociativeBinaryOperator<ExponentiationOperator, Term>;
 
 Term: Box<Expression> = {
     Number => Box::new(Expression::Number(<>)),
@@ -138,7 +138,7 @@ PassedArgument: Box<PassedArgument> = {
     <value: Expression> => Box::new(PassedArgument { key: None, value })
 }
 
-PowerOperator: BinaryOperator = {
+ExponentiationOperator: BinaryOperator = {
     "**" => BinaryOperator::Exponentiate,
 };
 
