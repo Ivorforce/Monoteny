@@ -12,7 +12,6 @@ use crate::abstract_syntax;
 use crate::linker::builtins::*;
 use crate::linker::computation_tree::*;
 use crate::linker::scopes::*;
-use crate::linker::primitives::*;
 
 
 pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
@@ -224,15 +223,15 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
     Box::new(match syntax {
         abstract_syntax::Expression::Number(n) => {
             // TODO The type should be inferred
-            let primitive = PrimitiveValue::Int32(n.clone());
+            let value = primitives::Value::Int32(n.clone());
             Expression {
-                result_type: Some(Box::new(Type::Primitive(primitive.primitive_type()))),
-                operation: Box::new(ExpressionOperation::Primitive(primitive)),
+                result_type: Some(Box::new(Type::Primitive(value.get_type()))),
+                operation: Box::new(ExpressionOperation::Primitive(value)),
             }
         },
         abstract_syntax::Expression::Bool(n) => Expression {
-            operation: Box::new(ExpressionOperation::Primitive(PrimitiveValue::Bool(n.clone()))),
-            result_type: Some(Box::new(Type::Primitive(PrimitiveType::Bool)))
+            operation: Box::new(ExpressionOperation::Primitive(primitives::Value::Bool(n.clone()))),
+            result_type: Some(Box::new(Type::Primitive(primitives::Type::Bool)))
         },
         abstract_syntax::Expression::StringLiteral(string) => {
             Expression {
@@ -348,7 +347,7 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
 pub fn resolve_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
     Box::new(match syntax {
         abstract_syntax::TypeDeclaration::Identifier(id) => {
-            if let Some(primitive) = resolve_primitive_type(id) {
+            if let Some(primitive) = primitives::parse(id) {
                 Type::Primitive(primitive)
             }
             else {

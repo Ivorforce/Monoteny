@@ -1,7 +1,5 @@
-use crate::abstract_syntax;
-
 #[derive(Copy, Clone, PartialEq)]
-pub enum PrimitiveValue {
+pub enum Value {
     Bool(bool),
     Int8(i8),
     Int16(i16),
@@ -18,7 +16,7 @@ pub enum PrimitiveValue {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-pub enum PrimitiveType {
+pub enum Type {
     Bool,
     Int8,
     Int16,
@@ -34,30 +32,30 @@ pub enum PrimitiveType {
     Float64,
 }
 
-impl PrimitiveValue {
-    pub fn primitive_type(&self) -> PrimitiveType {
-        use PrimitiveValue::*;
+impl Value {
+    pub fn get_type(&self) -> Type {
+        use Value::*;
         match self {
-            Bool(_) => PrimitiveType::Bool,
-            Int8(_) => PrimitiveType::Int8,
-            Int16(_) => PrimitiveType::Int16,
-            Int32(_) => PrimitiveType::Int32,
-            Int64(_) => PrimitiveType::Int64,
-            Int128(_) => PrimitiveType::Int128,
-            UInt8(_) => PrimitiveType::UInt8,
-            UInt16(_) => PrimitiveType::UInt16,
-            UInt32(_) => PrimitiveType::UInt32,
-            UInt64(_) => PrimitiveType::UInt64,
-            UInt128(_) => PrimitiveType::UInt128,
-            Float32(_) => PrimitiveType::Float32,
-            Float64(_) => PrimitiveType::Float64,
+            Bool(_) => Type::Bool,
+            Int8(_) => Type::Int8,
+            Int16(_) => Type::Int16,
+            Int32(_) => Type::Int32,
+            Int64(_) => Type::Int64,
+            Int128(_) => Type::Int128,
+            UInt8(_) => Type::UInt8,
+            UInt16(_) => Type::UInt16,
+            UInt32(_) => Type::UInt32,
+            UInt64(_) => Type::UInt64,
+            UInt128(_) => Type::UInt128,
+            Float32(_) => Type::Float32,
+            Float64(_) => Type::Float64,
         }
     }
 }
 
-impl PrimitiveType {
+impl Type {
     pub fn identifier_string(&self) -> String {
-        use PrimitiveType::*;
+        use Type::*;
         String::from(match self {
             Bool => "Bool",
             Int8 => "Int8",
@@ -76,9 +74,8 @@ impl PrimitiveType {
     }
 }
 
-pub fn resolve_primitive_type(identifier: &str) -> Option<PrimitiveType> {
-    use PrimitiveType::*;
-    
+pub fn parse(identifier: &str) -> Option<Type> {
+    use Type::*;
     match identifier {
         "Bool" => Some(Bool),
         "Int8" => Some(Int8),

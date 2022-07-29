@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::io::Write;
 use crate::linker::computation_tree::*;
-use crate::linker::primitives::*;
+use crate::linker::primitives;
 
 pub fn transpile_program(
     program: &Program,
@@ -31,21 +31,21 @@ pub fn transpile_program(
     return Ok(())
 }
 
-pub fn transpile_primitive_type(type_def: &PrimitiveType) -> String {
+pub fn transpile_primitive_type(type_def: &primitives::Type) -> String {
     String::from(match type_def {
-        PrimitiveType::Bool => "bool",
-        PrimitiveType::Int8 => "int8_t",
-        PrimitiveType::Int16 => "int16_t",
-        PrimitiveType::Int32 => "int32_t",
-        PrimitiveType::Int64 => "int64_t",
-        PrimitiveType::Int128 => "int128_t",
-        PrimitiveType::UInt8 => "uint8_t",
-        PrimitiveType::UInt16 => "uint16_t",
-        PrimitiveType::UInt32 => "uint32_t",
-        PrimitiveType::UInt64 => "uint64_t",
-        PrimitiveType::UInt128 => "uint128_t",
-        PrimitiveType::Float32 => "float",
-        PrimitiveType::Float64 => "double",
+        primitives::Type::Bool => "bool",
+        primitives::Type::Int8 => "int8_t",
+        primitives::Type::Int16 => "int16_t",
+        primitives::Type::Int32 => "int32_t",
+        primitives::Type::Int64 => "int64_t",
+        primitives::Type::Int128 => "int128_t",
+        primitives::Type::UInt8 => "uint8_t",
+        primitives::Type::UInt16 => "uint16_t",
+        primitives::Type::UInt32 => "uint32_t",
+        primitives::Type::UInt64 => "uint64_t",
+        primitives::Type::UInt128 => "uint128_t",
+        primitives::Type::Float32 => "float",
+        primitives::Type::Float64 => "double",
     })
 }
 

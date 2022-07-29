@@ -1,9 +1,14 @@
+pub mod docstrings;
+pub mod types;
+
 use std::borrow::Borrow;
 use std::io::Write;
 use guard::guard;
+
 use crate::linker::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::*;
-use crate::linker::primitives::*;
+use crate::linker::primitives;
+
 
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program) -> Result<(), std::io::Error> {
     writeln!(stream, "import numpy as np")?;
@@ -20,7 +25,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
 
     for parameter in function.interface.parameters.iter() {
         write!(stream, "{}: ", get_external_name(&parameter))?;
-        transpile_type(stream, &parameter.variable.type_declaration)?;
+        types::transpile(stream, &parameter.variable.type_declaration)?;
         write!(stream, ",")?;
     }
 
@@ -28,28 +33,10 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
 
     if let Some(return_type) = &function.interface.return_type {
         write!(stream, " -> ", )?;
-        transpile_type(stream, return_type)?;
+        types::transpile(stream, return_type)?;
     }
 
-    write!(stream, ":\n    \"\"\"\n    <Docstring TODO!>\n")?;
-
-    if !function.interface.parameters.is_empty() {
-        write!(stream, "\n    Args:\n")?;
-
-        for parameter in function.interface.parameters.iter() {
-            write!(stream, "        {}: ", get_external_name(&parameter))?;
-            transpile_type_for_docstring(stream, &parameter.variable.type_declaration)?;
-            write!(stream, "\n")?;
-        }
-    }
-
-    if let Some(return_type) = &function.interface.return_type {
-        write!(stream, "\n    Returns: ")?;
-        transpile_type_for_docstring(stream, return_type)?;
-        write!(stream, "\n")?;
-    }
-
-    write!(stream, "    \"\"\"\n")?;
+    docstrings::dump(stream, function)?;
 
     if function.statements.is_empty() {
         // No need to do conversions or anything else if we don't have a body.
@@ -66,7 +53,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
                         parameter.variable.name,
                         get_external_name(parameter)
                     )?;
-                    transpile_atom_type(stream, atom)?;
+                    types::transpile_atom(stream, atom)?;
                     write!(stream, ")\n")?;
                 }
                 else if let Type::Primitive(primitive) = atom.as_ref() {
@@ -75,7 +62,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
                         parameter.variable.name,
                         get_external_name(parameter)
                     )?;
-                    transpile_primitive_type(stream, primitive)?;
+                    types::transpile_primitive(stream, primitive)?;
                     write!(stream, ")\n")?;
                 }
                 else {
@@ -121,82 +108,10 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
     Ok(())
 }
 
-pub fn transpile_primitive_type(stream: &mut (dyn Write), type_def: &PrimitiveType) -> Result<(), std::io::Error> {
-    use PrimitiveType::*;
-    match type_def {
-        Bool => write!(stream, "np.bool")?,
-        Int8 => write!(stream, "np.int8")?,
-        Int16 => write!(stream, "np.int16")?,
-        Int32 => write!(stream, "np.int32")?,
-        Int64 => write!(stream, "np.int64")?,
-        Int128 => write!(stream, "np.int128")?,
-        UInt8 => write!(stream, "np.uint8")?,
-        UInt16 => write!(stream, "np.uint16")?,
-        UInt32 => write!(stream, "np.uint32")?,
-        UInt64 => write!(stream, "np.uint64")?,
-        UInt128 => write!(stream, "np.uint128")?,
-        Float32 => write!(stream, "np.float32")?,
-        Float64 => write!(stream, "np.float64")?,
-    }
-
-    Ok(())
-}
-
-pub fn transpile_atom_type(stream: &mut (dyn Write), type_def: &String) -> Result<(), std::io::Error> {
-    write!(stream, "{}", match type_def.as_str() {
-        "String" => "str",
-        atom => atom
-    })?;
-
-    Ok(())
-}
-
-
-pub fn transpile_type(stream: &mut (dyn Write), type_def: &Type) -> Result<(), std::io::Error> {
-    match type_def.borrow() {
-        Type::Primitive(n) => transpile_primitive_type(stream, n)?,
-        Type::Identifier(atom) => transpile_atom_type(stream, &atom)?,
-        Type::NDArray(_) => write!(stream, "np.ndarray")?,
-        Type::Function(_) => todo!(),
-        Type::Generic(_) => todo!(),
-    }
-
-    Ok(())
-}
-
-pub fn transpile_type_for_docstring(stream: &mut (dyn Write), type_def: &Type) -> Result<(), std::io::Error> {
-    match type_def.borrow() {
-        Type::Primitive(n) => transpile_primitive_type(stream, n)?,
-        Type::Identifier(atom) => transpile_atom_type(stream, atom)?,
-        Type::NDArray(atom) => {
-            transpile_type_for_docstring(stream, atom)?;
-            write!(stream, "[?]")?;
-        },
-        Type::Function(_) => todo!(),
-        Type::Generic(_) => todo!(),
-    }
-
-    Ok(())
-}
-
 pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     match &expression.operation.as_ref() {
-        ExpressionOperation::Primitive(literal) => {
-            match &literal {
-                PrimitiveValue::Bool(n) => write!(stream, "{}", (if *n { "True" } else { "False" }))?,
-                PrimitiveValue::Int8(n) => write!(stream, "np.int8({})", n)?,
-                PrimitiveValue::Int16(n) => write!(stream, "np.int16({})", n)?,
-                PrimitiveValue::Int32(n) => write!(stream, "np.int32({})", n)?,
-                PrimitiveValue::Int64(n) => write!(stream, "np.int64({})", n)?,
-                PrimitiveValue::Int128(n) => write!(stream, "np.int128({})", n)?,
-                PrimitiveValue::UInt8(n) => write!(stream, "np.uint8({})", n)?,
-                PrimitiveValue::UInt16(n) => write!(stream, "np.uint16({})", n)?,
-                PrimitiveValue::UInt32(n) => write!(stream, "np.uint32({})", n)?,
-                PrimitiveValue::UInt64(n) => write!(stream, "np.uint64({})", n)?,
-                PrimitiveValue::UInt128(n) => write!(stream, "np.uint128({})", n)?,
-                PrimitiveValue::Float32(n) => write!(stream, "np.float32({})", n)?,
-                PrimitiveValue::Float64(n) => write!(stream, "np.float64({})", n)?,
-            }
+        ExpressionOperation::Primitive(value) => {
+            types::transpile_primitive_value(stream, value)?;
         }
         ExpressionOperation::StringLiteral(string) => {
             write!(stream, "\"{}\"", escape_string(&string))?;

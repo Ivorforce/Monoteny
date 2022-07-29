@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::abstract_syntax::Mutability;
 
 use crate::linker::builtins::TenLangBuiltins;
-use crate::linker::primitives::{PrimitiveType, PrimitiveValue};
+use crate::linker::primitives;
 
 // ================================ Global ==============================
 
@@ -54,7 +54,7 @@ pub struct Variable {
 
 #[derive(Clone, PartialEq)]
 pub enum Type {
-    Primitive(PrimitiveType),
+    Primitive(primitives::Type),
     Identifier(String),
     NDArray(Box<Type>),
     Function(Rc<FunctionInterface>),
@@ -81,7 +81,7 @@ pub struct Expression {
 }
 
 pub enum ExpressionOperation {
-    Primitive(PrimitiveValue),
+    Primitive(primitives::Value),
     StaticFunctionCall { function: Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>> },
     MemberLookup(Box<Expression>, String),
     VariableLookup(Rc<Variable>),
