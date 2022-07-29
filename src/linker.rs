@@ -288,9 +288,6 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
         abstract_syntax::Expression::MemberLookup(_, _) => {
             todo!()
         }
-        abstract_syntax::Expression::Error => {
-            todo!()
-        }
     })
 }
 

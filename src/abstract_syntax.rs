@@ -69,7 +69,6 @@ pub enum Expression {
     VariableLookup(String),
     ArrayLiteral(Vec<Box<Expression>>),
     StringLiteral(String),
-    Error,
 }
 
 pub struct PassedArgument {
@@ -204,7 +203,6 @@ impl Debug for Expression {
             },
             StringLiteral(string) => write!(fmt, "{:?}", string),
             Bool(value) => write!(fmt, "{}", value),
-            Error => write!(fmt, "error"),
         }
     }
 }
