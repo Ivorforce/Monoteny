@@ -12,7 +12,7 @@ use crate::linker::primitives;
 pub struct Program {
     pub functions: Vec<Rc<Function>>,
     pub variables: HashMap<Uuid, Rc<Variable>>,
-    pub builtins: TenLangBuiltins,
+    pub builtins: Rc<TenLangBuiltins>,
 }
 
 pub struct FunctionInterface {

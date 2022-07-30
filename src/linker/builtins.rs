@@ -3,10 +3,12 @@ use std::rc::Rc;
 use uuid::Uuid;
 use crate::abstract_syntax::Mutability;
 use crate::linker::computation_tree::*;
+use crate::linker::scopes::Scope;
 
 pub struct TenLangBuiltins {
     pub operators: TenLangBuiltinOperators,
-    pub functions: TenLangBuiltinFunctions
+    pub functions: TenLangBuiltinFunctions,
+    pub global_constants: Box<HashMap<String, Rc<Variable>>>,
 }
 
 pub struct TenLangBuiltinOperators {
@@ -34,11 +36,11 @@ pub struct TenLangBuiltinOperators {
 }
 
 pub struct TenLangBuiltinFunctions {
-    pub print: Rc<FunctionInterface>
+    pub print: Rc<FunctionInterface>,
 }
 
-pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
-    let mut constants: HashMap<String, Rc<Variable>> = HashMap::new();
+pub fn create_builtins() -> Rc<TenLangBuiltins> {
+    let mut constants: Box<HashMap<String, Rc<Variable>>> = Box::new(HashMap::new());
 
     let mut add_function = |name: &str, parameters: Vec<Box<Parameter>>, generics: Vec<Rc<Generic>>, return_type: Option<Box<Type>>| -> Rc<FunctionInterface> {
         let interface = Rc::new(FunctionInterface {
@@ -57,7 +59,7 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
         });
         constants.insert(var.name.clone(), Rc::clone(&var));
 
-        return interface
+        return interface;
     };
 
     // For now it's ok to assume the 3 types to be equal
@@ -76,57 +78,55 @@ pub fn create_builtins() -> (TenLangBuiltins, HashMap<String, Rc<Variable>>) {
                     name: String::from(*name),
                     type_declaration: generic_type.clone(),
                     mutability: Mutability::Immutable,
-                })
+                }),
             })).collect();
 
         return add_function(name, parameters, vec![generic], Some(generic_type));
     };
 
-    return (
-        TenLangBuiltins {
-            operators: TenLangBuiltinOperators {
-                and: add_binary_operator("&&"),
-                or: add_binary_operator("||"),
+    Rc::new(TenLangBuiltins {
+        operators: TenLangBuiltinOperators {
+            and: add_binary_operator("&&"),
+            or: add_binary_operator("||"),
 
-                // These are n-ary in syntax but binary in implementation.
-                equal_to: add_binary_operator("=="),
-                not_equal_to: add_binary_operator("!="),
+            // These are n-ary in syntax but binary in implementation.
+            equal_to: add_binary_operator("=="),
+            not_equal_to: add_binary_operator("!="),
 
-                greater_than: add_binary_operator(">"),
-                greater_than_or_equal_to: add_binary_operator(">="),
-                lesser_than: add_binary_operator("<"),
-                lesser_than_or_equal_to: add_binary_operator("<="),
+            greater_than: add_binary_operator(">"),
+            greater_than_or_equal_to: add_binary_operator(">="),
+            lesser_than: add_binary_operator("<"),
+            lesser_than_or_equal_to: add_binary_operator("<="),
 
-                add: add_binary_operator("+"),
-                subtract: add_binary_operator("-"),
-                multiply: add_binary_operator("*"),
-                divide: add_binary_operator("/"),
-                exponentiate: add_binary_operator("**"),
-                modulo: add_binary_operator("%"),
+            add: add_binary_operator("+"),
+            subtract: add_binary_operator("-"),
+            multiply: add_binary_operator("*"),
+            divide: add_binary_operator("/"),
+            exponentiate: add_binary_operator("**"),
+            modulo: add_binary_operator("%"),
 
-                // TODO These should be unary
-                positive: add_binary_operator("+"),
-                negative: add_binary_operator("-"),
-                not: add_binary_operator("!"),
-            },
-            functions: TenLangBuiltinFunctions {
-                print: add_function(
-                    "print", vec![
-                        Box::new(Parameter {
-                            external_key: ParameterKey::Int(0),
-                            variable: Rc::new(Variable {
-                                id: Uuid::new_v4(),
-                                name: String::from("object"),
-                                type_declaration: Box::new(Type::Identifier(String::from("Any"))),
-                                mutability: Mutability::Immutable,
-                            })
-                        })
-                    ],
-                    vec![],
-                    None
-                )
-            }
+            // TODO These should be unary
+            positive: add_binary_operator("+"),
+            negative: add_binary_operator("-"),
+            not: add_binary_operator("!"),
         },
-        constants
-    )
+        functions: TenLangBuiltinFunctions {
+            print: add_function(
+                "print", vec![
+                    Box::new(Parameter {
+                        external_key: ParameterKey::Int(0),
+                        variable: Rc::new(Variable {
+                            id: Uuid::new_v4(),
+                            name: String::from("object"),
+                            type_declaration: Box::new(Type::Identifier(String::from("Any"))),
+                            mutability: Mutability::Immutable,
+                        }),
+                    })
+                ],
+                vec![],
+                None,
+            )
+        },
+        global_constants: constants,
+    })
 }

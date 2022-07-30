@@ -11,13 +11,13 @@ use uuid::Uuid;
 use crate::abstract_syntax;
 use crate::linker::builtins::*;
 use crate::linker::computation_tree::*;
-use crate::linker::scopes::*;
+use crate::linker::scopes::Scope;
 
 
 pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
-    let (builtins, builtins_variables) = create_builtins();
-    let builtin_variable_scope = ScopedVariables {
-        scopes: vec![&builtins_variables],
+    let builtins = create_builtins();
+    let builtin_variable_scope = Scope {
+        scopes: vec![&builtins.global_constants]
     };
 
     let mut functions_with_bodies: Vec<(Rc<FunctionInterface>, &Vec<Box<abstract_syntax::Statement>>)> = Vec::new();
@@ -54,7 +54,7 @@ pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
     // Resolve function bodies
     let functions: Vec<Rc<Function>> = functions_with_bodies.into_iter().map(
         |(interface, statements)|
-        resolve_function_body(statements, interface, &global_variable_scope, &builtins)
+        resolve_function_body(statements, interface, &global_variable_scope)
     ).collect();
 
     return Program {
@@ -108,7 +108,7 @@ pub fn resolve_parameter_key(key: &abstract_syntax::ParameterKey, index: usize) 
     }
 }
 
-pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interface: Rc<FunctionInterface>, global_variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Rc<Function> {
+pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interface: Rc<FunctionInterface>, scope: &Scope) -> Rc<Function> {
     let mut local_variables: HashMap<String, Rc<Variable>> = HashMap::new();
 
     for parameter in &interface.parameters {
@@ -123,8 +123,8 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
             abstract_syntax::Statement::VariableDeclaration {
                 mutability, identifier, type_declaration, expression
             } => {
-                let variables = global_variables.subscope(&local_variables);
-                let expression: Box<Expression> = resolve_expression(&expression, &variables, builtins);
+                let subscope = scope.subscope(&local_variables);
+                let expression: Box<Expression> = resolve_expression(&expression, &subscope);
                 let inferred_type = expression.result_type.as_ref().unwrap();
 
                 if let Some(type_declaration) = type_declaration {
@@ -147,8 +147,8 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
                 local_variables.insert(identifier.clone(), variable);
             },
             abstract_syntax::Statement::Return(expression) => {
-                let variables = global_variables.subscope(&local_variables);
-                let expression: Option<Box<Expression>> = expression.as_ref().map(|x| resolve_expression(x, &variables, builtins));
+                let subscope = scope.subscope(&local_variables);
+                let expression: Option<Box<Expression>> = expression.as_ref().map(|x| resolve_expression(x, &subscope));
 
                 match (&interface.return_type, expression) {
                     (Some(_), None) => panic!("Return statement offers no value when the function declares an object."),
@@ -171,19 +171,19 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
                 }
             },
             abstract_syntax::Statement::Expression(expression) => {
-                let variables = global_variables.subscope(&local_variables);
-                let expression: Box<Expression> = resolve_expression(&expression, &variables, builtins);
+                let subscope = scope.subscope(&local_variables);
+                let expression: Box<Expression> = resolve_expression(&expression, &subscope);
                 statements.push(Box::new(Statement::Expression(expression)));
             }
             abstract_syntax::Statement::VariableAssignment(name, expression) => {
-                let variables = global_variables.subscope(&local_variables);
-                let variable = variables.resolve(name);
+                let subscope = scope.subscope(&local_variables);
+                let variable = subscope.resolve(name);
 
                 if variable.mutability == abstract_syntax::Mutability::Immutable {
                     panic!("Cannot assign to immutable variable '{}'.", name);
                 }
 
-                let expression: Box<Expression> = resolve_expression(&expression, &variables, builtins);
+                let expression: Box<Expression> = resolve_expression(&expression, &subscope);
 
                 statements.push(Box::new(
                     Statement::VariableAssignment(Rc::clone(&variable), expression)
@@ -199,9 +199,9 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
     });
 }
 
-pub fn resolve_static_function_call(function: &Rc<FunctionInterface>, arguments: &Vec<&Box<abstract_syntax::Expression>>, variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Expression {
+pub fn resolve_static_function_call(function: &Rc<FunctionInterface>, arguments: &Vec<&Box<abstract_syntax::Expression>>, scope: &Scope) -> Expression {
     let resolved_arguments: Vec<Box<Expression>> = arguments.into_iter()
-        .map(|x| resolve_expression(x, variables, builtins))
+        .map(|x| resolve_expression(x, scope))
         .collect();
 
     guard!(let Some(reference) = resolved_arguments.first() else {
@@ -230,7 +230,7 @@ pub fn resolve_static_function_call(function: &Rc<FunctionInterface>, arguments:
     }
 }
 
-pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &ScopedVariables, builtins: &TenLangBuiltins) -> Box<Expression> {
+pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -> Box<Expression> {
     Box::new(match syntax {
         abstract_syntax::Expression::Number(n) => {
             // TODO The type should be inferred
@@ -252,7 +252,7 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
         },
         abstract_syntax::Expression::ArrayLiteral(raw_elements) => {
             let elements: Vec<Box<Expression>>= raw_elements.iter()
-                .map(|x| resolve_expression(x, variables, builtins))
+                .map(|x| resolve_expression(x, scope))
                 .collect();
 
             let supertype = get_common_supertype(
@@ -265,14 +265,7 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
             }
         },
         abstract_syntax::Expression::NAryOperator(operator, arguments) => {
-            let operator_function = match operator {
-                abstract_syntax::NAryOperator::EqualTo => &builtins.operators.equal_to,
-                abstract_syntax::NAryOperator::NotEqualTo => &builtins.operators.not_equal_to,
-                abstract_syntax::NAryOperator::GreaterThan => &builtins.operators.greater_than,
-                abstract_syntax::NAryOperator::GreaterThanOrEqualTo => &builtins.operators.greater_than_or_equal_to,
-                abstract_syntax::NAryOperator::LesserThan => &builtins.operators.lesser_than,
-                abstract_syntax::NAryOperator::LesserThanOrEqualTo => &builtins.operators.lesser_than_or_equal_to,
-            };
+            let function = scope.resolve_static_fn(&format!("{:?}", operator));
 
             if arguments.len() < 2 {
                 // We shouldn't get here if the parser works.
@@ -288,27 +281,18 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
                 panic!("N-Ary operators support only two arguments (for now).");
             }
 
-            resolve_static_function_call(operator_function, &arguments.iter().collect(), variables, builtins)
+            resolve_static_function_call(function, &arguments.iter().collect(), scope)
         },
         abstract_syntax::Expression::BinaryOperator(lhs, operator, rhs) => {
-            let operator_function = match operator {
-                abstract_syntax::BinaryOperator::Or => &builtins.operators.or,
-                abstract_syntax::BinaryOperator::And => &builtins.operators.and,
-                abstract_syntax::BinaryOperator::Multiply => &builtins.operators.multiply,
-                abstract_syntax::BinaryOperator::Divide => &builtins.operators.divide,
-                abstract_syntax::BinaryOperator::Add => &builtins.operators.add,
-                abstract_syntax::BinaryOperator::Subtract => &builtins.operators.subtract,
-                abstract_syntax::BinaryOperator::Exponentiate => &builtins.operators.exponentiate,
-                abstract_syntax::BinaryOperator::Modulo => &builtins.operators.modulo,
-            };
+            let function = scope.resolve_static_fn(&format!("{:?}", operator));
 
-            resolve_static_function_call(operator_function, &vec![lhs, rhs], variables, builtins)
+            resolve_static_function_call(function, &vec![lhs, rhs], scope)
         },
         abstract_syntax::Expression::UnaryOperator(operator, expression) => {
             todo!()
         },
         abstract_syntax::Expression::VariableLookup(identifier) => {
-            let variable = variables.resolve(identifier);
+            let variable = scope.resolve(identifier);
 
             Expression {
                 operation: Box::new(ExpressionOperation::VariableLookup(variable.clone())),
@@ -320,14 +304,14 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, variables: &Scop
                 panic!("Subscript not supported yet");
             }
 
-            let callee = resolve_expression(callee, variables, builtins);
+            let callee = resolve_expression(callee, scope);
             let arguments = arguments.iter()
                 .enumerate()
                 .map(|(idx, x)| Box::new(PassedArgument {
                     key: x.key.as_ref()
                         .map(|key| resolve_parameter_key(&key, idx))
                         .unwrap_or_else(|| ParameterKey::Int(idx as i32)),
-                    value: resolve_expression(&x.value, variables, builtins)
+                    value: resolve_expression(&x.value, scope)
                 }))
                 .collect();
 
