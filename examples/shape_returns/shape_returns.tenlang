@@ -21,7 +21,12 @@ extension {: (A: <Any>, Index: <LeftBound>) = A[Index] :} {
             throw "Cannot skip an unknown number of elements."
         }
 
-        return A[Index.left_bound + skip_count...];
+        // Index could be right bound or open!
+        // Just re-use the index definition with a minor tweak.
+        var new_index = Index.clone();
+        new_index.left_bound += skip_count;
+
+        return A[new_index];
     :} = {
         self@[self@.index.left_bound + skip_count...];
     }
