@@ -1,18 +1,20 @@
-fn main: () -> Void = {
-    let array: Float[0 ..< 3] = 0  // = [0.0, 0.0, 0.0]
-    let array_user_input: Float[0...]  // array of floats with unknown size
-    let array_matlab_indexed: Float[1...]  // array of floats with unknown size, starting indexing at 1 (thank me later, math nerds)
+global {
+    fn main: () -> Void = {
+        let array: Float[0 ..< 3] = 0  // = [0.0, 0.0, 0.0]
+        let array_user_input: Float[0...]  // array of floats with unknown size
+        let array_matlab_indexed: Float[1...]  // array of floats with unknown size, starting indexing at 1 (thank me later, math nerds)
 
-    let dictionary: Float[["A", "B", "C"]]  // float dictionary, indexable with strings A B or C
-    let dictionary_user_input: Float[String]  // float dictionary, indexable with any string
+        let dictionary: Float[["A", "B", "C"]]  // float dictionary, indexable with strings A B or C
+        let dictionary_user_input: Float[String]  // float dictionary, indexable with any string
 
-    let set: true[["A", "B", "C"]]  // string-indexed set, capable of including A B or C
-    let set: true[String]  // string-indexed set, capable of including any string
+        let set: true[["A", "B", "C"]]  // string-indexed set, capable of including A B or C
+        let set: true[String]  // string-indexed set, capable of including any string
 
-    tuple Point3D(x, y, z)
-    let Float[Point3D] = 0  // 3D point, initialized to origin
+        tuple Point3D(x, y, z)
+        let Float[Point3D] = 0  // 3D point, initialized to origin
 
-    // Let's combine concepts
-    let points: Float[index: 0 ..< 5, coordinates: Point3D] = 0  // List of 3D points, initialized to origin
-    let user_points: Float[user: String, index: 0..., coordinates: Point3D]  // For string-indexed users, an arbitrary number of 3D points
+        // Let's combine concepts
+        let points: Float[index: 0 ..< 5, coordinates: Point3D] = 0  // List of 3D points, initialized to origin
+        let user_points: Float[user: String, index: 0..., coordinates: Point3D]  // For string-indexed users, an arbitrary number of 3D points
+    }
 }

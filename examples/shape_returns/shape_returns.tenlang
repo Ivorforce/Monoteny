@@ -1,4 +1,16 @@
-extension {: (A: <Any>, Count: <Countable>) = A[Count] :} {
+global {: (N: <Addition>) :} {
+    fn times_two: (_ arg: N) -> N = {
+        arg + arg
+    }
+}
+
+extension {: (N: <Addition>) = N :} {
+    fn times_two: () -> N = {
+        self + self
+    }
+}
+
+extension {: (A: <Any>, Index: <LeftBound>) = A[Index] :} {
     fn skip_first: (_ skip_count: Int32 ) -> {:
         guard let .Known(skip_count) = skip_count else {
             throw "Cannot skip with a count unknown at compile-time."
@@ -8,7 +20,10 @@ extension {: (A: <Any>, Count: <Countable>) = A[Count] :} {
             throw "Cannot skip an unknown number of elements."
         }
 
-        A[Count - skip_count]
+        var NewIndex = Index.clone();
+        NewIndex.left_bound += skip_count;
+
+        return A[NewIndex];
     :} = {
         self@[self@.index.left_bound + skip_count...];
     }
