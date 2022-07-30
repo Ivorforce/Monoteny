@@ -12,25 +12,25 @@ In TenLang, every NDArray is treated as if it were an atom. At compile time, the
 
 There are two exceptions: First, when two NDArrays collide, they are broadcast to each other appropriately. Second, with the `@[]` syntax, an object can be referred as an NDArray. 
 
-### Shape Safety
+### Shape Safety and Generics
 
 TenLang aims to guarantee shape, lookup and generally array operations safety.
 
 There is a reasonable reason no other language has yet attempted this: Shape resolving can be as hard as executing the program itself. It seems impossible to devise a system that could possibly cover every use-case. Without one, the language quickly falls apart.
 
-Luckily, by now we know how to solve complex problems in a readable and approachable way. It's coding.
+Luckily, we know how to solve hard problems in a readable and approachable way. It's coding.
 
-TenLang takes these lessons to heart: Types are resolved with user code at compile time. The code itself follows TenLang syntax, so it is unnecessary to learn a separate complicated language. I hope this truly covers all (computable) use-cases. 
+TenLang takes this to heart: Generic types are resolved with user code at compile time. The code itself follows TenLang syntax, so it is unnecessary to learn a separate complicated language. I hope this truly covers all (computable) use-cases. 
 
 All functions can be imported at compile-time using a `compiletime import`. These imports cannot be circular.  
 
 ### Collections Combinations
 
-In many languages, several independent types of collections exist, e.g. arrays, named tuples (-> 3d points, 2D size) and dictionaries. While some implement 'Collection' interfaces to support some number of functions, often algorithms end up being implemented many times.
+In many languages, several independent types of collections exist, e.g. arrays, named tuples (-> 3d points, 2D size) and dictionaries. While 'Collection' interfaces support some number of functions, often algorithms end up being implemented many times. 
 
 In actuality, the only way the aforementioned collections differ is indexing: Arrays use consecutive ints, named tuples use compile-time strings, dictionaries use unconsecutive hashables.
 
-TenLang interprets this as an opportunity for abstraction: By allowing NDArray dimensions arbitrary indexing, one can cover all these use-cases in the same NDArray, and possibly more!
+TenLang interprets this as an opportunity for abstraction: By allowing NDArray dimensions arbitrary indexing, one can cover all these use-cases in the same NDArray.
 
 ## Roadmap
 
