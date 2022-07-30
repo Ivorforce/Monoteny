@@ -10,7 +10,13 @@ extension {: (N: <Addition>) = N :} {
     }
 }
 
-extension {: (A: <Any>, Index: <LeftBoundKnown>) = A[Index] :} {
+extension {: (A: <Any>, Index: <LeftBound>) = {
+    guard let .Known(_) = Index.left_bound else {
+        throw "Left bound must be known for non-optional skipping."
+    }
+
+    return A[Index]
+} :} {
     // A fun example of where compile-time complexity is as hard as the function itself.
     fn skip_first: (_ skip_count: Int32) -> {:
         guard let .Known(skip_count) = skip_count else {
@@ -32,7 +38,13 @@ extension {: (A: <Any>, Index: <LeftBoundKnown>) = A[Index] :} {
     }
 }
 
-extension {: (A: <Any>, Index: <LeftBound, !LeftBoundKnown>) = A[Index] :} {
+extension {: (A: <Any>, Index: <LeftBound>) = {
+    guard let .Unknown = Index.left_bound else {
+        throw "A known left bound can be evaluated directly to a non-optional."
+    }
+
+    return A[Index]
+} :} {
     fn skip_first: (_ skip_count: Int32) -> A[Index]? = {
         self?@[self@.index.left_bound + skip_count...];
     }
