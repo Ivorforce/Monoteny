@@ -2,13 +2,33 @@
 
 Welcome to the mathemagical land of TenLang! 
 
-TenLang is an experimental language focusing on tensor math. It aims to streamline complex syntax, borrowing from modern trends in functional and object-oriented languages. Here are some of the main philosophies:
+TenLang is an experimental language focusing on tensor math. It aims to streamline complex syntax, borrowing from modern trends in functional and object-oriented languages. 
 
-- Every object and object collection is a broadcastable NDArray.
-  - That includes arrays, sets, dictionaries and tuples.
-- The compiler guarantees NDArray broadcast and lookup safety.
-- All actions on an NDArray broadcast to their atoms, unless specified.
-  - Yes, that includes function calls and member lookups.
+## Philosophy
+
+### Implicit Object Multiplicity
+
+In TenLang, every NDArray is treated as if it were an atom. At compile time, these operations are translated to appropriate iteration operations.
+
+There are two exceptions: First, when two NDArrays collide, they are broadcast to each other appropriately. Second, with the `@[]` syntax, an object can be referred as an NDArray. 
+
+### Shape Safety
+
+TenLang aims to guarantee shape, lookup and generally array operations safety.
+
+There is a reasonable reason no other language has yet attempted this: Shape resolving can be as hard as executing the program itself. It seems impossible to devise a system that could possibly cover every use-case. Without one, the system quickly falls apart.
+
+Luckily, by now we know how to solve complex problems in a readable and approachable way. It's coding.
+
+TenLang takes these lessons to heart: Types are resolved with user code at compile time. The code itself follows TenLang syntax, so it is unnecessary to learn a separate complicated language. I hope this truly covers all (computable) use-cases. 
+
+### Collections Combinations
+
+In many languages, several independent types of collections exist, e.g. arrays, named tuples (-> 3d points, 2D size) and dictionaries. While some implement 'Collection' interfaces to support some number of functions, often algorithms end up being implemented many times.
+
+In actuality, the only way the aforementioned collections differ is indexing: Arrays use consecutive ints, named tuples use compile-time strings, dictionaries use unconsecutive hashables.
+
+TenLang interprets this as an opportunity for abstraction: By allowing NDArray dimensions arbitrary indexing, one can cover all these use-cases in the same NDArray, and possibly more!
 
 ## Roadmap
 
@@ -79,3 +99,5 @@ This will be possible by TenLang coming with several different transpilers. Here
   - Very complex. TenLang encourages building that part of the program in the target ecosystem.
 - Multithreading
   - Very complex, and of limited use for (pure) mathematical applications.
+- Unsafe / Reflection
+  - Because TenLang is transpiled, this is not applicable to the language.

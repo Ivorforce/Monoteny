@@ -1,0 +1,15 @@
+extension {: (A: <Any>, Count: <Countable>) = A[Count] :} {
+    fn skip_first: (_ skip_count: Int32 ) -> {:
+        guard let .Known(skip_count) = skip_count else {
+            throw "Cannot skip with a count unknown at compile-time."
+        }
+
+        guard skip_count >= Count.count else {
+            throw "Cannot skip an unknown number of elements."
+        }
+
+        A[Count - skip_count]
+    :} = {
+        self@[self@.index.left_bound + skip_count...];
+    }
+}
