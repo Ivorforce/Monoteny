@@ -10,9 +10,9 @@ extension {: (N: <Addition>) = N :} {
     }
 }
 
-extension {: (A: <Any>, Index: <LeftBound>) = A[Index] :} {
-    // A fun example of where compile-time complexity is as hard as
-    fn skip_first: (_ skip_count: Int32 ) -> {:
+extension {: (A: <Any>, Index: <LeftBoundKnown>) = A[Index] :} {
+    // A fun example of where compile-time complexity is as hard as the function itself.
+    fn skip_first: (_ skip_count: Int32) -> {:
         guard let .Known(skip_count) = skip_count else {
             throw "Cannot skip with a count unknown at compile-time."
         }
@@ -29,5 +29,11 @@ extension {: (A: <Any>, Index: <LeftBound>) = A[Index] :} {
         return A[new_index];
     :} = {
         self@[self@.index.left_bound + skip_count...];
+    }
+}
+
+extension {: (A: <Any>, Index: <LeftBound, !LeftBoundKnown>) = A[Index] :} {
+    fn skip_first: (_ skip_count: Int32) -> A[Index]? = {
+        self?@[self@.index.left_bound + skip_count...];
     }
 }
