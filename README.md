@@ -88,6 +88,8 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 - [ ] Standard unary + binary operators
 - [ ] String Handling
+- [ ] Common boolean resolving (all, any, none, etc.)
+- [ ] Common functional dimension operations (filter, fold, etc.)
 - [ ] Common 0D-Math operations (pow, sqrt, etc.)
 - [ ] Common 1D-Math operations (sum, std, etc.)
 - [ ] Common timeseries data functions (filter, gaussian, running mean, etc.)
