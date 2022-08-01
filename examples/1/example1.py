@@ -17,7 +17,7 @@ def square(a: np.int32,) -> np.int32:
 
     Returns: np.int32
     """
-    return (a) * (a)
+    return a * a
 
 
 def main():
@@ -27,7 +27,7 @@ def main():
     b = np.int32(5)
     b = np.int32(3)
     print("b: ")
-    print((np.int32(5)) > (((np.int32(2)) ** (np.int32(3))) * (np.int32(2))))
-    print((False) | (True))
-    print((((np.int32(2)) ** ((np.int32(3)) ** (np.int32(5)))) * (np.int32(3))) + (np.int32(5)))
+    print(np.int32(5) > ((np.int32(2) ** np.int32(3)) * np.int32(2)))
+    print(False | True)
+    print(((np.int32(2) ** (np.int32(3) ** np.int32(5))) * np.int32(3)) + np.int32(5))
     print([b, square(b), np.int32(2)])

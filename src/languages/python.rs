@@ -156,6 +156,19 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
     Ok(())
 }
 
+pub fn transpile_maybe_parenthesized_expression(stream: &mut (dyn Write), expression: &Expression, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
+    if is_simple(&expression.operation) {
+        transpile_expression(stream, expression, builtins)?;
+    }
+    else {
+        write!(stream, "(")?;
+        transpile_expression(stream, expression, builtins)?;
+        write!(stream, ")")?;
+    }
+
+    Ok(())
+}
+
 pub fn escape_string(string: &String) -> String {
     let string = string.replace("\\", "\\\\");
     let string = string.replace("\"", "\\\"");
@@ -169,9 +182,8 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &Functi
 
     // TODO We can probably avoid unnecessary parentheses here and in the other operators if we ask the expression for its (python) precedence, and compare it with ours.
     let mut transpile_unary_operator = |name: &str| -> Result<bool, std::io::Error> {
-        write!(stream, "{}(", name)?;
-        transpile_expression(stream, &expression.value, builtins)?;
-        write!(stream, ")")?;
+        write!(stream, "{}", name)?;
+        transpile_maybe_parenthesized_expression(stream, &expression.value, builtins)?;
         Ok(true)
     };
 
@@ -194,11 +206,9 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Funct
     });
 
     let mut transpile_binary_operator = |name: &str| -> Result<bool, std::io::Error> {
-        write!(stream, "(")?;
-        transpile_expression(stream, &lhs.value, builtins)?;
-        write!(stream, ") {} (", name)?;
-        transpile_expression(stream, &rhs.value, builtins)?;
-        write!(stream, ")")?;
+        transpile_maybe_parenthesized_expression(stream, &lhs.value, builtins)?;
+        write!(stream, " {} ", name)?;
+        transpile_maybe_parenthesized_expression(stream, &rhs.value, builtins)?;
 
         Ok(true)
     };
@@ -259,5 +269,16 @@ pub fn get_external_name(parameter: &Parameter) -> String {
         ParameterKey::Name(key) => key.clone(),
         // Int keying is not supported in python. Just use the variable name.
         ParameterKey::Int(_) => parameter.variable.name.clone(),
+    }
+}
+
+pub fn is_simple(operation: &ExpressionOperation) -> bool {
+    match operation {
+        ExpressionOperation::Primitive(_) => true,
+        ExpressionOperation::VariableLookup(_) => true,
+        ExpressionOperation::StringLiteral(_) => true,
+        ExpressionOperation::ArrayLiteral(_) => true,
+        ExpressionOperation::StaticFunctionCall { .. } => false,
+        ExpressionOperation::MemberLookup(_, _) => false,
     }
 }
