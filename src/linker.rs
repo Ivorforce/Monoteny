@@ -43,9 +43,6 @@ pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
                     mutability: abstract_syntax::Mutability::Immutable,
                 }));
             }
-            abstract_syntax::GlobalStatement::Extension(_) => {
-                todo!()
-            }
         }
     }
 

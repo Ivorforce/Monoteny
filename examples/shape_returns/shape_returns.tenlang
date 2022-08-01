@@ -1,9 +1,5 @@
-gen $Number: Addition;
 gen $Atom: Any;
 gen $LeftBoundIndex: LeftBound;
-
-fun times_two(_arg: $Number): $Number :: arg + arg;
-fun $Number.times_two: $Number :: self + self;
 
 // A skip_first function with a generically complex return type.
 fun $Atom[$LeftBoundIndex].skip_first(_ skip_count: Int32) {:
@@ -17,7 +13,7 @@ fun $Atom[$LeftBoundIndex].skip_first(_ skip_count: Int32) {:
         let .Known(left_bound) = $LeftBoundIndex.left_bound,
         let .Known(skip_count) = skip_count
     else {
-        return fun(): Option<$Atom[$LeftBoundIndex]> :: self@[self@.index.left_bound + skip_count...]?;
+        return (): Option<$Atom[$LeftBoundIndex]> :: self@[self@.index.left_bound + skip_count...]?;
     }
 
     guard skip_count <= Count.count else {
@@ -29,5 +25,5 @@ fun $Atom[$LeftBoundIndex].skip_first(_ skip_count: Int32) {:
 
      var new_index = $LeftBoundIndex;
      new_index.left_bound = new_start;
-     return fun(): $Atom[new_index] :: self@[new_start...];
+     return (): $Atom[new_index] :: self@[new_start...];
 :}

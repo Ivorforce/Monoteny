@@ -1,0 +1,9 @@
+gen $Number: Addition;
+
+fun times_two(_ arg: $Number): $Number :: arg + arg;
+fun $Number.twice: $Number :: self + self;
+
+fun main: () :: {
+    var a = times_two(5);
+    let a = a.twice;
+}

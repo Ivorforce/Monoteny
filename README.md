@@ -61,7 +61,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] If / Else, Guard
 - [ ] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
 - [ ] Structs
-- [ ] Interfaces + Extensions
+- [ ] Interfaces + Member Functions
 - [ ] 'transformation assignment' syntax: a |= + 5; b |= .union(c)
 - [ ] var-like 0 parameter function syntax
 - [ ] NDArrays

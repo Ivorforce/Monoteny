@@ -18,7 +18,6 @@ match {
     "==", "!=", ">", ">=", "<", "<=",
     "let", "var",
     "fun",
-     "extension",
 } else {
     r"[a-zA-Z_]\w*" => _Identifier,
     _
@@ -48,7 +47,6 @@ pub Program: Program = {
 
 pub GlobalStatement: Box<GlobalStatement> = {
     Function => Box::new(GlobalStatement::FunctionDeclaration(<>)),
-    Extension => Box::new(GlobalStatement::Extension(<>))
 };
 
 Function: Box<Function> = {
@@ -71,18 +69,6 @@ Parameter: Box<Parameter> = {
         key: ParameterKey::Name(key), internal_name, param_type
     }),
 }
-
-// =============================== Member =====================================
-
-pub Extension: Box<Extension> = {
-    "extension" <type_declaration: TypeDeclaration> "{" <statements: (<MemberStatement>)*> "}" => Box::new(Extension {
-        type_declaration, statements
-    })
-};
-
-pub MemberStatement: Box<MemberStatement> = {
-    Function => Box::new(MemberStatement::FunctionDeclaration(<>)),
-};
 
 // =============================== Type =====================================
 
