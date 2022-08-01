@@ -61,6 +61,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
 - [ ] Structs
 - [ ] Interfaces + Extensions
+- [ ] 'equivalence assignment' syntax: a |= + 5; b |= .union(c)
 - [ ] NDArrays
 - [ ] Tuple Dimension Index
 - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
