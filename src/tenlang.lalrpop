@@ -17,7 +17,8 @@ match {
     "**", "%",
     "==", "!=", ">", ">=", "<", "<=",
     "let", "var",
-    "fn", "extension",
+    "fun",
+     "extension",
 } else {
     r"[a-zA-Z_]\w*" => _Identifier,
     _
@@ -51,7 +52,7 @@ pub GlobalStatement: Box<GlobalStatement> = {
 };
 
 Function: Box<Function> = {
-    "fn" <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<Parameter, ",">> ")" <return_type: ("->" <TypeDeclaration>)?> "{" <body: (<Statement> ";")*> "}" => Box::new(Function {
+    "fun" <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<Parameter, ",">> ")" <return_type: (":" <TypeDeclaration>)?> "::" "{" <body: (<Statement> ";")*> "}" => Box::new(Function {
         identifier, parameters, return_type, body
     }),
 }

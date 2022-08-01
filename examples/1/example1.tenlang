@@ -1,12 +1,12 @@
-fn no_op() {
+fun no_op() :: {
     return;
 }
 
-fn square(_ a: Int32) -> Int32 {
+fun square(_ a: Int32) : Int32 :: {
     return a * a;
 }
 
-fn main() {
+fun main() :: {
     var b = 5;
     b = 3;
     print("b: ");
