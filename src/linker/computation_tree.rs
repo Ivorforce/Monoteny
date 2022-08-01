@@ -11,7 +11,6 @@ use crate::linker::primitives;
 
 pub struct Program {
     pub functions: Vec<Rc<Function>>,
-    pub variables: HashMap<Uuid, Rc<Variable>>,
     pub builtins: Rc<TenLangBuiltins>,
 }
 
@@ -27,7 +26,6 @@ pub struct FunctionInterface {
 
 pub struct Function {
     pub interface: Rc<FunctionInterface>,
-    pub variables: HashMap<Uuid, Rc<Variable>>,
     pub statements: Vec<Box<Statement>>,
 }
 

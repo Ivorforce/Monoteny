@@ -54,11 +54,10 @@ pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
     // Resolve function bodies
     let functions: Vec<Rc<Function>> = functions_with_bodies.into_iter().map(
         |(interface, statements)|
-        resolve_function_body(statements, interface, &global_variable_scope)
+        resolve_function_body(statements, &interface, &global_variable_scope)
     ).collect();
 
     return Program {
-        variables: HashMap::new(),
         functions,
         builtins
     }
@@ -108,14 +107,38 @@ pub fn resolve_parameter_key(key: &abstract_syntax::ParameterKey, index: usize) 
     }
 }
 
-pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interface: Rc<FunctionInterface>, scope: &Scope) -> Rc<Function> {
-    let mut local_variables: HashMap<String, Rc<Variable>> = HashMap::new();
+pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<FunctionInterface>, scope: &Scope) -> Rc<Function> {
+    let mut parameter_variables: HashMap<String, Rc<Variable>> = HashMap::new();
 
     for parameter in &interface.parameters {
         let variable = &parameter.variable;
-        local_variables.insert(variable.name.clone(), variable.clone());
+        parameter_variables.insert(variable.name.clone(), variable.clone());
     }
 
+    let subscope = scope.subscope(&parameter_variables);
+    let statements: Vec<Box<Statement>> = resolve_top_scope(body, interface, &subscope);
+
+    return Rc::new(Function {
+        interface: Rc::clone(interface),
+        statements,
+    });
+}
+
+pub fn resolve_top_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<FunctionInterface>, scope: &Scope) -> Vec<Box<Statement>> {
+    if let Some(_) = &interface.return_type {
+        if let [statement] = &body[..] {
+            if let abstract_syntax::Statement::Expression(expression ) = statement.as_ref() {
+                // Single-Statement Return
+                return vec![Box::new(Statement::Return(Some(resolve_expression(expression, &scope))))]
+            }
+        }
+    }
+
+    resolve_scope(body, &interface, &scope)
+}
+
+pub fn resolve_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<FunctionInterface>, scope: &Scope) -> Vec<Box<Statement>> {
+    let mut local_variables: HashMap<String, Rc<Variable>> = HashMap::new();
     let mut statements: Vec<Box<Statement>> = Vec::new();
 
     for statement in body.iter() {
@@ -192,11 +215,7 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
         }
     }
 
-    return Rc::new(Function {
-        interface,
-        variables: local_variables.values().map(|variable| (variable.id, variable.clone())).collect(),
-        statements,
-    });
+    statements
 }
 
 pub fn resolve_static_function_call(function: &Rc<FunctionInterface>, arguments: &Vec<&Box<abstract_syntax::Expression>>, scope: &Scope) -> Expression {

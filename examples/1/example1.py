@@ -5,7 +5,7 @@ def no_op():
     """
     <Docstring TODO!>
     """
-    return
+    pass
 
 
 def square(a: np.int32,) -> np.int32:

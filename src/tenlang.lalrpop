@@ -55,6 +55,9 @@ Function: Box<Function> = {
     "fun" <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<Parameter, ",">> ")" <return_type: (":" <TypeDeclaration>)?> "::" "{" <body: (<Statement> ";")*> "}" => Box::new(Function {
         identifier, parameters, return_type, body
     }),
+    "fun" <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<Parameter, ",">> ")" <return_type: (":" <TypeDeclaration>)?> "::" <expression: (<Expression> ";")> => Box::new(Function {
+        identifier, parameters, return_type, body: vec![Box::new(Statement::Expression(expression))]
+    }),
 }
 
 Parameter: Box<Parameter> = {
