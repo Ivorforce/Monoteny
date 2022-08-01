@@ -1,11 +1,19 @@
 fun main() :: {
-    var b: Float32[3] = 1;
+    var a: Float32[3] = 1;
 
     // These all do the same:
-    print@(b_folded);
-    b_folded@.for_each ~ (a) :: print(a);
-    b_folded@.for_each ~ (a) :: {
+    print(a);
+    a@.for_each ~ (a) :: print(a);
+    a@.for_each ~ (a) :: {
         print(a);
     };
-    b_folded@.for_each((a) :: print(a));
+    a@.for_each((a) :: print(a));
+
+    // And these:
+    let b = a + 1;
+    let b = a@.map ~ (a) :: a + 1;
+    a@.map ~ (a) :: {
+        return a + 1;
+    };
+    a@.map((a) :: a + 1);
 }
