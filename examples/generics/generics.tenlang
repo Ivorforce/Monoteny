@@ -5,5 +5,6 @@ fun $Number.twice: $Number :: self + self;
 
 fun main: () :: {
     var a = times_two(5);
-    let a = a.twice;
+    var a = a.twice;
+    a |= .twice;
 }
