@@ -22,8 +22,6 @@ Luckily, we know how to solve hard problems in a readable and approachable way. 
 
 TenLang takes this to heart: Generic types are resolved with user code at compile time. The code itself follows TenLang syntax, so it is unnecessary to learn a separate complicated language. I hope this truly covers all (computable) use-cases. 
 
-All functions can be imported at compile-time using a `compiletime import`. These imports cannot be circular.  
-
 ### Collections Combinations
 
 In many languages, several independent types of collections exist, e.g. arrays, named tuples (-> 3d points, 2D size) and dictionaries. While 'Collection' interfaces support some number of functions, often algorithms end up being implemented many times. 
@@ -45,7 +43,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 * [Future] Octave / MatLab
 * [Future] R
 
-### Language Features
+### TenLang 0.1
 
 - [x] Project Skeleton
 - [x] Number Primitives
@@ -56,26 +54,35 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Binary operators: + - * / || && > < >= <= == != % **
 - [ ] Generic Type Inferral
 - [ ] Overloading & Call Type Checking
-- [ ] Type Inheritance
+- [ ] Interface Inheritance
 - [ ] Unary operators: - !
 - [ ] If / Else, Guard
 - [ ] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
 - [ ] Structs
 - [ ] Interfaces + Extensions
-- [ ] Exceptions
-- [ ] Staggered Dimensions
-- [ ] Implicit tensor building
-- [ ] Abstract functions + Higher order functions
 - [ ] NDArrays
 - [ ] Tuple Dimension Index
 - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
-- [ ] Int Range Dimension Index
+- [ ] Open Int Range Dimension Index, array start / end handle syntax (>|, <|)
 - [ ] Auto Broadcast
 - [ ] Optionals
-- [ ] String comprehension
 - [ ] Sets
-- [ ] User-Defined Binary / Unary Operators (note: restricted to a set of characters like +^-=)
+
+### TenLang 1.0
+
 - [ ] System Callback API / Permission Contexts
+- [ ] Exceptions
+- [ ] Abstract functions + Higher order functions
+- [ ] Deep Function Currying
+- [ ] String comprehension
+
+### TenLang 2.0
+
+- [ ] User-Defined Binary / Unary Operators (note: restricted to a set of characters like +^-=)
+- [ ] Implicit tensor building
+- [ ] Staggered Dimensions
+- [ ] Array Dimension Index
+- [ ] Closed Int Range Dimension Index
 
 ### Standard Library
 
