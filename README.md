@@ -61,6 +61,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Structs
 - [ ] Interfaces + Extensions
 - [ ] NDArrays
+- [ ] 'equivalence transformation' syntax: (a == b).any() becomes a == b | .any()
 - [ ] Tuple Dimension Index
 - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
 - [ ] Open Int Range Dimension Index, array start / end handle syntax (>|, <|)
