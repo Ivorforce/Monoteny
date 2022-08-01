@@ -116,7 +116,8 @@ ComparisonPrecedenceGroup = ComparisonExpression<AdditionPrecedenceGroup>;
 AdditionPrecedenceGroup = LeftAssociativeBinaryOperator<SumOperator, MultiplicationPrecedenceGroup>;
 MultiplicationPrecedenceGroup = LeftAssociativeBinaryOperator<FactorOperator, ExponentiationPrecedenceGroup>;
 ExponentiationPrecedenceGroup = RightAssociativeBinaryOperator<ExponentiationOperator, FunctionCallPrecedenceGroup>;
-FunctionCallPrecedenceGroup = FunctionCallExpression<Term>;
+FunctionCallPrecedenceGroup = FunctionCallExpression<EquivalenceEqualityPrecedenceGroup>;
+EquivalenceEqualityPrecedenceGroup = EquivalenceEquality<Term>;
 
 Term: Box<Expression> = {
     Number => Box::new(Expression::Number(<>)),

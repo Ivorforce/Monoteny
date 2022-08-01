@@ -12,6 +12,6 @@ fun main() :: {
     print("b: ");
     print(5 > 2 ** 3 * 2);
     print(false || true);
-    print(2 ** 3 ** 5);
+    print(2 ** 3 ** 5 |* 3 |+ 5);
     print([b, square(0: b), 2]);
 }

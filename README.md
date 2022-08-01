@@ -52,6 +52,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Function Interfaces
 - [x] Int call / subscript keying
 - [x] Binary operators: + - * / || && > < >= <= == != % **
+- [x] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b | * c | .any()
 - [ ] Generic Type Inferral
 - [ ] Overloading & Call Type Checking
 - [ ] Interface Inheritance
@@ -61,7 +62,6 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Structs
 - [ ] Interfaces + Extensions
 - [ ] NDArrays
-- [ ] 'equivalence transformation' syntax: (a == b).any() becomes a == b | .any()
 - [ ] Tuple Dimension Index
 - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
 - [ ] Open Int Range Dimension Index, array start / end handle syntax (>|, <|)

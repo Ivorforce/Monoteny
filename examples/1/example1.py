@@ -29,5 +29,5 @@ def main():
     print("b: ")
     print((np.int32(5)) > (((np.int32(2)) ** (np.int32(3))) * (np.int32(2))))
     print((False) | (True))
-    print((np.int32(2)) ** ((np.int32(3)) ** (np.int32(5))))
+    print((((np.int32(2)) ** ((np.int32(3)) ** (np.int32(5)))) * (np.int32(3))) + (np.int32(5)))
     print([b, square(b), np.int32(2)])

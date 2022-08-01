@@ -105,9 +105,9 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             exponentiate: add_binary_operator("**"),
             modulo: add_binary_operator("%"),
 
-            // TODO These should be unary
-            positive: add_binary_operator("+"),
-            negative: add_binary_operator("-"),
+            // TODO These should be unary, once matching works re-name them back
+            positive: add_binary_operator(".+"),
+            negative: add_binary_operator(".-"),
             not: add_binary_operator("!"),
         },
         functions: TenLangBuiltinFunctions {
