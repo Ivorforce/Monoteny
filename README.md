@@ -57,7 +57,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Generic Type Inferral
 - [ ] Overloading & Call Type Checking
 - [ ] Interface Inheritance
-- [ ] Unary operators: - !
+- [ ] Unary operators: + - !
 - [ ] If / Else, Guard
 - [ ] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
 - [ ] Structs
