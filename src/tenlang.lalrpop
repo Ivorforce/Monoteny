@@ -9,7 +9,7 @@ match {
     r"[0-9]+" => _Number,
     "true", "false",
     "return",
-    "(", ")", "{", "}", "[",  "]",
+    "(", ")", "{", "}", "[",  "]", "|",
     ";", ",", ":",
     "=", "?",
     "!",
@@ -109,24 +109,25 @@ VariableDeclarationMutability: Mutability = {
 
 // =============================== Expression =====================================
 
-Expression: Box<Expression> = FunctionCallPrecedenceGroup;
-FunctionCallPrecedenceGroup = FunctionCallExpression<LogicalPrecedenceGroup>;
-LogicalPrecedenceGroup = LeftAssociativeBinaryOperator<LogicalOperator, ComparisonPrecedenceGroup>;
+Expression: Box<Expression> = OrPrecedenceGroup;
+OrPrecedenceGroup = LeftAssociativeBinaryOperator<OrOperator, AndPrecedenceGroup>;
+AndPrecedenceGroup = LeftAssociativeBinaryOperator<AndOperator, ComparisonPrecedenceGroup>;
 ComparisonPrecedenceGroup = ComparisonExpression<AdditionPrecedenceGroup>;
 AdditionPrecedenceGroup = LeftAssociativeBinaryOperator<SumOperator, MultiplicationPrecedenceGroup>;
 MultiplicationPrecedenceGroup = LeftAssociativeBinaryOperator<FactorOperator, ExponentiationPrecedenceGroup>;
-ExponentiationPrecedenceGroup = RightAssociativeBinaryOperator<ExponentiationOperator, Term>;
+ExponentiationPrecedenceGroup = RightAssociativeBinaryOperator<ExponentiationOperator, FunctionCallPrecedenceGroup>;
+FunctionCallPrecedenceGroup = FunctionCallExpression<Term>;
 
 Term: Box<Expression> = {
     Number => Box::new(Expression::Number(<>)),
     BoolLiteral => Box::new(Expression::Bool(<>)),
     Identifier => Box::new(Expression::VariableLookup(<>)),
-    "(" <Expression> ")",
     "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(Expression::ArrayLiteral(<>)),
+    "(" <Expression> ")",
     r"\x22[^\x22]*\x22" => {
         let s = <>;
         Box::new(Expression::StringLiteral(String::from(&s[1..(s.len() - 1)])))
-    }
+    },
 };
 
 PassedArgument: Box<PassedArgument> = {
@@ -139,8 +140,11 @@ ExponentiationOperator: BinaryOperator = {
     "**" => BinaryOperator::Exponentiate,
 };
 
-LogicalOperator: BinaryOperator = {
+OrOperator: BinaryOperator = {
     "||" => BinaryOperator::Or,
+};
+
+AndOperator: BinaryOperator = {
     "&&" => BinaryOperator::And,
 };
 
@@ -160,10 +164,15 @@ UnaryOperator: UnaryOperator = {
 };
 
 FunctionCallExpression<NextOperatorLevel>: Box<Expression> = {
-    <Expression> "(" <OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall(FunctionCallType::Call, <>)),
-    <Expression> "[" <OptionalFinalSeparatorList<PassedArgument, ",">> "]" => Box::new(Expression::FunctionCall(FunctionCallType::Subscript, <>)),
-    <Expression> "." <Identifier> => Box::new(Expression::MemberLookup(<>)),
+    <FunctionCallExpression<NextOperatorLevel>> "(" <OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall(FunctionCallType::Call, <>)),
+    <FunctionCallExpression<NextOperatorLevel>> "[" <OptionalFinalSeparatorList<PassedArgument, ",">> "]" => Box::new(Expression::FunctionCall(FunctionCallType::Subscript, <>)),
+    <FunctionCallExpression<NextOperatorLevel>> "." <Identifier> => Box::new(Expression::MemberLookup(<>)),
     NextOperatorLevel
+}
+
+EquivalenceEquality<NextOperatorLevel>: Box<Expression> = {
+    <EquivalenceEquality<NextOperatorLevel>> "|",
+    <NextOperatorLevel>,
 }
 
 ComparisonExpression<NextOperatorLevel>: Box<Expression> = {
