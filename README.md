@@ -68,6 +68,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Auto Broadcast
 - [ ] Optionals
 - [ ] Sets
+- [ ] Comments (with transpilation)
 
 ### TenLang 1.0
 
