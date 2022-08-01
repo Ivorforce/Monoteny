@@ -1,6 +1,6 @@
-gen $Number: Addition
-gen $Atom: Any
-gen $LeftBoundIndex: LeftBound
+gen $Number: Addition;
+gen $Atom: Any;
+gen $LeftBoundIndex: LeftBound;
 
 fun times_two(_arg: $Number): $Number :: arg + arg;
 fun $Number.times_two: $Number :: self + self;
