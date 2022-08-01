@@ -1,47 +1,33 @@
-global {: (N: <Addition>) :} {
-    fn times_two: (_ arg: N) -> N = {
-        arg + arg
-    }
-}
+gen $Number: Addition
+gen $Atom: Any
+gen $LeftBoundIndex: LeftBound
 
-extension {: (N: <Addition>) = N :} {
-    fn times_two: () -> N = {
-        self + self
-    }
-}
+fun times_two(_arg: $Number): $Number :: arg + arg;
+fun $Number.times_two: $Number :: self + self;
 
-extension {: (A: <Any>, Index: <LeftBound>) = A[Index] :} {
+// A skip_first function with a generically complex return type.
+fun $Atom[$LeftBoundIndex].skip_first(_ skip_count: Int32) {:
+    () :: self@[>| skip_count];
+:}
+
+// Using static types instead of letting the compiler infer them.
+fun $Atom[$LeftBoundIndex].skip_first(_ skip_count: Int32) {:
     // A fun example of where compile-time complexity is as hard as the function itself.
-    fn skip_first: (_ skip_count: Int32) -> {:
-        guard let .Known(left_bound) = Index.left_bound else {
-            throw "Left bound must be known for non-optional skipping.";
-        }
-
-        guard let .Known(skip_count) = skip_count else {
-            throw "Cannot skip with a count unknown at compile-time.";
-        }
-
-        guard skip_count >= Count.count else {
-            throw format("Cannot skip more elements than available: {} > {}", skip_count, left_bound);
-        }
-
-        // Index could be right bound or open!
-        // Just re-use the index definition with a minor tweak.
-        var new_index = Index.clone();
-        new_index.left_bound = left_bound + skip_count;
-
-        return A[new_index];
-    :} = {
-        self@[self@.index.left_bound + skip_count...];
+    guard
+        let .Known(left_bound) = $LeftBoundIndex.left_bound,
+        let .Known(skip_count) = skip_count
+    else {
+        return fun(): Option<$Atom[$LeftBoundIndex]> :: self@[self@.index.left_bound + skip_count...]?;
     }
 
-    fn skip_first: (_ skip_count: Int32) -> {:
-        guard .Unknown == Index.left_bound || .Unknown == skip_count else {
-            throw "A known left bound and skip count can be evaluated directly to a non-optional.";
-        }
-
-        return Option<A[Index]>;
-    :} = {
-        self?@[self@.index.left_bound + skip_count...];
+    guard skip_count <= Count.count else {
+        throw format("Cannot skip more elements than available: {} > {}", skip_count, left_bound);
     }
-}
+
+    // Index could be right bound or open!
+    // Just re-use the index definition with a minor tweak.
+
+     var new_index = $LeftBoundIndex;
+     new_index.left_bound = new_start;
+     return fun(): $Atom[new_index] :: self@[new_start...];
+:}

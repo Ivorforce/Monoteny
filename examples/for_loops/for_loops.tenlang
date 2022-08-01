@@ -1,0 +1,11 @@
+fun main() :: {
+    var b: Float32[3] = 1;
+
+    // These all do the same:
+    print@(b_folded);
+    b_folded@.for_each ~ (a) :: print(a);
+    b_folded@.for_each ~ (a) :: {
+        print(a);
+    };
+    b_folded@.for_each((a) :: print(a));
+}
