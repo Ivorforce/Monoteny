@@ -9,6 +9,7 @@ use guard::guard;
 use uuid::Uuid;
 
 use crate::abstract_syntax;
+use crate::abstract_syntax::BinaryOperator;
 use crate::linker::builtins::*;
 use crate::linker::computation_tree::*;
 use crate::linker::scopes::Scope;
@@ -215,17 +216,37 @@ pub fn resolve_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc
     statements
 }
 
-pub fn resolve_static_function_call(function: &Rc<FunctionInterface>, arguments: &Vec<&Box<abstract_syntax::Expression>>, scope: &Scope) -> Expression {
-    let resolved_arguments: Vec<Box<Expression>> = arguments.into_iter()
-        .map(|x| resolve_expression(x, scope))
-        .collect();
+pub struct BinaryPairNode<'a> {
+    pub value: &'a abstract_syntax::Expression,
+    pub neighbor: Option<Box<BinaryPairNode<'a>>>
+}
 
-    guard!(let Some(reference) = resolved_arguments.first() else {
+pub fn gather_comparison_pairs_left_associative<'a>(lhs: &'a abstract_syntax::Expression, operator: &'a BinaryOperator, rhs: &'a abstract_syntax::Expression) -> Box<BinaryPairNode<'a>> {
+    if operator.is_pairwise_comparison() {
+        match lhs {
+            abstract_syntax::Expression::BinaryOperator(two_lhs, left_operator, lhs) => {
+                return Box::new(BinaryPairNode {
+                    value: rhs,
+                    neighbor: Some(gather_comparison_pairs_left_associative(two_lhs, left_operator, lhs))
+                });
+            }
+            _ => { }
+        };
+    }
+
+    return Box::new(BinaryPairNode {
+        value: rhs,
+        neighbor: Some(Box::new(BinaryPairNode { value: lhs, neighbor: None }))
+    });
+}
+
+pub fn resolve_static_function_call(function: &Rc<FunctionInterface>, arguments: Vec<Box<Expression>>, scope: &Scope) -> Box<Expression> {
+    guard!(let Some(reference) = arguments.first() else {
         // TODO
         panic!("operators without arguments are not supported yet - because generic return types are not supported yet.")
     });
 
-    for other in resolved_arguments.iter().skip(1) {
+    for other in arguments.iter().skip(1) {
         if &other.result_type.clone() != &reference.result_type.clone() {
             // TODO
             panic!("operator sides must be of the same result type - because generic return types are not supported yet.")
@@ -234,37 +255,37 @@ pub fn resolve_static_function_call(function: &Rc<FunctionInterface>, arguments:
 
     let result_type = reference.result_type.clone();
 
-    Expression {
+    Box::new(Expression {
         operation: Box::new(ExpressionOperation::StaticFunctionCall {
-            arguments: resolved_arguments.into_iter()
+            arguments: arguments.into_iter()
                 .enumerate()
                 .map(|(idx, argument)| Box::new(PassedArgument { key: function.parameters[idx].external_key.clone(), value: argument }))
                 .collect(),
             function: function.clone(),
         }),
         result_type
-    }
+    })
 }
 
 pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -> Box<Expression> {
-    Box::new(match syntax {
+    match syntax {
         abstract_syntax::Expression::Number(n) => {
             // TODO The type should be inferred
             let value = primitives::Value::Int32(n.clone());
-            Expression {
+            Box::new(Expression {
                 result_type: Some(Box::new(Type::Primitive(value.get_type()))),
                 operation: Box::new(ExpressionOperation::Primitive(value)),
-            }
+            })
         },
-        abstract_syntax::Expression::Bool(n) => Expression {
+        abstract_syntax::Expression::Bool(n) => Box::new(Expression {
             operation: Box::new(ExpressionOperation::Primitive(primitives::Value::Bool(n.clone()))),
             result_type: Some(Box::new(Type::Primitive(primitives::Type::Bool)))
-        },
+        }),
         abstract_syntax::Expression::StringLiteral(string) => {
-            Expression {
+            Box::new(Expression {
                 operation: Box::new(ExpressionOperation::StringLiteral(string.clone())),
                 result_type: Some(Box::new(Type::Identifier(String::from("String"))))
-            }
+            })
         },
         abstract_syntax::Expression::ArrayLiteral(raw_elements) => {
             let elements: Vec<Box<Expression>>= raw_elements.iter()
@@ -275,34 +296,26 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -
                 &elements.iter().map(|x| x.result_type.as_ref().unwrap()).collect()
             ).clone();
 
-            Expression {
+            Box::new(Expression {
                 operation: Box::new(ExpressionOperation::ArrayLiteral(elements)),
                 result_type: Some(supertype)
-            }
-        },
-        abstract_syntax::Expression::NAryOperator(operator, arguments) => {
-            let function = scope.resolve_static_fn(&format!("{:?}", operator));
-
-            if arguments.len() < 2 {
-                // We shouldn't get here if the parser works.
-                panic!("N-Ary operator needs at least two arguments.");
-            }
-            else if arguments.len() > 2 {
-                // TODO We can probably do this the easiest way by introducing a
-                //  helper function for each n-ary operator. It would accept (*args) and
-                //  simply do a for loop with window of size two, comparing elements.
-                //  The alternative, in-function evaluation, would mean introducing new temp variables,
-                //  which is certainly possible in a compiler but not easily in a transpiler.
-                // Transitive properties of arguments should ensure validity.
-                panic!("N-Ary operators support only two arguments (for now).");
-            }
-
-            resolve_static_function_call(function, &arguments.iter().collect(), scope)
+            })
         },
         abstract_syntax::Expression::BinaryOperator(lhs, operator, rhs) => {
-            let function = scope.resolve_static_fn(&format!("{:?}", operator));
+            let pairs = gather_comparison_pairs_left_associative(lhs, operator, rhs);
 
-            resolve_static_function_call(function, &vec![lhs, rhs], scope)
+            if let None = pairs.neighbor.unwrap().neighbor {
+                // Just one pair, this is easy
+                let function = scope.resolve_static_fn(&format!("{:?}", operator));
+                let lhs = resolve_expression(lhs, scope);
+                let rhs = resolve_expression(rhs, scope);
+
+                resolve_static_function_call(function, vec![lhs, rhs], scope)
+            }
+            else {
+                // At least 3 parts
+                todo!()
+            }
         },
         abstract_syntax::Expression::UnaryOperator(operator, expression) => {
             todo!()
@@ -310,10 +323,10 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -
         abstract_syntax::Expression::VariableLookup(identifier) => {
             let variable = scope.resolve(identifier);
 
-            Expression {
+            Box::new(Expression {
                 operation: Box::new(ExpressionOperation::VariableLookup(variable.clone())),
                 result_type: Some(variable.type_declaration.clone())
-            }
+            })
         },
         abstract_syntax::Expression::FunctionCall(call_type, callee, arguments) => {
             if call_type == &abstract_syntax::FunctionCallType::Subscript {
@@ -352,7 +365,7 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -
         abstract_syntax::Expression::MemberLookup(_, _) => {
             todo!()
         }
-    })
+    }
 }
 
 pub fn resolve_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {

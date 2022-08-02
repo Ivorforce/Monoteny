@@ -56,14 +56,14 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Single expression function definition syntax
 - [ ] Generic Type Inferral
 - [ ] Overloading & Call Type Checking
-- [ ] Interface Inheritance
 - [ ] Unary operators: + - !
-- [ ] If / Else, Guard
+- [ ] Expression Scopes (let a = { ... yield b; })
+- [ ] If / Else, if let, Guard, Guard let
 - [ ] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
 - [ ] Structs
-- [ ] Interfaces + Member Functions
+- [ ] Interfaces, Interface Inheritance, Member Functions
 - [ ] 'transformation assignment' syntax: a |= + 5; b |= .union(c)
-- [ ] var-like 0 parameter function syntax
+- [ ] Var-Like 0 parameter function syntax (a.b calls the function b on a).
 - [ ] NDArrays
 - [ ] Tuple Dimension Index
 - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals

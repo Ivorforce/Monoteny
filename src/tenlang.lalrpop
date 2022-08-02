@@ -101,7 +101,7 @@ VariableDeclarationMutability: Mutability = {
 Expression: Box<Expression> = OrPrecedenceGroup;
 OrPrecedenceGroup = LeftAssociativeBinaryOperator<OrOperator, AndPrecedenceGroup>;
 AndPrecedenceGroup = LeftAssociativeBinaryOperator<AndOperator, ComparisonPrecedenceGroup>;
-ComparisonPrecedenceGroup = ComparisonExpression<AdditionPrecedenceGroup>;
+ComparisonPrecedenceGroup = LeftAssociativeBinaryOperator<ComparisonOperator, AdditionPrecedenceGroup>;
 AdditionPrecedenceGroup = LeftAssociativeBinaryOperator<SumOperator, MultiplicationPrecedenceGroup>;
 MultiplicationPrecedenceGroup = LeftAssociativeBinaryOperator<FactorOperator, ExponentiationPrecedenceGroup>;
 ExponentiationPrecedenceGroup = RightAssociativeBinaryOperator<ExponentiationOperator, FunctionCallPrecedenceGroup>;
@@ -149,6 +149,16 @@ FactorOperator: BinaryOperator = {
     "%" => BinaryOperator::Modulo,
 };
 
+ComparisonOperator: BinaryOperator = {
+    "==" => BinaryOperator::EqualTo,
+    "!=" => BinaryOperator::NotEqualTo,
+
+    ">" => BinaryOperator::GreaterThan,
+    ">=" => BinaryOperator::GreaterThanOrEqualTo,
+    "<" => BinaryOperator::LesserThan,
+    "<=" => BinaryOperator::LesserThanOrEqualTo,
+}
+
 UnaryOperator: UnaryOperator = {
     "!" => UnaryOperator::Not,
 };
@@ -163,18 +173,6 @@ FunctionCallExpression<NextOperatorLevel>: Box<Expression> = {
 EquivalenceEquality<NextOperatorLevel>: Box<Expression> = {
     <EquivalenceEquality<NextOperatorLevel>> "|",
     <NextOperatorLevel>,
-}
-
-ComparisonExpression<NextOperatorLevel>: Box<Expression> = {
-    AtLeastTwoElementsSeparatorList<NextOperatorLevel, "=="> => Box::new(Expression::NAryOperator(NAryOperator::EqualTo, <>)),
-    AtLeastTwoElementsSeparatorList<NextOperatorLevel, "!="> => Box::new(Expression::NAryOperator(NAryOperator::NotEqualTo, <>)),
-
-    AtLeastTwoElementsSeparatorList<NextOperatorLevel, ">"> => Box::new(Expression::NAryOperator(NAryOperator::GreaterThan, <>)),
-    AtLeastTwoElementsSeparatorList<NextOperatorLevel, ">="> => Box::new(Expression::NAryOperator(NAryOperator::GreaterThanOrEqualTo, <>)),
-    AtLeastTwoElementsSeparatorList<NextOperatorLevel, "<"> => Box::new(Expression::NAryOperator(NAryOperator::LesserThan, <>)),
-    AtLeastTwoElementsSeparatorList<NextOperatorLevel, "<="> => Box::new(Expression::NAryOperator(NAryOperator::LesserThanOrEqualTo, <>)),
-
-    NextOperatorLevel,
 }
 
 
