@@ -218,7 +218,12 @@ pub fn resolve_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc
 
 pub struct BinaryPairNode<'a> {
     pub value: &'a abstract_syntax::Expression,
-    pub neighbor: Option<Box<BinaryPairNode<'a>>>
+    pub next: Option<BinaryNeighborOperationNode<'a>>,
+}
+
+pub struct BinaryNeighborOperationNode<'a> {
+    pub operator: &'a BinaryOperator,
+    pub operand: Box<BinaryPairNode<'a>>
 }
 
 pub fn gather_comparison_pairs_left_associative<'a>(lhs: &'a abstract_syntax::Expression, operator: &'a BinaryOperator, rhs: &'a abstract_syntax::Expression) -> Box<BinaryPairNode<'a>> {
@@ -227,7 +232,9 @@ pub fn gather_comparison_pairs_left_associative<'a>(lhs: &'a abstract_syntax::Ex
             abstract_syntax::Expression::BinaryOperator(two_lhs, left_operator, lhs) => {
                 return Box::new(BinaryPairNode {
                     value: rhs,
-                    neighbor: Some(gather_comparison_pairs_left_associative(two_lhs, left_operator, lhs))
+                    next: Some(BinaryNeighborOperationNode {
+                        operator, operand: gather_comparison_pairs_left_associative(two_lhs, left_operator, lhs)
+                    }),
                 });
             }
             _ => { }
@@ -236,7 +243,10 @@ pub fn gather_comparison_pairs_left_associative<'a>(lhs: &'a abstract_syntax::Ex
 
     return Box::new(BinaryPairNode {
         value: rhs,
-        neighbor: Some(Box::new(BinaryPairNode { value: lhs, neighbor: None }))
+        next: Some(BinaryNeighborOperationNode {
+            operator,
+            operand: Box::new(BinaryPairNode { value: lhs, next: None })
+        }),
     });
 }
 
@@ -304,7 +314,7 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -
         abstract_syntax::Expression::BinaryOperator(lhs, operator, rhs) => {
             let pairs = gather_comparison_pairs_left_associative(lhs, operator, rhs);
 
-            if let None = pairs.neighbor.unwrap().neighbor {
+            if let None = pairs.next.unwrap().operand.next {
                 // Just one pair, this is easy
                 let function = scope.resolve_static_fn(&format!("{:?}", operator));
                 let lhs = resolve_expression(lhs, scope);
