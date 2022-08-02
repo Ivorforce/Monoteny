@@ -323,7 +323,9 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -
                 resolve_static_function_call(function, vec![lhs, rhs], scope)
             }
             else {
-                // At least 3 parts
+                // At least 2 pairs.
+                // This is harder because we have to temp-store into variables
+                // lest we compute the input expressions multiple times.
                 todo!()
             }
         },
