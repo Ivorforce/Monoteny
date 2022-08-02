@@ -103,7 +103,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 - Compiler / LLVM / Virtual Machine
   - See [Transpilation Targets](#Transpilation Targets)
-- OOP / Polymorphism / Classes
+- Runtime Polymorphism / Classes
   - Very complex and of limited use for most mathematical applications.
 - Variadic parameters
   - Seldom used in practice. Passing array primitives is more versatile.
