@@ -3,6 +3,7 @@ pub mod types;
 
 use std::borrow::Borrow;
 use std::io::Write;
+use std::iter::zip;
 use guard::guard;
 
 use crate::linker::builtins::TenLangBuiltins;
@@ -151,7 +152,21 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
             }
             write!(stream, "]")?;
         },
-        ExpressionOperation::PairwiseOperations { .. } => todo!()
+        ExpressionOperation::PairwiseOperations { arguments, functions } => {
+            // TODO Unfortunately, python's a > b > c syntax does not support non-bool results.
+            // This is suboptimal, but easy: Just compute arguments twice lol.
+            for (idx, (args, function)) in zip(arguments.windows(2), functions.iter()).enumerate() {
+                write!(stream, "(")?;
+                transpile_expression(stream, &args[0], builtins)?;
+                write!(stream, ") {} (", function.name)?;
+                transpile_expression(stream, &args[1], builtins)?;
+                write!(stream, ")")?;
+
+                if idx < functions.len() - 1 {
+                    write!(stream, " and ")?;
+                }
+            }
+        }
     }
 
     Ok(())

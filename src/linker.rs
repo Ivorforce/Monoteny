@@ -321,7 +321,7 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -
             }
             else {
                 Box::new(Expression {
-                    // TODO This is true for comparisons, but can we generify this somehow?
+                    // TODO This is not true; we have to see what (a > b) && (b > c) actually outputs
                     result_type: Some(Box::new(Type::Primitive(primitives::Type::Bool))),
                     operation: Box::new(ExpressionOperation::PairwiseOperations { arguments, functions })
                 })

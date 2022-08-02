@@ -54,12 +54,12 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Binary operators: + - * / || && > < >= <= == != % **
 - [x] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b | * c | .any()
 - [x] Single expression function definition syntax
+- [x] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
 - [ ] Generic Type Inferral
 - [ ] Overloading & Call Type Checking
 - [ ] Unary operators: + - !
 - [ ] Expression Scopes (let a = { ... yield b; })
 - [ ] If / Else, if let, Guard, Guard let
-- [ ] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
 - [ ] Structs
 - [ ] Interfaces, Interface Inheritance, Member Functions
 - [ ] 'transformation assignment' syntax: a |= + 5; b |= .union(c)
