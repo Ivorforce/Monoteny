@@ -9,7 +9,6 @@ use guard::guard;
 use uuid::Uuid;
 
 use crate::abstract_syntax;
-use crate::abstract_syntax::BinaryOperator;
 use crate::linker::builtins::*;
 use crate::linker::computation_tree::*;
 use crate::linker::scopes::Scope;
@@ -216,41 +215,37 @@ pub fn resolve_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc
     statements
 }
 
-pub struct BinaryPairNode<'a> {
-    pub value: &'a abstract_syntax::Expression,
-    pub next: Option<BinaryNeighborOperationNode<'a>>,
-}
+pub fn gather_comparison_pairs_left_associative(lhs: &abstract_syntax::Expression, operator: &abstract_syntax:: BinaryOperator, rhs: &abstract_syntax::Expression, scope: &Scope) -> (Vec<Box<Expression>>, Vec<Rc<FunctionInterface>>) {
+    let mut lhs = lhs;
+    let mut operator = operator;
+    let mut rhs = rhs;
 
-pub struct BinaryNeighborOperationNode<'a> {
-    pub operator: &'a BinaryOperator,
-    pub operand: Box<BinaryPairNode<'a>>
-}
+    let mut arguments: Vec<Box<Expression>> = vec![];
+    let mut functions: Vec<Rc<FunctionInterface>> = vec![];
 
-pub fn gather_comparison_pairs_left_associative<'a>(lhs: &'a abstract_syntax::Expression, operator: &'a BinaryOperator, rhs: &'a abstract_syntax::Expression) -> Box<BinaryPairNode<'a>> {
-    if operator.is_pairwise_comparison() {
-        match lhs {
-            abstract_syntax::Expression::BinaryOperator(two_lhs, left_operator, lhs) => {
-                return Box::new(BinaryPairNode {
-                    value: rhs,
-                    next: Some(BinaryNeighborOperationNode {
-                        operator, operand: gather_comparison_pairs_left_associative(two_lhs, left_operator, lhs)
-                    }),
-                });
+    while true {
+        arguments.insert(0,resolve_expression(rhs, scope));
+        functions.insert(0, Rc::clone(scope.resolve_static_fn(&format!("{:?}", operator))));
+
+        if let abstract_syntax::Expression::BinaryOperator { lhs: llhs, operator: loperator, rhs: lrhs } = lhs {
+            if operator.is_pairwise_comparison() {
+                lhs = llhs;
+                operator = loperator;
+                rhs = lrhs;
+
+                continue;
             }
-            _ => { }
-        };
+        }
+
+        // last argument
+        arguments.insert(0,resolve_expression(lhs, scope));
+        break;
     }
 
-    return Box::new(BinaryPairNode {
-        value: rhs,
-        next: Some(BinaryNeighborOperationNode {
-            operator,
-            operand: Box::new(BinaryPairNode { value: lhs, next: None })
-        }),
-    });
+    (arguments, functions)
 }
 
-pub fn resolve_static_function_call(function: &Rc<FunctionInterface>, arguments: Vec<Box<Expression>>, scope: &Scope) -> Box<Expression> {
+pub fn resolve_static_function_call(function: &Rc<FunctionInterface>, arguments: Vec<Box<Expression>>) -> Box<Expression> {
     guard!(let Some(reference) = arguments.first() else {
         // TODO
         panic!("operators without arguments are not supported yet - because generic return types are not supported yet.")
@@ -311,22 +306,25 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -
                 result_type: Some(supertype)
             })
         },
-        abstract_syntax::Expression::BinaryOperator(lhs, operator, rhs) => {
-            let pairs = gather_comparison_pairs_left_associative(lhs, operator, rhs);
+        abstract_syntax::Expression::BinaryOperator { lhs, operator, rhs } => {
+            let (arguments, functions) = gather_comparison_pairs_left_associative(lhs, operator, rhs, scope);
 
-            if let None = pairs.next.unwrap().operand.next {
+            if arguments.len() != functions.len() + 1 || arguments.len() < 2 {
+                panic!("Internal comparison paris error (args.len(): {}, functions.len(): {})", arguments.len(), functions.len());
+            }
+            else if functions.len() == 1 {
                 // Just one pair, this is easy
-                let function = scope.resolve_static_fn(&format!("{:?}", operator));
-                let lhs = resolve_expression(lhs, scope);
-                let rhs = resolve_expression(rhs, scope);
-
-                resolve_static_function_call(function, vec![lhs, rhs], scope)
+                resolve_static_function_call(
+                    &functions[0],
+                    arguments
+                )
             }
             else {
-                // At least 2 pairs.
-                // This is harder because we have to temp-store into variables
-                // lest we compute the input expressions multiple times.
-                todo!()
+                Box::new(Expression {
+                    // TODO This is true for comparisons, but can we generify this somehow?
+                    result_type: Some(Box::new(Type::Primitive(primitives::Type::Bool))),
+                    operation: Box::new(ExpressionOperation::PairwiseOperations { arguments, functions })
+                })
             }
         },
         abstract_syntax::Expression::UnaryOperator(operator, expression) => {

@@ -57,7 +57,7 @@ pub enum Statement {
 pub enum Expression {
     Number(i32),
     Bool(bool),
-    BinaryOperator(Box<Expression>, BinaryOperator, Box<Expression>),
+    BinaryOperator { lhs: Box<Expression>, operator: BinaryOperator, rhs: Box<Expression> },
     UnaryOperator(UnaryOperator, Box<Expression>),
     FunctionCall(FunctionCallType, Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
@@ -188,7 +188,7 @@ impl Debug for Expression {
         use self::Expression::*;
         match self {
             Number(n) => write!(fmt, "{:?}", n),
-            BinaryOperator(ref l, op, ref r) => write!(fmt, "({:?} {:?} {:?})", l, op, r),
+            BinaryOperator { lhs, operator, rhs } => write!(fmt, "({:?} {:?} {:?})", lhs, operator, rhs),
             UnaryOperator(op, expression) => write!(fmt, "{:?}{:?}", op, expression),
             FunctionCall(call_type, expression, args) => {
                 let brackets = call_type.bracket_str();

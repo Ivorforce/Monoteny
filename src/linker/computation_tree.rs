@@ -81,6 +81,7 @@ pub struct Expression {
 pub enum ExpressionOperation {
     Primitive(primitives::Value),
     StaticFunctionCall { function: Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>> },
+    PairwiseOperations { arguments: Vec<Box<Expression>>, functions: Vec<Rc<FunctionInterface>> },
     MemberLookup(Box<Expression>, String),
     VariableLookup(Rc<Variable>),
     StringLiteral(String),

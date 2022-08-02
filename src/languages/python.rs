@@ -151,6 +151,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
             }
             write!(stream, "]")?;
         },
+        ExpressionOperation::PairwiseOperations { .. } => todo!()
     }
 
     Ok(())
@@ -280,5 +281,6 @@ pub fn is_simple(operation: &ExpressionOperation) -> bool {
         ExpressionOperation::ArrayLiteral(_) => true,
         ExpressionOperation::StaticFunctionCall { .. } => false,
         ExpressionOperation::MemberLookup(_, _) => false,
+        ExpressionOperation::PairwiseOperations { .. } => false,
     }
 }

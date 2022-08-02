@@ -187,11 +187,11 @@ AtLeastTwoElementsSeparatorList<Element, Separator>: Vec<Element> = {
 };
 
 LeftAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
-    LeftAssociativeBinaryOperator<Operator, NextOperatorLevel> Operator NextOperatorLevel => Box::new(Expression::BinaryOperator(<>)),
+    <lhs: LeftAssociativeBinaryOperator<Operator, NextOperatorLevel>> <operator: Operator> <rhs: NextOperatorLevel> => Box::new(Expression::BinaryOperator { lhs, operator, rhs }),
     NextOperatorLevel
 };
 
 RightAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
-    NextOperatorLevel Operator RightAssociativeBinaryOperator<Operator, NextOperatorLevel> => Box::new(Expression::BinaryOperator(<>)),
+    <lhs: NextOperatorLevel> <operator: Operator> <rhs: RightAssociativeBinaryOperator<Operator, NextOperatorLevel>> => Box::new(Expression::BinaryOperator { lhs, operator, rhs }),
     NextOperatorLevel
 };
