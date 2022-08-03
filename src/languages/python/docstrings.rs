@@ -29,13 +29,14 @@ pub fn dump(stream: &mut (dyn Write), function: &Function) -> Result<(), std::io
 pub fn transpile_type(stream: &mut (dyn Write), type_def: &Type) -> Result<(), std::io::Error> {
     match type_def {
         Type::Primitive(n) => types::transpile_primitive(stream, n)?,
-        Type::Identifier(atom) => types::transpile_atom(stream, atom)?,
+        Type::Struct(s) => types::transpile_struct(stream, s)?,
         Type::NDArray(atom) => {
             transpile_type(stream, atom)?;
             write!(stream, "[?]")?;
         },
         Type::Function(_) => todo!(),
         Type::Generic(_) => todo!(),
+        Type::MetaType(_) => todo!()
     }
 
     Ok(())

@@ -1,3 +1,5 @@
+use strum::EnumIter;
+
 #[derive(Copy, Clone, PartialEq)]
 pub enum Value {
     Bool(bool),
@@ -15,7 +17,7 @@ pub enum Value {
     Float64(f64),
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIter)]
 pub enum Type {
     Bool,
     Int8,
@@ -71,25 +73,5 @@ impl Type {
             Float32 => "Float32",
             Float64 => "Float64",
         })
-    }
-}
-
-pub fn parse(identifier: &str) -> Option<Type> {
-    use Type::*;
-    match identifier {
-        "Bool" => Some(Bool),
-        "Int8" => Some(Int8),
-        "Int16" => Some(Int16),
-        "Int32" => Some(Int32),
-        "Int64" => Some(Int64),
-        "Int128" => Some(Int128),
-        "UInt8" => Some(UInt8),
-        "UInt16" => Some(UInt16),
-        "UInt32" => Some(UInt32),
-        "UInt64" => Some(UInt64),
-        "UInt128" => Some(UInt128),
-        "Float32" => Some(Float32),
-        "Float64" => Some(Float64),
-        _ => None
     }
 }

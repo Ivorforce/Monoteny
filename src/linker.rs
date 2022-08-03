@@ -27,7 +27,7 @@ pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
     for statement in &syntax.global_statements {
         match statement.as_ref() {
             abstract_syntax::GlobalStatement::FunctionDeclaration(function) => {
-                let interface = resolve_function_interface(&function);
+                let interface = resolve_function_interface(&function, &builtin_variable_scope);
 
                 if global_variables.contains_key(&interface.name) {
                     panic!("Duplicate definition for global '{}'", interface.name);
@@ -51,7 +51,7 @@ pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
     // Resolve function bodies
     let functions: Vec<Rc<Function>> = functions_with_bodies.into_iter().map(
         |(interface, statements)|
-        resolve_function_body(statements, &interface, &global_variable_scope)
+        resolve_function_body(statements, &interface, &global_variable_scope, &builtins)
     ).collect();
 
     return Program {
@@ -60,8 +60,8 @@ pub fn resolve_program(syntax: abstract_syntax::Program) -> Program {
     }
 }
 
-pub fn resolve_function_interface(function: &abstract_syntax::Function) -> Rc<FunctionInterface> {
-    let return_type = function.return_type.as_ref().map(|x| resolve_type(&x));
+pub fn resolve_function_interface(function: &abstract_syntax::Function, scope: &Scope) -> Rc<FunctionInterface> {
+    let return_type = function.return_type.as_ref().map(|x| resolve_type(&x, scope));
 
     let mut parameters: Vec<Box<Parameter>> = Vec::new();
 
@@ -69,7 +69,7 @@ pub fn resolve_function_interface(function: &abstract_syntax::Function) -> Rc<Fu
         let variable = Rc::new(Variable {
             id: Uuid::new_v4(),
             name: parameter.internal_name.clone(),
-            type_declaration: resolve_type(parameter.param_type.as_ref()),
+            type_declaration: resolve_type(parameter.param_type.as_ref(), scope),
             mutability: abstract_syntax::Mutability::Immutable,
         });
 
@@ -104,7 +104,7 @@ pub fn resolve_parameter_key(key: &abstract_syntax::ParameterKey, index: usize) 
     }
 }
 
-pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<FunctionInterface>, scope: &Scope) -> Rc<Function> {
+pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<FunctionInterface>, scope: &Scope, builtins: &TenLangBuiltins) -> Rc<Function> {
     let mut parameter_variables: HashMap<String, Rc<Variable>> = HashMap::new();
 
     for parameter in &interface.parameters {
@@ -113,7 +113,7 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
     }
 
     let subscope = scope.subscope(&parameter_variables);
-    let statements: Vec<Box<Statement>> = resolve_top_scope(body, interface, &subscope);
+    let statements: Vec<Box<Statement>> = resolve_top_scope(body, interface, &subscope, builtins);
 
     return Rc::new(Function {
         interface: Rc::clone(interface),
@@ -121,20 +121,20 @@ pub fn resolve_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interf
     });
 }
 
-pub fn resolve_top_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<FunctionInterface>, scope: &Scope) -> Vec<Box<Statement>> {
+pub fn resolve_top_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<FunctionInterface>, scope: &Scope, builtins: &TenLangBuiltins) -> Vec<Box<Statement>> {
     if let Some(_) = &interface.return_type {
         if let [statement] = &body[..] {
             if let abstract_syntax::Statement::Expression(expression ) = statement.as_ref() {
                 // Single-Statement Return
-                return vec![Box::new(Statement::Return(Some(resolve_expression(expression, &scope))))]
+                return vec![Box::new(Statement::Return(Some(resolve_expression(expression, &scope, builtins))))]
             }
         }
     }
 
-    resolve_scope(body, &interface, &scope)
+    resolve_scope(body, &interface, &scope, builtins)
 }
 
-pub fn resolve_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<FunctionInterface>, scope: &Scope) -> Vec<Box<Statement>> {
+pub fn resolve_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<FunctionInterface>, scope: &Scope, builtins: &TenLangBuiltins) -> Vec<Box<Statement>> {
     let mut local_variables: HashMap<String, Rc<Variable>> = HashMap::new();
     let mut statements: Vec<Box<Statement>> = Vec::new();
 
@@ -144,11 +144,11 @@ pub fn resolve_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc
                 mutability, identifier, type_declaration, expression
             } => {
                 let subscope = scope.subscope(&local_variables);
-                let expression: Box<Expression> = resolve_expression(&expression, &subscope);
+                let expression: Box<Expression> = resolve_expression(&expression, &subscope, builtins);
                 let inferred_type = expression.result_type.as_ref().unwrap();
 
                 if let Some(type_declaration) = type_declaration {
-                    let type_declaration = resolve_type(&type_declaration);
+                    let type_declaration = resolve_type(&type_declaration, &subscope);
                     if &type_declaration != inferred_type {
                         panic!("Declared type of variable '{}' is not equal to inferred type '{:?}'", identifier, inferred_type);
                     }
@@ -168,7 +168,7 @@ pub fn resolve_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc
             },
             abstract_syntax::Statement::Return(expression) => {
                 let subscope = scope.subscope(&local_variables);
-                let expression: Option<Box<Expression>> = expression.as_ref().map(|x| resolve_expression(x, &subscope));
+                let expression: Option<Box<Expression>> = expression.as_ref().map(|x| resolve_expression(x, &subscope, builtins));
 
                 match (&interface.return_type, expression) {
                     (Some(_), None) => panic!("Return statement offers no value when the function declares an object."),
@@ -192,7 +192,7 @@ pub fn resolve_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc
             },
             abstract_syntax::Statement::Expression(expression) => {
                 let subscope = scope.subscope(&local_variables);
-                let expression: Box<Expression> = resolve_expression(&expression, &subscope);
+                let expression: Box<Expression> = resolve_expression(&expression, &subscope, builtins);
                 statements.push(Box::new(Statement::Expression(expression)));
             }
             abstract_syntax::Statement::VariableAssignment(name, expression) => {
@@ -203,7 +203,7 @@ pub fn resolve_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc
                     panic!("Cannot assign to immutable variable '{}'.", name);
                 }
 
-                let expression: Box<Expression> = resolve_expression(&expression, &subscope);
+                let expression: Box<Expression> = resolve_expression(&expression, &subscope, builtins);
 
                 statements.push(Box::new(
                     Statement::VariableAssignment(Rc::clone(&variable), expression)
@@ -215,7 +215,7 @@ pub fn resolve_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc
     statements
 }
 
-pub fn gather_comparison_pairs_left_associative(lhs: &abstract_syntax::Expression, operator: &abstract_syntax:: BinaryOperator, rhs: &abstract_syntax::Expression, scope: &Scope) -> (Vec<Box<Expression>>, Vec<Rc<FunctionInterface>>) {
+pub fn gather_comparison_pairs_left_associative(lhs: &abstract_syntax::Expression, operator: &abstract_syntax:: BinaryOperator, rhs: &abstract_syntax::Expression, scope: &Scope, builtins: &TenLangBuiltins) -> (Vec<Box<Expression>>, Vec<Rc<FunctionInterface>>) {
     let mut lhs = lhs;
     let mut operator = operator;
     let mut rhs = rhs;
@@ -224,7 +224,7 @@ pub fn gather_comparison_pairs_left_associative(lhs: &abstract_syntax::Expressio
     let mut functions: Vec<Rc<FunctionInterface>> = vec![];
 
     while true {
-        arguments.insert(0,resolve_expression(rhs, scope));
+        arguments.insert(0,resolve_expression(rhs, scope, builtins));
         functions.insert(0, Rc::clone(scope.resolve_static_fn(&format!("{:?}", operator))));
 
         if let abstract_syntax::Expression::BinaryOperator { lhs: llhs, operator: loperator, rhs: lrhs } = lhs {
@@ -238,7 +238,7 @@ pub fn gather_comparison_pairs_left_associative(lhs: &abstract_syntax::Expressio
         }
 
         // last argument
-        arguments.insert(0,resolve_expression(lhs, scope));
+        arguments.insert(0,resolve_expression(lhs, scope, builtins));
         break;
     }
 
@@ -272,7 +272,7 @@ pub fn resolve_static_function_call(function: &Rc<FunctionInterface>, arguments:
     })
 }
 
-pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -> Box<Expression> {
+pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope, builtins: &TenLangBuiltins) -> Box<Expression> {
     match syntax {
         abstract_syntax::Expression::Number(n) => {
             // TODO The type should be inferred
@@ -289,12 +289,12 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -
         abstract_syntax::Expression::StringLiteral(string) => {
             Box::new(Expression {
                 operation: Box::new(ExpressionOperation::StringLiteral(string.clone())),
-                result_type: Some(Box::new(Type::Identifier(String::from("String"))))
+                result_type: Some(builtins.struct_metatypes[&String::from("String")].clone())
             })
         },
         abstract_syntax::Expression::ArrayLiteral(raw_elements) => {
             let elements: Vec<Box<Expression>>= raw_elements.iter()
-                .map(|x| resolve_expression(x, scope))
+                .map(|x| resolve_expression(x, scope, builtins))
                 .collect();
 
             let supertype = get_common_supertype(
@@ -307,7 +307,7 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -
             })
         },
         abstract_syntax::Expression::BinaryOperator { lhs, operator, rhs } => {
-            let (arguments, functions) = gather_comparison_pairs_left_associative(lhs, operator, rhs, scope);
+            let (arguments, functions) = gather_comparison_pairs_left_associative(lhs, operator, rhs, scope, builtins);
 
             if arguments.len() != functions.len() + 1 || arguments.len() < 2 {
                 panic!("Internal comparison paris error (args.len(): {}, functions.len(): {})", arguments.len(), functions.len());
@@ -343,14 +343,14 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -
                 panic!("Subscript not supported yet");
             }
 
-            let callee = resolve_expression(callee, scope);
+            let callee = resolve_expression(callee, scope, builtins);
             let arguments = arguments.iter()
                 .enumerate()
                 .map(|(idx, x)| Box::new(PassedArgument {
                     key: x.key.as_ref()
                         .map(|key| resolve_parameter_key(&key, idx))
                         .unwrap_or_else(|| ParameterKey::Int(idx as i32)),
-                    value: resolve_expression(&x.value, scope)
+                    value: resolve_expression(&x.value, scope, builtins)
                 }))
                 .collect();
 
@@ -378,18 +378,13 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope) -
     }
 }
 
-pub fn resolve_type(syntax: &abstract_syntax::TypeDeclaration) -> Box<Type> {
-    Box::new(match syntax {
+pub fn resolve_type(syntax: &abstract_syntax::TypeDeclaration, scope: &Scope) -> Box<Type> {
+    match syntax {
         abstract_syntax::TypeDeclaration::Identifier(id) => {
-            if let Some(primitive) = primitives::parse(id) {
-                Type::Primitive(primitive)
-            }
-            else {
-                Type::Identifier(id.clone())
-            }
+            scope.resolve_metatype(id).clone()
         },
         abstract_syntax::TypeDeclaration::NDArray(identifier, _) => {
-            Type::NDArray(resolve_type(&identifier))
+            Box::new(Type::NDArray(resolve_type(&identifier, scope)))
         }
-    })
+    }
 }

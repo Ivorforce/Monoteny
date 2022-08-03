@@ -48,13 +48,13 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
     for parameter in function.interface.parameters.iter() {
         match parameter.variable.type_declaration.borrow() {
             Type::NDArray(atom) => {
-                if let Type::Identifier(atom) = atom.as_ref() {
+                if let Type::Struct(s) = atom.as_ref() {
                     write!(
                         stream, "    {} = np.asarray({}, dtype=",
                         parameter.variable.name,
                         get_external_name(parameter)
                     )?;
-                    types::transpile_atom(stream, atom)?;
+                    types::transpile_struct(stream, s)?;
                     write!(stream, ")\n")?;
                 }
                 else if let Type::Primitive(primitive) = atom.as_ref() {

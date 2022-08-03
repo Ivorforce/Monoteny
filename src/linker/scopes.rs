@@ -17,6 +17,15 @@ impl <'a> Scope<'a> {
         }
     }
 
+    pub fn resolve_metatype(&self, variable_name: &String) -> &'a Box<Type> {
+        let variable = self.resolve(variable_name);
+
+        match &variable.type_declaration.as_ref() {
+            Type::MetaType(metatype) => metatype,
+            _ => panic!("{}' is not a type.", variable_name)
+        }
+    }
+
     pub fn resolve(&self, variable_name: &String) -> &'a Rc<Variable> {
         for scope in self.scopes.iter() {
             if let Some(variable) = scope.get(variable_name) {

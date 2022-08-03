@@ -29,6 +29,11 @@ pub struct Function {
     pub statements: Vec<Box<Statement>>,
 }
 
+pub struct Struct {
+    pub id: Uuid,
+    pub name: String,
+}
+
 pub struct Parameter {
     pub external_key: ParameterKey,
     pub variable: Rc<Variable>
@@ -52,9 +57,10 @@ pub struct Variable {
 
 #[derive(Clone, PartialEq)]
 pub enum Type {
+    MetaType(Box<Type>),
     Primitive(primitives::Type),
-    Identifier(String),
     NDArray(Box<Type>),
+    Struct(Rc<Struct>),
     Function(Rc<FunctionInterface>),
     Generic(Rc<Generic>),
 }
@@ -107,15 +113,22 @@ impl PartialEq for FunctionInterface {
     }
 }
 
+impl PartialEq for Struct {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
 impl Debug for Type {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         use Type::*;
         match self {
             Primitive(p) => write!(fmt, "{}", p.identifier_string()),
-            Identifier(i) => write!(fmt, "{}", i),
             NDArray(atom) => write!(fmt, "{:?}", atom),
             Function(f) => write!(fmt, "(?) -> ({:?})", f.return_type),
             Generic(g) => write!(fmt, "{}", g.name),
+            MetaType(t) => write!(fmt, "Type[{:?}]", t),
+            Struct(s) => write!(fmt, "{:?}", s.name),
         }
     }
 }
@@ -123,8 +136,8 @@ impl Debug for Type {
 impl Type {
     pub fn collect_generics<'a>(&'a self, set: &mut HashSet<&'a Rc<Generic>>) {
         match self {
+            Type::MetaType(t) => t.collect_generics(set),
             Type::Primitive(_) => {}
-            Type::Identifier(_) => {}
             Type::NDArray(atom) => {
                 atom.collect_generics(set);
             }
@@ -136,7 +149,15 @@ impl Type {
             Type::Generic(generic) => {
                 let _ = &set.insert(generic);
             }
+            Type::Struct(s) => {}
         }
+    }
+
+    pub fn make_any() -> Box<Type> {
+        Box::new(Type::Generic(Rc::new(Generic {
+            id: Uuid::new_v4(),
+            name: String::from("Any")
+        })))
     }
 }
 

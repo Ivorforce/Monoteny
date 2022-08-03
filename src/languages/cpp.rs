@@ -52,17 +52,13 @@ pub fn transpile_primitive_type(type_def: &primitives::Type) -> String {
 pub fn transpile_type(type_def: &Type) -> String {
     match type_def.borrow() {
         Type::Primitive(n) => transpile_primitive_type(n),
-        Type::Identifier(t) => {
-            match t.as_str() {
-                "String" => todo!(),
-                _ => t.clone()
-            }
-        },
+        Type::Struct(t) => todo!(),
         Type::NDArray(atom) => {
             // TODO Shape
             format!("Tensor<{}, 1>", transpile_type(atom))
         }
         Type::Function(_) => todo!(),
         Type::Generic(_) => todo!(),
+        Type::MetaType(_) => todo!()
     }
 }
