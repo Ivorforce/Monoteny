@@ -1,11 +1,12 @@
 use std::io::Write;
+use crate::linker::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::{Struct, Type};
 use crate::linker::primitives;
 
-pub fn transpile(stream: &mut (dyn Write), type_def: &Type) -> Result<(), std::io::Error> {
+pub fn transpile(stream: &mut (dyn Write), type_def: &Type, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     match type_def {
         Type::Primitive(n) => transpile_primitive(stream, n)?,
-        Type::Struct(s) => transpile_struct(stream, s)?,
+        Type::Struct(s) => transpile_struct(stream, s, builtins)?,
         Type::NDArray(_) => write!(stream, "np.ndarray")?,
         Type::Function(_) => todo!(),
         Type::Generic(_) => todo!(),
@@ -33,14 +34,13 @@ pub fn transpile_primitive_value(stream: &mut (dyn Write), value: &primitives::V
     })
 }
 
-pub fn transpile_struct(stream: &mut (dyn Write), type_def: &Struct) -> Result<(), std::io::Error> {
-    // TODO We should use builtin references to check for struct identity, not just the name
-    write!(stream, "{}", match type_def.name.as_str() {
-        "String" => "str",
-        _ => panic!("Unknown struct: {}", type_def.name)
-    })?;
-
-    Ok(())
+pub fn transpile_struct(stream: &mut (dyn Write), s: &Struct, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
+    if s == builtins.structs.String.as_ref() {
+        write!(stream, "str")
+    }
+    else {
+        write!(stream, "{}", s.name)
+    }
 }
 
 pub fn transpile_primitive(stream: &mut (dyn Write), type_def: &primitives::Type) -> Result<(), std::io::Error> {

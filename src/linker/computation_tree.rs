@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
+use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use uuid::Uuid;
 use crate::abstract_syntax::Mutability;
@@ -107,15 +108,27 @@ impl PartialEq for Variable {
     }
 }
 
+impl Eq for Variable {}
+
 impl PartialEq for FunctionInterface {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
+impl Eq for FunctionInterface {}
+
 impl PartialEq for Struct {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
+    }
+}
+
+impl Eq for Struct {}
+
+impl Hash for Struct {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 

@@ -11,7 +11,7 @@ pub struct TenLangBuiltins {
     pub operators: TenLangBuiltinOperators,
     pub functions: TenLangBuiltinFunctions,
     pub primitive_metatypes: HashMap<primitives::Type, Box<Type>>,
-    pub struct_metatypes: HashMap<String, Box<Type>>,  // TODO This is temporary until we can actually implement these
+    pub structs: TenLangBuiltinStructs,
 
     pub global_constants: Box<HashMap<String, Rc<Variable>>>,
 }
@@ -42,6 +42,11 @@ pub struct TenLangBuiltinOperators {
 
 pub struct TenLangBuiltinFunctions {
     pub print: Rc<FunctionInterface>,
+}
+
+#[allow(non_snake_case)]
+pub struct TenLangBuiltinStructs {
+    pub String: Rc<Struct>,
 }
 
 pub fn create_function_variable(interface: &Rc<FunctionInterface>) -> Rc<Variable> {
@@ -130,15 +135,22 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         }));
     }
 
-    let struct_metatypes = vec!["String"].into_iter()
-        .map(|x| (
-            String::from(x),
-            Box::new(Type::Struct((Rc::new(Struct {
-                id: Uuid::new_v4(),
-                name: String::from(x),
-            }))))
-        ))
-        .collect::<HashMap<String, Box<Type>>>();
+    let add_struct = |constants: &mut Box<HashMap<String, Rc<Variable>>>, name: &str| -> Rc<Struct> {
+        let s = Rc::new(Struct {
+            id: Uuid::new_v4(),
+            name: String::from(name),
+        });
+        let s_type = Box::new(Type::MetaType(Box::new(Type::Struct(Rc::clone(&s)))));
+
+        constants.insert(s.name.clone(), Rc::new(Variable {
+            id: Uuid::new_v4(),
+            name: s.name.clone(),
+            type_declaration: s_type,
+            mutability: Mutability::Immutable,
+        }));
+
+        s
+    };
 
     Rc::new(TenLangBuiltins {
         operators: TenLangBuiltinOperators {
@@ -175,8 +187,10 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
                 return_type: None
             })),
         },
+        structs: TenLangBuiltinStructs {
+            String: add_struct(&mut constants, "String")
+        },
         primitive_metatypes,
-        struct_metatypes,
         global_constants: constants,
     })
 }

@@ -289,7 +289,7 @@ pub fn resolve_expression(syntax: &abstract_syntax::Expression, scope: &Scope, b
         abstract_syntax::Expression::StringLiteral(string) => {
             Box::new(Expression {
                 operation: Box::new(ExpressionOperation::StringLiteral(string.clone())),
-                result_type: Some(builtins.struct_metatypes[&String::from("String")].clone())
+                result_type: Some(Box::new(Type::Struct(Rc::clone(&builtins.structs.String))))
             })
         },
         abstract_syntax::Expression::ArrayLiteral(raw_elements) => {

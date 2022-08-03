@@ -26,7 +26,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
 
     for parameter in function.interface.parameters.iter() {
         write!(stream, "{}: ", get_external_name(&parameter))?;
-        types::transpile(stream, &parameter.variable.type_declaration)?;
+        types::transpile(stream, &parameter.variable.type_declaration, builtins)?;
         write!(stream, ",")?;
     }
 
@@ -34,10 +34,10 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
 
     if let Some(return_type) = &function.interface.return_type {
         write!(stream, " -> ", )?;
-        types::transpile(stream, return_type)?;
+        types::transpile(stream, return_type, builtins)?;
     }
 
-    docstrings::dump(stream, function)?;
+    docstrings::dump(stream, function, builtins)?;
 
     if function.statements.is_empty() {
         // No need to do conversions or anything else if we don't have a body.
@@ -54,7 +54,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtin
                         parameter.variable.name,
                         get_external_name(parameter)
                     )?;
-                    types::transpile_struct(stream, s)?;
+                    types::transpile_struct(stream, s, builtins)?;
                     write!(stream, ")\n")?;
                 }
                 else if let Type::Primitive(primitive) = atom.as_ref() {
