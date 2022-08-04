@@ -25,6 +25,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program) -> Result<
 pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     write!(stream, "\n\ndef {}(", function.interface.name)?;
 
+    // TODO Can we somehow transpile function.interface.is_member_function?
     for parameter in function.interface.parameters.iter() {
         write!(stream, "{}: ", get_external_name(&parameter))?;
         types::transpile(stream, &parameter.variable.type_declaration, builtins)?;

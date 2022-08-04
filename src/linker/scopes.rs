@@ -3,25 +3,51 @@ use std::rc::Rc;
 use crate::linker::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::{FunctionInterface, PassedArgument, PassedArgumentType, Type, Variable};
 
-pub struct ScopeLevel {
-    variables: Box<HashMap<String, HashSet<Rc<Variable>>>>
+type VariablePool = Box<HashMap<String, HashSet<Rc<Variable>>>>;
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum Environment {
+    Exposed,
+    Member
 }
 
-impl ScopeLevel {
-    pub fn new() -> ScopeLevel {
-        ScopeLevel {
-            variables: Box::new(HashMap::new())
+pub struct Level {
+    exposed: VariablePool,
+    member: VariablePool
+}
+
+impl Level {
+    pub fn new() -> Level {
+        Level {
+            exposed: Box::new(HashMap::new()),
+            member: Box::new(HashMap::new()),
         }
     }
 
-    pub fn as_global_scope(&self) -> Scope {
-        Scope {
-            scopes: vec![self]
+    pub fn variables_mut(&mut self, environment: Environment) -> &mut VariablePool {
+        match environment {
+            Environment::Exposed => &mut self.exposed,
+            Environment::Member => &mut self.member
         }
     }
 
-    pub fn add_function(&mut self, variable: Rc<Variable>) {
-        if let Some(existing) = self.variables.get_mut(&variable.name) {
+    pub fn variables(&self, environment: Environment) -> &VariablePool {
+        match environment {
+            Environment::Exposed => &self.exposed,
+            Environment::Member => &self.member
+        }
+    }
+
+    pub fn as_global_scope(&self) -> Hierarchy {
+        Hierarchy {
+            levels: vec![self]
+        }
+    }
+
+    pub fn add_function(&mut self, environment: Environment, variable: Rc<Variable>) {
+        let mut variables = self.variables_mut(environment);
+
+        if let Some(existing) = variables.get_mut(&variable.name) {
             let existing_var = existing.iter().next().unwrap();
 
             if let Type::Function(_) = existing_var.type_declaration.as_ref() {
@@ -32,37 +58,41 @@ impl ScopeLevel {
             }
         }
         else {
-            self.variables.insert(variable.name.clone(), HashSet::from([variable]));
+            variables.insert(variable.name.clone(), HashSet::from([variable]));
         }
     }
 
-    pub fn insert_singleton(&mut self, variable: Rc<Variable>) {
-        if let Some(existing) = self.variables.insert(variable.name.clone(), HashSet::from([variable])) {
+    pub fn insert_singleton(&mut self, environment: Environment, variable: Rc<Variable>) {
+        let mut variables = self.variables_mut(environment);
+
+        if let Some(existing) = variables.insert(variable.name.clone(), HashSet::from([variable])) {
             panic!("Multiple variables of the same name: {}", existing.iter().next().unwrap().name);
         }
     }
 
-    pub fn push_variable(&mut self, variable: Rc<Variable>) {
-        self.variables.insert(variable.name.clone(), HashSet::from([variable]));
+    pub fn push_variable(&mut self, environment: Environment, variable: Rc<Variable>) {
+        let mut variables = self.variables_mut(environment);
+
+        variables.insert(variable.name.clone(), HashSet::from([variable]));
     }
 }
 
-pub struct Scope<'a> {
-    scopes: Vec<&'a ScopeLevel>
+pub struct Hierarchy<'a> {
+    levels: Vec<&'a Level>
 }
 
-impl <'a> Scope<'a> {
-    pub fn subscope(&self, new_scope: &'a ScopeLevel) -> Scope<'a> {
-        let mut scopes: Vec<&'a ScopeLevel> = Vec::new();
+impl <'a> Hierarchy<'a> {
+    pub fn subscope(&self, new_scope: &'a Level) -> Hierarchy<'a> {
+        let mut levels: Vec<&'a Level> = Vec::new();
 
-        scopes.push(new_scope);
-        scopes.extend(self.scopes.iter());
+        levels.push(new_scope);
+        levels.extend(self.levels.iter());
 
-        Scope { scopes }
+        Hierarchy { levels }
     }
 
-    pub fn resolve_function(&self, variable_name: &String, arguments: &Vec<PassedArgumentType>) -> &'a Rc<FunctionInterface> {
-        let functions: Vec<&Rc<FunctionInterface>> = self.resolve_functions(variable_name).into_iter()
+    pub fn resolve_function(&self, environment: Environment, variable_name: &String, arguments: &Vec<PassedArgumentType>) -> &'a Rc<FunctionInterface> {
+        let functions: Vec<&Rc<FunctionInterface>> = self.resolve_functions(environment, variable_name).into_iter()
             .filter(|x| Type::arguments_satisfy_function(arguments, x))
             .collect();
 
@@ -77,8 +107,8 @@ impl <'a> Scope<'a> {
         }
     }
 
-    pub fn resolve_functions(&self, variable_name: &String) -> Vec<&'a Rc<FunctionInterface>> {
-        self.resolve(variable_name).iter().map(|x|
+    pub fn resolve_functions(&self, environment: Environment, variable_name: &String) -> Vec<&'a Rc<FunctionInterface>> {
+        self.resolve(environment, variable_name).iter().map(|x|
             match &x.type_declaration.as_ref() {
                 Type::Function(function) => function,
                 _ => panic!("{} is not a function.", variable_name)
@@ -86,15 +116,15 @@ impl <'a> Scope<'a> {
         ).collect()
     }
 
-    pub fn resolve_metatype(&self, variable_name: &String) -> &'a Box<Type> {
-        match &self.resolve_unambiguous(variable_name).type_declaration.as_ref() {
+    pub fn resolve_metatype(&self, environment: Environment, variable_name: &String) -> &'a Box<Type> {
+        match &self.resolve_unambiguous(environment, variable_name).type_declaration.as_ref() {
             Type::MetaType(metatype) => metatype,
             _ => panic!("{}' is not a type.", variable_name)
         }
     }
 
-    pub fn resolve_unambiguous(&self, variable_name: &String) -> &'a Rc<Variable> {
-        let matches = self.resolve(variable_name);
+    pub fn resolve_unambiguous(&self, environment: Environment, variable_name: &String) -> &'a Rc<Variable> {
+        let matches = self.resolve(environment, variable_name);
 
         if matches.len() == 1 {
             matches.iter().next().unwrap()
@@ -104,9 +134,9 @@ impl <'a> Scope<'a> {
         }
     }
 
-    pub fn resolve(&self, variable_name: &String) -> &'a HashSet<Rc<Variable>> {
-        for scope in self.scopes.iter() {
-            if let Some(matches) = scope.variables.get(variable_name) {
+    pub fn resolve(&self, environment: Environment, variable_name: &String) -> &'a HashSet<Rc<Variable>> {
+        for scope in self.levels.iter() {
+            if let Some(matches) = scope.variables(environment).get(variable_name) {
                 return matches
             }
         }

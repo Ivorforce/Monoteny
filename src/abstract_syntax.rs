@@ -11,6 +11,7 @@ pub enum GlobalStatement {
 }
 
 pub struct Function {
+    pub target_type: Option<Box<TypeDeclaration>>,
     pub identifier: String,
     pub parameters: Vec<Box<Parameter>>,
     pub return_type: Option<Box<TypeDeclaration>>,
@@ -142,7 +143,11 @@ impl Debug for MemberStatement {
 
 impl Debug for Function {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "fn {}(", self.identifier)?;
+        write!(fmt, "fn ")?;
+        if let Some(target_type) = &self.target_type {
+            write!(fmt, "{:?}.", target_type)?;
+        }
+        write!(fmt, "{}(", self.identifier)?;
         for item in self.parameters.iter() { write!(fmt, "{:?},", item)? };
         write!(fmt, ") -> {:?} {{\n", self.return_type)?;
         for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };

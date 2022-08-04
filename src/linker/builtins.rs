@@ -5,7 +5,7 @@ use strum::{ IntoEnumIterator };
 use crate::abstract_syntax::Mutability;
 use crate::linker::computation_tree::*;
 use crate::linker::primitives;
-use crate::linker::scopes::{ Scope, ScopeLevel };
+use crate::linker::scopes;
 
 pub struct TenLangBuiltins {
     pub operators: TenLangBuiltinOperators,
@@ -13,7 +13,7 @@ pub struct TenLangBuiltins {
     pub primitive_metatypes: HashMap<primitives::Type, Box<Type>>,
     pub structs: TenLangBuiltinStructs,
 
-    pub global_constants: ScopeLevel,
+    pub global_constants: scopes::Level,
 }
 
 pub struct TenLangBuiltinOperators {
@@ -75,7 +75,7 @@ pub fn create_same_parameters(declared_type: &Box<Type>, names: Vec<&str>) -> Ve
 }
 
 pub fn create_builtins() -> Rc<TenLangBuiltins> {
-    let mut constants: ScopeLevel = ScopeLevel::new();
+    let mut constants: scopes::Level = scopes::Level::new();
 
     let bool_type = Box::new(Type::Primitive(primitives::Type::Bool));
 
@@ -83,17 +83,18 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     //  It seems that every use in other functions borrows this function as mutable, so that the
     //  reference can be accessed from there. Only one mutable borrow can exist, so two functions
     //  calling this one is impossible...?
-    let add_function = |constants: &mut ScopeLevel, interface: Rc<FunctionInterface>| -> Rc<FunctionInterface> {
-        constants.add_function(create_function_variable(&interface));
+    let add_function = |constants: &mut scopes::Level, interface: Rc<FunctionInterface>| -> Rc<FunctionInterface> {
+        constants.add_function(scopes::Environment::Exposed, create_function_variable(&interface));
         interface
     };
 
     // For now it's ok to assume the shape_returns types to be equal
-    let add_binary_aa_x = |constants: &mut ScopeLevel, name: &str, parameters: &Vec<Box<Type>>, return_type: &Box<Type>| -> Vec<Rc<FunctionInterface>> {
+    let add_binary_aa_x = |constants: &mut scopes::Level, name: &str, parameters: &Vec<Box<Type>>, return_type: &Box<Type>| -> Vec<Rc<FunctionInterface>> {
         parameters.iter().map(|x| {
             add_function(constants, Rc::new(FunctionInterface {
                 id: Uuid::new_v4(),
                 name: String::from(name),
+                is_member_function: false,
                 parameters: create_same_parameters(
                     x,
                     vec!["lhs", "rhs"]
@@ -104,11 +105,12 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         }).collect()
     };
 
-    let add_binary_aa_a = |constants: &mut ScopeLevel, name: &str, parameters: &Vec<Box<Type>>| -> Vec<Rc<FunctionInterface>> {
+    let add_binary_aa_a = |constants: &mut scopes::Level, name: &str, parameters: &Vec<Box<Type>>| -> Vec<Rc<FunctionInterface>> {
         parameters.iter().map(|x| {
             add_function(constants, Rc::new(FunctionInterface {
                 id: Uuid::new_v4(),
                 name: String::from(name),
+                is_member_function: false,
                 parameters: create_same_parameters(
                     x,
                     vec!["lhs", "rhs"]
@@ -119,9 +121,10 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         }).collect()
     };
 
-    let add_binary_xx_x = |constants: &mut ScopeLevel, name: &str, declared_type: &Box<Type>| -> Rc<FunctionInterface> {
+    let add_binary_xx_x = |constants: &mut scopes::Level, name: &str, declared_type: &Box<Type>| -> Rc<FunctionInterface> {
         add_function(constants, Rc::new(FunctionInterface {
             id: Uuid::new_v4(),
+            is_member_function: false,
             name: String::from(name),
             parameters: create_same_parameters(
                 &declared_type,
@@ -137,7 +140,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         .collect::<HashMap<primitives::Type, Box<Type>>>();
 
     for (primitive_type, metatype) in &primitive_metatypes {
-        constants.insert_singleton(Rc::new(Variable {
+        constants.insert_singleton(scopes::Environment::Exposed, Rc::new(Variable {
             id: Uuid::new_v4(),
             name: primitive_type.identifier_string(),
             type_declaration: metatype.clone(),
@@ -145,14 +148,14 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         }));
     }
 
-    let add_struct = |constants: &mut ScopeLevel, name: &str| -> Rc<Struct> {
+    let add_struct = |constants: &mut scopes::Level, name: &str| -> Rc<Struct> {
         let s = Rc::new(Struct {
             id: Uuid::new_v4(),
             name: String::from(name),
         });
         let s_type = Box::new(Type::MetaType(Box::new(Type::Struct(Rc::clone(&s)))));
 
-        constants.insert_singleton(Rc::new(Variable {
+        constants.insert_singleton(scopes::Environment::Exposed, Rc::new(Variable {
             id: Uuid::new_v4(),
             name: s.name.clone(),
             type_declaration: s_type,
@@ -197,6 +200,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         functions: TenLangBuiltinFunctions {
             print: add_function(&mut constants, Rc::new(FunctionInterface {
                 id: Uuid::new_v4(),
+                is_member_function: false,
                 name: String::from("print"),
                 parameters: create_same_parameters(&Type::make_any(), vec!["object"]),
                 generics: vec![],

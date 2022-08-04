@@ -21,6 +21,7 @@ pub struct FunctionInterface {
     pub id: Uuid,
     pub name: String,
 
+    pub is_member_function: bool,
     pub parameters: Vec<Box<Parameter>>,
     pub generics: Vec<Rc<Generic>>,
 
