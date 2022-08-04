@@ -3,19 +3,20 @@ trait Twiceable(_ $Number) {
 }
 
 // Introduce a generic on which Addition must be declared.
+// All functions inside a given() {} statement must expose the generics somewhere in their interface.
 given ($Number) where Addition<$Number> {
     // When encountering a declaration, check that all required functions exist.
     // It finds the below function, which matches the trait declaration.
     declare Twiceable($Number);
 
-    // A function that runs on numbers that can do addition.
+    // A polymorphic function that runs on numbers that can do addition.
     // This is, for now, independent of Twiceable's function.
     fun $Number.twice: $Number :: \.self + \.self;
 }
 
 // Introduce a generic on which Twiceable must be declared.
 given ($Number) where Twiceable<$Number> {
-    // A function that runs on the generic, just running twice twice.
+    // A polymorphic function that runs on the generic, just running twice twice.
     fun $Number.times_4: $Number :: arg.twice.twice;
 }
 
@@ -24,4 +25,8 @@ fun main() :: {
     // -> Twiceable(Int32) is declared.
     // -> Int32.times_4 exists.
     let a: Int32 = 5.times_4;  // yields 20
+    // Linker finds both the function itself and the trait's function.
+    // The trait's function is unpacked, because we know the concrete type (Int32),
+    // and both functions end up being the same -> no ambiguity.
+    let b: Int32 = 5.twice;  // yields 10
 }
