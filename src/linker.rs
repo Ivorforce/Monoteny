@@ -301,19 +301,21 @@ pub fn link_binary_function<'a>(lhs: &Expression, operator: &'a abstract_syntax:
     scope.resolve_function(Environment::Exposed, &format!("{:?}", operator), &call_arguments)
 }
 
-pub fn link_static_function_call(function: &Rc<FunctionInterface>, arguments: Vec<Box<Expression>>) -> Box<Expression> {
-    let result_type = function.return_type.clone();
-
+fn link_static_function_call(function: &Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>>) -> Box<Expression> {
     Box::new(Expression {
+        result_type: function.return_type.clone(),
         operation: Box::new(ExpressionOperation::StaticFunctionCall {
-            arguments: arguments.into_iter()
-                .enumerate()
-                .map(|(idx, argument)| Box::new(PassedArgument { key: function.parameters[idx].external_key.clone(), value: argument }))
-                .collect(),
-            function: function.clone(),
-        }),
-        result_type
+            function: Rc::clone(function),
+            arguments
+        })
     })
+}
+
+pub fn link_arguments_to_parameters(function: &Rc<FunctionInterface>, arguments: Vec<Box<Expression>>) -> Vec<Box<PassedArgument>> {
+    arguments.into_iter()
+        .enumerate()
+        .map(|(idx, argument)| Box::new(PassedArgument { key: function.parameters[idx].external_key.clone(), value: argument }))
+        .collect()
 }
 
 pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> Box<Expression> {
@@ -356,7 +358,10 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                 let lhs = link_expression(lhs, scope, builtins);
                 let rhs = link_expression(rhs, scope, builtins);
                 let function = link_binary_function(&lhs, operator, &rhs, scope);
-                return link_static_function_call(function, vec![lhs, rhs]);
+
+                return link_static_function_call(
+                    function, link_arguments_to_parameters(function, vec![lhs, rhs])
+                );
             }
 
             let (arguments, functions) = link_comparison_pairs_left_associative(lhs, operator, rhs, scope, builtins);
@@ -365,10 +370,11 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                 panic!("Internal comparison paris error (args.len(): {}, functions.len(): {})", arguments.len(), functions.len());
             }
             else if functions.len() == 1 {
+                let function = &functions[0];
+
                 // Just one pair, this is easy
                 link_static_function_call(
-                    &functions[0],
-                    arguments
+                    function, link_arguments_to_parameters(function, arguments)
                 )
             }
             else {
@@ -395,7 +401,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                 panic!("Subscript not supported yet");
             }
 
-            match callee.as_ref() {
+            return match callee.as_ref() {
                 abstract_syntax::Expression::VariableLookup(function_name) => {
                     // Static Call
                     let arguments: Vec<Box<PassedArgument>> = link_passed_arguments(
@@ -408,13 +414,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
 
                     let function = scope.resolve_function(Environment::Exposed, function_name, &argument_types);
 
-                    return Box::new(Expression {
-                        result_type: function.return_type.clone(),
-                        operation: Box::new(ExpressionOperation::StaticFunctionCall {
-                            function: Rc::clone(function),
-                            arguments
-                        })
-                    });
+                    link_static_function_call(function, arguments)
                 }
                 _ => {
                     match callee.as_ref() {
@@ -435,13 +435,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
 
                             let function = scope.resolve_function(Environment::Member, member_name, &argument_types);
 
-                            return Box::new(Expression {
-                                result_type: function.return_type.clone(),
-                                operation: Box::new(ExpressionOperation::StaticFunctionCall {
-                                    function: Rc::clone(function),
-                                    arguments
-                                })
-                            });
+                            link_static_function_call(function, arguments)
                         },
                         _ => {
                             // Higher order function
@@ -459,13 +453,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                                 _ => panic!("Expression does not return anything."),
                             };
 
-                            return Box::new(Expression {
-                                result_type: function.return_type.clone(),
-                                operation: Box::new(ExpressionOperation::StaticFunctionCall {
-                                    function: Rc::clone(function),
-                                    arguments
-                                })
-                            });
+                            link_static_function_call(function, arguments)
                         }
                     }
                 }
