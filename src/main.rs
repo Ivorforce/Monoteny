@@ -81,7 +81,7 @@ fn main() {
                 .parse(content.as_str())
                 .unwrap();
 
-            let computation_tree = linker::resolve_program(abstract_syntax_tree);
+            let computation_tree = linker::link_program(abstract_syntax_tree);
 
             for output_extension in output_extensions {
                 match output_extension {
