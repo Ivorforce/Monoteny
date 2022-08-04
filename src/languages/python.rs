@@ -4,6 +4,7 @@ pub mod types;
 use std::borrow::Borrow;
 use std::io::Write;
 use std::iter::zip;
+use std::rc::Rc;
 use guard::guard;
 
 use crate::linker::builtins::TenLangBuiltins;
@@ -203,20 +204,21 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &Functi
         Ok(true)
     };
 
-    if interface == builtins.operators.positive.as_ref() {
-        return transpile_unary_operator("+");
-    }
-    else if interface == builtins.operators.negative.as_ref() {
-        return transpile_unary_operator("-");
-    }
-    else if interface == builtins.operators.not.as_ref() {
-        return transpile_unary_operator("not ");
-    }
+    todo!();
+    // if interface == builtins.operators.positive.as_ref() {
+    //     return transpile_unary_operator("+");
+    // }
+    // else if interface == builtins.operators.negative.as_ref() {
+    //     return transpile_unary_operator("-");
+    // }
+    // else if interface == builtins.operators.not.as_ref() {
+    //     return transpile_unary_operator("not ");
+    // }
 
     return Ok(false);
 }
 
-pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &FunctionInterface, arguments: &Vec<Box<PassedArgument>>, builtins: &TenLangBuiltins) -> Result<bool, std::io::Error> {
+pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Rc<FunctionInterface>, arguments: &Vec<Box<PassedArgument>>, builtins: &TenLangBuiltins) -> Result<bool, std::io::Error> {
     guard!(let [lhs, rhs] = &arguments[..] else {
         return Ok(false);
     });
@@ -231,49 +233,49 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Funct
 
     // TODO And and Or exist but work only for boolean arguments, not tensors.
     //  We could make use of them if the arguments are booleans and the result is too.
-    if interface == builtins.operators.and.as_ref() {
+    if interface.as_ref() == builtins.operators.and.as_ref() {
         return transpile_binary_operator("&");
     }
-    else if interface == builtins.operators.or.as_ref() {
+    else if interface.as_ref() == builtins.operators.or.as_ref() {
         return transpile_binary_operator("|");
     }
 
-    else if interface == builtins.operators.equal_to.as_ref() {
+    else if builtins.operators.equal_to.contains(interface) {
         return transpile_binary_operator("==");
     }
-    else if interface == builtins.operators.not_equal_to.as_ref() {
+    else if builtins.operators.not_equal_to.contains(interface) {
         return transpile_binary_operator("!=");
     }
 
-    else if interface == builtins.operators.greater_than.as_ref() {
+    else if builtins.operators.greater_than.contains(interface) {
         return transpile_binary_operator(">");
     }
-    else if interface == builtins.operators.greater_than_or_equal_to.as_ref() {
+    else if builtins.operators.greater_than_or_equal_to.contains(interface) {
         return transpile_binary_operator(">=");
     }
-    else if interface == builtins.operators.lesser_than.as_ref() {
+    else if builtins.operators.lesser_than.contains(interface) {
         return transpile_binary_operator("<");
     }
-    else if interface == builtins.operators.lesser_than_or_equal_to.as_ref() {
+    else if builtins.operators.lesser_than_or_equal_to.contains(interface) {
         return transpile_binary_operator("<=");
     }
 
-    else if interface == builtins.operators.add.as_ref() {
+    else if builtins.operators.add.contains(interface) {
         return transpile_binary_operator("+");
     }
-    else if interface == builtins.operators.subtract.as_ref() {
+    else if builtins.operators.subtract.contains(interface) {
         return transpile_binary_operator("-");
     }
-    else if interface == builtins.operators.multiply.as_ref() {
+    else if builtins.operators.multiply.contains(interface) {
         return transpile_binary_operator("*");
     }
-    else if interface == builtins.operators.divide.as_ref() {
+    else if builtins.operators.divide.contains(interface) {
         return transpile_binary_operator("/");
     }
-    else if interface == builtins.operators.exponentiate.as_ref() {
+    else if builtins.operators.exponentiate.contains(interface) {
         return transpile_binary_operator("**");
     }
-    else if interface == builtins.operators.modulo.as_ref() {
+    else if builtins.operators.modulo.contains(interface) {
         return transpile_binary_operator("%");
     }
 

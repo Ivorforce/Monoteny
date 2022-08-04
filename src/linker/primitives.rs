@@ -56,6 +56,25 @@ impl Value {
 }
 
 impl Type {
+    pub const NUMBERS: [Type; 12] = {
+        use Type::*;
+
+        [
+            Int8,
+            Int16,
+            Int32,
+            Int64,
+            Int128,
+            UInt8,
+            UInt16,
+            UInt32,
+            UInt64,
+            UInt128,
+            Float32,
+            Float64,
+        ]
+    };
+
     pub fn identifier_string(&self) -> String {
         use Type::*;
         String::from(match self {

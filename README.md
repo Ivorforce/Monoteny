@@ -55,9 +55,9 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b | * c | .any()
 - [x] Single expression function definition syntax
 - [x] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
+- [x] Overloading & Call Type Checking
 - [ ] Traits, x trait inheritances, trait abstract functions 
 - [ ] Member functions on traits or types
-- [ ] Overloading & Call Type Checking
 - [ ] Unary operators: + - !
 - [ ] Expression Scopes (let a = { ... yield b; })
 - [ ] If / Else, if let, Guard, Guard let

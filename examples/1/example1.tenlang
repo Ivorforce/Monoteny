@@ -5,10 +5,9 @@ fun square(_ a: Int32) : Int32 :: a * a;
 fun main() :: {
     var b = 5;
     b = 3;
-    let s: String = "b: ";
-    print(s);
+    print("b: ");
     print(5 > 2 ** 3 * 2 > 2);
-    print(false || true);
+    print(5 > 2 || true);
     print(2 ** 3 ** 5 |* 3 |+ 5);
     print([b, square(0: b), 2]);
 }

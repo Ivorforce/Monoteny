@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
+use std::iter::zip;
 use std::rc::Rc;
+use guard::guard;
 use uuid::Uuid;
 use crate::abstract_syntax::Mutability;
 
@@ -40,7 +42,7 @@ pub struct Parameter {
     pub variable: Rc<Variable>
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ParameterKey {
     Name(String),
     Int(i32),
@@ -56,7 +58,7 @@ pub struct Variable {
     pub mutability: Mutability,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Type {
     MetaType(Box<Type>),
     Primitive(primitives::Type),
@@ -100,6 +102,11 @@ pub struct PassedArgument {
     pub value: Box<Expression>,
 }
 
+pub struct PassedArgumentType<'a> {
+    pub key: ParameterKey,
+    pub value: &'a Option<Box<Type>>,
+}
+
 // Impl
 
 impl PartialEq for Variable {
@@ -110,6 +117,12 @@ impl PartialEq for Variable {
 
 impl Eq for Variable {}
 
+impl Hash for Variable {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 impl PartialEq for FunctionInterface {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
@@ -117,6 +130,12 @@ impl PartialEq for FunctionInterface {
 }
 
 impl Eq for FunctionInterface {}
+
+impl Hash for FunctionInterface {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
 
 impl PartialEq for Struct {
     fn eq(&self, other: &Self) -> bool {
@@ -129,6 +148,22 @@ impl Eq for Struct {}
 impl Hash for Struct {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
+    }
+}
+
+impl Debug for PassedArgumentType<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "{:?}: {:?}", &self.key, &self.value)
+    }
+}
+
+impl Debug for ParameterKey {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        use ParameterKey::*;
+        match self {
+            Name(n) => write!(fmt, "{}", n),
+            Int(n) => write!(fmt, "{}", n),
+        }
     }
 }
 
@@ -171,6 +206,49 @@ impl Type {
             id: Uuid::new_v4(),
             name: String::from("Any")
         })))
+    }
+
+    pub fn satisfies(&self, other: &Type) -> bool {
+        if self == other {
+            return true;
+        }
+
+        // TODO This is obviously wrong, but needed for now until generics are implemented.
+        match other {
+            Type::Generic(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn arguments_satisfy_function(arguments: &Vec<PassedArgumentType>, function: &FunctionInterface) -> bool {
+        if arguments.len() != function.parameters.len() {
+            return false;
+        }
+
+        for (argument, parameter) in zip(arguments, &function.parameters) {
+            if argument.key != parameter.external_key {
+                return false;
+            }
+
+            guard!(let Some(argument_value) = argument.value else {
+                return false;
+            });
+
+            if !argument_value.satisfies(&parameter.variable.type_declaration) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+impl PassedArgument {
+    pub fn to_argument_type(&self) -> PassedArgumentType {
+        PassedArgumentType {
+            key: self.key.clone(),
+            value: &self.value.result_type
+        }
     }
 }
 
