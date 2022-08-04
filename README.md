@@ -55,18 +55,21 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b | * c | .any()
 - [x] Single expression function definition syntax
 - [x] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
-- [ ] Generic Type Inferral
+- [ ] Traits, x trait inheritances, trait abstract functions 
+- [ ] Member functions on traits or types
 - [ ] Overloading & Call Type Checking
 - [ ] Unary operators: + - !
 - [ ] Expression Scopes (let a = { ... yield b; })
 - [ ] If / Else, if let, Guard, Guard let
 - [ ] Structs
-- [ ] Interfaces, Interface Inheritance, Member Functions
+- [ ] Enums / Enum type inheritance
+- [ ] Specializations: Raw data is some type, but additional functions will match 
 - [ ] 'transformation assignment' syntax: a |= + 5; b |= .union(c)
 - [ ] Var-Like 0 parameter function syntax (a.b calls the function b on a).
 - [ ] NDArrays
 - [ ] Tuple Dimension Index
 - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
+- [ ] Varargs: Int keying with infinite parameters (syntax: a...: Type[0...] for print(a, b) and a...: Type[String] for print(a: a, b: b))
 - [ ] Open Int Range Dimension Index, array start / end handle syntax (>|, <|)
 - [ ] Auto Broadcast
 - [ ] Optionals
@@ -75,8 +78,10 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 ### TenLang 1.0
 
+- [ ] Reverse generic type inferral (output types determined from inputs)
 - [ ] System Callback API / Permission Contexts
 - [ ] Exceptions
+- [ ] Polymorphic Enums (attached objects)
 - [ ] Abstract functions + Higher order functions
 - [ ] Deep Function Currying
 - [ ] String comprehension
@@ -105,8 +110,6 @@ This will be possible by TenLang coming with several different transpilers. Here
   - See [Transpilation Targets](#Transpilation Targets)
 - Runtime Polymorphism / Classes
   - Very complex and of limited use for most mathematical applications.
-- Variadic parameters
-  - Seldom used in practice. Passing array primitives is more versatile.
 - for / for-each loops
   - .map / .forEach calls do the same. Instead, there will be a strong callable integration allowing for return / break / continue statements inside an anonymous closure. 
 - Global (mutable) variables
