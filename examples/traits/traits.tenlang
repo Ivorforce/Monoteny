@@ -1,0 +1,27 @@
+trait Twiceable(_ $Number) {
+    abstract fun $Number.twice: $Number;
+}
+
+// Introduce a generic on which Addition must be declared.
+given ($Number) where Addition<$Number> {
+    // When encountering a declaration, check that all required functions exist.
+    // It finds the below function, which matches the trait declaration.
+    declare Twiceable($Number);
+
+    // A function that runs on numbers that can do addition.
+    // This is, for now, independent of Twiceable's function.
+    fun $Number.twice: $Number :: \.self + \.self;
+}
+
+// Introduce a generic on which Twiceable must be declared.
+given ($Number) where Twiceable<$Number> {
+    // A function that runs on the generic, just running twice twice.
+    fun $Number.times_4: $Number :: arg.twice.twice;
+}
+
+fun main() :: {
+    // Addition(Int32) is declared (builtin).
+    // -> Twiceable(Int32) is declared.
+    // -> Int32.times_4 exists.
+    let a: Int32 = 5.times_4;  // yields 20
+}

@@ -1,29 +1,28 @@
-gen $Atom: Any;
-gen $LeftBoundIndex: LeftBound;
+given ($Atom, $LeftBoundIndex) where LeftBound($LeftBoundIndex) {
+    // A skip_first function with a generically complex return type.
+    fun $Atom[$LeftBoundIndex].skip_first(_ skip_count: Int32) {:
+        () :: \.self@[>| skip_count];
+    :}
 
-// A skip_first function with a generically complex return type.
-fun $Atom[$LeftBoundIndex].skip_first(_ skip_count: Int32) {:
-    () :: self@[>| skip_count];
-:}
+    // Using static types instead of letting the compiler infer them.
+    fun $Atom[$LeftBoundIndex].skip_first(_ skip_count: Int32) {:
+        // A fun example of where compile-time complexity is as hard as the function itself.
+        guard
+            let .Known(left_bound) = $LeftBoundIndex.left_bound,
+            let .Known(skip_count) = skip_count
+        else {
+            return (): Option<$Atom[$LeftBoundIndex]> :: self@[self@.index.left_bound + skip_count...]?;
+        }
 
-// Using static types instead of letting the compiler infer them.
-fun $Atom[$LeftBoundIndex].skip_first(_ skip_count: Int32) {:
-    // A fun example of where compile-time complexity is as hard as the function itself.
-    guard
-        let .Known(left_bound) = $LeftBoundIndex.left_bound,
-        let .Known(skip_count) = skip_count
-    else {
-        return (): Option<$Atom[$LeftBoundIndex]> :: self@[self@.index.left_bound + skip_count...]?;
-    }
+        guard skip_count <= Count.count else {
+            throw format("Cannot skip more elements than available: {} > {}", skip_count, left_bound);
+        }
 
-    guard skip_count <= Count.count else {
-        throw format("Cannot skip more elements than available: {} > {}", skip_count, left_bound);
-    }
+        // Index could be right bound or open!
+        // Just re-use the index definition with a minor tweak.
 
-    // Index could be right bound or open!
-    // Just re-use the index definition with a minor tweak.
-
-     var new_index = $LeftBoundIndex;
-     new_index.left_bound = new_start;
-     return (): $Atom[new_index] :: self@[new_start...];
-:}
+         var new_index = $LeftBoundIndex;
+         new_index.left_bound = new_start;
+         return (): $Atom[new_index] :: self@[new_start...];
+    :}
+}
