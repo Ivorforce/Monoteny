@@ -188,7 +188,7 @@ impl Debug for Expression {
         use self::Expression::*;
         match self {
             Number(n) => write!(fmt, "{:?}", n),
-            BinaryOperator { lhs, operator, rhs } => write!(fmt, "({:?} {:?} {:?})", lhs, operator, rhs),
+            BinaryOperator { lhs, operator, rhs } => write!(fmt, "({:?}) {:?} ({:?})", lhs, operator, rhs),
             UnaryOperator(op, expression) => write!(fmt, "{:?}{:?}", op, expression),
             FunctionCall(call_type, expression, args) => {
                 let brackets = call_type.bracket_str();

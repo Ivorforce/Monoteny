@@ -23,6 +23,7 @@ fn cli() -> Command<'static> {
             Command::new("check")
                 .about("Parse files to check for validity.")
                 .arg_required_else_help(true)
+                .arg(arg!(<TREE> "dump the parse tree to stdout").required(false).takes_value(false).long("tree"))
                 .arg(arg!(<PATH> ... "files to check").value_parser(clap::value_parser!(PathBuf)))
         )
         .subcommand(
@@ -44,6 +45,7 @@ fn main() {
                 .into_iter()
                 .flatten()
                 .collect::<Vec<_>>();
+            let should_output_tree = sub_matches.is_present("TREE");
 
             for path in paths {
                 println!("Checking {:?}...", path);
@@ -51,9 +53,13 @@ fn main() {
                 let content = std::fs::read_to_string(&path)
                     .expect("could not read file");
 
-                let _ = tenlang::ProgramParser::new()
+                let syntax_tree = tenlang::ProgramParser::new()
                     .parse(content.as_str())
                     .unwrap();
+
+                if should_output_tree {
+                    println!("{:?}", syntax_tree);
+                }
             }
 
             println!("All files are valid .tenlang!");
