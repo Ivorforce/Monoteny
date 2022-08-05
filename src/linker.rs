@@ -301,6 +301,13 @@ pub fn link_binary_function<'a>(lhs: &Expression, operator: &'a abstract_syntax:
     scope.resolve_function(Environment::Exposed, &format!("{:?}", operator), &call_arguments)
 }
 
+pub fn link_unary_function<'a>(operator: &'a abstract_syntax::UnaryOperator, value: &Expression, scope: &'a scopes::Hierarchy) -> &'a Rc<FunctionInterface> {
+    let call_arguments = vec![
+        PassedArgumentType { key: ParameterKey::Int(0), value: &value.result_type },
+    ];
+    scope.resolve_function(Environment::Exposed, &format!("{:?}", operator), &call_arguments)
+}
+
 fn link_static_function_call(function: &Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>>) -> Box<Expression> {
     Box::new(Expression {
         result_type: function.return_type.clone(),
@@ -386,7 +393,10 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
             }
         },
         abstract_syntax::Expression::UnaryOperator(operator, expression) => {
-            todo!()
+            let expression = link_expression(expression, scope, builtins);
+            let function = link_unary_function(operator, &expression, scope);
+
+            link_static_function_call(function, link_arguments_to_parameters(function, vec![expression]))
         },
         abstract_syntax::Expression::VariableLookup(identifier) => {
             let variable = scope.resolve_unambiguous(Environment::Exposed, identifier);

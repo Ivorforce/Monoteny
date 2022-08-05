@@ -57,8 +57,8 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
 - [x] Overloading & Call Type Checking
 - [x] Member functions
+- [x] Unary operators: + - !
 - [ ] Traits, x trait inheritances, trait abstract functions 
-- [ ] Unary operators: + - !
 - [ ] Expression Scopes (let a = { ... yield b; })
 - [ ] If / Else, if let, Guard, Guard let
 - [ ] Structs

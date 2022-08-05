@@ -35,9 +35,9 @@ pub struct TenLangBuiltinOperators {
     pub exponentiate: Vec<Rc<FunctionInterface>>,
     pub modulo: Vec<Rc<FunctionInterface>>,
 
-    // pub positive: Vec<Rc<FunctionInterface>>,
-    // pub negative: Vec<Rc<FunctionInterface>>,
-    // pub not: Vec<Rc<FunctionInterface>>,
+    pub positive: Vec<Rc<FunctionInterface>>,
+    pub negative: Vec<Rc<FunctionInterface>>,
+    pub not: Rc<FunctionInterface>,
 }
 
 pub struct TenLangBuiltinFunctions {
@@ -135,6 +135,22 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         }))
     };
 
+    let add_unary_a_a = |constants: &mut scopes::Level, name: &str, parameters: &Vec<Box<Type>>| -> Vec<Rc<FunctionInterface>> {
+        parameters.iter().map(|x| {
+            add_function(constants, Rc::new(FunctionInterface {
+                id: Uuid::new_v4(),
+                name: String::from(name),
+                is_member_function: false,
+                parameters: create_same_parameters(
+                    x,
+                    vec!["value"]
+                ),
+                return_type: Some(x.clone()),
+                generics: vec![],
+            }))
+        }).collect()
+    };
+
     let primitive_metatypes = primitives::Type::iter()
         .map(|x| (x, Box::new(Type::MetaType(Box::new(Type::Primitive(x))))))
         .collect::<HashMap<primitives::Type, Box<Type>>>();
@@ -193,9 +209,9 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             exponentiate: add_binary_aa_a(&mut constants, "**", &number_primitives),
             modulo: add_binary_aa_a(&mut constants, "%", &number_primitives),
 
-            // positive: add_binary_aa_x(&mut constants, "+", &generic_any, &generic_any_type),
-            // negative: add_binary_aa_x(&mut constants, "-", &generic_any, &generic_any_type),
-            // not: add_binary_aa_x(&mut constants, "!", &generic_any, &generic_any_type),
+            positive: add_unary_a_a(&mut constants, "+", &number_primitives),
+            negative: add_unary_a_a(&mut constants, "-", &number_primitives),
+            not: add_unary_a_a(&mut constants, "!", &vec![bool_type]).into_iter().next().unwrap(),
         },
         functions: TenLangBuiltinFunctions {
             print: add_function(&mut constants, Rc::new(FunctionInterface {

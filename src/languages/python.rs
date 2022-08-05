@@ -126,6 +126,9 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
             if try_transpile_binary_operator(stream, function, arguments, builtins)? {
                 // no-op
             }
+            else if try_transpile_unary_operator(stream, function, arguments, builtins)? {
+                // no-op
+            }
             else {
                 // TODO We should make sure it calls the correct function even when shadowed.
                 write!(stream, "{}(", function.name)?;
@@ -193,7 +196,7 @@ pub fn escape_string(string: &String) -> String {
     return string
 }
 
-pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &FunctionInterface, arguments: &Vec<Box<PassedArgument>>, builtins: &TenLangBuiltins) -> Result<bool, std::io::Error> {
+pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &Rc<FunctionInterface>, arguments: &Vec<Box<PassedArgument>>, builtins: &TenLangBuiltins) -> Result<bool, std::io::Error> {
     guard!(let [expression] = &arguments[..] else {
         return Ok(false);
     });
@@ -205,16 +208,15 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &Functi
         Ok(true)
     };
 
-    todo!();
-    // if interface == builtins.operators.positive.as_ref() {
-    //     return transpile_unary_operator("+");
-    // }
-    // else if interface == builtins.operators.negative.as_ref() {
-    //     return transpile_unary_operator("-");
-    // }
-    // else if interface == builtins.operators.not.as_ref() {
-    //     return transpile_unary_operator("not ");
-    // }
+    if builtins.operators.positive.contains(interface) {
+        return transpile_unary_operator("+");
+    }
+    else if builtins.operators.negative.contains(interface) {
+        return transpile_unary_operator("-");
+    }
+    else if interface.as_ref() == builtins.operators.not.as_ref() {
+        return transpile_unary_operator("not ");
+    }
 
     return Ok(false);
 }
