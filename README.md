@@ -2,7 +2,7 @@
 
 Welcome to the mathemagical land of TenLang! 
 
-TenLang is an experimental language focusing on tensor math. It aims to streamline complex syntax, borrowing from modern trends in functional and object-oriented languages. 
+TenLang is an experimental language focusing on tensor math. It aims to streamline complex syntax, borrowing from modern trends in programming languages like Swift, Rust and Python.  
 
 ## Philosophy
 
