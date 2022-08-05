@@ -84,7 +84,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     //  reference can be accessed from there. Only one mutable borrow can exist, so two functions
     //  calling this one is impossible...?
     let add_function = |constants: &mut scopes::Level, interface: Rc<FunctionInterface>| -> Rc<FunctionInterface> {
-        constants.add_function(scopes::Environment::Exposed, create_function_variable(&interface));
+        constants.add_function(scopes::Environment::Global, create_function_variable(&interface));
         interface
     };
 
@@ -156,7 +156,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         .collect::<HashMap<primitives::Type, Box<Type>>>();
 
     for (primitive_type, metatype) in &primitive_metatypes {
-        constants.insert_singleton(scopes::Environment::Exposed, Rc::new(Variable {
+        constants.insert_singleton(scopes::Environment::Global, Rc::new(Variable {
             id: Uuid::new_v4(),
             name: primitive_type.identifier_string(),
             type_declaration: metatype.clone(),
@@ -171,7 +171,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         });
         let s_type = Box::new(Type::MetaType(Box::new(Type::Struct(Rc::clone(&s)))));
 
-        constants.insert_singleton(scopes::Environment::Exposed, Rc::new(Variable {
+        constants.insert_singleton(scopes::Environment::Global, Rc::new(Variable {
             id: Uuid::new_v4(),
             name: s.name.clone(),
             type_declaration: s_type,

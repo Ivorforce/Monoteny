@@ -31,7 +31,7 @@ pub fn link_program(syntax: abstract_syntax::Program) -> Program {
                 functions_with_bodies.push((Rc::clone(&interface), &function.body));
 
                 let environment = match interface.is_member_function {
-                    true => scopes::Environment::Exposed,
+                    true => scopes::Environment::Global,
                     false => scopes::Environment::Member,
                 };
 
@@ -150,7 +150,7 @@ pub fn link_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interface
 
     for parameter in &interface.parameters {
         let variable = &parameter.variable;
-        parameter_variables.insert_singleton(Environment::Exposed, variable.clone());
+        parameter_variables.insert_singleton(Environment::Global, variable.clone());
     }
 
     let subscope = scope.subscope(&parameter_variables);
@@ -205,7 +205,7 @@ pub fn link_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<Fu
                 statements.push(Box::new(
                     Statement::VariableAssignment(Rc::clone(&variable), expression)
                 ));
-                local_variables.push_variable(Environment::Exposed, variable);
+                local_variables.push_variable(Environment::Global, variable);
             },
             abstract_syntax::Statement::Return(expression) => {
                 let subscope = scope.subscope(&local_variables);
@@ -238,7 +238,7 @@ pub fn link_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<Fu
             }
             abstract_syntax::Statement::VariableAssignment(name, expression) => {
                 let subscope = scope.subscope(&local_variables);
-                let variable = subscope.resolve_unambiguous(Environment::Exposed, name);
+                let variable = subscope.resolve_unambiguous(Environment::Global, name);
 
                 if variable.mutability == abstract_syntax::Mutability::Immutable {
                     panic!("Cannot assign to immutable variable '{}'.", name);
@@ -298,14 +298,14 @@ pub fn link_binary_function<'a>(lhs: &Expression, operator: &'a abstract_syntax:
         PassedArgumentType { key: ParameterKey::Int(0), value: &lhs.result_type },
         PassedArgumentType { key: ParameterKey::Int(1), value: &rhs.result_type },
     ];
-    scope.resolve_function(Environment::Exposed, &format!("{:?}", operator), &call_arguments)
+    scope.resolve_function(Environment::Global, &format!("{:?}", operator), &call_arguments)
 }
 
 pub fn link_unary_function<'a>(operator: &'a abstract_syntax::UnaryOperator, value: &Expression, scope: &'a scopes::Hierarchy) -> &'a Rc<FunctionInterface> {
     let call_arguments = vec![
         PassedArgumentType { key: ParameterKey::Int(0), value: &value.result_type },
     ];
-    scope.resolve_function(Environment::Exposed, &format!("{:?}", operator), &call_arguments)
+    scope.resolve_function(Environment::Global, &format!("{:?}", operator), &call_arguments)
 }
 
 fn link_static_function_call(function: &Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>>) -> Box<Expression> {
@@ -399,7 +399,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
             link_static_function_call(function, link_arguments_to_parameters(function, vec![expression]))
         },
         abstract_syntax::Expression::VariableLookup(identifier) => {
-            let variable = scope.resolve_unambiguous(Environment::Exposed, identifier);
+            let variable = scope.resolve_unambiguous(Environment::Global, identifier);
 
             Box::new(Expression {
                 operation: Box::new(ExpressionOperation::VariableLookup(variable.clone())),
@@ -422,7 +422,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                         .map(|x| x.to_argument_type())
                         .collect();
 
-                    let function = scope.resolve_function(Environment::Exposed, function_name, &argument_types);
+                    let function = scope.resolve_function(Environment::Global, function_name, &argument_types);
 
                     link_static_function_call(function, arguments)
                 }
@@ -478,7 +478,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
 pub fn link_type(syntax: &abstract_syntax::TypeDeclaration, scope: &scopes::Hierarchy) -> Box<Type> {
     match syntax {
         abstract_syntax::TypeDeclaration::Identifier(id) => {
-            scope.resolve_metatype(Environment::Exposed, id).clone()
+            scope.resolve_metatype(Environment::Global, id).clone()
         },
         abstract_syntax::TypeDeclaration::NDArray(identifier, _) => {
             Box::new(Type::NDArray(link_type(&identifier, scope)))

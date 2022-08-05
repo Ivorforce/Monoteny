@@ -7,33 +7,33 @@ type VariablePool = Box<HashMap<String, HashSet<Rc<Variable>>>>;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum Environment {
-    Exposed,
+    Global,
     Member
 }
 
 pub struct Level {
-    exposed: VariablePool,
+    global: VariablePool,
     member: VariablePool
 }
 
 impl Level {
     pub fn new() -> Level {
         Level {
-            exposed: Box::new(HashMap::new()),
+            global: Box::new(HashMap::new()),
             member: Box::new(HashMap::new()),
         }
     }
 
     pub fn variables_mut(&mut self, environment: Environment) -> &mut VariablePool {
         match environment {
-            Environment::Exposed => &mut self.exposed,
+            Environment::Global => &mut self.global,
             Environment::Member => &mut self.member
         }
     }
 
     pub fn variables(&self, environment: Environment) -> &VariablePool {
         match environment {
-            Environment::Exposed => &self.exposed,
+            Environment::Global => &self.global,
             Environment::Member => &self.member
         }
     }
