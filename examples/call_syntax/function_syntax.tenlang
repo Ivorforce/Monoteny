@@ -1,4 +1,5 @@
 // ================ Global Functions ====================
+// Functions that don't pertain to one specific object or class.
 
 // five()
 fun five() -> Int32 :: 5;
@@ -7,6 +8,7 @@ fun five() -> Int32 :: 5;
 fun times_two(value: Int32) -> Int32 :: value * 2;
 
 // ================ Member Functions ====================
+// Functions that are mostly associated with one object.
 
 // 5.times_two()
 fun <value: Int32>.times_two() -> Int32 :: value * 2;
@@ -14,23 +16,39 @@ fun <value: Int32>.times_two() -> Int32 :: value * 2;
 // 5(added: 2)
 fun <value:Int32>(added: Int32) -> Int32 :: value + added;
 
-// ================ Subscript Functions ====================
-
-// 5.added[number: 2]
-fun <value: Int32>.added[number: Int32] -> Int32 :: value + number;
-
-// 5[added: 2]
-fun <self: Int32>[added: Int32] -> Int32 :: self + added;
-
 // ================ Var-Like Member Functions ====================
+// Getters and setters that look like member variables in practice.
 
 // 5.times_two
 fun <value: Int32>.times_two -> Int32 :: value * 2;
 
-// 5.times_two
+// 5.times_two = 2
 fun <value: Int32>.times_two = <value: Int32> :: todo();
 
+// ================ Subscript Functions ====================
+// Getters and setters for specific member 'locations'.
+
+// object.c[at: 2]
+fun <var self: SomeObject>.c[at location: Int32] -> Int32 :: self.values[location] = value;
+
+// object[at: 2]
+fun <var self: SomeObject>[at location: Int32] -> Int32 :: self.values[location];
+
+// object.c[at: 2] = 2
+fun <var self: SomeObject>.c[at location: Int32] = <value: Int32> :: self.values[location] = value;
+
+// object[at: 2] = 2
+fun <var self: SomeObject>[at location: Int32] = <value: Int32> :: self.values[location] = value;
+
+// ================ Static Functions ====================
+// Functions that run on a type itself.
+// All previous function forms are compatible with this syntax.
+
+// Int32.make_two()
+fun <value: Type[Int32]>.make_two() -> Int32 :: 2;
+
 // ================ Binary and Unary Functions ====================
+// Functions that are notated in binary or unary math-like form.
 
 // 5 + 2
 fun <lhs: Int32> + <rhs: Int32> -> Int32 :: lhs + rhs;
@@ -39,11 +57,14 @@ fun <lhs: Int32> + <rhs: Int32> -> Int32 :: lhs + rhs;
 fun + <rhs: Int32> -> Int32 :: +rhs;
 
 // ================ External vs Internal Parameter Names ====================
+// Parameters can be keyed by names, numbers, or nothing.
+// This syntax is compatible with subscripts as well.
 
 // foo(1, b: 2, 5: 3)
 fun foo(_ a: Int32, b: Int32, 5 c: Int32) :: a + b + c;
 
 // ================ Variadic Parameters ====================
+// Parameters can be dynamically inserted into an array.
 
-// format("Test {}", 5)
-fun format(format_string: String, arguments...: StringConvertible[0...]) :: todo();
+// format("Test {} {} {}", 5, "test", 2.0)
+fun format(format_string: String, _ arguments...: StringConvertible[0...]) :: todo();
