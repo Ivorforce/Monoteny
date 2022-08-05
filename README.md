@@ -50,7 +50,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] String Primitives
 - [x] Array Literals
 - [x] Function Interfaces
-- [x] Int call / subscript keying
+- [x] Int-keyed parameters
 - [x] Binary operators: + - * / || && > < >= <= == != % **
 - [x] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b | * c | .any()
 - [x] Single expression function definition syntax
@@ -58,6 +58,8 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Overloading & Call Type Checking
 - [x] Member functions
 - [x] Unary operators: + - !
+- [ ] Subscript function syntax
+- [ ] Var-Like 0 parameter function syntax (let c = a.b; a.b = c;)
 - [ ] Traits, x trait inheritances, trait abstract functions 
 - [ ] Expression Scopes (let a = { ... yield b; })
 - [ ] If / Else, if let, Guard, Guard let
@@ -65,7 +67,6 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Enums / Enum type inheritance
 - [ ] Specializations: Raw data is some type, but additional functions will match 
 - [ ] 'transformation assignment' syntax: a |= + 5; b |= .union(c)
-- [ ] Var-Like 0 parameter function syntax (a.b calls the function b on a).
 - [ ] NDArrays
 - [ ] Tuple Dimension Index
 - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
@@ -85,6 +86,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Abstract functions + Higher order functions
 - [ ] Deep Function Currying
 - [ ] String comprehension
+- [ ] Non-Varargs subscripts and subscript overloads
 
 ### TenLang 2.0
 
