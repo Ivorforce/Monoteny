@@ -1,6 +1,6 @@
 given ($Number) where Addition($Number) {
-    fun times_two(_ arg: $Number): $Number :: arg + arg;
-    fun $Number.twice: $Number :: \.self + \.self;
+    fun times_two(_ arg: $Number) -> $Number :: arg + arg;
+    fun $Number.twice -> $Number :: \.self + \.self;
 }
 
 fun main: () :: {

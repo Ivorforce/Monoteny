@@ -1,7 +1,7 @@
 fun no_op() :: {}
 
-fun square_a(_ a: Int32) : Int32 :: a * a;
-fun Int32.square_b() : Int32 :: self * self;
+fun square_a(_ a: Int32) -> Int32 :: a * a;
+fun Int32.square_b() -> Int32 :: self * self;
 
 fun main() :: {
     var b = 5;

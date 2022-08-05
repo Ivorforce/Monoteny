@@ -11,7 +11,7 @@ given ($Atom, $LeftBoundIndex) where LeftBound($LeftBoundIndex) {
             let .Known(left_bound) = $LeftBoundIndex.left_bound,
             let .Known(skip_count) = skip_count
         else {
-            return (): Option<$Atom[$LeftBoundIndex]> :: self@[self@.index.left_bound + skip_count...]?;
+            return () -> Option<$Atom[$LeftBoundIndex]> :: self@[self@.index.left_bound + skip_count...]?;
         }
 
         guard skip_count <= Count.count else {
@@ -23,6 +23,6 @@ given ($Atom, $LeftBoundIndex) where LeftBound($LeftBoundIndex) {
 
          var new_index = $LeftBoundIndex;
          new_index.left_bound = new_start;
-         return (): $Atom[new_index] :: self@[new_start...];
+         return () -> $Atom[new_index] :: self@[new_start...];
     :}
 }
