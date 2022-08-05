@@ -2,7 +2,7 @@
 extern crate lalrpop_util;
 extern crate core;
 
-lalrpop_mod!(pub tenlang);
+lalrpop_mod!(pub tenlang_grammar);
 mod abstract_syntax;
 mod linker;
 mod languages;
@@ -53,7 +53,7 @@ fn main() {
                 let content = std::fs::read_to_string(&path)
                     .expect("could not read file");
 
-                let syntax_tree = tenlang::ProgramParser::new()
+                let syntax_tree = tenlang_grammar::ProgramParser::new()
                     .parse(content.as_str())
                     .unwrap();
 
@@ -77,7 +77,7 @@ fn main() {
             let content = std::fs::read_to_string(&input_path)
                 .expect("could not read file");
 
-            let abstract_syntax_tree = tenlang::ProgramParser::new()
+            let abstract_syntax_tree = tenlang_grammar::ProgramParser::new()
                 .parse(content.as_str())
                 .unwrap();
 
