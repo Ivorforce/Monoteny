@@ -29,22 +29,24 @@ fun <value: Int32>.times_two = <value: Int32> :: todo();
 // Getters and setters for specific member 'locations'.
 
 // object.c[at: 2]
-fun <var self: SomeObject>.c[at location: Int32] -> Int32 :: self.values[location] = value;
+fun <self: SomeObject>.c[at location: Int32] -> Int32 :: self.values[location] = value;
 
 // object[at: 2]
-fun <var self: SomeObject>[at location: Int32] -> Int32 :: self.values[location];
+fun <self: SomeObject>[at location: Int32] -> Int32 :: self.values[location];
 
 // object.c[at: 2] = 2
-fun <var self: SomeObject>.c[at location: Int32] = <value: Int32> :: self.values[location] = value;
+fun <self: var SomeObject>.c[at location: Int32] = <value: Int32> :: self.values[location] = value;
 
 // object[at: 2] = 2
-fun <var self: SomeObject>[at location: Int32] = <value: Int32> :: self.values[location] = value;
+fun <self: var SomeObject>[at location: Int32] = <value: Int32> :: self.values[location] = value;
 
 // ================ Static Functions ====================
 // Functions that run on a type itself.
+// Dot notation, when a type is asked, is possible to omit the type name itself.
 // All previous function forms are compatible with this syntax.
 
 // Int32.make_two()
+// times_two(.make_two())
 fun <value: Type[Int32]>.make_two() -> Int32 :: 2;
 
 // ================ Binary and Unary Functions ====================
@@ -68,3 +70,13 @@ fun foo(_ a: Int32, b: Int32, 5 c: Int32) :: a + b + c;
 
 // format("Test {} {} {}", 5, "test", 2.0)
 fun format(format_string: String, _ arguments...: StringConvertible[0...]) :: todo();
+
+// ================ Default Parameters ====================
+// Parameters can be omitted in favour of the function defining its own default.
+
+// add(5, to: 2)
+// add(to: 2)
+// add(2)
+// add()
+// add(.default, to: .default)
+fun add(_ a: Default[Int32], b: Default[Int32]) :: (a ?? 0) + (b ?? 0);
