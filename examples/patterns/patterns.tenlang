@@ -1,0 +1,11 @@
+// {} means a single expression, () means a named tuple.
+pattern {} <-> () >> {} :: AdditionPrecedence;
+
+// Example
+fun {a: Int32} <-> (b: Int32, c: Int32) >> {d: Int32} :: a + b * c + d;
+
+// 'add' and 'to' become keywords
+pattern add {} to {} :: AdditionPrecedence;
+
+// Example
+fun add {a: Int32} to {b: Int32} :: a + b;
