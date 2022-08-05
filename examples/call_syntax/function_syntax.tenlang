@@ -1,0 +1,46 @@
+// ================ Global Functions ====================
+
+// five()
+fun five() -> Int32 :: 5;
+
+// times_two(value: 5)
+fun times_two(value: Int32) -> Int32 :: value * 2;
+
+// ================ Member Functions ====================
+
+// 5.times_two()
+fun <value: Int32>.times_two() -> Int32 :: value * 2;
+
+// 5(added: 2)
+fun <value:Int32>(added: Int32) -> Int32 :: value + added;
+
+// ================ Subscript Functions ====================
+
+// 5.added[number: 2]
+fun <value: Int32>.added[number: Int32] -> Int32 :: value + number;
+
+// 5[added: 2]
+fun <self: Int32>[added: Int32] -> Int32 :: self + added;
+
+// ================ Var-Like Member Functions ====================
+
+// 5.times_two
+fun <value: Int32>.times_two -> Int32 :: value * 2;
+
+// ================ Binary and Unary Functions ====================
+
+// 5 + 2
+fun <lhs: Int32> + <rhs: Int32> -> Int32 :: lhs + rhs;
+
+// +2
+fun + <rhs: Int32> -> Int32 :: +rhs;
+
+// ================ External vs Internal Parameter Names ====================
+
+// foo(1, b: 2, 5: 3)
+fun foo(_ a: Int32, b: Int32, 5 c: Int32) :: a + b + c;
+
+// ================ Variadic Parameters ====================
+
+// format("Test {}", 5)
+fun format(format_string: String, arguments...: StringConvertible[0...]) :: todo();
