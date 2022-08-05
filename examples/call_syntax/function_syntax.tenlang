@@ -27,6 +27,9 @@ fun <self: Int32>[added: Int32] -> Int32 :: self + added;
 // 5.times_two
 fun <value: Int32>.times_two -> Int32 :: value * 2;
 
+// 5.times_two
+fun <value: Int32>.times_two = <value: Int32> :: todo();
+
 // ================ Binary and Unary Functions ====================
 
 // 5 + 2
