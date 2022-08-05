@@ -50,12 +50,14 @@ pub GlobalStatement: Box<GlobalStatement> = {
 };
 
 Function: Box<Function> = {
-    "fun" <target_type: (<TypeDeclaration> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<Parameter, ",">> ")" <return_type: ("->" <TypeDeclaration>)?> "::" "{" <body: (<Statement> ";")*> "}" => Box::new(Function {
+    "fun" <target_type: (<TypeDeclaration> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<Parameter, ",">> ")" <return_type: ("->" <TypeDeclaration>)?> "::" <body: FunctionBody> => Box::new(Function {
         target_type, identifier, parameters, return_type, body
     }),
-    "fun" <target_type: (<TypeDeclaration> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<Parameter, ",">> ")" <return_type: ("->" <TypeDeclaration>)?> "::" <expression: (<Expression> ";")> => Box::new(Function {
-        target_type, identifier, parameters, return_type, body: vec![Box::new(Statement::Expression(expression))]
-    }),
+}
+
+FunctionBody: Vec<Box<Statement>> = {
+    "{" <(<Statement> ";")*> "}",
+    <Expression> ";" => vec![Box::new(Statement::Expression(<>))],
 }
 
 Parameter: Box<Parameter> = {
