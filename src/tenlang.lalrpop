@@ -108,8 +108,8 @@ AdditionPrecedenceGroup = LeftAssociativeBinaryOperator<SumOperator, Multiplicat
 MultiplicationPrecedenceGroup = LeftAssociativeBinaryOperator<FactorOperator, ExponentiationPrecedenceGroup>;
 ExponentiationPrecedenceGroup = RightAssociativeBinaryOperator<ExponentiationOperator, UnaryOperatorPrecedenceGroup>;
 UnaryOperatorPrecedenceGroup = LeftUnaryOperator<UnaryOperator, FunctionCallPrecedenceGroup>;
-FunctionCallPrecedenceGroup = FunctionCallExpression<EquivalenceEqualityPrecedenceGroup>;
-EquivalenceEqualityPrecedenceGroup = EquivalenceEquality<Term>;
+FunctionCallPrecedenceGroup = FunctionCallExpression<LeftTransformationPrecedenceGroup>;
+LeftTransformationPrecedenceGroup = LeftTransformation<Term>;
 
 Term: Box<Expression> = {
     Number => Box::new(Expression::Number(<>)),
@@ -175,8 +175,8 @@ FunctionCallExpression<NextOperatorLevel>: Box<Expression> = {
     NextOperatorLevel
 }
 
-EquivalenceEquality<NextOperatorLevel>: Box<Expression> = {
-    <EquivalenceEquality<NextOperatorLevel>> "|",
+LeftTransformation<NextOperatorLevel>: Box<Expression> = {
+    <LeftTransformation<NextOperatorLevel>> "|",
     <NextOperatorLevel>,
 }
 
