@@ -51,6 +51,7 @@ def main():
     """
     b = np.int32(5)
     b = np.int32(3)
+    no_op()
     print("b: ")
     print((np.int32(5)) > (floor_div(np.int32(2) ** np.int32(3), np.int32(2))) and (floor_div(np.int32(2) ** np.int32(3), np.int32(2))) > (-np.int32(2)))
     print((np.int32(5) > np.int32(2)) | True)

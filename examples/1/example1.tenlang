@@ -11,6 +11,7 @@ fun {self: Int32}.square_b() -> Int32 :: self * self;
 fun main() :: {
     var b = 5;
     b = 3;
+    no_op();
     print("b: ");
     print(5 > 2 ** 3 /- 2 > -2);
     print(5 > 2 || true);
