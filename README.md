@@ -43,7 +43,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 * [Future] Octave / MatLab
 * [Future] R
 
-### TenLang 0.1
+### TenLang 0.1 (Toy Language Stage)
 
 - [x] Project Skeleton
 - [x] Number Primitives
@@ -60,7 +60,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Overloading & Call Type Checking
   - [x] Member functions
 
-### TenLang 0.2
+### TenLang 0.2 (Proof of Concept Stage)
 
 - [ ] Forward generic type checking
 - [ ] Comments (with transpilation)
@@ -81,7 +81,6 @@ This will be possible by TenLang coming with several different transpilers. Here
   - [ ] Auto Broadcast
 - [ ] Optionals
 - [ ] Sets
-
 
 ### TenLang 1.0
 
