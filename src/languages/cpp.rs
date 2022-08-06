@@ -1,7 +1,8 @@
 use std::borrow::Borrow;
 use std::io::Write;
 use crate::linker::computation_tree::*;
-use crate::linker::primitives;
+use crate::program::primitives;
+use crate::program::types::Type;
 
 pub fn transpile_program(
     program: &Program,

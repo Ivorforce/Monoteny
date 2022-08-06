@@ -58,6 +58,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Overloading & Call Type Checking
 - [x] Member functions
 - [x] Unary operators: + - !
+- [ ] User-Defined Unary / Binary Operators
 - [ ] Subscript function syntax
 - [ ] Var-Like 0 parameter function syntax (let c = a.b; a.b = c;)
 - [ ] Traits, x trait inheritances, trait abstract functions 
@@ -90,7 +91,6 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 ### TenLang 2.0
 
-- [ ] User-Defined Binary / Unary Operators (note: restricted to a set of characters like +^-=)
 - [ ] Implicit tensor building
 - [ ] Staggered Dimensions
 - [ ] Array Dimension Index

@@ -7,16 +7,17 @@ use std::iter::zip;
 use std::rc::Rc;
 use guard::guard;
 
-use crate::linker::builtins::TenLangBuiltins;
+use crate::program::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::*;
-use crate::linker::primitives;
+use crate::program::primitives;
+use crate::program::types::{FunctionInterface, NamedParameter, ParameterKey, Type};
 
 
-pub fn transpile_program(stream: &mut (dyn Write), program: &Program) -> Result<(), std::io::Error> {
+pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     writeln!(stream, "import numpy as np")?;
 
     for function in program.functions.iter() {
-        transpile_function(stream, function.as_ref(), &program.builtins)?
+        transpile_function(stream, function.as_ref(), &builtins)?
     }
 
     return Ok(())
@@ -285,7 +286,7 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Rc<Fu
     return Ok(false);
 }
 
-pub fn get_external_name(parameter: &Parameter) -> String {
+pub fn get_external_name(parameter: &NamedParameter) -> String {
     match &parameter.external_key {
         ParameterKey::Name(key) => key.clone(),
         // Int keying is not supported in python. Just use the variable name.

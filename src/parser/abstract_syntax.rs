@@ -1,5 +1,6 @@
 use std::fmt::{Binary, Debug, Error, Formatter};
 use std::iter::zip;
+use crate::program::types::{Mutability, ParameterKey};
 
 // =============================== Global =====================================
 
@@ -25,12 +26,6 @@ pub struct Parameter {
     pub param_type: Box<TypeDeclaration>,
 }
 
-#[derive(Clone)]
-pub enum ParameterKey {
-    Name(String),
-    Int(i32),
-}
-
 pub enum MemberStatement {
     FunctionDeclaration(Box<Function>),
 }
@@ -51,7 +46,7 @@ pub enum Statement {
         type_declaration: Option<Box<TypeDeclaration>>,
         expression: Box<Expression>
     },
-    VariableAssignment(String, Box<Expression>),
+    VariableAssignment { variable_name: String, new_value: Box<Expression> },
     Expression(Box<Expression>),
     Return(Option<Box<Expression>>),
 }
@@ -59,11 +54,12 @@ pub enum Statement {
 pub enum Expression {
     Number(i32),
     Bool(bool),
-    BinaryOperator { lhs: Box<Expression>, operator: BinaryOperator, rhs: Box<Expression> },
-    PairAssociativeBinaryOperator { arguments: Vec<Box<Expression>>, operators: Vec<BinaryOperator> },
-    UnaryOperator(UnaryOperator, Box<Expression>),
-    FunctionCall(FunctionCallType, Box<Expression>, Vec<Box<PassedArgument>>),
-    MemberLookup(Box<Expression>, String),
+    BinaryOperator { lhs: Box<Expression>, operator: String, rhs: Box<Expression> },
+    UnaryOperator { operator: String, argument: Box<Expression> },
+    PairAssociativeBinaryOperators { arguments: Vec<Box<Expression>>, operators: Vec<String> },
+    UnsortedBinaryOperators { arguments: Vec<Box<Expression>>, operators: Vec<String> },
+    FunctionCall { call_type: FunctionCallType, callee: Box<Expression>, arguments: Vec<Box<PassedArgument>> },
+    MemberLookup { target: Box<Expression>, member_name: String },
     VariableLookup(String),
     ArrayLiteral(Vec<Box<Expression>>),
     StringLiteral(String),
@@ -72,40 +68,6 @@ pub enum Expression {
 pub struct PassedArgument {
     pub key: Option<ParameterKey>,
     pub value: Box<Expression>,
-}
-
-#[derive(Copy, Clone, PartialEq)]
-pub enum UnaryOperator {
-    Not,
-    Positive,
-    Negative,
-}
-
-#[derive(Copy, Clone, PartialEq)]
-pub enum BinaryOperator {
-    Or,
-    And,
-
-    EqualTo,
-    NotEqualTo,
-
-    GreaterThan,
-    GreaterThanOrEqualTo,
-    LesserThan,
-    LesserThanOrEqualTo,
-
-    Multiply,
-    Divide,
-    Add,
-    Subtract,
-    Exponentiate,
-    Modulo,
-}
-
-#[derive(Copy, Clone, PartialEq)]
-pub enum Mutability {
-    Immutable,
-    Mutable,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -121,13 +83,23 @@ fn is_simple(expression: &Expression) -> bool {
         Expression::Number(_) => true,
         Expression::Bool(_) => true,
         Expression::BinaryOperator { .. } => false,
-        Expression::PairAssociativeBinaryOperator { .. } => false,
-        Expression::UnaryOperator(_, _) => true,
-        Expression::FunctionCall(_, _, _) => true,
-        Expression::MemberLookup(_, _) => true,
+        Expression::UnsortedBinaryOperators { .. } => false,
+        Expression::PairAssociativeBinaryOperators { .. } => false,
+        Expression::UnaryOperator { .. } => true,
+        Expression::FunctionCall { .. } => true,
+        Expression::MemberLookup { .. } => true,
         Expression::VariableLookup(_) => true,
         Expression::ArrayLiteral(_) => true,
         Expression::StringLiteral(_) => true,
+    }
+}
+
+impl Mutability {
+    fn variable_declaration_keyword(&self) -> &str {
+        return match *self {
+            Mutable => "var",
+            Immutable => "let",
+        };
     }
 }
 
@@ -213,8 +185,8 @@ impl Debug for Statement {
                 let mutability_string = mutability.variable_declaration_keyword();
                 write!(fmt, "{} {}: {:?} = {:?}", mutability_string, identifier, type_declaration, expression)
             },
-            VariableAssignment(id, expr) => {
-                write!(fmt, "{} = {:?}", id, expr)
+            VariableAssignment { variable_name, new_value } => {
+                write!(fmt, "{} = {:?}", variable_name, new_value)
             },
             Return(ref expression) => write!(fmt, "return {:?}", expression),
             Expression(ref expression) => write!(fmt, "{:?}", expression),
@@ -233,24 +205,27 @@ impl Debug for Expression {
                 write_maybe_parenthesized_expression(fmt, rhs.as_ref())?;
                 return Ok(())
             },
-            UnaryOperator(op, expression) => write!(fmt, "{:?}{:?}", op, expression),
-            PairAssociativeBinaryOperator { arguments, operators } => {
+            UnaryOperator { operator, argument } => write!(fmt, "{:?}{:?}", operator, argument),
+            UnsortedBinaryOperators { .. } => {
+                panic!("Cannot debug at this stage; please run parser fully before printing.")
+            }
+            PairAssociativeBinaryOperators { arguments, operators } => {
                 for (argument, operator) in zip(arguments, operators) {
                     write_maybe_parenthesized_expression(fmt, argument.as_ref())?;
                     write!(fmt, " {:?} ", operator)?;
                 }
                 write_maybe_parenthesized_expression(fmt, arguments.last().unwrap().as_ref())?;
                 return Ok(())
-            }
-            FunctionCall(call_type, expression, args) => {
+            },
+            FunctionCall { call_type, callee, arguments } => {
                 let brackets = call_type.bracket_str();
-                write!(fmt, "{:?}{}", expression, brackets.chars().nth(0).unwrap())?;
-                write_comma_separated_list(fmt, args)?;
+                write!(fmt, "{:?}{}", callee, brackets.chars().nth(0).unwrap())?;
+                write_comma_separated_list(fmt, arguments)?;
                 write!(fmt, "{}", brackets.chars().nth(1).unwrap())?;
                 return Ok(())
             },
             VariableLookup(id) => write!(fmt, "{}", id),
-            MemberLookup(expression, id) => write!(fmt, "{:?}.{}", expression, id),
+            MemberLookup { target, member_name } => write!(fmt, "{:?}.{}", target, member_name),
             ArrayLiteral(items) => {
                 write!(fmt, "[")?;
                 write_comma_separated_list(fmt, items)?;
@@ -259,42 +234,6 @@ impl Debug for Expression {
             },
             StringLiteral(string) => write!(fmt, "{:?}", string),
             Bool(value) => write!(fmt, "{}", value),
-        }
-    }
-}
-
-impl Debug for BinaryOperator {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::BinaryOperator::*;
-        match self {
-            Or => write!(fmt, "||"),
-            And => write!(fmt, "&&"),
-
-            EqualTo => write!(fmt, "=="),
-            NotEqualTo => write!(fmt, "!="),
-
-            GreaterThan => write!(fmt, ">"),
-            GreaterThanOrEqualTo => write!(fmt, ">="),
-            LesserThan => write!(fmt, "<"),
-            LesserThanOrEqualTo => write!(fmt, "<="),
-
-            Multiply => write!(fmt, "*"),
-            Divide => write!(fmt, "/"),
-            Add => write!(fmt, "+"),
-            Subtract => write!(fmt, "-"),
-            Exponentiate => write!(fmt, "**"),
-            Modulo => write!(fmt, "%"),
-        }
-    }
-}
-
-impl Debug for UnaryOperator {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        use self::UnaryOperator::*;
-        match self {
-            Not => write!(fmt, "!"),
-            Positive => write!(fmt, "+"),
-            Negative => write!(fmt, "-"),
         }
     }
 }
@@ -308,26 +247,6 @@ impl Debug for PassedArgument {
 impl Debug for Parameter {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "{:?} {}: {:?}", self.key, self.internal_name, self.param_type)
-    }
-}
-
-impl Debug for ParameterKey {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::ParameterKey::*;
-        match self {
-            Int(value) => write!(fmt, "{}", value),
-            Name(value) => write!(fmt, "{}", value),
-        }
-    }
-}
-
-impl Mutability {
-    fn variable_declaration_keyword(&self) -> &str {
-        use self::Mutability::*;
-        return match *self {
-            Mutable => "var",
-            Immutable => "let",
-        };
     }
 }
 

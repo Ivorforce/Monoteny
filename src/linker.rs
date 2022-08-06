@@ -1,7 +1,4 @@
-pub mod builtins;
 pub mod computation_tree;
-pub mod scopes;
-pub mod primitives;
 
 use std::collections::HashMap;
 use std::iter::zip;
@@ -9,16 +6,14 @@ use std::rc::Rc;
 use guard::guard;
 use uuid::Uuid;
 
-use crate::abstract_syntax;
-use crate::linker::builtins::*;
+use crate::parser::abstract_syntax;
 use crate::linker::computation_tree::*;
-use crate::linker::scopes::Environment;
+use crate::program::{primitives, scopes};
+use crate::program::builtins::*;
+use crate::program::types::*;
 
 
-pub fn link_program(syntax: abstract_syntax::Program) -> Program {
-    let builtins = create_builtins();
-    let builtin_variable_scope = builtins.global_constants.as_global_scope();
-
+pub fn link_program(syntax: abstract_syntax::Program, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> Program {
     let mut functions_with_bodies: Vec<(Rc<FunctionInterface>, &Vec<Box<abstract_syntax::Statement>>)> = Vec::new();
     let mut global_variables = scopes::Level::new();
 
@@ -26,7 +21,7 @@ pub fn link_program(syntax: abstract_syntax::Program) -> Program {
     for statement in &syntax.global_statements {
         match statement.as_ref() {
             abstract_syntax::GlobalStatement::FunctionDeclaration(function) => {
-                let interface = link_function_interface(&function, &builtin_variable_scope);
+                let interface = link_function_interface(&function, &scope);
 
                 functions_with_bodies.push((Rc::clone(&interface), &function.body));
 
@@ -39,7 +34,7 @@ pub fn link_program(syntax: abstract_syntax::Program) -> Program {
                     id: Uuid::new_v4(),
                     name: interface.name.clone(),
                     type_declaration: Box::new(Type::Function(Rc::clone(&interface))),
-                    mutability: abstract_syntax::Mutability::Immutable,
+                    mutability: Mutability::Immutable,
                 }));
 
                 if !interface.is_member_function {
@@ -52,7 +47,7 @@ pub fn link_program(syntax: abstract_syntax::Program) -> Program {
         }
     }
 
-    let global_variable_scope = builtin_variable_scope.subscope(&global_variables);
+    let global_variable_scope = scope.subscope(&global_variables);
 
     // Resolve function bodies
     let functions: Vec<Rc<Function>> = functions_with_bodies.into_iter().map(
@@ -62,24 +57,23 @@ pub fn link_program(syntax: abstract_syntax::Program) -> Program {
 
     return Program {
         functions,
-        builtins
     }
 }
 
 pub fn link_function_interface(function: &abstract_syntax::Function, scope: &scopes::Hierarchy) -> Rc<FunctionInterface> {
     let return_type = function.return_type.as_ref().map(|x| link_type(&x, scope));
 
-    let mut parameters: Vec<Box<Parameter>> = Vec::new();
+    let mut parameters: Vec<Box<NamedParameter>> = Vec::new();
 
     if let Some(target_type) = &function.target_type {
         let variable = Rc::new(Variable {
             id: Uuid::new_v4(),
             name: String::from("self"),
             type_declaration: link_type(&target_type, scope),
-            mutability: abstract_syntax::Mutability::Immutable,
+            mutability: Mutability::Immutable,
         });
 
-        parameters.push(Box::new(Parameter {
+        parameters.push(Box::new(NamedParameter {
             external_key: ParameterKey::Int(0),
             variable
         }));
@@ -90,10 +84,10 @@ pub fn link_function_interface(function: &abstract_syntax::Function, scope: &sco
             id: Uuid::new_v4(),
             name: parameter.internal_name.clone(),
             type_declaration: link_type(parameter.param_type.as_ref(), scope),
-            mutability: abstract_syntax::Mutability::Immutable,
+            mutability: Mutability::Immutable,
         });
 
-        parameters.push(Box::new(Parameter {
+        parameters.push(Box::new(NamedParameter {
             external_key: link_parameter_key(&parameter.key, parameters.len()),
             variable
         }));
@@ -123,10 +117,10 @@ pub fn link_passed_arguments<'a, I>(arguments: I, scope: &scopes::Hierarchy, bui
         .collect()
 }
 
-pub fn link_parameter_key(key: &abstract_syntax::ParameterKey, index: usize) -> ParameterKey {
+pub fn link_parameter_key(key: &ParameterKey, index: usize) -> ParameterKey {
     match key {
-        abstract_syntax::ParameterKey::Int(n) => ParameterKey::Int(*n),
-        abstract_syntax::ParameterKey::Name(n) => {
+        ParameterKey::Int(n) => ParameterKey::Int(*n),
+        ParameterKey::Name(n) => {
             match n.as_str() {
                 // When _ a: SomeType is declared, it is keyed by its index.
                 "_" => ParameterKey::Int(index as i32),
@@ -136,7 +130,7 @@ pub fn link_parameter_key(key: &abstract_syntax::ParameterKey, index: usize) -> 
     }
 }
 
-pub fn link_parameter_key_option(key: &Option<abstract_syntax::ParameterKey>, index: usize) -> ParameterKey {
+pub fn link_parameter_key_option(key: &Option<ParameterKey>, index: usize) -> ParameterKey {
     if let Some(key) = key {
         link_parameter_key(key, index)
     }
@@ -150,7 +144,7 @@ pub fn link_function_body(body: &Vec<Box<abstract_syntax::Statement>>, interface
 
     for parameter in &interface.parameters {
         let variable = &parameter.variable;
-        parameter_variables.insert_singleton(Environment::Global, variable.clone());
+        parameter_variables.insert_singleton(scopes::Environment::Global, variable.clone());
     }
 
     let subscope = scope.subscope(&parameter_variables);
@@ -205,7 +199,7 @@ pub fn link_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<Fu
                 statements.push(Box::new(
                     Statement::VariableAssignment(Rc::clone(&variable), expression)
                 ));
-                local_variables.push_variable(Environment::Global, variable);
+                local_variables.push_variable(scopes::Environment::Global, variable);
             },
             abstract_syntax::Statement::Return(expression) => {
                 let subscope = scope.subscope(&local_variables);
@@ -236,18 +230,18 @@ pub fn link_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<Fu
                 let expression: Box<Expression> = link_expression(&expression, &subscope, builtins);
                 statements.push(Box::new(Statement::Expression(expression)));
             }
-            abstract_syntax::Statement::VariableAssignment(name, expression) => {
+            abstract_syntax::Statement::VariableAssignment { variable_name, new_value } => {
                 let subscope = scope.subscope(&local_variables);
-                let variable = subscope.resolve_unambiguous(Environment::Global, name);
+                let variable = subscope.resolve_unambiguous(scopes::Environment::Global, variable_name);
 
-                if variable.mutability == abstract_syntax::Mutability::Immutable {
-                    panic!("Cannot assign to immutable variable '{}'.", name);
+                if variable.mutability == Mutability::Immutable {
+                    panic!("Cannot assign to immutable variable '{}'.", variable_name);
                 }
 
-                let expression: Box<Expression> = link_expression(&expression, &subscope, builtins);
+                let new_value: Box<Expression> = link_expression(&new_value, &subscope, builtins);
 
                 statements.push(Box::new(
-                    Statement::VariableAssignment(Rc::clone(&variable), expression)
+                    Statement::VariableAssignment(Rc::clone(&variable), new_value)
                 ));
             }
         }
@@ -256,19 +250,19 @@ pub fn link_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<Fu
     statements
 }
 
-pub fn link_binary_function<'a>(lhs: &Expression, operator: &'a abstract_syntax::BinaryOperator, rhs: &Expression, scope: &'a scopes::Hierarchy) -> &'a Rc<FunctionInterface> {
+pub fn link_binary_function<'a>(lhs: &Expression, operator: &'a String, rhs: &Expression, scope: &'a scopes::Hierarchy) -> &'a Rc<FunctionInterface> {
     let call_arguments = vec![
         PassedArgumentType { key: ParameterKey::Int(0), value: &lhs.result_type },
         PassedArgumentType { key: ParameterKey::Int(1), value: &rhs.result_type },
     ];
-    scope.resolve_function(Environment::Global, &format!("{:?}", operator), &call_arguments)
+    scope.resolve_function(scopes::Environment::Global, operator, &call_arguments)
 }
 
-pub fn link_unary_function<'a>(operator: &'a abstract_syntax::UnaryOperator, value: &Expression, scope: &'a scopes::Hierarchy) -> &'a Rc<FunctionInterface> {
+pub fn link_unary_function<'a>(operator: &'a String, value: &Expression, scope: &'a scopes::Hierarchy) -> &'a Rc<FunctionInterface> {
     let call_arguments = vec![
         PassedArgumentType { key: ParameterKey::Int(0), value: &value.result_type },
     ];
-    scope.resolve_function(Environment::Global, &format!("{:?}", operator), &call_arguments)
+    scope.resolve_function(scopes::Environment::Global, operator, &call_arguments)
 }
 
 fn link_static_function_call(function: &Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>>) -> Box<Expression> {
@@ -331,7 +325,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                 function, link_arguments_to_parameters(function, vec![lhs, rhs])
             )
         },
-        abstract_syntax::Expression::PairAssociativeBinaryOperator { arguments, operators } => {
+        abstract_syntax::Expression::PairAssociativeBinaryOperators { arguments, operators } => {
             let arguments: Vec<Box<Expression>> = arguments.into_iter()
                 .map(|x| link_expression(x, scope, builtins))
                 .collect();
@@ -344,17 +338,13 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                 .collect();
 
             if arguments.len() != functions.len() + 1 || arguments.len() < 2 {
-                panic!("Internal comparison error (args.len(): {}, functions.len(): {})", arguments.len(), functions.len());
-            }
-            else if functions.len() == 1 {
-                let function = &functions[0];
-
-                // Just one pair, this is easy
-                link_static_function_call(
-                    function, link_arguments_to_parameters(function, arguments)
-                )
+                panic!("Internal Error for PairAssociativeBinaryOperators: (args.len(): {}, functions.len(): {})", arguments.len(), functions.len());
             }
             else {
+                if functions.len() == 1 {
+                    println!("Warning: Attempting making a pair-associative operator from just 1 pair. This should not happen.");
+                }
+
                 Box::new(Expression {
                     // TODO This is not true; we have to see what (a > b) && (b > c) actually outputs
                     result_type: Some(Box::new(Type::Primitive(primitives::Type::Bool))),
@@ -362,21 +352,21 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                 })
             }
         }
-        abstract_syntax::Expression::UnaryOperator(operator, expression) => {
-            let expression = link_expression(expression, scope, builtins);
-            let function = link_unary_function(operator, &expression, scope);
+        abstract_syntax::Expression::UnaryOperator { operator, argument} => {
+            let argument = link_expression(argument, scope, builtins);
+            let function = link_unary_function(operator, &argument, scope);
 
-            link_static_function_call(function, link_arguments_to_parameters(function, vec![expression]))
+            link_static_function_call(function, link_arguments_to_parameters(function, vec![argument]))
         },
         abstract_syntax::Expression::VariableLookup(identifier) => {
-            let variable = scope.resolve_unambiguous(Environment::Global, identifier);
+            let variable = scope.resolve_unambiguous(scopes::Environment::Global, identifier);
 
             Box::new(Expression {
                 operation: Box::new(ExpressionOperation::VariableLookup(variable.clone())),
                 result_type: Some(variable.type_declaration.clone())
             })
         },
-        abstract_syntax::Expression::FunctionCall(call_type, callee, arguments) => {
+        abstract_syntax::Expression::FunctionCall { call_type, callee, arguments } => {
             if call_type == &abstract_syntax::FunctionCallType::Subscript {
                 panic!("Subscript not supported yet");
             }
@@ -392,19 +382,19 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                         .map(|x| x.to_argument_type())
                         .collect();
 
-                    let function = scope.resolve_function(Environment::Global, function_name, &argument_types);
+                    let function = scope.resolve_function(scopes::Environment::Global, function_name, &argument_types);
 
                     link_static_function_call(function, arguments)
                 }
                 _ => {
                     match callee.as_ref() {
-                        abstract_syntax::Expression::MemberLookup(target_object, member_name) => {
-                            let target_obj = link_expression(target_object, scope, builtins);
+                        abstract_syntax::Expression::MemberLookup { target, member_name } => {
+                            let target = link_expression(target, scope, builtins);
 
                             // Member Function
                             let arguments: Vec<Box<PassedArgument>> = Some(Box::new(PassedArgument {
                                 key: ParameterKey::Int(0),
-                                value: target_obj
+                                value: target
                             })).into_iter().chain(link_passed_arguments(
                                 arguments.iter(), scope, builtins, 1
                             ).into_iter()).collect();
@@ -413,7 +403,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                                 .map(|x| x.to_argument_type())
                                 .collect();
 
-                            let function = scope.resolve_function(Environment::Member, member_name, &argument_types);
+                            let function = scope.resolve_function(scopes::Environment::Member, member_name, &argument_types);
 
                             link_static_function_call(function, arguments)
                         },
@@ -439,8 +429,11 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                 }
             }
         }
-        abstract_syntax::Expression::MemberLookup(_, _) => {
+        abstract_syntax::Expression::MemberLookup { target, member_name } => {
             todo!()
+        }
+        abstract_syntax::Expression::UnsortedBinaryOperators { .. } => {
+            panic!("Internal Error: Unsorted binary operators should not occur at this stage.")
         }
     }
 }
@@ -448,7 +441,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
 pub fn link_type(syntax: &abstract_syntax::TypeDeclaration, scope: &scopes::Hierarchy) -> Box<Type> {
     match syntax {
         abstract_syntax::TypeDeclaration::Identifier(id) => {
-            scope.resolve_metatype(Environment::Global, id).clone()
+            scope.resolve_metatype(scopes::Environment::Global, id).clone()
         },
         abstract_syntax::TypeDeclaration::NDArray(identifier, _) => {
             Box::new(Type::NDArray(link_type(&identifier, scope)))

@@ -3,15 +3,17 @@ extern crate lalrpop_util;
 extern crate core;
 
 lalrpop_mod!(pub tenlang_grammar);
-mod abstract_syntax;
-mod linker;
-mod languages;
+pub mod parser;
+pub mod linker;
+pub mod languages;
+pub mod program;
 
 use std::ffi::OsStr;
 use std::fs::File;
 use std::path::PathBuf;
 
 use clap::{arg, Command};
+use crate::parser::parse_program;
 
 fn cli() -> Command<'static> {
     Command::new("tenlang")
@@ -53,9 +55,10 @@ fn main() {
                 let content = std::fs::read_to_string(&path)
                     .expect("could not read file");
 
-                let syntax_tree = tenlang_grammar::ProgramParser::new()
-                    .parse(content.as_str())
-                    .unwrap();
+                let builtins = program::builtins::create_builtins();
+                let builtin_variable_scope = builtins.global_constants.as_global_scope();
+
+                let syntax_tree = parse_program(&content, &builtin_variable_scope, &builtins);
 
                 if should_output_tree {
                     println!("{:?}", syntax_tree);
@@ -77,11 +80,11 @@ fn main() {
             let content = std::fs::read_to_string(&input_path)
                 .expect("could not read file");
 
-            let abstract_syntax_tree = tenlang_grammar::ProgramParser::new()
-                .parse(content.as_str())
-                .unwrap();
+            let builtins = program::builtins::create_builtins();
+            let builtin_variable_scope = builtins.global_constants.as_global_scope();
 
-            let computation_tree = linker::link_program(abstract_syntax_tree);
+            let syntax_tree = parse_program(&content, &builtin_variable_scope, &builtins);
+            let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins);
 
             for output_extension in output_extensions {
                 match output_extension {
@@ -92,6 +95,7 @@ fn main() {
                         languages::python::transpile_program(
                             &mut f,
                             &computation_tree,
+                            &builtins
                         ).expect("Error when writing to file");
 
                         println!("{:?}", python_path);

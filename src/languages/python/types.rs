@@ -1,7 +1,7 @@
 use std::io::Write;
-use crate::linker::builtins::TenLangBuiltins;
-use crate::linker::computation_tree::{Struct, Type};
-use crate::linker::primitives;
+use crate::program::builtins::TenLangBuiltins;
+use crate::program::primitives;
+use crate::program::types::{Struct, Type};
 
 pub fn transpile(stream: &mut (dyn Write), type_def: &Type, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     match type_def {
@@ -44,7 +44,7 @@ pub fn transpile_struct(stream: &mut (dyn Write), s: &Struct, builtins: &TenLang
 }
 
 pub fn transpile_primitive(stream: &mut (dyn Write), type_def: &primitives::Type) -> Result<(), std::io::Error> {
-    use primitives::Type::*;
+    use crate::program::primitives::Type::*;
     match type_def {
         Bool => write!(stream, "np.bool")?,
         Int8 => write!(stream, "np.int8")?,

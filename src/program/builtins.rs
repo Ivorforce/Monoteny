@@ -1,17 +1,18 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
-use strum::{ IntoEnumIterator };
-use crate::abstract_syntax::Mutability;
-use crate::linker::computation_tree::*;
-use crate::linker::primitives;
-use crate::linker::scopes;
+use strum::IntoEnumIterator;
+use crate::parser::associativity::{BinaryOperatorAssociativity, BinaryPrecedenceGroup};
+use crate::program::types::*;
+use crate::program::{primitives, scopes};
+use crate::program;
 
 pub struct TenLangBuiltins {
     pub operators: TenLangBuiltinOperators,
     pub functions: TenLangBuiltinFunctions,
     pub primitive_metatypes: HashMap<primitives::Type, Box<Type>>,
     pub structs: TenLangBuiltinStructs,
+    pub precedence_groups: TenLangBuiltinPrecedenceGroups,
 
     pub global_constants: scopes::Level,
 }
@@ -45,6 +46,16 @@ pub struct TenLangBuiltinFunctions {
 }
 
 #[allow(non_snake_case)]
+pub struct TenLangBuiltinPrecedenceGroups {
+    pub ExponentiationPrecedence: BinaryPrecedenceGroup,
+    pub MultiplicationPrecedence: BinaryPrecedenceGroup,
+    pub AdditionPrecedence: BinaryPrecedenceGroup,
+    pub ComparisonPrecedence: BinaryPrecedenceGroup,
+    pub LogicalConjunctionPrecedence: BinaryPrecedenceGroup,
+    pub LogicalDisjunctionPrecedence: BinaryPrecedenceGroup,
+}
+
+#[allow(non_snake_case)]
 pub struct TenLangBuiltinStructs {
     pub String: Rc<Struct>,
 }
@@ -58,10 +69,10 @@ pub fn create_function_variable(interface: &Rc<FunctionInterface>) -> Rc<Variabl
     })
 }
 
-pub fn create_same_parameters(declared_type: &Box<Type>, names: Vec<&str>) -> Vec<Box<Parameter>> {
+pub fn create_same_parameters(declared_type: &Box<Type>, names: Vec<&str>) -> Vec<Box<NamedParameter>> {
     names.iter().enumerate()
         .map(|(idx, name)|
-            Box::new(Parameter {
+            Box::new(NamedParameter {
                 external_key: ParameterKey::Int(idx as i32),
                 variable: Rc::new(Variable {
                     id: Uuid::new_v4(),
@@ -225,6 +236,14 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         },
         structs: TenLangBuiltinStructs {
             String: add_struct(&mut constants, "String")
+        },
+        precedence_groups: TenLangBuiltinPrecedenceGroups {
+            ExponentiationPrecedence: BinaryPrecedenceGroup::new("ExponentiationPrecedence", BinaryOperatorAssociativity::Right),
+            MultiplicationPrecedence: BinaryPrecedenceGroup::new("MultiplicationPrecedence", BinaryOperatorAssociativity::Left),
+            AdditionPrecedence: BinaryPrecedenceGroup::new("AdditionPrecedence", BinaryOperatorAssociativity::Left),
+            ComparisonPrecedence: BinaryPrecedenceGroup::new("ComparisonPrecedence", BinaryOperatorAssociativity::PairsJoinedByAnds),
+            LogicalConjunctionPrecedence: BinaryPrecedenceGroup::new("LogicalConjunctionPrecedence", BinaryOperatorAssociativity::Left),
+            LogicalDisjunctionPrecedence: BinaryPrecedenceGroup::new("LogicalDisjunctionPrecedence", BinaryOperatorAssociativity::Left),
         },
         primitive_metatypes,
         global_constants: constants,

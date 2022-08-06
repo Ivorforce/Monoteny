@@ -1,7 +1,8 @@
 use std::io::Write;
 use crate::languages::python::{get_external_name, types};
-use crate::linker::builtins::TenLangBuiltins;
+use crate::program::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::*;
+use crate::program::types::Type;
 
 pub fn dump(stream: &mut (dyn Write), function: &Function, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     write!(stream, ":\n    \"\"\"\n    <Docstring TODO!>\n")?;

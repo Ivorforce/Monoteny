@@ -1,5 +1,6 @@
 use std::str::FromStr;
-use crate::abstract_syntax::*;
+use crate::parser::abstract_syntax::*;
+use crate::program::types::*;
 
 grammar;
 
@@ -7,19 +8,15 @@ grammar;
 
 match {
     r"[0-9]+" => _Number,
+    r"[a-zA-Z_]\w*" => _Identifier,
+    r"[!+\-*/&%=><|]+" => _OperatorIdentifier,
     "true", "false",
     "return",
-    "(", ")", "{", "}", "[",  "]", "|",
+    "(", ")", "{", "}", "[",  "]", ":|",
     ";", ",", ":", "::", "->",
     "=",
-    "!",
-    "+", "-", "*", "/", "&&", "||",
-    "**", "%",
-    "==", "!=", ">", ">=", "<", "<=",
     "let", "var",
     "fun",
-} else {
-    r"[a-zA-Z_]\w*" => _Identifier,
     _
 }
 
@@ -36,6 +33,10 @@ BoolLiteral: bool = {
 
 Identifier: String = {
     _Identifier => format!("{}", <>)
+};
+
+OperatorIdentifier: String = {
+    _OperatorIdentifier => format!("{}", <>)
 };
 
 // =============================== Global =====================================
@@ -87,7 +88,7 @@ TypeDeclaration: Box<TypeDeclaration> = {
 pub Statement: Box<Statement> = {
     <mutability: VariableDeclarationMutability> <identifier: Identifier> ":" <type_declaration: TypeDeclaration> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: Some(type_declaration), expression }),
     <mutability: VariableDeclarationMutability> <identifier: Identifier> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: None, expression }),
-    <i: Identifier> "=" <e: Expression> => Box::new(Statement::VariableAssignment(i, e)),
+    <variable_name: Identifier> "=" <new_value: Expression> => Box::new(Statement::VariableAssignment { variable_name, new_value }),
     "return" <Expression> => Box::new(Statement::Return(Some(<>))),
     "return" => Box::new(Statement::Return(None)),
     Expression => Box::new(Statement::Expression(<>)),
@@ -100,14 +101,9 @@ VariableDeclarationMutability: Mutability = {
 
 // =============================== Expression =====================================
 
-Expression: Box<Expression> = OrPrecedenceGroup;
-OrPrecedenceGroup = LeftAssociativeBinaryOperator<OrOperator, AndPrecedenceGroup>;
-AndPrecedenceGroup = LeftAssociativeBinaryOperator<AndOperator, ComparisonPrecedenceGroup>;
-ComparisonPrecedenceGroup = PairAssociativeBinaryOperator<ComparisonOperator, AdditionPrecedenceGroup>;
-AdditionPrecedenceGroup = LeftAssociativeBinaryOperator<SumOperator, MultiplicationPrecedenceGroup>;
-MultiplicationPrecedenceGroup = LeftAssociativeBinaryOperator<FactorOperator, ExponentiationPrecedenceGroup>;
-ExponentiationPrecedenceGroup = RightAssociativeBinaryOperator<ExponentiationOperator, UnaryOperatorPrecedenceGroup>;
-UnaryOperatorPrecedenceGroup = LeftUnaryOperator<UnaryOperator, FunctionCallPrecedenceGroup>;
+Expression: Box<Expression> = OperatorPrecedenceGroup;
+OperatorPrecedenceGroup = UnsortedBinaryOperators<OperatorIdentifier, UnaryOperatatorPrecedenceGroup>;
+UnaryOperatatorPrecedenceGroup = LeftUnaryOperator<OperatorIdentifier, FunctionCallPrecedenceGroup>;
 FunctionCallPrecedenceGroup = FunctionCallExpression<LeftTransformationPrecedenceGroup>;
 LeftTransformationPrecedenceGroup = LeftTransformation<Term>;
 
@@ -129,54 +125,15 @@ PassedArgument: Box<PassedArgument> = {
     <value: Expression> => Box::new(PassedArgument { key: None, value })
 }
 
-ExponentiationOperator: BinaryOperator = {
-    "**" => BinaryOperator::Exponentiate,
-};
-
-OrOperator: BinaryOperator = {
-    "||" => BinaryOperator::Or,
-};
-
-AndOperator: BinaryOperator = {
-    "&&" => BinaryOperator::And,
-};
-
-SumOperator: BinaryOperator = {
-    "+" => BinaryOperator::Add,
-    "-" => BinaryOperator::Subtract,
-};
-
-FactorOperator: BinaryOperator = {
-    "*" => BinaryOperator::Multiply,
-    "/" => BinaryOperator::Divide,
-    "%" => BinaryOperator::Modulo,
-};
-
-ComparisonOperator: BinaryOperator = {
-    "==" => BinaryOperator::EqualTo,
-    "!=" => BinaryOperator::NotEqualTo,
-
-    ">" => BinaryOperator::GreaterThan,
-    ">=" => BinaryOperator::GreaterThanOrEqualTo,
-    "<" => BinaryOperator::LesserThan,
-    "<=" => BinaryOperator::LesserThanOrEqualTo,
-}
-
-UnaryOperator: UnaryOperator = {
-    "+" => UnaryOperator::Positive,
-    "-" => UnaryOperator::Negative,
-    "!" => UnaryOperator::Not,
-};
-
 FunctionCallExpression<NextOperatorLevel>: Box<Expression> = {
-    <FunctionCallExpression<NextOperatorLevel>> "(" <OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall(FunctionCallType::Call, <>)),
-    <FunctionCallExpression<NextOperatorLevel>> "[" <OptionalFinalSeparatorList<PassedArgument, ",">> "]" => Box::new(Expression::FunctionCall(FunctionCallType::Subscript, <>)),
-    <FunctionCallExpression<NextOperatorLevel>> "." <Identifier> => Box::new(Expression::MemberLookup(<>)),
+    <callee: FunctionCallExpression<NextOperatorLevel>> "(" <arguments: OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall { call_type: FunctionCallType::Call, <> }),
+    <callee: FunctionCallExpression<NextOperatorLevel>> "[" <arguments: OptionalFinalSeparatorList<PassedArgument, ",">> "]" => Box::new(Expression::FunctionCall { call_type: FunctionCallType::Subscript, <> }),
+    <target: FunctionCallExpression<NextOperatorLevel>> "." <member_name: Identifier> => Box::new(Expression::MemberLookup { <> }),
     NextOperatorLevel
 }
 
 LeftTransformation<NextOperatorLevel>: Box<Expression> = {
-    <LeftTransformation<NextOperatorLevel>> "|",
+    <LeftTransformation<NextOperatorLevel>> ":|",
     <NextOperatorLevel>,
 }
 
@@ -187,7 +144,7 @@ OptionalFinalSeparatorList<Element, Separator>: Vec<Element> = {
     <v0: (<Element> Separator)*> <e1: Element?> => v0.into_iter().chain(e1).collect()
 };
 
-PairAssociativeBinaryOperator<Separator, NextOperatorLevel>: Box<Expression> = {
+UnsortedBinaryOperators<Separator, NextOperatorLevel>: Box<Expression> = {
     <e1: NextOperatorLevel> <v0: (<Separator> <NextOperatorLevel>)+> => {
         let mut arguments = vec![e1];
         let mut operators = vec![];
@@ -195,7 +152,7 @@ PairAssociativeBinaryOperator<Separator, NextOperatorLevel>: Box<Expression> = {
             operators.push(operator);
             arguments.push(argument);
         }
-        Box::new(Expression::PairAssociativeBinaryOperator { arguments, operators})
+        Box::new(Expression::UnsortedBinaryOperators { arguments, operators})
     },
     NextOperatorLevel
 };
@@ -211,6 +168,6 @@ RightAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
 };
 
 LeftUnaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
-    <operator: Operator> <expression: LeftUnaryOperator<Operator, NextOperatorLevel>>  => Box::new(Expression::UnaryOperator(operator, expression)),
+    <operator: Operator> <argument: LeftUnaryOperator<Operator, NextOperatorLevel>>  => Box::new(Expression::UnaryOperator { operator, argument }),
     NextOperatorLevel
 };

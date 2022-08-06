@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use crate::linker::builtins::TenLangBuiltins;
-use crate::linker::computation_tree::{FunctionInterface, PassedArgument, PassedArgumentType, Type, Variable};
+use crate::program::types::{FunctionInterface, PassedArgumentType, Type, Variable};
 
 type VariablePool = Box<HashMap<String, HashSet<Rc<Variable>>>>;
 
