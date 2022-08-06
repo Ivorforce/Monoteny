@@ -1,4 +1,5 @@
-use std::fmt::{Debug, Error, Formatter};
+use std::fmt::{Binary, Debug, Error, Formatter};
+use std::iter::zip;
 
 // =============================== Global =====================================
 
@@ -59,6 +60,7 @@ pub enum Expression {
     Number(i32),
     Bool(bool),
     BinaryOperator { lhs: Box<Expression>, operator: BinaryOperator, rhs: Box<Expression> },
+    PairAssociativeBinaryOperator { arguments: Vec<Box<Expression>>, operators: Vec<BinaryOperator> },
     UnaryOperator(UnaryOperator, Box<Expression>),
     FunctionCall(FunctionCallType, Box<Expression>, Vec<Box<PassedArgument>>),
     MemberLookup(Box<Expression>, String),
@@ -195,6 +197,13 @@ impl Debug for Expression {
             Number(n) => write!(fmt, "{:?}", n),
             BinaryOperator { lhs, operator, rhs } => write!(fmt, "({:?}) {:?} ({:?})", lhs, operator, rhs),
             UnaryOperator(op, expression) => write!(fmt, "{:?}{:?}", op, expression),
+            PairAssociativeBinaryOperator { arguments, operators } => {
+                for (argument, operator) in zip(arguments, operators) {
+                    write!(fmt, "({:?}) {:?} ", argument, operator)?;
+                }
+                write!(fmt, "({:?})", arguments.last().unwrap())?;
+                return Ok(())
+            }
             FunctionCall(call_type, expression, args) => {
                 let brackets = call_type.bracket_str();
                 write!(fmt, "{:?}{}", expression, brackets.chars().nth(0).unwrap())?;
@@ -270,20 +279,6 @@ impl Debug for ParameterKey {
         match self {
             Int(value) => write!(fmt, "{}", value),
             Name(value) => write!(fmt, "{}", value),
-        }
-    }
-}
-
-impl BinaryOperator {
-    pub fn is_pairwise_comparison(&self) -> bool {
-        match self {
-            BinaryOperator::EqualTo => true,
-            BinaryOperator::NotEqualTo => true,
-            BinaryOperator::GreaterThan => true,
-            BinaryOperator::GreaterThanOrEqualTo => true,
-            BinaryOperator::LesserThan => true,
-            BinaryOperator::LesserThanOrEqualTo => true,
-            _ => false
         }
     }
 }

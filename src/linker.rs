@@ -256,43 +256,6 @@ pub fn link_scope(body: &Vec<Box<abstract_syntax::Statement>>, interface: &Rc<Fu
     statements
 }
 
-pub fn link_comparison_pairs_left_associative(lhs: &abstract_syntax::Expression, operator: &abstract_syntax:: BinaryOperator, rhs: &abstract_syntax::Expression, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> (Vec<Box<Expression>>, Vec<Rc<FunctionInterface>>) {
-    let mut arguments: Vec<&abstract_syntax::Expression> = vec![rhs];
-    let mut operators: Vec<&abstract_syntax:: BinaryOperator> = vec![operator];
-
-    let mut next = lhs;
-
-    loop {
-        if let abstract_syntax::Expression::BinaryOperator { lhs, operator, rhs } = next {
-            if operator.is_pairwise_comparison() {
-                operators.insert(0, operator);
-                arguments.insert(0, rhs);
-
-                next = lhs;
-
-                continue;
-            }
-        }
-
-        // Last argument
-        arguments.insert(0, next);
-        break;
-    }
-
-    let arguments: Vec<Box<Expression>> = arguments.into_iter()
-        .map(|x| link_expression(x, scope, builtins))
-        .collect();
-
-    let functions = zip(arguments.windows(2), operators.into_iter())
-        .map(|(args, operator)| {
-            let (lhs, rhs) = (&args[0], &args[1]);
-            link_binary_function(lhs, operator, rhs, scope).clone()
-        })
-        .collect();
-
-    return (arguments, functions);
-}
-
 pub fn link_binary_function<'a>(lhs: &Expression, operator: &'a abstract_syntax::BinaryOperator, rhs: &Expression, scope: &'a scopes::Hierarchy) -> &'a Rc<FunctionInterface> {
     let call_arguments = vec![
         PassedArgumentType { key: ParameterKey::Int(0), value: &lhs.result_type },
@@ -360,18 +323,25 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
             })
         },
         abstract_syntax::Expression::BinaryOperator { lhs, operator, rhs } => {
-            if !operator.is_pairwise_comparison() {
-                // These are just left-associative
-                let lhs = link_expression(lhs, scope, builtins);
-                let rhs = link_expression(rhs, scope, builtins);
-                let function = link_binary_function(&lhs, operator, &rhs, scope);
+            let lhs = link_expression(lhs, scope, builtins);
+            let rhs = link_expression(rhs, scope, builtins);
+            let function = link_binary_function(&lhs, operator, &rhs, scope);
 
-                return link_static_function_call(
-                    function, link_arguments_to_parameters(function, vec![lhs, rhs])
-                );
-            }
+            link_static_function_call(
+                function, link_arguments_to_parameters(function, vec![lhs, rhs])
+            )
+        },
+        abstract_syntax::Expression::PairAssociativeBinaryOperator { arguments, operators } => {
+            let arguments: Vec<Box<Expression>> = arguments.into_iter()
+                .map(|x| link_expression(x, scope, builtins))
+                .collect();
 
-            let (arguments, functions) = link_comparison_pairs_left_associative(lhs, operator, rhs, scope, builtins);
+            let functions: Vec<Rc<FunctionInterface>> = zip(arguments.windows(2), operators.into_iter())
+                .map(|(args, operator)| {
+                    let (lhs, rhs) = (&args[0], &args[1]);
+                    link_binary_function(lhs, operator, rhs, scope).clone()
+                })
+                .collect();
 
             if arguments.len() != functions.len() + 1 || arguments.len() < 2 {
                 panic!("Internal comparison paris error (args.len(): {}, functions.len(): {})", arguments.len(), functions.len());
@@ -391,7 +361,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                     operation: Box::new(ExpressionOperation::PairwiseOperations { arguments, functions })
                 })
             }
-        },
+        }
         abstract_syntax::Expression::UnaryOperator(operator, expression) => {
             let expression = link_expression(expression, scope, builtins);
             let function = link_unary_function(operator, &expression, scope);
