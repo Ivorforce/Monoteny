@@ -344,7 +344,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                 .collect();
 
             if arguments.len() != functions.len() + 1 || arguments.len() < 2 {
-                panic!("Internal comparison paris error (args.len(): {}, functions.len(): {})", arguments.len(), functions.len());
+                panic!("Internal comparison error (args.len(): {}, functions.len(): {})", arguments.len(), functions.len());
             }
             else if functions.len() == 1 {
                 let function = &functions[0];
