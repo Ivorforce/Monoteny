@@ -58,7 +58,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Overloading & Call Type Checking
 - [x] Member functions
 - [x] Unary operators: + - !
-- [ ] User-Defined Unary / Binary Operators
+- [x] User-Defined Unary / Binary Operators
 - [ ] Subscript function syntax
 - [ ] Var-Like 0 parameter function syntax (let c = a.b; a.b = c;)
 - [ ] Traits, x trait inheritances, trait abstract functions 
