@@ -60,6 +60,7 @@ pub fn transpile_type(type_def: &Type) -> String {
         }
         Type::Function(_) => todo!(),
         Type::Generic(_) => todo!(),
-        Type::MetaType(_) => todo!()
+        Type::MetaType(_) => todo!(),
+        Type::PrecedenceGroup(_) => todo!()
     }
 }

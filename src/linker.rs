@@ -1,4 +1,5 @@
 pub mod computation_tree;
+pub mod scopes;
 
 use std::collections::HashMap;
 use std::iter::zip;
@@ -8,7 +9,7 @@ use uuid::Uuid;
 
 use crate::parser::abstract_syntax;
 use crate::linker::computation_tree::*;
-use crate::program::{primitives, scopes};
+use crate::program::primitives;
 use crate::program::builtins::*;
 use crate::program::types::*;
 

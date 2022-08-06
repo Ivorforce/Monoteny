@@ -2,9 +2,11 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
 use strum::IntoEnumIterator;
+use crate::linker::scopes;
+use crate::parser;
 use crate::parser::associativity::{BinaryOperatorAssociativity, BinaryPrecedenceGroup};
 use crate::program::types::*;
-use crate::program::{primitives, scopes};
+use crate::program::primitives;
 use crate::program;
 
 pub struct TenLangBuiltins {
@@ -14,6 +16,7 @@ pub struct TenLangBuiltins {
     pub structs: TenLangBuiltinStructs,
     pub precedence_groups: TenLangBuiltinPrecedenceGroups,
 
+    pub parser_constants: parser::scopes::Level,
     pub global_constants: scopes::Level,
 }
 
@@ -47,12 +50,12 @@ pub struct TenLangBuiltinFunctions {
 
 #[allow(non_snake_case)]
 pub struct TenLangBuiltinPrecedenceGroups {
-    pub ExponentiationPrecedence: BinaryPrecedenceGroup,
-    pub MultiplicationPrecedence: BinaryPrecedenceGroup,
-    pub AdditionPrecedence: BinaryPrecedenceGroup,
-    pub ComparisonPrecedence: BinaryPrecedenceGroup,
-    pub LogicalConjunctionPrecedence: BinaryPrecedenceGroup,
-    pub LogicalDisjunctionPrecedence: BinaryPrecedenceGroup,
+    pub ExponentiationPrecedence: Rc<BinaryPrecedenceGroup>,
+    pub MultiplicationPrecedence: Rc<BinaryPrecedenceGroup>,
+    pub AdditionPrecedence: Rc<BinaryPrecedenceGroup>,
+    pub ComparisonPrecedence: Rc<BinaryPrecedenceGroup>,
+    pub LogicalConjunctionPrecedence: Rc<BinaryPrecedenceGroup>,
+    pub LogicalDisjunctionPrecedence: Rc<BinaryPrecedenceGroup>,
 }
 
 #[allow(non_snake_case)]
@@ -199,6 +202,44 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         .map(|x| Box::new(Type::Primitive(*x)))
         .collect();
 
+    let add_precedence_group = |scope: &mut parser::scopes::Level, name: &str, associativity: BinaryOperatorAssociativity, operators: Vec<&str>| -> Rc<BinaryPrecedenceGroup> {
+        let group = Rc::new(BinaryPrecedenceGroup::new(name, associativity));
+        scope.precedence_groups.push((Rc::clone(&group), HashSet::new()));
+        for operator in operators {
+            scope.add_binary_pattern(String::from(operator), &group);
+        }
+        group
+    };
+
+    let mut parser_scope = parser::scopes::Level::new();
+
+    let precedence_groups = TenLangBuiltinPrecedenceGroups {
+        ExponentiationPrecedence: add_precedence_group(
+            &mut parser_scope, "ExponentiationPrecedence", BinaryOperatorAssociativity::Right,
+            vec!["**"]
+        ),
+        MultiplicationPrecedence: add_precedence_group(
+            &mut parser_scope, "MultiplicationPrecedence", BinaryOperatorAssociativity::Left,
+            vec!["*", "/"]
+        ),
+        AdditionPrecedence: add_precedence_group(
+            &mut parser_scope, "AdditionPrecedence", BinaryOperatorAssociativity::Left,
+            vec!["+", "-"]
+        ),
+        ComparisonPrecedence: add_precedence_group(
+            &mut parser_scope, "ComparisonPrecedence", BinaryOperatorAssociativity::PairsJoinedByAnds,
+            vec!["==", "!=", ">", ">=", "<", "<="]
+        ),
+        LogicalConjunctionPrecedence: add_precedence_group(
+            &mut parser_scope, "LogicalConjunctionPrecedence", BinaryOperatorAssociativity::Left,
+            vec!["&&"]
+        ),
+        LogicalDisjunctionPrecedence: add_precedence_group(
+            &mut parser_scope, "LogicalDisjunctionPrecedence", BinaryOperatorAssociativity::Left,
+            vec!["||"]
+        ),
+    };
+
     Rc::new(TenLangBuiltins {
         operators: TenLangBuiltinOperators {
             and: add_binary_xx_x(&mut constants, "&&", &bool_type),
@@ -237,15 +278,9 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         structs: TenLangBuiltinStructs {
             String: add_struct(&mut constants, "String")
         },
-        precedence_groups: TenLangBuiltinPrecedenceGroups {
-            ExponentiationPrecedence: BinaryPrecedenceGroup::new("ExponentiationPrecedence", BinaryOperatorAssociativity::Right),
-            MultiplicationPrecedence: BinaryPrecedenceGroup::new("MultiplicationPrecedence", BinaryOperatorAssociativity::Left),
-            AdditionPrecedence: BinaryPrecedenceGroup::new("AdditionPrecedence", BinaryOperatorAssociativity::Left),
-            ComparisonPrecedence: BinaryPrecedenceGroup::new("ComparisonPrecedence", BinaryOperatorAssociativity::PairsJoinedByAnds),
-            LogicalConjunctionPrecedence: BinaryPrecedenceGroup::new("LogicalConjunctionPrecedence", BinaryOperatorAssociativity::Left),
-            LogicalDisjunctionPrecedence: BinaryPrecedenceGroup::new("LogicalDisjunctionPrecedence", BinaryOperatorAssociativity::Left),
-        },
+        precedence_groups,
         primitive_metatypes,
+        parser_constants: parser_scope,
         global_constants: constants,
     })
 }

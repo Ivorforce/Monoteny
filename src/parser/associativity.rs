@@ -3,16 +3,17 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::linker::link_unary_function;
 use crate::parser::abstract_syntax::*;
+use crate::parser::scopes;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum BinaryOperatorAssociativity {
     Left,
     Right,
     PairsJoinedByAnds,  // >=, == and the likes
 }
 
+#[derive(Eq)]
 pub struct BinaryPrecedenceGroup {
     pub id: Uuid,
     pub name: String,
@@ -46,36 +47,15 @@ impl Hash for BinaryPrecedenceGroup {
     }
 }
 
-pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<String>) -> Box<Expression> {
+pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<String>, scope: &scopes::Level) -> Box<Expression> {
     if arguments.len() != operators.len() + 1 || arguments.len() < 2 {
         panic!("Internal Error for associativity: (args.len(): {}, operators.len(): {})", arguments.len(), operators.len());
     }
 
-    let groups = vec![(
-            BinaryPrecedenceGroup::new("ExponentiationPrecedence", BinaryOperatorAssociativity::Right),
-            HashSet::from([String::from("**")]),
-        ), (
-            BinaryPrecedenceGroup::new("MultiplicationPrecedence", BinaryOperatorAssociativity::Left),
-            HashSet::from([String::from("*"), String::from("/"), String::from("%")]),
-        ), (
-            BinaryPrecedenceGroup::new("AdditionPrecedence", BinaryOperatorAssociativity::Left),
-            HashSet::from([String::from("+"), String::from("-")]),
-        ), (
-            BinaryPrecedenceGroup::new("ComparisonPrecedence", BinaryOperatorAssociativity::PairsJoinedByAnds),
-            HashSet::from([String::from("=="), String::from("!="), String::from(">"), String::from("<"), String::from(">="), String::from("<=")]),
-        ), (
-            BinaryPrecedenceGroup::new("LogicalConjunctionPrecedence", BinaryOperatorAssociativity::Left),
-            HashSet::from([String::from("&&")]),
-        ), (
-            BinaryPrecedenceGroup::new("LogicalDisjunctionPrecedence", BinaryOperatorAssociativity::Left),
-            HashSet::from([String::from("||")]),
-        ),
-    ];
-
     let mut arguments = arguments;
     let mut operators = operators;
 
-    let mut join_binary_at = |arguments: &mut Vec<Box<Expression>>, operators: &mut Vec<String>, i: usize| {
+    let join_binary_at = |arguments: &mut Vec<Box<Expression>>, operators: &mut Vec<String>, i: usize| {
         let lhs = arguments.remove(i);
         let rhs = arguments.remove(i);
         let operator = operators.remove(i);
@@ -86,7 +66,7 @@ pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<S
         ));
     };
 
-    for (group, group_operators) in groups {
+    for (group, group_operators) in &scope.precedence_groups {
         match group.associativity {
             BinaryOperatorAssociativity::Left => {
                 // Iterate left to right
@@ -104,11 +84,9 @@ pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<S
                 // Iterate right to left
                 let mut i = operators.len();
                 while i > 0 {
-                    if group_operators.contains(&operators[i - 1]) {
-                        join_binary_at(&mut arguments, &mut operators, i - 1);
-                    }
-                    else {
-                        i -= 1;  // Skip
+                    i -= 1;
+                    if group_operators.contains(&operators[i]) {
+                        join_binary_at(&mut arguments, &mut operators, i);
                     }
                 }
             }

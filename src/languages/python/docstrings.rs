@@ -38,7 +38,8 @@ pub fn transpile_type(stream: &mut (dyn Write), type_def: &Type, builtins: &TenL
         },
         Type::Function(_) => todo!(),
         Type::Generic(_) => todo!(),
-        Type::MetaType(_) => todo!()
+        Type::MetaType(_) => todo!(),
+        Type::PrecedenceGroup(_) => todo!(),
     }
 
     Ok(())

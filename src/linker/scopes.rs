@@ -12,7 +12,7 @@ pub enum Environment {
 
 pub struct Level {
     global: VariablePool,
-    member: VariablePool
+    member: VariablePool,
 }
 
 impl Level {

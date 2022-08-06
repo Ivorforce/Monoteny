@@ -10,7 +10,8 @@ pub fn transpile(stream: &mut (dyn Write), type_def: &Type, builtins: &TenLangBu
         Type::NDArray(_) => write!(stream, "np.ndarray")?,
         Type::Function(_) => todo!(),
         Type::Generic(_) => todo!(),
-        Type::MetaType(_) => todo!()
+        Type::MetaType(_) => todo!(),
+        Type::PrecedenceGroup(_) => todo!()
     }
 
     Ok(())

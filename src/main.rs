@@ -58,7 +58,7 @@ fn main() {
                 let builtins = program::builtins::create_builtins();
                 let builtin_variable_scope = builtins.global_constants.as_global_scope();
 
-                let syntax_tree = parse_program(&content, &builtin_variable_scope, &builtins);
+                let syntax_tree = parse_program(&content, &builtins.parser_constants, &builtins);
 
                 if should_output_tree {
                     println!("{:?}", syntax_tree);
@@ -83,7 +83,7 @@ fn main() {
             let builtins = program::builtins::create_builtins();
             let builtin_variable_scope = builtins.global_constants.as_global_scope();
 
-            let syntax_tree = parse_program(&content, &builtin_variable_scope, &builtins);
+            let syntax_tree = parse_program(&content, &builtins.parser_constants, &builtins);
             let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins);
 
             for output_extension in output_extensions {

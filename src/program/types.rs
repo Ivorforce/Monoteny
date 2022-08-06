@@ -5,6 +5,7 @@ use std::fmt::{Debug, Formatter};
 use std::collections::HashSet;
 use std::iter::zip;
 use guard::guard;
+use crate::parser::associativity::BinaryPrecedenceGroup;
 
 use crate::program::primitives;
 
@@ -56,6 +57,7 @@ pub enum Type {
     NDArray(Box<Type>),
     Struct(Rc<Struct>),
     Function(Rc<FunctionInterface>),
+    PrecedenceGroup(Rc<BinaryPrecedenceGroup>),
     Generic(Rc<Generic>),
 }
 
@@ -127,6 +129,7 @@ impl Debug for Type {
             Generic(g) => write!(fmt, "{}", g.name),
             MetaType(t) => write!(fmt, "Type[{:?}]", t),
             Struct(s) => write!(fmt, "{:?}", s.name),
+            PrecedenceGroup(p) => write!(fmt, "{:?}", p.name),
         }
     }
 }
@@ -148,6 +151,7 @@ impl Type {
                 let _ = &set.insert(generic);
             }
             Type::Struct(s) => {}
+            Type::PrecedenceGroup(_) => {}
         }
     }
 
