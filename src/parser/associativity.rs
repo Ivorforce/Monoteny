@@ -67,6 +67,14 @@ pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<S
         ));
     };
 
+    // This algorithm works because of 2 assumptions:
+    // 1) Operator names are strictly disjunct to other expressions
+    // 2) Operators can only be left-unary or binary (with any associativity).
+    // We can infer that in a series of tokens with two neighboring operators,
+    // all operators that are not on the very left are unary, while the rest are binary.
+    // After this simple rule, we can interpret the rest as "(Id) (Op Id)+". Re-Parsing this
+    // simply means collapsing the highest precedence operators first.
+
     for (group, group_operators) in &scope.precedence_groups {
         match group.associativity {
             BinaryOperatorAssociativity::Left => {
