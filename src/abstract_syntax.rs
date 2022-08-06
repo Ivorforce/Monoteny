@@ -116,6 +116,38 @@ pub enum FunctionCallType {
 
 // =============================== String =====================================
 
+fn is_simple(expression: &Expression) -> bool {
+    match expression {
+        Expression::Number(_) => true,
+        Expression::Bool(_) => true,
+        Expression::BinaryOperator { .. } => false,
+        Expression::PairAssociativeBinaryOperator { .. } => false,
+        Expression::UnaryOperator(_, _) => true,
+        Expression::FunctionCall(_, _, _) => true,
+        Expression::MemberLookup(_, _) => true,
+        Expression::VariableLookup(_) => true,
+        Expression::ArrayLiteral(_) => true,
+        Expression::StringLiteral(_) => true,
+    }
+}
+
+fn write_maybe_parenthesized_expression(fmt: &mut Formatter, expression: &Expression) -> Result<(), Error> {
+    if is_simple(expression) {
+        write!(fmt, "{:?}", expression)
+    }
+    else {
+        write!(fmt, "({:?})", expression)
+    }
+}
+
+fn write_comma_separated_list<E>(fmt: &mut Formatter, list: &Vec<E>) -> Result<(), Error> where E: Debug {
+    if let Some(first) = list.first() {
+        write!(fmt, "{:?}", first)?
+    }
+    for item in list.iter().skip(1) { write!(fmt, ", {:?}", item)? }
+    Ok(())
+}
+
 impl Debug for Program {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         for item in self.global_statements.iter() {
@@ -195,19 +227,25 @@ impl Debug for Expression {
         use self::Expression::*;
         match self {
             Number(n) => write!(fmt, "{:?}", n),
-            BinaryOperator { lhs, operator, rhs } => write!(fmt, "({:?}) {:?} ({:?})", lhs, operator, rhs),
+            BinaryOperator { lhs, operator, rhs } => {
+                write_maybe_parenthesized_expression(fmt, lhs.as_ref())?;
+                write!(fmt, " {:?} ", operator)?;
+                write_maybe_parenthesized_expression(fmt, rhs.as_ref())?;
+                return Ok(())
+            },
             UnaryOperator(op, expression) => write!(fmt, "{:?}{:?}", op, expression),
             PairAssociativeBinaryOperator { arguments, operators } => {
                 for (argument, operator) in zip(arguments, operators) {
-                    write!(fmt, "({:?}) {:?} ", argument, operator)?;
+                    write_maybe_parenthesized_expression(fmt, argument.as_ref())?;
+                    write!(fmt, " {:?} ", operator)?;
                 }
-                write!(fmt, "({:?})", arguments.last().unwrap())?;
+                write_maybe_parenthesized_expression(fmt, arguments.last().unwrap().as_ref())?;
                 return Ok(())
             }
             FunctionCall(call_type, expression, args) => {
                 let brackets = call_type.bracket_str();
                 write!(fmt, "{:?}{}", expression, brackets.chars().nth(0).unwrap())?;
-                for item in args { write!(fmt, "{:?},", item)? };
+                write_comma_separated_list(fmt, args)?;
                 write!(fmt, "{}", brackets.chars().nth(1).unwrap())?;
                 return Ok(())
             },
@@ -215,7 +253,7 @@ impl Debug for Expression {
             MemberLookup(expression, id) => write!(fmt, "{:?}.{}", expression, id),
             ArrayLiteral(items) => {
                 write!(fmt, "[")?;
-                for item in items { write!(fmt, "{:?},", item)? };
+                write_comma_separated_list(fmt, items)?;
                 write!(fmt, "]")?;
                 return Ok(())
             },
