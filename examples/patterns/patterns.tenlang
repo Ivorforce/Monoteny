@@ -1,4 +1,10 @@
-// {} means a single expression, () means a named tuple.
+// Custom Binary Operator (Floor Division). {} stands for a single expression.
+pattern {} /- {} :: AdditionPrecedence;
+
+// Example
+fun {lhs: Float32} /- {b: Float32} -> Int32 :: Int32(a / b);
+
+// () means a named tuple.
 pattern {} <-> () >> {} :: AdditionPrecedence;
 
 // Example
