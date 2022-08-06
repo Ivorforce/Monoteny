@@ -10,7 +10,7 @@ use crate::parser::scopes;
 pub enum BinaryOperatorAssociativity {
     Left,
     Right,
-    PairsJoinedByAnds,  // >=, == and the likes
+    ConjunctivePairs,  // >=, == and the likes
 }
 
 #[derive(Eq)]
@@ -90,7 +90,7 @@ pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<S
                     }
                 }
             }
-            BinaryOperatorAssociativity::PairsJoinedByAnds => {
+            BinaryOperatorAssociativity::ConjunctivePairs => {
                 // Iteration direction doesn't matter here.
                 let mut i = 0;
                 while i < operators.len() {
@@ -125,7 +125,7 @@ pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<S
                     // Let's wrap this up.
                     arguments.insert(
                         i,
-                        Box::new(Expression::PairAssociativeBinaryOperators {
+                        Box::new(Expression::ConjunctivePairOperators {
                             arguments: group_arguments,
                             operators: group_operators
                         }

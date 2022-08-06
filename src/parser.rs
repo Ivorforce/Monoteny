@@ -83,8 +83,8 @@ pub fn post_parse_expression(expression: &Expression, scope: &scopes::Level) -> 
                 argument: post_parse_expression(argument, scope)
             }
         }
-        Expression::PairAssociativeBinaryOperators { arguments, operators } => {
-            Expression::PairAssociativeBinaryOperators {
+        Expression::ConjunctivePairOperators { arguments, operators } => {
+            Expression::ConjunctivePairOperators {
                 arguments: arguments.iter().map(|x| post_parse_expression(x, scope)).collect(),
                 operators: operators.clone()
             }

@@ -56,7 +56,7 @@ pub enum Expression {
     Bool(bool),
     BinaryOperator { lhs: Box<Expression>, operator: String, rhs: Box<Expression> },
     UnaryOperator { operator: String, argument: Box<Expression> },
-    PairAssociativeBinaryOperators { arguments: Vec<Box<Expression>>, operators: Vec<String> },
+    ConjunctivePairOperators { arguments: Vec<Box<Expression>>, operators: Vec<String> },
     UnsortedBinaryOperators { arguments: Vec<Box<Expression>>, operators: Vec<String> },
     FunctionCall { call_type: FunctionCallType, callee: Box<Expression>, arguments: Vec<Box<PassedArgument>> },
     MemberLookup { target: Box<Expression>, member_name: String },
@@ -84,7 +84,7 @@ fn is_simple(expression: &Expression) -> bool {
         Expression::Bool(_) => true,
         Expression::BinaryOperator { .. } => false,
         Expression::UnsortedBinaryOperators { .. } => false,
-        Expression::PairAssociativeBinaryOperators { .. } => false,
+        Expression::ConjunctivePairOperators { .. } => false,
         Expression::UnaryOperator { .. } => true,
         Expression::FunctionCall { .. } => true,
         Expression::MemberLookup { .. } => true,
@@ -209,7 +209,7 @@ impl Debug for Expression {
             UnsortedBinaryOperators { .. } => {
                 panic!("Cannot debug at this stage; please run parser fully before printing.")
             }
-            PairAssociativeBinaryOperators { arguments, operators } => {
+            ConjunctivePairOperators { arguments, operators } => {
                 for (argument, operator) in zip(arguments, operators) {
                     write_maybe_parenthesized_expression(fmt, argument.as_ref())?;
                     write!(fmt, " {:?} ", operator)?;

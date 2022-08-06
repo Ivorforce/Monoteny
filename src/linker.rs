@@ -326,7 +326,7 @@ pub fn link_expression(syntax: &abstract_syntax::Expression, scope: &scopes::Hie
                 function, link_arguments_to_parameters(function, vec![lhs, rhs])
             )
         },
-        abstract_syntax::Expression::PairAssociativeBinaryOperators { arguments, operators } => {
+        abstract_syntax::Expression::ConjunctivePairOperators { arguments, operators } => {
             let arguments: Vec<Box<Expression>> = arguments.into_iter()
                 .map(|x| link_expression(x, scope, builtins))
                 .collect();

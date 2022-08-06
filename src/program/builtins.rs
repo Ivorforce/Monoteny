@@ -227,7 +227,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             vec!["+", "-"]
         ),
         ComparisonPrecedence: add_precedence_group(
-            &mut parser_scope, "ComparisonPrecedence", BinaryOperatorAssociativity::PairsJoinedByAnds,
+            &mut parser_scope, "ComparisonPrecedence", BinaryOperatorAssociativity::ConjunctivePairs,
             vec!["==", "!=", ">", ">=", "<", "<="]
         ),
         LogicalConjunctionPrecedence: add_precedence_group(
