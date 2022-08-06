@@ -16,7 +16,7 @@ match {
     ";", ",", ":", "::", "->",
     "=",
     "let", "var",
-    "fun",
+    "fun", "pattern",
     _
 }
 
@@ -48,12 +48,21 @@ pub Program: Program = {
 
 pub GlobalStatement: Box<GlobalStatement> = {
     Function => Box::new(GlobalStatement::FunctionDeclaration(<>)),
+    Pattern => Box::new(GlobalStatement::Pattern(<>)),
+    Operator => Box::new(GlobalStatement::Operator(<>)),
 };
 
+Pattern: Box<PatternDeclaration> = {
+    "// alias:" <alias: Identifier> "pattern" "{" "}" <operator: OperatorIdentifier> "{" "}" "::" <precedence: Identifier> ";" => Box::new(PatternDeclaration { form: PatternForm::Binary, <> }),
+    "// alias:" <alias: Identifier> "pattern" "{" "}" <operator: OperatorIdentifier> "::" <precedence: Identifier> ";" => Box::new(PatternDeclaration { form: PatternForm::Unary, <> }),
+}
+
 Function: Box<Function> = {
-    "fun" <target_type: (<TypeDeclaration> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<Parameter, ",">> ")" <return_type: ("->" <TypeDeclaration>)?> "::" <body: FunctionBody> => Box::new(Function {
-        target_type, identifier, parameters, return_type, body
-    }),
+    "fun" <target: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <TypeDeclaration>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
+}
+
+Operator: Box<Operator> = {
+    "fun" <lhs: ContextualParameter?> <operator: OperatorIdentifier> <rhs: ContextualParameter> <return_type: ("->" <TypeDeclaration>)?> "::" <body: FunctionBody> => Box::new(Operator { <> }),
 }
 
 FunctionBody: Vec<Box<Statement>> = {
@@ -61,15 +70,21 @@ FunctionBody: Vec<Box<Statement>> = {
     <Expression> ";" => vec![Box::new(Statement::Expression(<>))],
 }
 
-Parameter: Box<Parameter> = {
-    <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(Parameter {
+KeyedParameter: Box<KeyedParameter> = {
+    <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
         key: ParameterKey::Name(internal_name.clone()), internal_name, param_type
     }),
-    <key: Number> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(Parameter {
+    <key: Number> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
         key: ParameterKey::Int(key), internal_name, param_type
     }),
-    <key: Identifier> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(Parameter {
+    <key: Identifier> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
         key: ParameterKey::Name(key), internal_name, param_type
+    }),
+}
+
+ContextualParameter: Box<ContextualParameter> = {
+    "{" <internal_name: Identifier> ":" <param_type: TypeDeclaration> "}" => Box::new(ContextualParameter {
+        internal_name, param_type
     }),
 }
 

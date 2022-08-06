@@ -7,6 +7,7 @@ use std::rc::Rc;
 use guard::guard;
 use uuid::Uuid;
 
+use crate::parser;
 use crate::parser::abstract_syntax;
 use crate::linker::computation_tree::*;
 use crate::program::primitives;
@@ -14,7 +15,7 @@ use crate::program::builtins::*;
 use crate::program::types::*;
 
 
-pub fn link_program(syntax: abstract_syntax::Program, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> Program {
+pub fn link_program(syntax: abstract_syntax::Program, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> Program {
     let mut functions_with_bodies: Vec<(Rc<FunctionInterface>, &Vec<Box<abstract_syntax::Statement>>)> = Vec::new();
     let mut global_variables = scopes::Level::new();
 
@@ -26,11 +27,12 @@ pub fn link_program(syntax: abstract_syntax::Program, scope: &scopes::Hierarchy,
 
                 functions_with_bodies.push((Rc::clone(&interface), &function.body));
 
-                let environment = match interface.is_member_function {
-                    true => scopes::Environment::Global,
-                    false => scopes::Environment::Member,
+                let environment = match interface.form {
+                    FunctionForm::Member => scopes::Environment::Member,
+                    _ => scopes::Environment::Global,
                 };
 
+                // Create a variable for the function
                 global_variables.add_function(environment, Rc::new(Variable {
                     id: Uuid::new_v4(),
                     name: interface.name.clone(),
@@ -38,13 +40,24 @@ pub fn link_program(syntax: abstract_syntax::Program, scope: &scopes::Hierarchy,
                     mutability: Mutability::Immutable,
                 }));
 
-                if !interface.is_member_function {
-                    // Create a variable for the function
-                }
-                else {
-                    // TODO Otherwise, create a variable as Metatype.function.
-                }
+                // if interface.is_member_function {
+                // TODO Create an additional variable as Metatype.function...?
+                // }
             }
+            abstract_syntax::GlobalStatement::Operator(operator) => {
+                let interface = link_operator_interface(&operator, parser_scope, &scope);
+
+                functions_with_bodies.push((Rc::clone(&interface), &operator.body));
+
+                // Create a variable for the function
+                global_variables.add_function(scopes::Environment::Global, Rc::new(Variable {
+                    id: Uuid::new_v4(),
+                    name: interface.name.clone(),
+                    type_declaration: Box::new(Type::Function(Rc::clone(&interface))),
+                    mutability: Mutability::Immutable,
+                }));
+            }
+            _ => {}
         }
     }
 
@@ -66,17 +79,10 @@ pub fn link_function_interface(function: &abstract_syntax::Function, scope: &sco
 
     let mut parameters: Vec<Box<NamedParameter>> = Vec::new();
 
-    if let Some(target_type) = &function.target_type {
-        let variable = Rc::new(Variable {
-            id: Uuid::new_v4(),
-            name: String::from("self"),
-            type_declaration: link_type(&target_type, scope),
-            mutability: Mutability::Immutable,
-        });
-
+    if let Some(target) = &function.target {
         parameters.push(Box::new(NamedParameter {
             external_key: ParameterKey::Int(0),
-            variable
+            variable: link_contextual_parameter_as_variable(target, scope)
         }));
     }
 
@@ -97,14 +103,53 @@ pub fn link_function_interface(function: &abstract_syntax::Function, scope: &sco
     return Rc::new(FunctionInterface {
         id: Uuid::new_v4(),
         name: function.identifier.clone(),
+        alphanumeric_name: function.identifier.clone(),
 
-        is_member_function: function.target_type.is_none(),
+        form: if function.target.is_none() { FunctionForm::Global } else { FunctionForm::Member },
         parameters,
         // This is correct so far because syntax does not allow generics use yet.
         generics: vec![],
 
         return_type
     });
+}
+
+pub fn link_operator_interface(function: &abstract_syntax::Operator, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy) -> Rc<FunctionInterface> {
+    let return_type = function.return_type.as_ref().map(|x| link_type(&x, scope));
+
+    let parameters: Vec<Box<NamedParameter>> = function.lhs.iter().chain([&function.rhs]).enumerate()
+        .map(|(idx, x)| {
+            Box::new(NamedParameter {
+                external_key: ParameterKey::Int(idx as i32),
+                variable: link_contextual_parameter_as_variable(x, scope)
+            })
+        })
+        .collect();
+
+    let is_binary = function.lhs.is_some();
+    let pattern = parser_scope.resolve_operator_pattern(&function.operator, is_binary);
+
+    return Rc::new(FunctionInterface {
+        id: Uuid::new_v4(),
+        name: function.operator.clone(),
+        alphanumeric_name: pattern.alias.clone(),
+
+        form: FunctionForm::Operator,
+        parameters,
+        // This is correct so far because syntax does not allow generics use yet.
+        generics: vec![],
+
+        return_type
+    });
+}
+
+pub fn link_contextual_parameter_as_variable(parameter: &abstract_syntax::ContextualParameter, scope: &scopes::Hierarchy) -> Rc<Variable> {
+    Rc::new(Variable {
+        id: Uuid::new_v4(),
+        name: String::from(&parameter.internal_name),
+        type_declaration: link_type(&parameter.param_type, scope),
+        mutability: Mutability::Immutable,
+    })
 }
 
 pub fn link_passed_arguments<'a, I>(arguments: I, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins, offset: usize) -> Vec<Box<PassedArgument>> where I: Iterator<Item = &'a Box<abstract_syntax::PassedArgument>> {

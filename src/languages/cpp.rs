@@ -19,7 +19,7 @@ pub fn transpile_program(
             .map(|x| transpile_type(&x))
             .unwrap_or_else(|| String::from("void"));
 
-        write!(header_stream, "{} {}(", return_type, function.interface.name)?;
+        write!(header_stream, "{} {}(", return_type, function.interface.alphanumeric_name)?;
 
         for parameter in function.interface.parameters.iter() {
             // External names do not exist in C

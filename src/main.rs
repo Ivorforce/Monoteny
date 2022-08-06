@@ -13,7 +13,6 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use clap::{arg, Command};
-use crate::parser::parse_program;
 
 fn cli() -> Command<'static> {
     Command::new("tenlang")
@@ -56,9 +55,9 @@ fn main() {
                     .expect("could not read file");
 
                 let builtins = program::builtins::create_builtins();
-                let builtin_variable_scope = builtins.global_constants.as_global_scope();
 
-                let syntax_tree = parse_program(&content, &builtins.parser_constants, &builtins);
+                let mut global_parser_scope = builtins.parser_constants.sublevel();
+                let syntax_tree = parser::parse_program(&content, &mut global_parser_scope);
 
                 if should_output_tree {
                     println!("{:?}", syntax_tree);
@@ -81,10 +80,12 @@ fn main() {
                 .expect("could not read file");
 
             let builtins = program::builtins::create_builtins();
-            let builtin_variable_scope = builtins.global_constants.as_global_scope();
 
-            let syntax_tree = parse_program(&content, &builtins.parser_constants, &builtins);
-            let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins);
+            let mut global_parser_scope = builtins.parser_constants.sublevel();
+            let syntax_tree = parser::parse_program(&content, &mut global_parser_scope);
+
+            let builtin_variable_scope = builtins.global_constants.as_global_scope();
+            let computation_tree = linker::link_program(syntax_tree, &global_parser_scope, &builtin_variable_scope, &builtins);
 
             for output_extension in output_extensions {
                 match output_extension {

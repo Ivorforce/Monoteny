@@ -7,7 +7,8 @@ use crate::parser::abstract_syntax::*;
 use crate::parser::scopes;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub enum BinaryOperatorAssociativity {
+pub enum OperatorAssociativity {
+    LeftUnary,  // Evaluated with the operator left of the expression.
     Left,  // Left evaluated first.
     Right, // Right evaluated first.
     None,  // Fail parsing if more than one neighboring operator is found.
@@ -15,34 +16,38 @@ pub enum BinaryOperatorAssociativity {
 }
 
 #[derive(Eq)]
-pub struct BinaryPrecedenceGroup {
+pub struct PrecedenceGroup {
     pub id: Uuid,
     pub name: String,
-    pub associativity: BinaryOperatorAssociativity,
+    pub associativity: OperatorAssociativity,
 }
 
-pub struct BinaryOperatorPattern {
+pub struct OperatorPattern {
     pub name: String,
-    pub precedence_group: Rc<BinaryPrecedenceGroup>,
+    pub precedence_group: Rc<PrecedenceGroup>,
 }
 
-impl BinaryPrecedenceGroup {
-    pub fn new(name: &str, associativity: BinaryOperatorAssociativity) -> BinaryPrecedenceGroup {
-        BinaryPrecedenceGroup {
+impl PrecedenceGroup {
+    pub fn new(name: &str, associativity: OperatorAssociativity) -> PrecedenceGroup {
+        PrecedenceGroup {
             id: Uuid::new_v4(),
             name: String::from(name),
             associativity
         }
     }
+
+    pub fn is_binary(&self) -> bool {
+        self.associativity != OperatorAssociativity::LeftUnary
+    }
 }
 
-impl PartialEq for BinaryPrecedenceGroup {
+impl PartialEq for PrecedenceGroup {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl Hash for BinaryPrecedenceGroup {
+impl Hash for PrecedenceGroup {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state)
     }
@@ -77,7 +82,7 @@ pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<S
 
     for (group, group_operators) in &scope.precedence_groups {
         match group.associativity {
-            BinaryOperatorAssociativity::Left => {
+            OperatorAssociativity::Left => {
                 // Iterate left to right
                 let mut i = 0;
                 while i < operators.len() {
@@ -89,7 +94,7 @@ pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<S
                     }
                 }
             }
-            BinaryOperatorAssociativity::Right => {
+            OperatorAssociativity::Right => {
                 // Iterate right to left
                 let mut i = operators.len();
                 while i > 0 {
@@ -99,7 +104,7 @@ pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<S
                     }
                 }
             }
-            BinaryOperatorAssociativity::None => {
+            OperatorAssociativity::None => {
                 // Iteration direction doesn't matter here.
                 let mut i = 0;
                 while i < operators.len() {
@@ -114,7 +119,7 @@ pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<S
                     i += 1;
                 }
             }
-            BinaryOperatorAssociativity::ConjunctivePairs => {
+            OperatorAssociativity::ConjunctivePairs => {
                 // Iteration direction doesn't matter here.
                 let mut i = 0;
                 while i < operators.len() {
@@ -156,6 +161,8 @@ pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<S
                     ));
                 }
             }
+            // Unary operators are already resolved at this stage.
+            OperatorAssociativity::LeftUnary => {}
         }
 
         if operators.len() == 0 {

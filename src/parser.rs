@@ -1,3 +1,5 @@
+use std::rc::Rc;
+use uuid::Uuid;
 use crate::tenlang_grammar;
 
 pub mod associativity;
@@ -5,9 +7,10 @@ pub mod abstract_syntax;
 pub mod scopes;
 
 use abstract_syntax::*;
+use crate::program::types::Pattern;
 use crate::program::builtins::TenLangBuiltins;
 
-pub fn parse_program(content: &String, scope: &scopes::Level, builtins: &TenLangBuiltins) -> Program {
+pub fn parse_program(content: &String, scope: &mut scopes::Level) -> Program {
     let mut program: Program = tenlang_grammar::ProgramParser::new()
         .parse(content.as_str())
         .unwrap();
@@ -16,19 +19,46 @@ pub fn parse_program(content: &String, scope: &scopes::Level, builtins: &TenLang
 
     for statement in program.global_statements.iter_mut() {
         match statement.as_mut() {
+            GlobalStatement::Pattern(pattern) => {
+                let pattern_is_binary = &pattern.form == &PatternForm::Binary;
+                let precedence_group = scope.resolve_precedence_group(&pattern.precedence);
+                if precedence_group.is_binary() != pattern_is_binary {
+                    if pattern_is_binary {
+                        panic!("Binary patterns cannot use a unary precedence group.")
+                    }
+                    else {
+                        panic!("Unary patterns cannot use a binary precedence group.")
+                    }
+                }
+
+                scope.add_pattern(Pattern {
+                    id: Uuid::new_v4(),
+                    operator: pattern.operator.clone(),
+                    alias: pattern.alias.clone(),
+                    precedence_group
+                });
+            },
+            _ => {}
+        }
+    }
+
+    for statement in program.global_statements.iter_mut() {
+        match statement.as_mut() {
             GlobalStatement::FunctionDeclaration(function) => {
-                post_parse_function(function, scope);
+                function.body = function.body.iter()
+                    .map(|x| post_parse_statement(x.as_ref(), &scope))
+                    .collect()
+            },
+            GlobalStatement::Operator(operator) => {
+                operator.body = operator.body.iter()
+                    .map(|x| post_parse_statement(x.as_ref(), &scope))
+                    .collect()
             }
+            _ => {}
         }
     }
 
     program
-}
-
-pub fn post_parse_function(function: &mut Function, scope: &scopes::Level) {
-    function.body = function.body.iter()
-        .map(|x| post_parse_statement(x.as_ref(), scope))
-        .collect()
 }
 
 pub fn post_parse_statement(statement: &Statement, scope: &scopes::Level) -> Box<Statement> {

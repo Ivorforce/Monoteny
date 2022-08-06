@@ -4,7 +4,7 @@ use uuid::Uuid;
 use strum::IntoEnumIterator;
 use crate::linker::scopes;
 use crate::parser;
-use crate::parser::associativity::{BinaryOperatorAssociativity, BinaryPrecedenceGroup};
+use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::types::*;
 use crate::program::primitives;
 use crate::program;
@@ -50,12 +50,13 @@ pub struct TenLangBuiltinFunctions {
 
 #[allow(non_snake_case)]
 pub struct TenLangBuiltinPrecedenceGroups {
-    pub ExponentiationPrecedence: Rc<BinaryPrecedenceGroup>,
-    pub MultiplicationPrecedence: Rc<BinaryPrecedenceGroup>,
-    pub AdditionPrecedence: Rc<BinaryPrecedenceGroup>,
-    pub ComparisonPrecedence: Rc<BinaryPrecedenceGroup>,
-    pub LogicalConjunctionPrecedence: Rc<BinaryPrecedenceGroup>,
-    pub LogicalDisjunctionPrecedence: Rc<BinaryPrecedenceGroup>,
+    pub LeftUnaryPrecedence: Rc<PrecedenceGroup>,
+    pub ExponentiationPrecedence: Rc<PrecedenceGroup>,
+    pub MultiplicationPrecedence: Rc<PrecedenceGroup>,
+    pub AdditionPrecedence: Rc<PrecedenceGroup>,
+    pub ComparisonPrecedence: Rc<PrecedenceGroup>,
+    pub LogicalConjunctionPrecedence: Rc<PrecedenceGroup>,
+    pub LogicalDisjunctionPrecedence: Rc<PrecedenceGroup>,
 }
 
 #[allow(non_snake_case)]
@@ -103,12 +104,13 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     };
 
     // For now it's ok to assume the shape_returns types to be equal
-    let add_binary_aa_x = |constants: &mut scopes::Level, name: &str, parameters: &Vec<Box<Type>>, return_type: &Box<Type>| -> Vec<Rc<FunctionInterface>> {
+    let add_binary_aa_x = |constants: &mut scopes::Level, name: &str, alphanumeric_name: &str, parameters: &Vec<Box<Type>>, return_type: &Box<Type>| -> Vec<Rc<FunctionInterface>> {
         parameters.iter().map(|x| {
             add_function(constants, Rc::new(FunctionInterface {
                 id: Uuid::new_v4(),
                 name: String::from(name),
-                is_member_function: false,
+                alphanumeric_name: String::from(alphanumeric_name),
+                form: FunctionForm::Operator,
                 parameters: create_same_parameters(
                     x,
                     vec!["lhs", "rhs"]
@@ -119,12 +121,13 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         }).collect()
     };
 
-    let add_binary_aa_a = |constants: &mut scopes::Level, name: &str, parameters: &Vec<Box<Type>>| -> Vec<Rc<FunctionInterface>> {
+    let add_binary_aa_a = |constants: &mut scopes::Level, name: &str, alphanumeric_name: &str, parameters: &Vec<Box<Type>>| -> Vec<Rc<FunctionInterface>> {
         parameters.iter().map(|x| {
             add_function(constants, Rc::new(FunctionInterface {
                 id: Uuid::new_v4(),
                 name: String::from(name),
-                is_member_function: false,
+                alphanumeric_name: String::from(alphanumeric_name),
+                form: FunctionForm::Operator,
                 parameters: create_same_parameters(
                     x,
                     vec!["lhs", "rhs"]
@@ -135,11 +138,12 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         }).collect()
     };
 
-    let add_binary_xx_x = |constants: &mut scopes::Level, name: &str, declared_type: &Box<Type>| -> Rc<FunctionInterface> {
+    let add_binary_xx_x = |constants: &mut scopes::Level, name: &str, alphanumeric_name: &str, declared_type: &Box<Type>| -> Rc<FunctionInterface> {
         add_function(constants, Rc::new(FunctionInterface {
             id: Uuid::new_v4(),
-            is_member_function: false,
+            form: FunctionForm::Operator,
             name: String::from(name),
+            alphanumeric_name: String::from(alphanumeric_name),
             parameters: create_same_parameters(
                 &declared_type,
                 vec!["lhs", "rhs"]
@@ -149,12 +153,13 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         }))
     };
 
-    let add_unary_a_a = |constants: &mut scopes::Level, name: &str, parameters: &Vec<Box<Type>>| -> Vec<Rc<FunctionInterface>> {
+    let add_unary_a_a = |constants: &mut scopes::Level, name: &str, alphanumeric_name: &str, parameters: &Vec<Box<Type>>| -> Vec<Rc<FunctionInterface>> {
         parameters.iter().map(|x| {
             add_function(constants, Rc::new(FunctionInterface {
                 id: Uuid::new_v4(),
                 name: String::from(name),
-                is_member_function: false,
+                alphanumeric_name: String::from(alphanumeric_name),
+                form: FunctionForm::Operator,
                 parameters: create_same_parameters(
                     x,
                     vec!["value"]
@@ -202,11 +207,17 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         .map(|x| Box::new(Type::Primitive(*x)))
         .collect();
 
-    let add_precedence_group = |scope: &mut parser::scopes::Level, name: &str, associativity: BinaryOperatorAssociativity, operators: Vec<&str>| -> Rc<BinaryPrecedenceGroup> {
-        let group = Rc::new(BinaryPrecedenceGroup::new(name, associativity));
+    let add_precedence_group = |scope: &mut parser::scopes::Level, name: &str, associativity: OperatorAssociativity, operators: Vec<(&str, &str)>| -> Rc<PrecedenceGroup> {
+        let group = Rc::new(PrecedenceGroup::new(name, associativity));
         scope.precedence_groups.push((Rc::clone(&group), HashSet::new()));
-        for operator in operators {
-            scope.add_binary_pattern(String::from(operator), &group);
+
+        for (operator, alias) in operators {
+            scope.add_pattern(Pattern {
+                id: Uuid::new_v4(),
+                operator: String::from(operator),
+                alias: String::from(alias),
+                precedence_group: Rc::clone(&group),
+            });
         }
         group
     };
@@ -214,62 +225,71 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     let mut parser_scope = parser::scopes::Level::new();
 
     let precedence_groups = TenLangBuiltinPrecedenceGroups {
+        LeftUnaryPrecedence: add_precedence_group(
+            &mut parser_scope, "LeftUnaryPrecedence", OperatorAssociativity::LeftUnary,
+            vec![("+", "positive"), ("-", "negative"), ("!", "not")]
+        ),
         ExponentiationPrecedence: add_precedence_group(
-            &mut parser_scope, "ExponentiationPrecedence", BinaryOperatorAssociativity::Right,
-            vec!["**"]
+            &mut parser_scope, "ExponentiationPrecedence", OperatorAssociativity::Right,
+            vec![("**", "exponentiate")]
         ),
         MultiplicationPrecedence: add_precedence_group(
-            &mut parser_scope, "MultiplicationPrecedence", BinaryOperatorAssociativity::Left,
-            vec!["*", "/"]
+            &mut parser_scope, "MultiplicationPrecedence", OperatorAssociativity::Left,
+            vec![("*", "multiply"), ("/", "divide"), ("%", "modulo")]
         ),
         AdditionPrecedence: add_precedence_group(
-            &mut parser_scope, "AdditionPrecedence", BinaryOperatorAssociativity::Left,
-            vec!["+", "-"]
+            &mut parser_scope, "AdditionPrecedence", OperatorAssociativity::Left,
+            vec![("+", "add"), ("-", "subtract")]
         ),
         ComparisonPrecedence: add_precedence_group(
-            &mut parser_scope, "ComparisonPrecedence", BinaryOperatorAssociativity::ConjunctivePairs,
-            vec!["==", "!=", ">", ">=", "<", "<="]
+            &mut parser_scope, "ComparisonPrecedence", OperatorAssociativity::ConjunctivePairs,
+            vec![
+                ("==", "is_equal"), ("!=", "is_not_equal"),
+                (">", "is_greater"), (">=", "is_greater_or_equal"),
+                ("<", "is_lesser"), ("<=", "is_lesser_or_equal")
+            ]
         ),
         LogicalConjunctionPrecedence: add_precedence_group(
-            &mut parser_scope, "LogicalConjunctionPrecedence", BinaryOperatorAssociativity::Left,
-            vec!["&&"]
+            &mut parser_scope, "LogicalConjunctionPrecedence", OperatorAssociativity::Left,
+            vec![("&&", "and")]
         ),
         LogicalDisjunctionPrecedence: add_precedence_group(
-            &mut parser_scope, "LogicalDisjunctionPrecedence", BinaryOperatorAssociativity::Left,
-            vec!["||"]
+            &mut parser_scope, "LogicalDisjunctionPrecedence", OperatorAssociativity::Left,
+            vec![("||", "or")]
         ),
     };
 
     Rc::new(TenLangBuiltins {
         operators: TenLangBuiltinOperators {
-            and: add_binary_xx_x(&mut constants, "&&", &bool_type),
-            or: add_binary_xx_x(&mut constants, "||", &bool_type),
+            and: add_binary_xx_x(&mut constants, "&&", "and", &bool_type),
+            or: add_binary_xx_x(&mut constants, "||","or",  &bool_type),
 
             // These are n-ary in syntax but binary in implementation.
-            equal_to: add_binary_aa_x(&mut constants, "==", &all_primitives, &bool_type),
-            not_equal_to: add_binary_aa_x(&mut constants, "!=", &all_primitives, &bool_type),
+            equal_to: add_binary_aa_x(&mut constants, "==", "is_equal", &all_primitives, &bool_type),
+            not_equal_to: add_binary_aa_x(&mut constants, "!=", "is_not_equal", &all_primitives, &bool_type),
 
-            greater_than: add_binary_aa_x(&mut constants, ">", &number_primitives, &bool_type),
-            greater_than_or_equal_to: add_binary_aa_x(&mut constants, ">=", &number_primitives, &bool_type),
-            lesser_than: add_binary_aa_x(&mut constants, "<", &number_primitives, &bool_type),
-            lesser_than_or_equal_to: add_binary_aa_x(&mut constants, "<=", &number_primitives, &bool_type),
+            greater_than: add_binary_aa_x(&mut constants, ">", "is_greater", &number_primitives, &bool_type),
+            greater_than_or_equal_to: add_binary_aa_x(&mut constants, ">=", "is_greater_or_equal", &number_primitives, &bool_type),
+            lesser_than: add_binary_aa_x(&mut constants, "<", "is_lesser", &number_primitives, &bool_type),
+            lesser_than_or_equal_to: add_binary_aa_x(&mut constants, "<=", "is_lesser_or_equal", &number_primitives, &bool_type),
 
-            add: add_binary_aa_a(&mut constants, "+", &number_primitives),
-            subtract: add_binary_aa_a(&mut constants, "-", &number_primitives),
-            multiply: add_binary_aa_a(&mut constants, "*", &number_primitives),
-            divide: add_binary_aa_a(&mut constants, "/", &number_primitives),
-            exponentiate: add_binary_aa_a(&mut constants, "**", &number_primitives),
-            modulo: add_binary_aa_a(&mut constants, "%", &number_primitives),
+            add: add_binary_aa_a(&mut constants, "+", "add", &number_primitives),
+            subtract: add_binary_aa_a(&mut constants, "-", "subtract", &number_primitives),
+            multiply: add_binary_aa_a(&mut constants, "*", "multiply", &number_primitives),
+            divide: add_binary_aa_a(&mut constants, "/", "divide", &number_primitives),
+            exponentiate: add_binary_aa_a(&mut constants, "**", "exponentiate", &number_primitives),
+            modulo: add_binary_aa_a(&mut constants, "%", "modulo", &number_primitives),
 
-            positive: add_unary_a_a(&mut constants, "+", &number_primitives),
-            negative: add_unary_a_a(&mut constants, "-", &number_primitives),
-            not: add_unary_a_a(&mut constants, "!", &vec![bool_type]).into_iter().next().unwrap(),
+            positive: add_unary_a_a(&mut constants, "+", "positive", &number_primitives),
+            negative: add_unary_a_a(&mut constants, "-", "negative", &number_primitives),
+            not: add_unary_a_a(&mut constants, "!", "not", &vec![bool_type]).into_iter().next().unwrap(),
         },
         functions: TenLangBuiltinFunctions {
             print: add_function(&mut constants, Rc::new(FunctionInterface {
                 id: Uuid::new_v4(),
-                is_member_function: false,
+                form: FunctionForm::Global,
                 name: String::from("print"),
+                alphanumeric_name: String::from("print"),
                 parameters: create_same_parameters(&Type::make_any(), vec!["object"]),
                 generics: vec![],
                 return_type: None

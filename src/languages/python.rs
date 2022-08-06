@@ -10,7 +10,7 @@ use guard::guard;
 use crate::program::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::*;
 use crate::program::primitives;
-use crate::program::types::{FunctionInterface, NamedParameter, ParameterKey, Type};
+use crate::program::types::{FunctionForm, FunctionInterface, NamedParameter, ParameterKey, Type};
 
 
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
@@ -24,7 +24,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 }
 
 pub fn transpile_function(stream: &mut (dyn Write), function: &Function, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
-    write!(stream, "\n\ndef {}(", function.interface.name)?;
+    write!(stream, "\n\ndef {}(", function.interface.alphanumeric_name)?;
 
     // TODO Can we somehow transpile function.interface.is_member_function?
     for parameter in function.interface.parameters.iter() {
@@ -132,7 +132,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
             }
             else {
                 // TODO We should make sure it calls the correct function even when shadowed.
-                write!(stream, "{}(", function.name)?;
+                write!(stream, "{}(", function.alphanumeric_name)?;
                 for (idx, argument) in arguments.iter().enumerate() {
                     if let ParameterKey::Name(name) = &argument.key {
                         write!(stream, "{}=", name)?;
@@ -162,6 +162,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, b
             // TODO Unfortunately, python's a > b > c syntax does not support non-bool results.
             // This is suboptimal, but easy: Just compute arguments twice lol.
             for (idx, (args, function)) in zip(arguments.windows(2), functions.iter()).enumerate() {
+                // TODO Use try_transpile_binary_operator / try_transpile_unary_operator so we correctly map names / alphanumeric names.
                 write!(stream, "(")?;
                 transpile_expression(stream, &args[0], builtins)?;
                 write!(stream, ") {} (", function.name)?;

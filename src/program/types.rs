@@ -5,21 +5,29 @@ use std::fmt::{Debug, Formatter};
 use std::collections::HashSet;
 use std::iter::zip;
 use guard::guard;
-use crate::parser::associativity::BinaryPrecedenceGroup;
+use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
 
 use crate::program::primitives;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Mutability {
     Immutable,
     Mutable,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum FunctionForm {
+    Global,
+    Member,
+    Operator,
+}
+
 pub struct FunctionInterface {
     pub id: Uuid,
     pub name: String,
+    pub alphanumeric_name: String,
 
-    pub is_member_function: bool,
+    pub form: FunctionForm,
     pub parameters: Vec<Box<NamedParameter>>,
     pub generics: Vec<Rc<Generic>>,
 
@@ -57,7 +65,7 @@ pub enum Type {
     NDArray(Box<Type>),
     Struct(Rc<Struct>),
     Function(Rc<FunctionInterface>),
-    PrecedenceGroup(Rc<BinaryPrecedenceGroup>),
+    PrecedenceGroup(Rc<PrecedenceGroup>),
     Generic(Rc<Generic>),
 }
 
@@ -65,6 +73,19 @@ pub enum Type {
 pub struct Generic {
     pub id: Uuid,
     pub name: String,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct Pattern {
+    pub id: Uuid,
+    pub operator: String,
+    pub alias: String,
+    pub precedence_group: Rc<PrecedenceGroup>,
+}
+
+pub struct PassedArgumentType<'a> {
+    pub key: ParameterKey,
+    pub value: &'a Option<Box<Type>>,
 }
 
 impl PartialEq for Variable {
@@ -195,11 +216,6 @@ impl Type {
 
         return true;
     }
-}
-
-pub struct PassedArgumentType<'a> {
-    pub key: ParameterKey,
-    pub value: &'a Option<Box<Type>>,
 }
 
 impl Debug for PassedArgumentType<'_> {

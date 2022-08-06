@@ -1,13 +1,18 @@
+// alias: floor_div
+pattern {} /- {} :: MultiplicationPrecedence;
+
+fun {lhs: Int32} /- {rhs: Int32} -> Int32 :: lhs / rhs;
+
 fun no_op() :: {}
 
 fun square_a(_ a: Int32) -> Int32 :: a * a;
-fun Int32.square_b() -> Int32 :: self * self;
+fun {self: Int32}.square_b() -> Int32 :: self * self;
 
 fun main() :: {
     var b = 5;
     b = 3;
     print("b: ");
-    print(5 > 2 ** 3 * 2 > -2);
+    print(5 > 2 ** 3 /- 2 > -2);
     print(5 > 2 || true);
     print(2 ** 3 ** 5 :| * 3 :| + 5);
     print([b, square_a(0: b), 2.square_b()]);

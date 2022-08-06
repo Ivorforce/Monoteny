@@ -10,24 +10,55 @@ pub struct Program {
 
 pub enum GlobalStatement {
     FunctionDeclaration(Box<Function>),
+    Operator(Box<Operator>),
+    Pattern(Box<PatternDeclaration>),
 }
 
 pub struct Function {
-    pub target_type: Option<Box<TypeDeclaration>>,
+    pub target: Option<Box<ContextualParameter>>,
     pub identifier: String,
-    pub parameters: Vec<Box<Parameter>>,
+    pub parameters: Vec<Box<KeyedParameter>>,
+
+    pub body: Vec<Box<Statement>>,
     pub return_type: Option<Box<TypeDeclaration>>,
-    pub body: Vec<Box<Statement>>
 }
 
-pub struct Parameter {
+pub struct KeyedParameter {
     pub key: ParameterKey,
+    pub internal_name: String,
+    pub param_type: Box<TypeDeclaration>,
+}
+
+pub struct Operator {
+    pub lhs: Option<Box<ContextualParameter>>,
+    pub operator: String,
+    pub rhs: Box<ContextualParameter>,
+
+    pub body: Vec<Box<Statement>>,
+    pub return_type: Option<Box<TypeDeclaration>>,
+}
+
+pub struct ContextualParameter {
     pub internal_name: String,
     pub param_type: Box<TypeDeclaration>,
 }
 
 pub enum MemberStatement {
     FunctionDeclaration(Box<Function>),
+}
+
+pub struct PatternDeclaration {
+    pub form: PatternForm,
+
+    pub operator: String,
+    pub precedence: String,
+
+    pub alias: String,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum PatternForm {
+    Unary, Binary
 }
 
 // =============================== Type =====================================
@@ -134,6 +165,8 @@ impl Debug for GlobalStatement {
         use self::GlobalStatement::*;
         match self {
             FunctionDeclaration(function) => write!(fmt, "{:?}", function),
+            Pattern(pattern) => write!(fmt, "{:?}", pattern),
+            Operator(operator) => write!(fmt, "{:?}", operator),
         }
     }
 }
@@ -149,13 +182,27 @@ impl Debug for MemberStatement {
 
 impl Debug for Function {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "fn ")?;
-        if let Some(target_type) = &self.target_type {
+        write!(fmt, "fun ")?;
+        if let Some(target_type) = &self.target {
             write!(fmt, "{:?}.", target_type)?;
         }
         write!(fmt, "{}(", self.identifier)?;
         for item in self.parameters.iter() { write!(fmt, "{:?},", item)? };
         write!(fmt, ") -> {:?} {{\n", self.return_type)?;
+        for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };
+        write!(fmt, "}}")?;
+        return Ok(())
+    }
+}
+
+impl Debug for Operator {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "fun ")?;
+        if let Some(lhs) = &self.lhs {
+            write!(fmt, "{:?} ", lhs)?;
+        }
+        write!(fmt, "{}", self.operator)?;
+        write!(fmt, " -> {:?} {{\n", self.return_type)?;
         for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };
         write!(fmt, "}}")?;
         return Ok(())
@@ -173,6 +220,17 @@ impl Debug for TypeDeclaration {
                 write!(fmt, "]")?;
                 return Ok(())
             },
+        }
+    }
+}
+
+impl Debug for PatternDeclaration {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "// alias: {}\n", &self.alias)?;
+
+        match &self.form {
+            PatternForm::Unary => write!(fmt, "pattern {{}} {:?} {{}} :: {}", &self.operator, &self.precedence),
+            PatternForm::Binary => write!(fmt, "pattern {{}} {:?} :: {}", &self.operator, &self.precedence)
         }
     }
 }
@@ -244,9 +302,15 @@ impl Debug for PassedArgument {
     }
 }
 
-impl Debug for Parameter {
+impl Debug for KeyedParameter {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "{:?} {}: {:?}", self.key, self.internal_name, self.param_type)
+    }
+}
+
+impl Debug for ContextualParameter {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "{{{}: {:?}}}", self.internal_name, self.param_type)
     }
 }
 
