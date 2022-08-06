@@ -8,9 +8,10 @@ use crate::parser::scopes;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum BinaryOperatorAssociativity {
-    Left,
-    Right,
-    ConjunctivePairs,  // >=, == and the likes
+    Left,  // Left evaluated first.
+    Right, // Right evaluated first.
+    None,  // Fail parsing if more than one operator is found.
+    ConjunctivePairs, // Evaluated in pairs, joined by && operations.
 }
 
 #[derive(Eq)]
@@ -88,6 +89,21 @@ pub fn sort_binary_expressions(arguments: Vec<Box<Expression>>, operators: Vec<S
                     if group_operators.contains(&operators[i]) {
                         join_binary_at(&mut arguments, &mut operators, i);
                     }
+                }
+            }
+            BinaryOperatorAssociativity::None => {
+                // Iteration direction doesn't matter here.
+                let mut i = 0;
+                while i < operators.len() {
+                    if group_operators.contains(&operators[i]) {
+                        if i + 1 < group_operators.len() && group_operators.contains(&operators[i + 1]) {
+                            panic!("Cannot parse two neighboring {} operators because no associativity is defined.", &operators[i]);
+                        }
+
+                        join_binary_at(&mut arguments, &mut operators, i);
+                    }
+
+                    i += 1;
                 }
             }
             BinaryOperatorAssociativity::ConjunctivePairs => {
