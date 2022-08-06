@@ -10,7 +10,7 @@ use crate::parser::scopes;
 pub enum BinaryOperatorAssociativity {
     Left,  // Left evaluated first.
     Right, // Right evaluated first.
-    None,  // Fail parsing if more than one operator is found.
+    None,  // Fail parsing if more than one neighboring operator is found.
     ConjunctivePairs, // Evaluated in pairs, joined by && operations.
 }
 
