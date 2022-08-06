@@ -50,37 +50,42 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] String Primitives
 - [x] Array Literals
 - [x] Function Interfaces
-- [x] Int-keyed parameters
+  - [x] Int-keyed parameters
+  - [x] Single expression function definition syntax
 - [x] Binary operators: + - * / || && > < >= <= == != % **
+  - [x] Unary operators: + - !
+  - [x] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
+  - [x] User-Defined Unary / Binary Operators
 - [x] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b | * c | .any()
-- [x] Single expression function definition syntax
-- [x] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
 - [x] Overloading & Call Type Checking
-- [x] Member functions
-- [x] Unary operators: + - !
-- [x] User-Defined Unary / Binary Operators
+  - [x] Member functions
+
+### TenLang 0.2
+
+- [ ] Forward generic type checking
+- [ ] Comments (with transpilation)
 - [ ] Subscript function syntax
+- [ ] 'transformation assignment' syntax: a |= + 5; b |= .union(c)
 - [ ] Var-Like 0 parameter function syntax (let c = a.b; a.b = c;)
-- [ ] Traits, x trait inheritances, trait abstract functions 
+- [ ] Traits, x trait inheritances, trait abstract functions
 - [ ] Expression Scopes (let a = { ... yield b; })
 - [ ] If / Else, if let, Guard, Guard let
+- [ ] Varargs: Int keying with infinite parameters (syntax: a...: Type[0...] for print(a, b) and a...: Type[String] for print(a: a, b: b))
 - [ ] Structs
 - [ ] Enums / Enum type inheritance
-- [ ] Specializations: Raw data is some type, but additional functions will match 
-- [ ] 'transformation assignment' syntax: a |= + 5; b |= .union(c)
+- [ ] Specializations: Raw data is some type, but additional functions will match
 - [ ] NDArrays
-- [ ] Tuple Dimension Index
-- [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
-- [ ] Varargs: Int keying with infinite parameters (syntax: a...: Type[0...] for print(a, b) and a...: Type[String] for print(a: a, b: b))
-- [ ] Open Int Range Dimension Index, array start / end handle syntax (>|, <|)
-- [ ] Auto Broadcast
+  - [ ] Tuple Dimension Index
+  - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
+  - [ ] Open Int Range Dimension Index, array start / end handle syntax (>|, <|)
+  - [ ] Auto Broadcast
 - [ ] Optionals
 - [ ] Sets
-- [ ] Comments (with transpilation)
+
 
 ### TenLang 1.0
 
-- [ ] Reverse generic type inferral (output types determined from inputs)
+- [ ] Reverse generic type checking (output types determined from inputs)
 - [ ] System Callback API / Permission Contexts
 - [ ] Exceptions
 - [ ] Polymorphic Enums (attached objects)
