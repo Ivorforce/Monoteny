@@ -120,8 +120,7 @@ VariableDeclarationMutability: Mutability = {
 Expression: Box<Expression> = OperatorPrecedenceGroup;
 OperatorPrecedenceGroup = UnsortedBinaryOperators<OperatorIdentifier, UnaryOperatatorPrecedenceGroup>;
 UnaryOperatatorPrecedenceGroup = LeftUnaryOperator<OperatorIdentifier, FunctionCallPrecedenceGroup>;
-FunctionCallPrecedenceGroup = FunctionCallExpression<LeftTransformationPrecedenceGroup>;
-LeftTransformationPrecedenceGroup = LeftTransformation<Term>;
+FunctionCallPrecedenceGroup = FunctionCallExpression<Term>;
 
 Term: Box<Expression> = {
     Number => Box::new(Expression::Number(<>)),
@@ -146,11 +145,6 @@ FunctionCallExpression<NextOperatorLevel>: Box<Expression> = {
     <callee: FunctionCallExpression<NextOperatorLevel>> "[" <arguments: OptionalFinalSeparatorList<PassedArgument, ",">> "]" => Box::new(Expression::FunctionCall { call_type: FunctionCallType::Subscript, <> }),
     <target: FunctionCallExpression<NextOperatorLevel>> "." <member_name: Identifier> => Box::new(Expression::MemberLookup { <> }),
     NextOperatorLevel
-}
-
-LeftTransformation<NextOperatorLevel>: Box<Expression> = {
-    <LeftTransformation<NextOperatorLevel>> "..",
-    <NextOperatorLevel>,
 }
 
 
