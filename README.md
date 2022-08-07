@@ -56,7 +56,7 @@ This will be possible by TenLang coming with several different transpilers. Here
   - [x] Unary operators: + - !
   - [x] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
   - [x] User-Defined Unary / Binary Operators
-- [x] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b | * c | .any()
+- [x] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b :| * c :| .any()
 - [x] Overloading & Call Type Checking
   - [x] Member functions
 
