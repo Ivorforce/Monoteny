@@ -6,11 +6,13 @@ TenLang is an experimental language focusing on tensor math. It aims to streamli
 
 ## Philosophy
 
-### Implicit Object Multiplicity
+### First-Class Multiple Dimension Monads
 
-In TenLang, every NDArray is treated as if it were an atom. At compile time, these operations are translated to appropriate iteration operations.
+In TenLang, Monads consist of dimensions referred to by a _dimension specifier_ and indexed by some _monadic type_. This would commonly be array shapes or optionals, but might also be a dictionary keyset or something else.
 
-There are two exceptions: First, when two NDArrays collide, they are broadcast to each other appropriately. Second, with the `@[]` syntax, an object can be referred as an NDArray. 
+Every Monad is statically treated as its unit type. At compile time, operations on it are translated to appropriate mapping operations.
+
+There are two exceptions: First, when two monad definitions collide, they are broadcast to each other using the dimension specifiers. Second, with the `@` syntax, the encapsulating monad can be referred to. 
 
 ### Shape Safety and Generics
 
@@ -20,15 +22,7 @@ There is a reasonable reason no other language has yet attempted this: Shape res
 
 Luckily, we know how to solve hard problems in a readable and approachable way. It's coding.
 
-TenLang takes this to heart: Generic types are resolved with user code at compile time. The code itself follows TenLang syntax, so it is unnecessary to learn a separate complicated language. I hope this truly covers all (computable) use-cases. 
-
-### Collections Combinations
-
-In many languages, several independent types of collections exist, e.g. arrays, named tuples (-> 3d points, 2D size) and dictionaries. While 'Collection' interfaces support some number of functions, often algorithms end up being implemented many times. 
-
-In actuality, the only way the aforementioned collections differ is indexing: Arrays use consecutive ints, named tuples use compile-time strings, dictionaries use unconsecutive hashables.
-
-TenLang interprets this as an opportunity for abstraction: By allowing NDArray dimensions arbitrary indexing, one can cover all these use-cases in the same NDArray.
+TenLang takes this to heart: Generic types are resolved with user code at compile time. The code itself follows TenLang syntax, so it is unnecessary to learn a separate complicated language. I hope this truly covers all (computable) use-cases.
 
 ## Roadmap
 
