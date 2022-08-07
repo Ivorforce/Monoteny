@@ -192,6 +192,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
         },
         ExpressionOperation::PairwiseOperations { arguments, functions } => {
             // TODO Unfortunately, python's a > b > c syntax does not support non-bool results.
+            //  For true boolean results, we could actually use it for readability.
             // This is suboptimal, but easy: Just compute arguments twice lol.
             for (idx, (args, function)) in zip(arguments.windows(2), functions.iter()).enumerate() {
                 // TODO Use try_transpile_binary_operator / try_transpile_unary_operator so we correctly map names / alphanumeric names.
