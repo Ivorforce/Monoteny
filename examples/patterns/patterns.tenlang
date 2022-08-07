@@ -22,6 +22,7 @@ precedenceorder ExponentiationPrecedence > MultiplicationPrecedence > AdditionPr
 // Patterns are interspersed with expressions. These can be defined to be one of these types:
 // {} : An expression.
 // () : A parenthesized expression, usually on named anonymous structs (a, b: b, c: c, ...)
+// [] : An NDArray. (this is necessary because NDArrays would normally be treated like single objects).
 
 
 // Custom Binary Operator (Floor Division). {} stands for a single expression.
@@ -33,3 +34,6 @@ fun {a: Int32} <-> (b: Int32, c: Int32) >> {d: Int32} :: a + b * c + d;
 
 pattern add| {} |to| {} :: AdditionPrecedence;
 fun add| {a: Int32} |to| {b: Int32} :: a + b;
+
+pattern match| {} |to| [] :: AdditionPrecedence;
+fun match| {arg: Int32} |to| {parts: Int32[Int32]} :: todo();
