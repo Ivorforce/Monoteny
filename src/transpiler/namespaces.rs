@@ -3,7 +3,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 
 pub struct Level {
-    claims: HashMap<String, HashSet<Uuid>>,
+    claims: HashMap<String, Vec<Uuid>>,
     sublevels: Vec<Level>
 }
 
@@ -17,12 +17,12 @@ impl Level {
 
     pub fn register_definition(&mut self, uuid: Uuid, name: &String) {
         if let Some(existing) = self.claims.get_mut(name) {
-            existing.insert(uuid);
+            existing.push(uuid);
         }
         else {
             self.claims.insert(
                 name.clone(),
-                HashSet::from([uuid.clone()])
+                vec![uuid.clone()]
             );
         }
     }
