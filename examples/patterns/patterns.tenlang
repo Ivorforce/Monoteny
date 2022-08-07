@@ -1,17 +1,35 @@
-// Custom Binary Operator (Floor Division). {} stands for a single expression.
-pattern {} /- {} :: AdditionPrecedence;
+// Precedence groups can be defined using "precedencegroup". It must declare the kind of associativity:
+// LeftAssociativity: Left expressions are evaluated together first.
+// RightAssociativity: Right expressions are evaluated together.
+// NoAssociativity: Expressions cannot be grouped together without parentheses.
+// PairwiseConjunctionAssociativity: Expressions are grouped together pairwise, joined by &&.
 
-// Example
+// Precedence groups must be integrated into the existing precedence order using "precedenceorder".
+// After all precedenceorder statements are evaluated, the total precedence order must be unambiguous.
+// If two clashing precedence groups are imported, it is up to the file to refine the precedence order used in the file.
+
+precedencegroup MultiplicationPrecedence :: LeftAssociativity;
+precedenceorder ExponentiationPrecedence > MultiplicationPrecedence > AdditionPrecedence;
+
+// Patterns can be defined using "pattern". A pattern can consist of left-unary, right-unary and binary tokens.
+
+// Rules:
+// 1) All operator patterns are binary.
+// 2) All |...| patterns are binary.
+// 3) All ...| patterns are left-unary.
+// 4) All |... patterns are right-unary.
+
+// Patterns are interspersed with expressions. These can be defined to be one of these types:
+// {} : An expression.
+// () : A parenthesized expression, usually on named anonymous structs (a, b: b, c: c, ...)
+
+
+// Custom Binary Operator (Floor Division). {} stands for a single expression.
+pattern {} /- {} using AdditionPrecedence;
 fun {lhs: Float32} /- {b: Float32} -> Int32 :: Int32(a / b);
 
-// () means a named tuple.
 pattern {} <-> () >> {} :: AdditionPrecedence;
-
-// Example
 fun {a: Int32} <-> (b: Int32, c: Int32) >> {d: Int32} :: a + b * c + d;
 
-// 'add' and 'to' become keywords
-pattern add {} to {} :: AdditionPrecedence;
-
-// Example
-fun add {a: Int32} to {b: Int32} :: a + b;
+pattern add| {} |to| {} :: AdditionPrecedence;
+fun add| {a: Int32} |to| {b: Int32} :: a + b;
