@@ -9,9 +9,10 @@ grammar;
 match {
     r"[0-9]+" => _Number,
     r"[a-zA-Z_]\w*" => _Identifier,
-    r"[!+\-*/&%=><|]+" => _OperatorIdentifier,
+    r"[!+\-*/&%=><|.]+" => _OperatorIdentifier,
     "true", "false",
     "return",
+    ".",
     "(", ")", "{", "}", "[",  "]", "..",
     ";", ",", ":", "::", "->",
     "=",
