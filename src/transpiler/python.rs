@@ -25,7 +25,8 @@ pub struct TranspilerContext<'a> {
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     writeln!(stream, "import numpy as np")?;
 
-    let mut namespaces = builtins::create(builtins);
+    let mut builtin_namespaces = builtins::create(builtins);
+    let mut namespaces = builtin_namespaces.add_sublevel();
 
     for function in program.functions.iter() {
         namespaces.register_definition(function.interface.id, &function.interface.alphanumeric_name);
@@ -33,7 +34,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     }
 
     let context = TranspilerContext {
-        names: namespaces.map_names(),
+        names: builtin_namespaces.map_names(),
         builtins
     };
 

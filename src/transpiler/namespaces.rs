@@ -34,7 +34,7 @@ impl Level {
     }
 
     fn insert_names(&self, mapping: &mut HashMap<Uuid, String>, reserved: &HashSet<String>) {
-        let reserved = reserved.clone();
+        let mut reserved = reserved.clone();
 
         fn make_name(prefix: &str, idx: usize) -> String {
             format!("{}{}", prefix, idx)
@@ -47,7 +47,8 @@ impl Level {
                 while reserved.contains(&name) {
                     name = format!("{}_", name);
                 }
-                mapping.insert(claims.iter().next().unwrap().clone(), name.clone());
+                reserved.insert(name.clone());
+                mapping.insert(claims.iter().next().unwrap().clone(), name);
             }
             else {
                 // Need to postfix each name with an idx
@@ -57,7 +58,9 @@ impl Level {
                 }
 
                 for (idx, claim) in claims.iter().enumerate() {
-                    mapping.insert(claim.clone(), make_name(&prefix, idx));
+                    let name = make_name(&prefix, idx);
+                    reserved.insert(name.clone());
+                    mapping.insert(claim.clone(), name);
                 }
             }
         }
