@@ -24,6 +24,7 @@ pub struct TranspilerContext<'a> {
 
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     writeln!(stream, "import numpy as np")?;
+    writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
 
     let mut builtin_namespaces = builtins::create(builtins);
     let mut namespaces = builtin_namespaces.add_sublevel();
