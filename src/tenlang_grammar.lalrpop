@@ -12,7 +12,7 @@ match {
     r"[!+\-*/&%=><|]+" => _OperatorIdentifier,
     "true", "false",
     "return",
-    "(", ")", "{", "}", "[",  "]", ":|",
+    "(", ")", "{", "}", "[",  "]", "..",
     ";", ",", ":", "::", "->",
     "=",
     "let", "var",
@@ -148,7 +148,7 @@ FunctionCallExpression<NextOperatorLevel>: Box<Expression> = {
 }
 
 LeftTransformation<NextOperatorLevel>: Box<Expression> = {
-    <LeftTransformation<NextOperatorLevel>> ":|",
+    <LeftTransformation<NextOperatorLevel>> "..",
     <NextOperatorLevel>,
 }
 
