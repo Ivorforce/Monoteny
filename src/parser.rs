@@ -86,12 +86,11 @@ pub fn post_parse_statement(statement: &Statement, scope: &scopes::Level) -> Box
 pub fn post_parse_type_declaration(declaration: &TypeDeclaration, scope: &scopes::Level) -> Box<TypeDeclaration> {
     Box::new(match declaration {
         TypeDeclaration::Identifier(i) => TypeDeclaration::Identifier(i.clone()),
-        TypeDeclaration::NDArray(atom, shape) => {
-            TypeDeclaration::NDArray(
-                post_parse_type_declaration(
-                    atom.as_ref(), scope),
-                shape.iter().map(|x| post_parse_expression(x, scope)).collect()
-            )
+        TypeDeclaration::Monad { unit, shape} => {
+            TypeDeclaration::Monad {
+                unit: post_parse_type_declaration(unit.as_ref(), scope),
+                shape: shape.iter().map( | x| post_parse_expression(x, scope)).collect()
+            }
         }
     })
 }

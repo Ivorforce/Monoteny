@@ -32,10 +32,10 @@ pub fn transpile_type(stream: &mut (dyn Write), type_def: &Type, context: &Trans
     match type_def {
         Type::Primitive(n) => types::transpile_primitive(stream, n)?,
         Type::Struct(s) => types::transpile_struct(stream, s, context)?,
-        Type::NDArray(atom) => {
-            transpile_type(stream, atom, context)?;
+        Type::Monad(unit) => {
+            transpile_type(stream, unit, context)?;
             write!(stream, "[?]")?;
-        },
+        }
         Type::Function(_) => todo!(),
         Type::Generic(_) => todo!(),
         Type::MetaType(_) => todo!(),

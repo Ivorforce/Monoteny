@@ -54,9 +54,9 @@ pub fn transpile_type(type_def: &Type) -> String {
     match type_def.borrow() {
         Type::Primitive(n) => transpile_primitive_type(n),
         Type::Struct(t) => todo!(),
-        Type::NDArray(atom) => {
+        Type::Monad(unit) => {
             // TODO Shape
-            format!("Tensor<{}, 1>", transpile_type(atom))
+            format!("Tensor<{}, 1>", transpile_type(unit))
         }
         Type::Function(_) => todo!(),
         Type::Generic(_) => todo!(),

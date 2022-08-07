@@ -65,7 +65,7 @@ pub enum PatternForm {
 
 pub enum TypeDeclaration {
     Identifier(String),
-    NDArray(Box<TypeDeclaration>, Vec<Box<Expression>>)
+    Monad { unit: Box<TypeDeclaration>, shape: Vec<Box<Expression>> }
 }
 
 // =============================== Code =====================================
@@ -214,12 +214,12 @@ impl Debug for TypeDeclaration {
         use self::TypeDeclaration::*;
         match self {
             Identifier(name) => write!(fmt, "{}", name),
-            NDArray(atom, dimensions) => {
-                write!(fmt, "{:?}[", atom)?;
-                for item in dimensions { write!(fmt, "{:?},", item)? };
+            Monad { unit, shape } => {
+                write!(fmt, "{:?}[", unit)?;
+                for item in shape { write!(fmt, "{:?},", item)? };
                 write!(fmt, "]")?;
                 return Ok(())
-            },
+            }
         }
     }
 }

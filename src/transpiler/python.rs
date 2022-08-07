@@ -84,8 +84,8 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, context
 
     for parameter in function.interface.parameters.iter() {
         match parameter.variable.type_declaration.borrow() {
-            Type::NDArray(atom) => {
-                if let Type::Struct(s) = atom.as_ref() {
+            Type::Monad(unit) => {
+                if let Type::Struct(s) = unit.as_ref() {
                     write!(
                         stream, "    {} = np.asarray({}, dtype=",
                         parameter.variable.name,
@@ -94,7 +94,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, context
                     types::transpile_struct(stream, s, context)?;
                     write!(stream, ")\n")?;
                 }
-                else if let Type::Primitive(primitive) = atom.as_ref() {
+                else if let Type::Primitive(primitive) = unit.as_ref() {
                     write!(
                         stream, "    {} = np.asarray({}, dtype=",
                         parameter.variable.name,
@@ -104,9 +104,9 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, context
                     write!(stream, ")\n")?;
                 }
                 else {
-                    panic!("Can't have a non-atom ndarray in numpy.")
+                    panic!("Can't have a nested monad in numpy.")
                 }
-            },
+            }
             _ => {
                 let external_name = get_external_name(&parameter);
 

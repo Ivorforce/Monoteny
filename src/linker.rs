@@ -489,8 +489,8 @@ pub fn link_type(syntax: &abstract_syntax::TypeDeclaration, scope: &scopes::Hier
         abstract_syntax::TypeDeclaration::Identifier(id) => {
             scope.resolve_metatype(scopes::Environment::Global, id).clone()
         },
-        abstract_syntax::TypeDeclaration::NDArray(identifier, _) => {
-            Box::new(Type::NDArray(link_type(&identifier, scope)))
+        abstract_syntax::TypeDeclaration::Monad { unit, shape } => {
+            Box::new(Type::Monad(link_type(&unit, scope)))
         }
     }
 }

@@ -1,17 +1,17 @@
-given <$Atom, $LeftBoundIndex> where LeftBound<$LeftBoundIndex> {
+given <$Unit, $LeftBoundIndex> where LeftBound<$LeftBoundIndex> {
     // A skip_first function with a generically complex return type.
-    fun {$Atom[$LeftBoundIndex]}.skip_first(_ skip_count: Int32) {:
+    fun {$Unit[$LeftBoundIndex]}.skip_first(_ skip_count: Int32) {:
         () :: \.self@[>| skip_count];
     :}
 
     // Using static types instead of letting the compiler infer them.
-    fun {$Atom[$LeftBoundIndex]}.skip_first(_ skip_count: Int32) {:
+    fun {$Unit[$LeftBoundIndex]}.skip_first(_ skip_count: Int32) {:
         // A fun example of where compile-time complexity is as hard as the function itself.
         guard
             let .Known(left_bound) = $LeftBoundIndex.left_bound,
             let .Known(skip_count) = skip_count
         else {
-            return () -> Option<$Atom[$LeftBoundIndex]> :: self@[self@.index.left_bound + skip_count...]?;
+            return () -> Option<$Unit[$LeftBoundIndex]> :: self@[self@.index.left_bound + skip_count...]?;
         }
 
         guard skip_count <= Count.count else {
@@ -23,6 +23,6 @@ given <$Atom, $LeftBoundIndex> where LeftBound<$LeftBoundIndex> {
 
          var new_index = $LeftBoundIndex;
          new_index.left_bound = new_start;
-         return () -> $Atom[new_index] :: self@[new_start...];
+         return () -> $Unit[new_index] :: self@[new_start...];
     :}
 }

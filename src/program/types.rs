@@ -62,7 +62,7 @@ pub struct Variable {
 pub enum Type {
     MetaType(Box<Type>),
     Primitive(primitives::Type),
-    NDArray(Box<Type>),
+    Monad(Box<Type>),
     Struct(Rc<Struct>),
     Function(Rc<FunctionInterface>),
     PrecedenceGroup(Rc<PrecedenceGroup>),
@@ -145,7 +145,7 @@ impl Debug for Type {
         use Type::*;
         match self {
             Primitive(p) => write!(fmt, "{}", p.identifier_string()),
-            NDArray(atom) => write!(fmt, "{:?}", atom),
+            Monad(unit) => write!(fmt, "{:?}", unit),
             Function(f) => write!(fmt, "(?) -> ({:?})", f.return_type),
             Generic(g) => write!(fmt, "{}", g.name),
             MetaType(t) => write!(fmt, "Type[{:?}]", t),
@@ -160,8 +160,8 @@ impl Type {
         match self {
             Type::MetaType(t) => t.collect_generics(set),
             Type::Primitive(_) => {}
-            Type::NDArray(atom) => {
-                atom.collect_generics(set);
+            Type::Monad(unit) => {
+                unit.collect_generics(set);
             }
             Type::Function(fun) => {
                 if let Some(return_type) = &fun.return_type {

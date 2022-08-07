@@ -22,7 +22,7 @@ precedenceorder ExponentiationPrecedence > MultiplicationPrecedence > AdditionPr
 // Patterns are interspersed with expressions. These can be defined to be one of these types:
 // {} : An expression.
 // () : A parenthesized expression, usually on named anonymous structs (a, b: b, c: c, ...)
-// [] : An NDArray. (this is necessary because NDArrays would normally be treated like single objects).
+// [] : A monad. (this is necessary because monads would normally be treated like their units).
 
 
 // Custom Binary Operator (Floor Division). {} stands for a single expression.

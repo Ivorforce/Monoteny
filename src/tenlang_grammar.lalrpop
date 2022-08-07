@@ -94,7 +94,7 @@ ContextualParameter: Box<ContextualParameter> = {
 
 TypeDeclaration: Box<TypeDeclaration> = {
     Identifier => Box::new(TypeDeclaration::Identifier(<>)),
-    <TypeDeclaration> "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(TypeDeclaration::NDArray(<>))
+    <unit: TypeDeclaration> "[" <shape: OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(TypeDeclaration::Monad { <> })
 }
 
 
