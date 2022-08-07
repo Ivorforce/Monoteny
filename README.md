@@ -20,9 +20,9 @@ TenLang aims to guarantee shape, lookup and generally array operations safety.
 
 There is a reasonable reason no other language has yet attempted this: Shape resolving can be as hard as executing the program itself. It seems impossible to devise a system that could possibly cover every use-case. Without one, the language quickly falls apart.
 
-Luckily, we know how to solve hard problems in a readable and approachable way. It's coding.
+Luckily, we know how to solve hard problems in a readable and approachable way. It's programming.
 
-TenLang takes this to heart: Generic types are resolved with user code at compile time. The code itself follows TenLang syntax, so it is unnecessary to learn a separate complicated language. I hope this truly covers all (computable) use-cases.
+TenLang takes this to heart: Generic types are resolved with user code at compile time. The code is TenLang, so it is unnecessary to learn a separate language paradigm.
 
 ## Roadmap
 
