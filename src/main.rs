@@ -5,7 +5,7 @@ extern crate core;
 lalrpop_mod!(pub tenlang_grammar);
 pub mod parser;
 pub mod linker;
-pub mod languages;
+pub mod transpiler;
 pub mod program;
 
 use std::ffi::OsStr;
@@ -93,7 +93,7 @@ fn main() {
                         let python_path = output_path.with_extension("py");
                         let mut f = File::create(python_path.clone()).expect("Unable to create file");
 
-                        languages::python::transpile_program(
+                        transpiler::python::transpile_program(
                             &mut f,
                             &computation_tree,
                             &builtins
@@ -108,7 +108,7 @@ fn main() {
                         let mut f_header = File::create(header_path.clone()).expect("Unable to create file");
                         let mut f_source = File::create(source_path.clone()).expect("Unable to create file");
 
-                        languages::cpp::transpile_program(
+                        transpiler::cpp::transpile_program(
                             &computation_tree,
                             &mut f_header,
                             &mut f_source

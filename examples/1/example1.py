@@ -21,7 +21,7 @@ def no_op():
     pass
 
 
-def square_a(a: np.int32,) -> np.int32:
+def square_0(a: np.int32,) -> np.int32:
     """
     <Docstring TODO!>
 
@@ -33,7 +33,7 @@ def square_a(a: np.int32,) -> np.int32:
     return a * a
 
 
-def square_b(self: np.int32,) -> np.int32:
+def square_1(self: np.int32,) -> np.int32:
     """
     <Docstring TODO!>
 
@@ -56,4 +56,4 @@ def main():
     print((np.int32(5)) > (floor_div(np.int32(2) ** np.int32(3), np.int32(2))) and (floor_div(np.int32(2) ** np.int32(3), np.int32(2))) > (-np.int32(2)))
     print((np.int32(5) > np.int32(2)) | True)
     print(((np.int32(2) ** (np.int32(3) ** np.int32(5))) * np.int32(3)) + np.int32(5))
-    print([b, square_a(b), square_b(np.int32(2))])
+    print([b, square_0(b), square_1(np.int32(2))])

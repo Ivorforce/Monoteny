@@ -2,11 +2,12 @@ use std::io::Write;
 use crate::program::builtins::TenLangBuiltins;
 use crate::program::primitives;
 use crate::program::types::{Struct, Type};
+use crate::transpiler::python::TranspilerContext;
 
-pub fn transpile(stream: &mut (dyn Write), type_def: &Type, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
+pub fn transpile(stream: &mut (dyn Write), type_def: &Type, context: &TranspilerContext) -> Result<(), std::io::Error> {
     match type_def {
         Type::Primitive(n) => transpile_primitive(stream, n)?,
-        Type::Struct(s) => transpile_struct(stream, s, builtins)?,
+        Type::Struct(s) => transpile_struct(stream, s, context)?,
         Type::NDArray(_) => write!(stream, "np.ndarray")?,
         Type::Function(_) => todo!(),
         Type::Generic(_) => todo!(),
@@ -35,8 +36,8 @@ pub fn transpile_primitive_value(stream: &mut (dyn Write), value: &primitives::V
     })
 }
 
-pub fn transpile_struct(stream: &mut (dyn Write), s: &Struct, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
-    if s == builtins.structs.String.as_ref() {
+pub fn transpile_struct(stream: &mut (dyn Write), s: &Struct, context: &TranspilerContext) -> Result<(), std::io::Error> {
+    if s == context.builtins.structs.String.as_ref() {
         write!(stream, "str")
     }
     else {

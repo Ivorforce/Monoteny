@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use crate::program::types::{FunctionInterface, PassedArgumentType, Type, Variable};
 
-type VariablePool = Box<HashMap<String, HashSet<Rc<Variable>>>>;
+type VariablePool = HashMap<String, HashSet<Rc<Variable>>>;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum Environment {
@@ -18,8 +18,14 @@ pub struct Level {
 impl Level {
     pub fn new() -> Level {
         Level {
-            global: Box::new(HashMap::new()),
-            member: Box::new(HashMap::new()),
+            global: HashMap::new(),
+            member: HashMap::new(),
+        }
+    }
+
+    pub fn as_global_scope(&self) -> Hierarchy {
+        Hierarchy {
+            levels: vec![self]
         }
     }
 
@@ -34,12 +40,6 @@ impl Level {
         match environment {
             Environment::Global => &self.global,
             Environment::Member => &self.member
-        }
-    }
-
-    pub fn as_global_scope(&self) -> Hierarchy {
-        Hierarchy {
-            levels: vec![self]
         }
     }
 
