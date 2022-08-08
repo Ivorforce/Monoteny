@@ -40,18 +40,16 @@ This will be possible by TenLang coming with several different transpilers. Here
 ### TenLang 0.1 (Toy Language Stage)
 
 - [x] Project Skeleton
-- [x] Number Primitives
-- [x] String Primitives
-- [x] Array Literals
-- [x] Function Interfaces
+  - [x] Number, String, Array Primitives
+- [x] Functions
   - [x] Int-keyed parameters
   - [x] Single expression function definition syntax
+  - [x] Overloading & Call Type Checking
+  - [x] Static member functions
 - [x] Binary operators: + - * / || && > < >= <= == != % **
   - [x] Unary operators: + - !
   - [x] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
   - [x] User-Defined Unary / Binary Operators
-- [x] Overloading & Call Type Checking
-  - [x] Member functions
 
 ### TenLang 0.2 (Proof of Concept Stage)
 
