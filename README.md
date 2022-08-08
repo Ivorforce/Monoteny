@@ -48,7 +48,7 @@ This will be possible by TenLang coming with several different transpilers. Here
   - [x] Static member functions
 - [x] Binary operators: + - * / || && > < >= <= == != % **
   - [x] Unary operators: + - !
-  - [x] Multiple comparison syntax, ex.: a > b >= c == d (evaluated pairwise)
+  - [x] "Conjunctive Pairs" comparison syntax, ex.: a > b >= c == d
   - [x] User-Defined Unary / Binary Operators
 
 ### TenLang 0.2 (Proof of Concept Stage)
