@@ -56,7 +56,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Forward generic type checking
 - [ ] Comments (with transpilation)
 - [ ] Subscript function syntax
-- [x] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b .. * c .. .any()
+- [ ] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b .. * c .. .any()
   - [ ] 'transformation assignment' syntax: a .= + 5; b .= .union(c)
 - [ ] Var-Like 0 parameter function syntax (let c = a.b; a.b = c;)
 - [ ] Traits, x trait inheritances, trait abstract functions
