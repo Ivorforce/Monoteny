@@ -6,8 +6,8 @@ fun main() :: {
     let dictionary: Float[["A", "B", "C"]]  // float dictionary, indexable with strings A B or C
     let dictionary_user_input: Float[String]  // float dictionary, indexable with any string
 
-    let set: true[["A", "B", "C"]]  // string-indexed set, capable of including A B or C
-    let set: true[String]  // string-indexed set, capable of including any string
+    let set: Set[["A", "B", "C"]]  // string-indexed set, capable of including A B or C
+    let set_user_input: Set[String]  // string-indexed set, capable of including any string
 
     tuple Point3D(x, y, z)
     let Float[Point3D] = 0  // 3D point, initialized to origin
