@@ -5,6 +5,7 @@ use crate::tenlang_grammar;
 pub mod associativity;
 pub mod abstract_syntax;
 pub mod scopes;
+pub mod generics;
 
 use abstract_syntax::*;
 use crate::program::types::Pattern;
