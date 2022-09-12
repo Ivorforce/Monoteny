@@ -165,6 +165,7 @@ pub fn link_parameter_key(key: &ParameterKey, index: usize) -> ParameterKey {
         ParameterKey::Name(n) => {
             match n.as_str() {
                 // When _ a: SomeType is declared, it is keyed by its index.
+                // TODO it should be keyed by the previous index +1 instead
                 "_" => ParameterKey::Int(index as i32),
                 _ => ParameterKey::Name(n.clone())
             }
