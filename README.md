@@ -54,12 +54,12 @@ This will be possible by TenLang coming with several different transpilers. Here
 ### TenLang 0.2 (Proof of Concept Stage)
 
 - [x] Forward generic type checking
+- [ ] Traits, x trait inheritances, trait abstract functions
 - [ ] Comments (with transpilation)
 - [ ] Subscript function syntax
 - [ ] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b .. * c .. .any()
   - [ ] 'transformation assignment' syntax: a .= + 5; b .= .union(c)
 - [ ] Var-Like 0 parameter function syntax (let c = a.b; a.b = c;)
-- [ ] Traits, x trait inheritances, trait abstract functions
 - [ ] Expression Scopes (let a = { ... yield b; })
 - [ ] If / Else, if let, Guard, Guard let
 - [ ] Varargs: Int keying with infinite parameters (syntax: a...: Type[0...] for print(a, b) and a...: Type[String] for print(a: a, b: b))

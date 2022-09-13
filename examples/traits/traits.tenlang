@@ -10,23 +10,27 @@ given <$Number> where Addition<$Number> {
     declare Twiceable<$Number>;
 
     // A polymorphic function that runs on numbers that can do addition.
-    // This is, for now, independent of Twiceable's function.
+    // This is, by itself, independent of Twiceable's function.
     fun {self: $Number}.twice: $Number :: self + self;
 }
 
 // Introduce a generic on which Twiceable must be declared.
 given <$Number> where Twiceable<$Number> {
     // A polymorphic function that runs on the generic, just running twice twice.
+    // abstract function 'twice' is matched by the linker because Number is of type 'Twiceable'.
+    // This results in a dynamic function call.
     fun {self: $Number}.times_4: $Number :: self.twice.twice;
 }
 
 fun main() :: {
+    // Linker finds function 'twice' declared above because 5 conforms to Addition.
+    // It does not find abstract function 'twice' because 5 is it of declared type Twiceable.
+    // This results in a static function call.
+    let a: Int32 = 5.twice;  // yields 10
+
     // Addition<Int32> is declared (builtin).
     // -> Twiceable<Int32> is declared.
-    // -> {Int32}.times_4 exists.
-    let a: Int32 = 5.times_4;  // yields 20
-    // Linker finds both the function itself and the trait's function.
-    // The trait's function is unpacked, because we know the concrete type (Int32),
-    // and both functions end up being the same -> no ambiguity.
-    let b: Int32 = 5.twice;  // yields 10
+    // Linker function 'times_4' declared above because of this.
+    // This results in a static function call, wherein 'twice' is called dynamically.
+    let b: Int32 = 5.times_4;  // yields 20
 }
