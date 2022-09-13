@@ -53,7 +53,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 ### TenLang 0.2 (Proof of Concept Stage)
 
-- [ ] Forward generic type checking
+- [x] Forward generic type checking
 - [ ] Comments (with transpilation)
 - [ ] Subscript function syntax
 - [ ] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b .. * c .. .any()
