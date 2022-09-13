@@ -2,7 +2,6 @@ pub mod docstrings;
 pub mod types;
 pub mod builtins;
 
-use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::io::Write;
 use std::iter::zip;
@@ -13,7 +12,7 @@ use uuid::Uuid;
 use crate::program::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::*;
 use crate::program::primitives;
-use crate::program::types::{FunctionForm, FunctionInterface, NamedParameter, ParameterKey, Type};
+use crate::program::types::{FunctionForm, FunctionInterface, NamedParameter, ParameterKey, Type, TypeUnit};
 use crate::transpiler::namespaces;
 
 
@@ -83,9 +82,11 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, context
     }
 
     for parameter in function.interface.parameters.iter() {
-        match parameter.variable.type_declaration.borrow() {
-            Type::Monad(unit) => {
-                if let Type::Struct(s) = unit.as_ref() {
+        match &parameter.variable.type_declaration.unit {
+            TypeUnit::Monad => {
+                let unit = &parameter.variable.type_declaration.arguments[0].as_ref().unit;
+
+                if let TypeUnit::Struct(s) = unit {
                     write!(
                         stream, "    {} = np.asarray({}, dtype=",
                         parameter.variable.name,
@@ -94,7 +95,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, context
                     types::transpile_struct(stream, s, context)?;
                     write!(stream, ")\n")?;
                 }
-                else if let Type::Primitive(primitive) = unit.as_ref() {
+                else if let TypeUnit::Primitive(primitive) = unit {
                     write!(
                         stream, "    {} = np.asarray({}, dtype=",
                         parameter.variable.name,

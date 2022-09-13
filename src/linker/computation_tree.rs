@@ -55,7 +55,7 @@ impl PassedArgument {
     pub fn to_argument_type(&self) -> PassedArgumentType {
         PassedArgumentType {
             key: self.key.clone(),
-            value: &self.value.result_type
+            value_type: &self.value.result_type
         }
     }
 }

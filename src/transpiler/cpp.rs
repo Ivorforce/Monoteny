@@ -1,8 +1,7 @@
-use std::borrow::Borrow;
 use std::io::Write;
 use crate::linker::computation_tree::*;
 use crate::program::primitives;
-use crate::program::types::Type;
+use crate::program::types::{Type, TypeUnit};
 
 pub fn transpile_program(
     program: &Program,
@@ -51,16 +50,16 @@ pub fn transpile_primitive_type(type_def: &primitives::Type) -> String {
 }
 
 pub fn transpile_type(type_def: &Type) -> String {
-    match type_def.borrow() {
-        Type::Primitive(n) => transpile_primitive_type(n),
-        Type::Struct(t) => todo!(),
-        Type::Monad(unit) => {
+    match &type_def.unit {
+        TypeUnit::Primitive(n) => transpile_primitive_type(n),
+        TypeUnit::Struct(t) => todo!(),
+        TypeUnit::Monad => {
             // TODO Shape
-            format!("Tensor<{}, 1>", transpile_type(unit))
+            format!("Tensor<{}, 1>", transpile_type(&type_def.arguments[0]))
         }
-        Type::Function(_) => todo!(),
-        Type::Generic(_) => todo!(),
-        Type::MetaType(_) => todo!(),
-        Type::PrecedenceGroup(_) => todo!()
+        TypeUnit::Function(_) => todo!(),
+        TypeUnit::Generic(_) => todo!(),
+        TypeUnit::MetaType => todo!(),
+        TypeUnit::PrecedenceGroup(_) => todo!()
     }
 }

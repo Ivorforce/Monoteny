@@ -1,6 +1,11 @@
 use std::collections::{HashMap, HashSet};
+use std::iter::zip;
 use std::rc::Rc;
-use crate::program::types::{FunctionInterface, PassedArgumentType, Type, Variable};
+use guard::guard;
+use itertools::Itertools;
+use uuid::Uuid;
+use crate::program::generics::GenericMapping;
+use crate::program::types::{FunctionInterface, PassedArgumentType, Type, TypeUnit, Variable};
 
 type VariablePool = HashMap<String, HashSet<Rc<Variable>>>;
 
@@ -49,7 +54,7 @@ impl Level {
         if let Some(existing) = variables.get_mut(&variable.name) {
             let existing_var = existing.iter().next().unwrap();
 
-            if let Type::Function(_) = existing_var.type_declaration.as_ref() {
+            if let TypeUnit::Function(_) = existing_var.type_declaration.as_ref().unit {
                 existing.insert(variable);
             }
             else {
@@ -90,34 +95,79 @@ impl <'a> Hierarchy<'a> {
         Hierarchy { levels }
     }
 
-    pub fn resolve_function(&self, environment: Environment, variable_name: &String, arguments: &Vec<PassedArgumentType>) -> &'a Rc<FunctionInterface> {
-        let functions: Vec<&Rc<FunctionInterface>> = self.resolve_functions(environment, variable_name).into_iter()
-            .filter(|x| Type::arguments_satisfy_function(arguments, x))
+    fn pair_arguments_to_parameters<'b>(arguments: &'b Vec<PassedArgumentType>, function: &'b FunctionInterface) -> Option<Vec<(&'b Type, &'b Type)>> {
+        if arguments.len() != function.parameters.len() {
+            return None;
+        }
+
+        return zip(arguments.iter(), function.parameters.iter()).map(|(arg, param)| {
+            if &arg.key != &param.external_key {
+                return None;
+            }
+
+            return Some((
+                arg.value_type.as_deref().unwrap(),
+                param.variable.type_declaration.as_ref()
+            ))
+        }).collect()
+    }
+
+    pub fn resolve_function(&self, environment: Environment, variable_name: &String, arguments: &Vec<PassedArgumentType>, mapping: &mut GenericMapping) -> &'a Rc<FunctionInterface> {
+        for argument in arguments {
+            if argument.value_type.is_none() {
+                return panic!("Argument to function '{}({:?}: ?)' resolves to nothing.", variable_name, argument.key)
+            }
+        }
+
+        let candidates: Vec<(&Rc<FunctionInterface>, Vec<(&Type, &Type)>)> = self.resolve_functions(environment, variable_name).into_iter()
+            .flat_map(|x| Some((x, Hierarchy::pair_arguments_to_parameters(arguments, x)?)))
             .collect();
 
-        if functions.len() == 0 {
+        if candidates.len() == 0 {
+            panic!("No function could be found with signature {}({:?})", variable_name, arguments.iter().map(|x| &x.key))
+        }
+
+        let candidates: Vec<(&Rc<FunctionInterface>, Vec<(&Type, &Type)>)> = candidates.into_iter().flat_map(|(x, pairs)| {
+            let mut clone: GenericMapping = mapping.clone();
+            clone.merge_pairs(&pairs).ok()?;
+            Some((x, pairs))
+        }).collect();
+
+        if candidates.len() == 0 {
             panic!("{} could not be resolved for the passed arguments: {:?}", variable_name, arguments)
         }
-        else if functions.len() > 1 {
+        else if candidates.len() > 1 {
             panic!("{} is ambiguous for the passed arguments: {:?}", variable_name, arguments)
         }
         else {
-            functions[0]
+            // TODO This kinda ugly code
+            let seed = Uuid::new_v4();
+            let unique_params: Vec<(&Type, Box<Type>)> = candidates[0].1.iter()
+                .map(|(arg, param)| (*arg, param.uniqueify(&seed)))
+                .collect();
+
+            // Actually bind the generics w.r.t. the selected function
+            mapping.merge_pairs(
+                &unique_params.iter().map(|(arg, param)| (*arg, param.as_ref())).collect()
+            ).unwrap();
+            candidates[0].0
         }
     }
 
     pub fn resolve_functions(&self, environment: Environment, variable_name: &String) -> Vec<&'a Rc<FunctionInterface>> {
         self.resolve(environment, variable_name).iter().map(|x|
-            match &x.type_declaration.as_ref() {
-                Type::Function(function) => function,
+            match &x.type_declaration.unit {
+                TypeUnit::Function(function) => function,
                 _ => panic!("{} is not a function.", variable_name)
             }
         ).collect()
     }
 
     pub fn resolve_metatype(&self, environment: Environment, variable_name: &String) -> &'a Box<Type> {
-        match &self.resolve_unambiguous(environment, variable_name).type_declaration.as_ref() {
-            Type::MetaType(metatype) => metatype,
+        let type_declaration = &self.resolve_unambiguous(environment, variable_name).type_declaration;
+
+        match &type_declaration.unit {
+            TypeUnit::MetaType => type_declaration.arguments.get(0).unwrap(),
             _ => panic!("{}' is not a type.", variable_name)
         }
     }

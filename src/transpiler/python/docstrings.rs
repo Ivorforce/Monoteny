@@ -2,7 +2,7 @@ use std::io::Write;
 use crate::transpiler::python::{get_external_name, TranspilerContext, types};
 use crate::program::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::*;
-use crate::program::types::Type;
+use crate::program::types::{Type, TypeUnit};
 
 pub fn dump(stream: &mut (dyn Write), function: &Function, context: &TranspilerContext) -> Result<(), std::io::Error> {
     write!(stream, ":\n    \"\"\"\n    <Docstring TODO!>\n")?;
@@ -29,17 +29,17 @@ pub fn dump(stream: &mut (dyn Write), function: &Function, context: &TranspilerC
 }
 
 pub fn transpile_type(stream: &mut (dyn Write), type_def: &Type, context: &TranspilerContext) -> Result<(), std::io::Error> {
-    match type_def {
-        Type::Primitive(n) => types::transpile_primitive(stream, n)?,
-        Type::Struct(s) => types::transpile_struct(stream, s, context)?,
-        Type::Monad(unit) => {
-            transpile_type(stream, unit, context)?;
+    match &type_def.unit {
+        TypeUnit::Primitive(n) => types::transpile_primitive(stream, n)?,
+        TypeUnit::Struct(s) => types::transpile_struct(stream, s, context)?,
+        TypeUnit::Monad => {
+            transpile_type(stream, &type_def.arguments[0], context)?;
             write!(stream, "[?]")?;
         }
-        Type::Function(_) => todo!(),
-        Type::Generic(_) => todo!(),
-        Type::MetaType(_) => todo!(),
-        Type::PrecedenceGroup(_) => todo!(),
+        TypeUnit::Function(_) => todo!(),
+        TypeUnit::Generic(_) => todo!(),
+        TypeUnit::MetaType => todo!(),
+        TypeUnit::PrecedenceGroup(_) => todo!(),
     }
 
     Ok(())

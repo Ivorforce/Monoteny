@@ -9,6 +9,7 @@ lalrpop = { version = "^0.19.8" }
 
 [dependencies]
 clap = "3.2.15"
+custom_error = "1.9.2"
 guard = "0.5.1"
 itertools = "0.10.3"
 lalrpop-util = { version = "^0.19.8", features = ["lexer"] }

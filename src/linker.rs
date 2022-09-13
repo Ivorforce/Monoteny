@@ -14,6 +14,7 @@ use crate::linker::computation_tree::*;
 use crate::linker::imperative::ImperativeResolver;
 use crate::program::primitives;
 use crate::program::builtins::*;
+use crate::program::generics::GenericMapping;
 use crate::program::types::*;
 
 
@@ -38,8 +39,8 @@ pub fn link_program(syntax: abstract_syntax::Program, parser_scope: &parser::sco
                 global_variables.add_function(environment, Rc::new(Variable {
                     id: Uuid::new_v4(),
                     name: interface.name.clone(),
-                    type_declaration: Box::new(Type::Function(Rc::clone(&interface))),
-                    mutability: Mutability::Immutable,
+                    type_declaration: Type::unit(TypeUnit::Function(Rc::clone(&interface))),
+                    mutability: Mutability::Immutable
                 }));
 
                 // if interface.is_member_function {
@@ -55,7 +56,7 @@ pub fn link_program(syntax: abstract_syntax::Program, parser_scope: &parser::sco
                 global_variables.add_function(scopes::Environment::Global, Rc::new(Variable {
                     id: Uuid::new_v4(),
                     name: interface.name.clone(),
-                    type_declaration: Box::new(Type::Function(Rc::clone(&interface))),
+                    type_declaration: Type::unit(TypeUnit::Function(Rc::clone(&interface))),
                     mutability: Mutability::Immutable,
                 }));
             }
@@ -68,10 +69,11 @@ pub fn link_program(syntax: abstract_syntax::Program, parser_scope: &parser::sco
     // Resolve function bodies
     let functions: Vec<Rc<Function>> = functions_with_bodies.into_iter().map(
         |(interface, statements)| {
-            let resolver = ImperativeResolver {
+            let mut resolver = Box::new(ImperativeResolver {
                 interface: &interface,
-                builtins
-            };
+                builtins,
+                generics: GenericMapping::new(),
+            });
             resolver.link_function_body(statements, &global_variable_scope)
         }
     ).collect();
@@ -179,7 +181,10 @@ pub fn link_type(syntax: &abstract_syntax::TypeDeclaration, scope: &scopes::Hier
             scope.resolve_metatype(scopes::Environment::Global, id).clone()
         },
         abstract_syntax::TypeDeclaration::Monad { unit, shape } => {
-            Box::new(Type::Monad(link_type(&unit, scope)))
+            Box::new(Type {
+                unit: TypeUnit::Monad,
+                arguments: vec![link_type(&unit, scope)]
+            })
         }
     }
 }

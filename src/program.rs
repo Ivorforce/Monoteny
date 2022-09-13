@@ -7,3 +7,4 @@ use crate::linker::computation_tree::PassedArgument;
 pub mod builtins;
 pub mod types;
 pub mod primitives;
+pub mod generics;

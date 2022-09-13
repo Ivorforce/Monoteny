@@ -1,18 +1,18 @@
 use std::io::Write;
 use crate::program::builtins::TenLangBuiltins;
 use crate::program::primitives;
-use crate::program::types::{Struct, Type};
+use crate::program::types::{Struct, Type, TypeUnit};
 use crate::transpiler::python::TranspilerContext;
 
 pub fn transpile(stream: &mut (dyn Write), type_def: &Type, context: &TranspilerContext) -> Result<(), std::io::Error> {
-    match type_def {
-        Type::Primitive(n) => transpile_primitive(stream, n)?,
-        Type::Struct(s) => transpile_struct(stream, s, context)?,
-        Type::Monad(_) => write!(stream, "np.ndarray")?,
-        Type::Function(_) => todo!(),
-        Type::Generic(_) => todo!(),
-        Type::MetaType(_) => todo!(),
-        Type::PrecedenceGroup(_) => todo!()
+    match &type_def.unit {
+        TypeUnit::Primitive(n) => transpile_primitive(stream, n)?,
+        TypeUnit::Struct(s) => transpile_struct(stream, s, context)?,
+        TypeUnit::Monad => write!(stream, "np.ndarray")?,
+        TypeUnit::Function(_) => todo!(),
+        TypeUnit::Generic(_) => todo!(),
+        TypeUnit::MetaType => todo!(),
+        TypeUnit::PrecedenceGroup(_) => todo!()
     }
 
     Ok(())

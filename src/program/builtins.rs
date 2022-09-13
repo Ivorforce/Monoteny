@@ -65,10 +65,10 @@ pub struct TenLangBuiltinStructs {
 }
 
 pub fn create_function_variable(interface: &Rc<FunctionInterface>) -> Rc<Variable> {
-    Rc::new(Variable {
+    return Rc::new(Variable {
         id: Uuid::new_v4(),
         name: interface.name.clone(),
-        type_declaration: Box::new(Type::Function(Rc::clone(interface))),
+        type_declaration: Type::unit(TypeUnit::Function(Rc::clone(interface))),
         mutability: Mutability::Immutable,
     })
 }
@@ -92,7 +92,7 @@ pub fn create_same_parameters(declared_type: &Box<Type>, names: Vec<&str>) -> Ve
 pub fn create_builtins() -> Rc<TenLangBuiltins> {
     let mut constants: scopes::Level = scopes::Level::new();
 
-    let bool_type = Box::new(Type::Primitive(primitives::Type::Bool));
+    let bool_type = Type::unit(TypeUnit::Primitive(primitives::Type::Bool));
 
     // TODO Can we somehow change it so constants is not passed explicitly?
     //  It seems that every use in other functions borrows this function as mutable, so that the
@@ -171,7 +171,13 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     };
 
     let primitive_metatypes = primitives::Type::iter()
-        .map(|x| (x, Box::new(Type::MetaType(Box::new(Type::Primitive(x))))))
+        .map(|x| (x, Box::new(Type {
+            unit: TypeUnit::MetaType,
+            arguments: vec![Box::new(Type {
+                unit: TypeUnit::Primitive(x),
+                arguments: vec![]
+            })],
+        })))
         .collect::<HashMap<primitives::Type, Box<Type>>>();
 
     for (primitive_type, metatype) in &primitive_metatypes {
@@ -188,7 +194,10 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             id: Uuid::new_v4(),
             name: String::from(name),
         });
-        let s_type = Box::new(Type::MetaType(Box::new(Type::Struct(Rc::clone(&s)))));
+        let s_type = Box::new(Type {
+            unit: TypeUnit::MetaType,
+            arguments: vec![Type::unit(TypeUnit::Struct(Rc::clone(&s)))]
+        });
 
         constants.insert_singleton(scopes::Environment::Global, Rc::new(Variable {
             id: Uuid::new_v4(),
@@ -201,10 +210,10 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     };
 
     let all_primitives: Vec<Box<Type>> = primitives::Type::iter()
-        .map(|x| Box::new(Type::Primitive(x)))
+        .map(|x| Type::unit(TypeUnit::Primitive(x)))
         .collect();
     let number_primitives: Vec<Box<Type>> = primitives::Type::NUMBERS.iter()
-        .map(|x| Box::new(Type::Primitive(*x)))
+        .map(|x| Type::unit(TypeUnit::Primitive(*x)))
         .collect();
 
     let add_precedence_group = |scope: &mut parser::scopes::Level, name: &str, associativity: OperatorAssociativity, operators: Vec<(&str, &str)>| -> Rc<PrecedenceGroup> {
