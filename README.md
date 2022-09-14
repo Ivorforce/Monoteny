@@ -86,6 +86,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Reverse generic type checking (output types determined from inputs)
 - [ ] System Callback API / Permission Contexts
 - [ ] Exceptions
+- [ ] IntX, FloatX (big int & float, which are structs)
 - [ ] Polymorphic Enums (attached objects)
 - [ ] Abstract functions + Higher order functions
 - [ ] Deep Function Currying
