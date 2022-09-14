@@ -54,8 +54,15 @@ This will be possible by TenLang coming with several different transpilers. Here
 ### TenLang 0.2 (Proof of Concept Stage)
 
 - [x] Forward generic type checking
-- [ ] Traits, x trait inheritances, trait abstract functions
+- [ ] Traits
+  - [ ] Abstract Functions
   - [ ] Anonymous generic type conformance ($Number => given <$Number> where Number<$Number>)
+  - [ ] Inheritance (`inherit OtherTrait<A, B>`)
+  - [ ] Stored Properties (1-argument traits only)
+    - [ ] Construction (`SomeTrait(a: a, b: b)`) - trait is essentially a struct
+    - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
+    - [ ] Anonymous ... -> (a: Int, b: Float) ... return (a: a, b: b)
+    - [ ] Properties conforming to property-like functions (automatically?)
 - [ ] Comments (with transpilation
 - [ ] Subscript function syntax
 - [ ] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b .. * c .. .any()
@@ -64,8 +71,6 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Expression Scopes (let a = { ... yield b; })
 - [ ] If / Else, if let, Guard, Guard let
 - [ ] Varargs: Int keying with infinite parameters (syntax: a...: Type[0...] for print(a, b) and a...: Type[String] for print(a: a, b: b))
-- [ ] Structs
-  - [ ] Anonymous Structs ... -> (a: Int, b: Float) ... return (a: a, b: b)
 - [ ] Enums / Enum type inheritance
 - [ ] Specializations: Raw data is some type, but additional functions will match
 - [ ] Monads
