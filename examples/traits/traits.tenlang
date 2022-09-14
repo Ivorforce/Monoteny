@@ -4,23 +4,21 @@ trait Twiceable<_ $Number> {
 
 // Introduce a generic on which Addition must be declared.
 // All functions inside a given() {} statement must expose the generics somewhere in their interface.
-given <$Number> where Addition<$Number> {
+given <Number> where Addition<Number> {
     // When encountering a declaration, check that all required functions exist.
     // It finds the below function, which matches the trait declaration.
-    declare Twiceable<$Number>;
+    declare Twiceable<Number>;
 
     // A polymorphic function that runs on numbers that can do addition.
     // This is, by itself, independent of Twiceable's function.
-    fun {self: $Number}.twice: $Number :: self + self;
+    // abstract function '+' is matched by the linker because Number is of type 'Addition'.
+    // This results in a dynamic function call.
+    fun {self: Number}.twice: Number :: self + self;
 }
 
-// Introduce a generic on which Twiceable must be declared.
-given <$Number> where Twiceable<$Number> {
-    // A polymorphic function that runs on the generic, just running twice twice.
-    // abstract function 'twice' is matched by the linker because Number is of type 'Twiceable'.
-    // This results in a dynamic function call.
-    fun {self: $Number}.times_4: $Number :: self.twice.twice;
-}
+// Anonymous generics: $Number implies that the generic conforms to the trait,
+// as if writing: given <$Number> where Number<$Number>.
+fun {self: $Number}.times_4: $Number :: self.twice.twice;
 
 fun main() :: {
     // Linker finds function 'twice' declared above because 5 conforms to Addition.

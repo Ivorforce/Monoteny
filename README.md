@@ -55,7 +55,8 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 - [x] Forward generic type checking
 - [ ] Traits, x trait inheritances, trait abstract functions
-- [ ] Comments (with transpilation)
+  - [ ] Anonymous generic type conformance ($Number => given <$Number> where Number<$Number>)
+- [ ] Comments (with transpilation
 - [ ] Subscript function syntax
 - [ ] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b .. * c .. .any()
   - [ ] 'transformation assignment' syntax: a .= + 5; b .= .union(c)
@@ -64,6 +65,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] If / Else, if let, Guard, Guard let
 - [ ] Varargs: Int keying with infinite parameters (syntax: a...: Type[0...] for print(a, b) and a...: Type[String] for print(a: a, b: b))
 - [ ] Structs
+  - [ ] Anonymous Structs ... -> (a: Int, b: Float) ... return (a: a, b: b)
 - [ ] Enums / Enum type inheritance
 - [ ] Specializations: Raw data is some type, but additional functions will match
 - [ ] Monads
