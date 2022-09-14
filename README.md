@@ -59,9 +59,9 @@ This will be possible by TenLang coming with several different transpilers. Here
   - [ ] Anonymous generic type conformance ($Number => given <$Number> where Number<$Number>)
   - [ ] Inheritance (`inherit OtherTrait<A, B>`)
   - [ ] Stored Properties (1-argument traits only)
-    - [ ] Construction (`SomeTrait(a: a, b: b)`) - trait is essentially a struct
+    - [ ] Structs from traits (`SomeTrait(a: a, b: b)`)
+      - [ ] Anonymous Structs: ... -> (a: Int, b: Float) ... return (a: a, b: b)
     - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
-    - [ ] Anonymous Traits: ... -> (a: Int, b: Float) ... return (a: a, b: b)
     - [ ] Properties conforming to property-like functions (automatically?)
 - [ ] Comments (with transpilation
 - [ ] Subscript function syntax
