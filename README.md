@@ -61,7 +61,7 @@ This will be possible by TenLang coming with several different transpilers. Here
   - [ ] Stored Properties (1-argument traits only)
     - [ ] Construction (`SomeTrait(a: a, b: b)`) - trait is essentially a struct
     - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
-    - [ ] Anonymous ... -> (a: Int, b: Float) ... return (a: a, b: b)
+    - [ ] Anonymous Traits: ... -> (a: Int, b: Float) ... return (a: a, b: b)
     - [ ] Properties conforming to property-like functions (automatically?)
 - [ ] Comments (with transpilation
 - [ ] Subscript function syntax
