@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use custom_error::custom_error;
 use uuid::Uuid;
-use crate::program::functions::HumanFunctionInterface;
+use crate::program::functions::{FunctionPointer, HumanFunctionInterface};
 use crate::program::generics::GenericMapping;
 use crate::program::types::{Type};
 
@@ -13,7 +13,7 @@ pub struct Trait {
     pub id: Uuid,
     pub name: String,
 
-    pub abstract_functions: HashSet<Rc<HumanFunctionInterface>>
+    pub abstract_functions: HashSet<Rc<FunctionPointer>>
 }
 
 custom_error!{pub TraitConformanceError
@@ -34,7 +34,7 @@ pub struct TraitConformanceDeclaration {
     pub arguments: Vec<Box<Type>>,
     pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 
-    pub function_implementations: HashMap<Rc<HumanFunctionInterface>, Rc<HumanFunctionInterface>>
+    pub function_implementations: HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>
 }
 
 #[derive(Clone, PartialEq, Eq)]

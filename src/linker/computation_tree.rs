@@ -5,10 +5,11 @@ use std::iter::zip;
 use std::rc::Rc;
 use guard::guard;
 use uuid::Uuid;
+use crate::parser::abstract_syntax::Function;
 use crate::program::types::{Mutability, ParameterKey, Type, Variable};
 
 use crate::program::builtins::TenLangBuiltins;
-use crate::program::functions::HumanFunctionInterface;
+use crate::program::functions::{FunctionPointer, HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::primitives;
 use crate::program::traits::TraitBinding;
 
@@ -19,7 +20,11 @@ pub struct Program {
 }
 
 pub struct FunctionImplementation {
-    pub interface: Rc<HumanFunctionInterface>,
+    pub id: Uuid,
+
+    pub human_interface: Rc<HumanFunctionInterface>,
+    pub machine_interface: Rc<MachineFunctionInterface>,
+
     pub statements: Vec<Box<Statement>>,
     pub variable_names: HashMap<Rc<Variable>, String>
 }
@@ -39,7 +44,7 @@ pub struct Expression {
 
 pub enum ExpressionOperation {
     Primitive(primitives::Value),
-    FunctionCall { function: Rc<HumanFunctionInterface>, arguments: HashMap<Rc<Variable>, Box<Expression>>, binding: Box<TraitBinding> },
+    FunctionCall { function: Rc<FunctionPointer>, arguments: HashMap<Rc<Variable>, Box<Expression>>, binding: Box<TraitBinding> },
     PairwiseOperations { arguments: Vec<Box<Expression>>, functions: Vec<Rc<HumanFunctionInterface>> },
     MemberLookup(Box<Expression>, String),
     VariableLookup(Rc<Variable>),

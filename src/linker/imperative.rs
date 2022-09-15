@@ -9,14 +9,15 @@ use crate::linker::global::{link_type};
 use crate::linker::scopes;
 use crate::parser::abstract_syntax;
 use crate::program::builtins::TenLangBuiltins;
-use crate::program::functions::{HumanFunctionInterface, MachineFunctionInterface};
+use crate::program::functions::{FunctionPointer, HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::generics::GenericMapping;
 use crate::program::primitives;
 use crate::program::traits::TraitBinding;
 use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
-    pub interface: &'a Rc<HumanFunctionInterface>,
+    pub function: Rc<FunctionPointer>,
+
     pub builtins: &'a TenLangBuiltins,
     pub generics: GenericMapping,
     pub variable_names: HashMap<Rc<Variable>, String>
@@ -26,7 +27,7 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_function_body(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Hierarchy) -> Rc<FunctionImplementation> {
         let mut parameter_variables = scopes::Level::new();
 
-        for (internal_name, (_, variable)) in zip(self.interface.parameter_names_internal.iter(), self.interface.parameter_names.iter()) {
+        for (internal_name, (_, variable)) in zip(self.function.human_interface.parameter_names_internal.iter(), self.function.human_interface.parameter_names.iter()) {
             parameter_variables.insert_singleton(scopes::Environment::Global, variable.clone(), internal_name);
         }
 
@@ -34,14 +35,16 @@ impl <'a> ImperativeLinker<'a> {
         let statements: Vec<Box<Statement>> = self.link_top_scope(body, &subscope);
 
         return Rc::new(FunctionImplementation {
-            interface: Rc::clone(self.interface),
+            id: self.function.function_id,
+            human_interface: Rc::clone(&self.function.human_interface),
+            machine_interface: Rc::clone(&self.function.machine_interface),
             statements,
             variable_names: self.variable_names.clone()
         });
     }
 
     pub fn link_top_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Hierarchy) -> Vec<Box<Statement>> {
-        if let Some(_) = &self.interface.machine_interface.return_type {
+        if let Some(_) = &self.function.machine_interface.return_type {
             if let [statement] = &body[..] {
                 if let abstract_syntax::Statement::Expression(expression ) = statement.as_ref() {
                     // Single-Statement Return
@@ -88,7 +91,7 @@ impl <'a> ImperativeLinker<'a> {
                     let subscope = scope.subscope(&local_variables);
                     let expression: Option<Box<Expression>> = expression.as_ref().map(|x| self.link_expression(x, &subscope));
 
-                    match (&self.interface.machine_interface.return_type, expression) {
+                    match (&self.function.machine_interface.return_type, expression) {
                         (Some(_), None) => panic!("Return statement offers no value when the function declares an object."),
                         (None, Some(_)) => panic!("Return statement offers a value when the function declares void."),
                         (None, None) => {
@@ -301,24 +304,24 @@ impl <'a> ImperativeLinker<'a> {
         let argument_keys: Vec<&ParameterKey> = argument_keys.iter().collect();
         let argument_types: Vec<&Type> = argument_expressions.iter().map(|x| x.result_type.as_ref().unwrap().as_ref()).collect();
 
-        let candidates: Vec<(Rc<HumanFunctionInterface>, Vec<Box<Type>>)> = functions.iter()
+        let candidates: Vec<(Rc<FunctionPointer>, Vec<Box<Type>>)> = functions.iter()
             .flat_map(|fun| {
-                if fun.parameter_names.iter().map(|x| &x.0).collect::<Vec<&ParameterKey>>() != argument_keys {
+                if fun.human_interface.parameter_names.iter().map(|x| &x.0).collect::<Vec<&ParameterKey>>() != argument_keys {
                     return None
                 }
 
-                let types: Vec<Box<Type>> = fun.parameter_names.iter().map(|x| x.1.type_declaration.generify(&seed)).collect();
+                let types: Vec<Box<Type>> = fun.human_interface.parameter_names.iter().map(|x| x.1.type_declaration.generify(&seed)).collect();
                 return Some((Rc::clone(fun), types))
             })
             .collect();
 
-        let candidates: HashMap<Rc<HumanFunctionInterface>, (Vec<Box<Type>>, Box<TraitBinding>)> = candidates.into_iter().flat_map(|(fun, params)| {
+        let candidates: HashMap<Rc<FunctionPointer>, (Vec<Box<Type>>, Box<TraitBinding>)> = candidates.into_iter().flat_map(|(fun, params)| {
             let mut clone: GenericMapping = self.generics.clone();
             clone.merge_pairs(zip(
                 argument_types.iter().map(|x| *x),
                 params.iter().map(|x| x.as_ref())
             )).ok()?;
-            let binding = scope.trait_conformance_declarations.satisfy_requirements(&fun.machine_interface.requirements, &seed, &clone).ok()?;
+            let binding = scope.trait_conformance_declarations.satisfy_requirements(&fun.requirements, &seed, &clone).ok()?;
             Some((Rc::clone(&fun), (params, binding)))
         }).collect();
 
@@ -345,7 +348,7 @@ impl <'a> ImperativeLinker<'a> {
                 result_type: return_type,
                 operation: Box::new(ExpressionOperation::FunctionCall {
                     function: Rc::clone(&function),
-                    arguments: zip(argument_expressions.into_iter(), function.parameter_names.iter())
+                    arguments: zip(argument_expressions.into_iter(), function.human_interface.parameter_names.iter())
                         .map(|(exp, (_, variable))| (Rc::clone(variable), exp))
                         .collect(),
                     binding

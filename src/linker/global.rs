@@ -12,13 +12,13 @@ use crate::linker::scopes;
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::primitives;
 use crate::program::builtins::*;
-use crate::program::functions::{FunctionForm, HumanFunctionInterface, MachineFunctionInterface};
+use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::generics::GenericMapping;
 use crate::program::types::*;
 
 
 struct GlobalLinker<'a> {
-    functions_with_bodies: Vec<(Rc<HumanFunctionInterface>, &'a Vec<Box<abstract_syntax::Statement>>)>,
+    functions_with_bodies: Vec<(Rc<FunctionPointer>, &'a Vec<Box<abstract_syntax::Statement>>)>,
     global_variables: scopes::Level,
     parser_scope: &'a parser::scopes::Level,
     builtins: &'a TenLangBuiltins,
@@ -41,9 +41,9 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
 
     // Resolve function bodies
     let functions: Vec<Rc<FunctionImplementation>> = global_linker.functions_with_bodies.iter().map(
-        |(interface, statements)| {
+        |(fun, statements)| {
             let mut resolver = Box::new(ImperativeLinker {
-                interface: &interface,
+                function: Rc::clone(fun),
                 builtins,
                 generics: GenericMapping::new(),
                 variable_names: HashMap::new()
@@ -64,7 +64,7 @@ impl <'a> GlobalLinker<'a> {
                 let mut level = scopes::Level::new();
 
                 for generic_name in generics_scope.generics.iter().flat_map(|x| x.iter()) {
-                    level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(Type::unit(TypeUnit::Generic(Uuid::new_v4()))), generic_name)
+                    level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(Type::meta(Type::make_any())), generic_name)
                 }
 
                 let subscope = scope.subscope(&level);
@@ -95,25 +95,25 @@ impl <'a> GlobalLinker<'a> {
                     self.link_global_statement(statement.as_ref(), &subscope, &requirements);
                 }
             }
-            abstract_syntax::GlobalStatement::FunctionDeclaration(function) => {
-                let interface = link_function_interface(&function, scope, requirements.clone());
+            abstract_syntax::GlobalStatement::FunctionDeclaration(syntax) => {
+                let fun = link_function_pointer(&syntax, scope, requirements.clone());
 
-                self.functions_with_bodies.push((Rc::clone(&interface), &function.body));
+                self.functions_with_bodies.push((Rc::clone(&fun), &syntax.body));
 
-                let environment = match interface.form {
+                let environment = match fun.human_interface.form {
                     FunctionForm::Member => scopes::Environment::Member,
                     _ => scopes::Environment::Global,
                 };
 
                 // Create a variable for the function
-                self.global_variables.add_function(interface);
+                self.global_variables.add_function(fun);
 
                 // if interface.is_member_function {
                 // TODO Create an additional variable as Metatype.function...?
                 // }
             }
             abstract_syntax::GlobalStatement::Operator(operator) => {
-                let interface = link_operator_interface(&operator, self.parser_scope, scope, requirements.clone());
+                let interface = link_operator_pointer(&operator, self.parser_scope, scope, requirements.clone());
 
                 self.functions_with_bodies.push((Rc::clone(&interface), &operator.body));
 
@@ -125,7 +125,7 @@ impl <'a> GlobalLinker<'a> {
     }
 }
 
-pub fn link_function_interface(function: &abstract_syntax::Function, scope: &scopes::Hierarchy, requirements: HashSet<Rc<TraitConformanceRequirement>>) -> Rc<HumanFunctionInterface> {
+pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scopes::Hierarchy, requirements: HashSet<Rc<TraitConformanceRequirement>>) -> Rc<FunctionPointer> {
     let return_type = function.return_type.as_ref().map(|x| link_type(&x, scope));
 
     let mut parameters: HashSet<Rc<Variable>> = HashSet::new();
@@ -148,23 +148,28 @@ pub fn link_function_interface(function: &abstract_syntax::Function, scope: &sco
         parameter_names_internal.push(parameter.internal_name.clone());
     }
 
-    return Rc::new(HumanFunctionInterface {
-        id: Uuid::new_v4(),
-        name: function.identifier.clone(),
-        alphanumeric_name: function.identifier.clone(),
-        parameter_names, parameter_names_internal,
+    return Rc::new(FunctionPointer {
+        function_id: Uuid::new_v4(),
+        pointer_id: Uuid::new_v4(),
 
-        form: if function.target.is_none() { FunctionForm::Global } else { FunctionForm::Member },
+        requirements,
+        human_interface: Rc::new(HumanFunctionInterface {
+            name: function.identifier.clone(),
+            alphanumeric_name: function.identifier.clone(),
+
+            parameter_names,
+            parameter_names_internal,
+
+            form: if function.target.is_none() { FunctionForm::Global } else { FunctionForm::Member },
+        }),
         machine_interface: Rc::new(MachineFunctionInterface {
-            id: Uuid::new_v4(),
-            requirements,
             parameters,
             return_type
         })
     });
 }
 
-pub fn link_operator_interface(function: &abstract_syntax::Operator, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, requirements: HashSet<Rc<TraitConformanceRequirement>>) -> Rc<HumanFunctionInterface> {
+pub fn link_operator_pointer(function: &abstract_syntax::Operator, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, requirements: HashSet<Rc<TraitConformanceRequirement>>) -> Rc<FunctionPointer> {
     let return_type = function.return_type.as_ref().map(|x| link_type(&x, scope));
 
     let mut parameters: HashSet<Rc<Variable>> = HashSet::new();
@@ -182,17 +187,20 @@ pub fn link_operator_interface(function: &abstract_syntax::Operator, parser_scop
     let is_binary = function.lhs.is_some();
     let pattern = parser_scope.resolve_operator_pattern(&function.operator, is_binary);
 
-    return Rc::new(HumanFunctionInterface {
-        id: Uuid::new_v4(),
-        name: function.operator.clone(),
-        alphanumeric_name: pattern.alias.clone(),
-        parameter_names,
-        parameter_names_internal,
+    return Rc::new(FunctionPointer {
+        function_id: Uuid::new_v4(),
+        pointer_id: Uuid::new_v4(),
 
-        form: FunctionForm::Operator,
+        requirements,
+        human_interface: Rc::new(HumanFunctionInterface {
+            name: function.operator.clone(),
+            alphanumeric_name: pattern.alias.clone(),
+            parameter_names,
+            parameter_names_internal,
+
+            form: FunctionForm::Operator,
+        }),
         machine_interface: Rc::new(MachineFunctionInterface {
-            id: Uuid::new_v4(),
-            requirements,
             parameters,
             return_type
         })

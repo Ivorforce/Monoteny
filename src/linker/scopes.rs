@@ -5,7 +5,7 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::program::functions::{FunctionForm, HumanFunctionInterface};
+use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceDeclarations, TraitConformanceRequirement};
 use crate::program::generics::GenericMapping;
 use crate::program::types::{Mutability, ParameterKey, Type, TypeUnit, Variable};
@@ -54,8 +54,8 @@ impl Level {
         }
     }
 
-    pub fn add_function(&mut self, fun: Rc<HumanFunctionInterface>) {
-        let environment = match fun.form {
+    pub fn add_function(&mut self, fun: Rc<FunctionPointer>) {
+        let environment = match fun.human_interface.form {
             FunctionForm::Member => Environment::Member,
             _ => Environment::Global
         };
@@ -68,18 +68,18 @@ impl Level {
 
         let mut variables = self.variables_mut(environment);
 
-        if let Some(existing) = variables.get_mut(&fun.name) {
+        if let Some(existing) = variables.get_mut(&fun.human_interface.name) {
             let existing_var = existing.iter().next().unwrap();
 
             if let TypeUnit::Function(_) = existing_var.type_declaration.as_ref().unit {
                 existing.insert(variable);
             }
             else {
-                panic!("Cannot overload with function '{}' if a variable exists in the same scope under the same name.", &fun.name);
+                panic!("Cannot overload with function '{}' if a variable exists in the same scope under the same name.", &fun.human_interface.name);
             }
         }
         else {
-            variables.insert(fun.name.clone(), HashSet::from([variable]));
+            variables.insert(fun.human_interface.name.clone(), HashSet::from([variable]));
         }
     }
 
@@ -116,7 +116,7 @@ impl <'a> Hierarchy<'a> {
         }
     }
 
-    pub fn resolve_functions(&self, environment: Environment, variable_name: &String) -> Vec<&'a Rc<HumanFunctionInterface>> {
+    pub fn resolve_functions(&self, environment: Environment, variable_name: &String) -> Vec<&'a Rc<FunctionPointer>> {
         self.resolve(environment, variable_name).iter().map(|x|
             match &x.type_declaration.unit {
                 TypeUnit::Function(function) => function,

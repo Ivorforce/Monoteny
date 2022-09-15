@@ -9,7 +9,7 @@ use guard::guard;
 use crate::fmtutil::write_comma_separated_list;
 use crate::program::traits::{Trait, TraitConformanceRequirement};
 use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
-use crate::program::functions::HumanFunctionInterface;
+use crate::program::functions::{FunctionPointer, HumanFunctionInterface};
 use crate::program::generics::GenericMapping;
 
 use crate::program::primitives;
@@ -54,7 +54,7 @@ pub enum TypeUnit {
     Primitive(primitives::Type),
     Struct(Rc<Struct>),
     Trait(Rc<Trait>),
-    Function(Rc<HumanFunctionInterface>),
+    Function(Rc<FunctionPointer>),
     PrecedenceGroup(Rc<PrecedenceGroup>),
 }
 

@@ -10,7 +10,7 @@ use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::types::*;
 use crate::program::primitives;
 use crate::program;
-use crate::program::functions::{FunctionForm, HumanFunctionInterface, MachineFunctionInterface};
+use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface, MachineFunctionInterface};
 
 pub struct TenLangBuiltins {
     pub traits: TenLangBuiltinTraits,
@@ -25,31 +25,31 @@ pub struct TenLangBuiltins {
 }
 
 pub struct TenLangBuiltinOperators {
-    pub and: Rc<HumanFunctionInterface>,
-    pub or: Rc<HumanFunctionInterface>,
+    pub and: Rc<FunctionPointer>,
+    pub or: Rc<FunctionPointer>,
 
-    pub equal_to: Vec<Rc<HumanFunctionInterface>>,
-    pub not_equal_to: Vec<Rc<HumanFunctionInterface>>,
+    pub equal_to: Vec<Rc<FunctionPointer>>,
+    pub not_equal_to: Vec<Rc<FunctionPointer>>,
 
-    pub greater_than: Vec<Rc<HumanFunctionInterface>>,
-    pub greater_than_or_equal_to: Vec<Rc<HumanFunctionInterface>>,
-    pub lesser_than: Vec<Rc<HumanFunctionInterface>>,
-    pub lesser_than_or_equal_to: Vec<Rc<HumanFunctionInterface>>,
+    pub greater_than: Vec<Rc<FunctionPointer>>,
+    pub greater_than_or_equal_to: Vec<Rc<FunctionPointer>>,
+    pub lesser_than: Vec<Rc<FunctionPointer>>,
+    pub lesser_than_or_equal_to: Vec<Rc<FunctionPointer>>,
 
-    pub add: Vec<Rc<HumanFunctionInterface>>,
-    pub subtract: Vec<Rc<HumanFunctionInterface>>,
-    pub multiply: Vec<Rc<HumanFunctionInterface>>,
-    pub divide: Vec<Rc<HumanFunctionInterface>>,
-    pub exponentiate: Vec<Rc<HumanFunctionInterface>>,
-    pub modulo: Vec<Rc<HumanFunctionInterface>>,
+    pub add: Vec<Rc<FunctionPointer>>,
+    pub subtract: Vec<Rc<FunctionPointer>>,
+    pub multiply: Vec<Rc<FunctionPointer>>,
+    pub divide: Vec<Rc<FunctionPointer>>,
+    pub exponentiate: Vec<Rc<FunctionPointer>>,
+    pub modulo: Vec<Rc<FunctionPointer>>,
 
-    pub positive: Vec<Rc<HumanFunctionInterface>>,
-    pub negative: Vec<Rc<HumanFunctionInterface>>,
-    pub not: Rc<HumanFunctionInterface>,
+    pub positive: Vec<Rc<FunctionPointer>>,
+    pub negative: Vec<Rc<FunctionPointer>>,
+    pub not: Rc<FunctionPointer>,
 }
 
 pub struct TenLangBuiltinFunctions {
-    pub print: Rc<HumanFunctionInterface>,
+    pub print: Rc<FunctionPointer>,
 }
 
 #[allow(non_snake_case)]
@@ -180,7 +180,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     };
 
 
-    let add_trait_with_xx_x = |constants: &mut scopes::Level, name: &str, fns: Vec<(&str, &str)>| -> (Rc<Trait>, Vec<Rc<HumanFunctionInterface>>) {
+    let add_trait_with_xx_x = |constants: &mut scopes::Level, name: &str, fns: Vec<(&str, &str)>| -> (Rc<Trait>, Vec<Rc<FunctionPointer>>) {
         let generic_id = Uuid::new_v4();
         let generic_type = Type::unit(TypeUnit::Any(generic_id));
 
@@ -190,12 +190,12 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             abstract_functions: HashSet::new()
         };
 
-        let mut interfaces = vec![];
+        let mut functions = vec![];
         for (fn_name, fn_alphanumeric_name) in fns {
             // Abstract functions are only added to scope on trait requirements.
-            let fun = HumanFunctionInterface::make_operator(fn_name, fn_alphanumeric_name, 2, &generic_type, &generic_type);
+            let fun = FunctionPointer::make_operator(fn_name, fn_alphanumeric_name, 2, &generic_type, &generic_type);
             t.abstract_functions.insert(Rc::clone(&fun));
-            interfaces.push(fun);
+            functions.push(fun);
         }
 
         let t = Rc::new(t);
@@ -208,7 +208,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             }),
             &t.name
         );
-        return (t, interfaces)
+        return (t, functions)
     };
 
     let (number_trait, number_fns) = add_trait_with_xx_x(&mut constants, "Number", vec![("+", "add"), ("-", "subtract"), ("*", "multiply"), ("/", "divide")]);
@@ -217,45 +217,45 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         Number: number_trait
     };
 
-    let mut add_ops: Vec<Rc<HumanFunctionInterface>> = vec![Rc::clone(&number_fns[0])];
-    let mut sub_ops: Vec<Rc<HumanFunctionInterface>> = vec![Rc::clone(&number_fns[1])];
-    let mut mul_ops: Vec<Rc<HumanFunctionInterface>> = vec![Rc::clone(&number_fns[2])];
-    let mut div_ops: Vec<Rc<HumanFunctionInterface>> = vec![Rc::clone(&number_fns[3])];
+    let mut add_ops: Vec<Rc<FunctionPointer>> = vec![Rc::clone(&number_fns[0])];
+    let mut sub_ops: Vec<Rc<FunctionPointer>> = vec![Rc::clone(&number_fns[1])];
+    let mut mul_ops: Vec<Rc<FunctionPointer>> = vec![Rc::clone(&number_fns[2])];
+    let mut div_ops: Vec<Rc<FunctionPointer>> = vec![Rc::clone(&number_fns[3])];
 
-    let mut exp_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
-    let mut mod_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+    let mut exp_ops: Vec<Rc<FunctionPointer>> = vec![];
+    let mut mod_ops: Vec<Rc<FunctionPointer>> = vec![];
 
-    let mut gr__ops: Vec<Rc<HumanFunctionInterface>> = vec![];
-    let mut geq_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
-    let mut le__ops: Vec<Rc<HumanFunctionInterface>> = vec![];
-    let mut leq_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+    let mut gr__ops: Vec<Rc<FunctionPointer>> = vec![];
+    let mut geq_ops: Vec<Rc<FunctionPointer>> = vec![];
+    let mut le__ops: Vec<Rc<FunctionPointer>> = vec![];
+    let mut leq_ops: Vec<Rc<FunctionPointer>> = vec![];
 
-    let mut pos_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
-    let mut neg_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+    let mut pos_ops: Vec<Rc<FunctionPointer>> = vec![];
+    let mut neg_ops: Vec<Rc<FunctionPointer>> = vec![];
 
     for primitive_type in number_primitives.iter() {
-        let add_op = HumanFunctionInterface::make_operator("+", "add", 2, primitive_type, primitive_type);
+        let add_op = FunctionPointer::make_operator("+", "add", 2, primitive_type, primitive_type);
         constants.add_function(Rc::clone(&add_op));
         add_ops.push(Rc::clone(&add_op));
 
-        let sub_op = HumanFunctionInterface::make_operator("-", "subtract", 2, primitive_type, primitive_type);
+        let sub_op = FunctionPointer::make_operator("-", "subtract", 2, primitive_type, primitive_type);
         constants.add_function(Rc::clone(&sub_op));
         sub_ops.push(Rc::clone(&sub_op));
 
-        let mul_op = HumanFunctionInterface::make_operator("*", "multiply",  2, primitive_type, primitive_type);
+        let mul_op = FunctionPointer::make_operator("*", "multiply",  2, primitive_type, primitive_type);
         constants.add_function(Rc::clone(&mul_op));
         mul_ops.push(Rc::clone(&mul_op));
 
-        let div_op = HumanFunctionInterface::make_operator("/", "divide", 2, primitive_type, primitive_type);
+        let div_op = FunctionPointer::make_operator("/", "divide", 2, primitive_type, primitive_type);
         constants.add_function(Rc::clone(&div_op));
         div_ops.push(Rc::clone(&div_op));
 
         // TODO Exponentiate should work only on floats and uints, I think
-        let exp_op = HumanFunctionInterface::make_operator("**", "exponentiate", 2, primitive_type, primitive_type);
+        let exp_op = FunctionPointer::make_operator("**", "exponentiate", 2, primitive_type, primitive_type);
         constants.add_function(Rc::clone(&exp_op));
         exp_ops.push(Rc::clone(&exp_op));
 
-        let mod_op = HumanFunctionInterface::make_operator("%", "modulo", 2, primitive_type, primitive_type);
+        let mod_op = FunctionPointer::make_operator("%", "modulo", 2, primitive_type, primitive_type);
         constants.add_function(Rc::clone(&mod_op));
         mod_ops.push(Rc::clone(&mod_op));
 
@@ -273,56 +273,56 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         }));
 
         // Pair-Associative
-        let gr__op = HumanFunctionInterface::make_operator(">", "is_greater", 2, primitive_type, &bool_type);
+        let gr__op = FunctionPointer::make_operator(">", "is_greater", 2, primitive_type, &bool_type);
         constants.add_function(Rc::clone(&gr__op));
         gr__ops.push(gr__op);
 
-        let geq_op = HumanFunctionInterface::make_operator(">=", "is_greater_or_equal", 2, primitive_type, &bool_type);
+        let geq_op = FunctionPointer::make_operator(">=", "is_greater_or_equal", 2, primitive_type, &bool_type);
         constants.add_function(Rc::clone(&geq_op));
         geq_ops.push(geq_op);
 
-        let le__op = HumanFunctionInterface::make_operator("<", "is_lesser", 2, primitive_type, &bool_type);
+        let le__op = FunctionPointer::make_operator("<", "is_lesser", 2, primitive_type, &bool_type);
         constants.add_function(Rc::clone(&le__op));
         le__ops.push(le__op);
 
-        let leq_op = HumanFunctionInterface::make_operator("<=", "is_lesser_or_equal", 2, primitive_type, &bool_type);
+        let leq_op = FunctionPointer::make_operator("<=", "is_lesser_or_equal", 2, primitive_type, &bool_type);
         constants.add_function(Rc::clone(&leq_op));
         leq_ops.push(leq_op);
 
         // Unary + -
-        let pos_op = HumanFunctionInterface::make_operator("+", "is_lesser_or_equal", 1, primitive_type, primitive_type);
+        let pos_op = FunctionPointer::make_operator("+", "is_lesser_or_equal", 1, primitive_type, primitive_type);
         constants.add_function(Rc::clone(&pos_op));
         pos_ops.push(pos_op);
 
-        let neg_op = HumanFunctionInterface::make_operator("-", "is_lesser_or_equal", 1, primitive_type, primitive_type);
+        let neg_op = FunctionPointer::make_operator("-", "is_lesser_or_equal", 1, primitive_type, primitive_type);
         constants.add_function(Rc::clone(&neg_op));
         neg_ops.push(neg_op);
     }
 
-    let mut eq__ops: Vec<Rc<HumanFunctionInterface>> = vec![];
-    let mut neq_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+    let mut eq__ops: Vec<Rc<FunctionPointer>> = vec![];
+    let mut neq_ops: Vec<Rc<FunctionPointer>> = vec![];
     for primitive_type in all_primitives.iter() {
         // Pair-Associative
-        let eq__op = HumanFunctionInterface::make_operator("==", "is_equal", 2, primitive_type, &bool_type);
+        let eq__op = FunctionPointer::make_operator("==", "is_equal", 2, primitive_type, &bool_type);
         constants.add_function(Rc::clone(&eq__op));
         eq__ops.push(eq__op);
 
-        let neq_op = HumanFunctionInterface::make_operator("!=", "is_not_equal", 2, primitive_type, &bool_type);
+        let neq_op = FunctionPointer::make_operator("!=", "is_not_equal", 2, primitive_type, &bool_type);
         constants.add_function(Rc::clone(&neq_op));
         neq_ops.push(neq_op);
     }
 
-    let and_op = HumanFunctionInterface::make_operator("&&", "and", 2, &bool_type, &bool_type);
+    let and_op = FunctionPointer::make_operator("&&", "and", 2, &bool_type, &bool_type);
     constants.add_function(Rc::clone(&and_op));
 
-    let or__op = HumanFunctionInterface::make_operator("||", "or", 2, &bool_type, &bool_type);
+    let or__op = FunctionPointer::make_operator("||", "or", 2, &bool_type, &bool_type);
     constants.add_function(Rc::clone(&or__op));
 
-    let not_op = HumanFunctionInterface::make_operator("!", "not", 1, &bool_type, &bool_type);
+    let not_op = FunctionPointer::make_operator("!", "not", 1, &bool_type, &bool_type);
     constants.add_function(Rc::clone(&not_op));
 
 
-    let print_function = HumanFunctionInterface::make_global("print", "print", [generic_type.clone()].into_iter(), None);
+    let print_function = FunctionPointer::make_global("print", "print", [generic_type.clone()].into_iter(), None);
     constants.add_function(Rc::clone(&print_function));
 
     Rc::new(TenLangBuiltins {

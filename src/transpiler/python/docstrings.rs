@@ -7,17 +7,17 @@ use crate::program::types::{Type, TypeUnit};
 pub fn dump(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
     write!(stream, ":\n    \"\"\"\n    <Docstring TODO!>\n")?;
 
-    if !function.interface.parameter_names.is_empty() {
+    if !function.human_interface.parameter_names.is_empty() {
         write!(stream, "\n    Args:\n")?;
 
-        for (idx, (key, variable)) in function.interface.parameter_names.iter().enumerate() {
+        for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
             write!(stream, "        {}: ", get_external_name(key, idx))?;
             transpile_type(stream, &variable.type_declaration, context)?;
             write!(stream, "\n")?;
         }
     }
 
-    if let Some(return_type) = &function.interface.machine_interface.return_type {
+    if let Some(return_type) = &function.machine_interface.return_type {
         write!(stream, "\n    Returns: ")?;
         transpile_type(stream, return_type, context)?;
         write!(stream, "\n")?;

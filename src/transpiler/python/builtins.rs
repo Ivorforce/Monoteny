@@ -32,7 +32,7 @@ pub fn create(builtins: &TenLangBuiltins) -> namespaces::Level {
     }
 
 
-    namespace.register_definition(builtins.functions.print.id, &String::from("print"));
+    namespace.register_definition(builtins.functions.print.function_id, &String::from("print"));
 
     namespace
 }

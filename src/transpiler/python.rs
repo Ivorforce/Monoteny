@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::program::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::*;
-use crate::program::functions::HumanFunctionInterface;
+use crate::program::functions::{FunctionPointer, HumanFunctionInterface};
 use crate::program::primitives;
 use crate::program::types::{ParameterKey, Type, TypeUnit, Variable};
 use crate::transpiler::namespaces;
@@ -30,7 +30,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     let mut namespaces = builtin_namespaces.add_sublevel();
 
     for function in program.functions.iter() {
-        namespaces.register_definition(function.interface.id, &function.interface.alphanumeric_name);
+        namespaces.register_definition(function.id, &function.human_interface.alphanumeric_name);
         register_names(&function.statements, namespaces.add_sublevel(), builtins, function.variable_names.clone());
     }
 
@@ -58,10 +58,10 @@ pub fn register_names(statements: &Vec<Box<Statement>>, namespace: &mut namespac
 }
 
 pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
-    write!(stream, "\n\ndef {}(", context.names[&function.interface.id])?;
+    write!(stream, "\n\ndef {}(", context.names[&function.id])?;
 
     // TODO Can we somehow transpile function.interface.is_member_function?
-    for (idx, (key, variable)) in function.interface.parameter_names.iter().enumerate() {
+    for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
         write!(stream, "{}: ", get_external_name(key, idx))?;
         types::transpile(stream, &variable.type_declaration, context)?;
         write!(stream, ",")?;
@@ -69,7 +69,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
 
     write!(stream, ")")?;
 
-    if let Some(return_type) = &function.interface.machine_interface.return_type {
+    if let Some(return_type) = &function.machine_interface.return_type {
         write!(stream, " -> ", )?;
         types::transpile(stream, return_type, context)?;
     }
@@ -82,7 +82,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
         return Ok(())
     }
 
-    for (idx, (key, variable)) in function.interface.parameter_names.iter().enumerate() {
+    for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
         let variable_name = context.names.get(&variable.id).unwrap();
         let external_name = get_external_name(key, idx);
 
@@ -181,8 +181,8 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
                 // no-op
             }
             else {
-                write!(stream, "{}(", context.names[&function.id])?;
-                for (idx, (param_key, variable)) in function.parameter_names.iter().enumerate() {
+                write!(stream, "{}(", context.names[&function.function_id])?;
+                for (idx, (param_key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
                     if let ParameterKey::Name(name) = &param_key {
                         write!(stream, "{}=", name)?;
                     }
@@ -250,7 +250,7 @@ pub fn escape_string(string: &String) -> String {
     return string
 }
 
-pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &Rc<HumanFunctionInterface>, arguments: &HashMap<Rc<Variable>, Box<Expression>>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &HashMap<Rc<Variable>, Box<Expression>>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
     let expression = arguments.values().next().unwrap();
 
     // TODO We can probably avoid unnecessary parentheses here and in the other operators if we ask the expression for its (python) precedence, and compare it with ours.
@@ -260,21 +260,21 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &Rc<Hum
         Ok(true)
     };
 
-    if context.builtins.operators.positive.contains(interface) {
+    if context.builtins.operators.positive.contains(function) {
         return transpile_unary_operator("+");
     }
-    else if context.builtins.operators.negative.contains(interface) {
+    else if context.builtins.operators.negative.contains(function) {
         return transpile_unary_operator("-");
     }
-    else if interface.as_ref() == context.builtins.operators.not.as_ref() {
+    else if function.as_ref() == context.builtins.operators.not.as_ref() {
         return transpile_unary_operator("not ");
     }
 
     return Ok(false);
 }
 
-pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Rc<HumanFunctionInterface>, arguments: &HashMap<Rc<Variable>, Box<Expression>>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
-    let arguments: Vec<&Box<Expression>> = interface.parameter_names.iter()
+pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &HashMap<Rc<Variable>, Box<Expression>>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+    let arguments: Vec<&Box<Expression>> = function.human_interface.parameter_names.iter()
         .map(|(_, var)| arguments.get(var).unwrap())
         .collect();
     let lhs = arguments[0];
@@ -290,49 +290,49 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Rc<Hu
 
     // TODO And and Or exist but work only for boolean arguments, not tensors.
     //  We could make use of them if the arguments are booleans and the result is too.
-    if interface.as_ref() == context.builtins.operators.and.as_ref() {
+    if function.as_ref() == context.builtins.operators.and.as_ref() {
         return transpile_binary_operator("&");
     }
-    else if interface.as_ref() == context.builtins.operators.or.as_ref() {
+    else if function.as_ref() == context.builtins.operators.or.as_ref() {
         return transpile_binary_operator("|");
     }
 
-    else if context.builtins.operators.equal_to.contains(interface) {
+    else if context.builtins.operators.equal_to.contains(function) {
         return transpile_binary_operator("==");
     }
-    else if context.builtins.operators.not_equal_to.contains(interface) {
+    else if context.builtins.operators.not_equal_to.contains(function) {
         return transpile_binary_operator("!=");
     }
 
-    else if context.builtins.operators.greater_than.contains(interface) {
+    else if context.builtins.operators.greater_than.contains(function) {
         return transpile_binary_operator(">");
     }
-    else if context.builtins.operators.greater_than_or_equal_to.contains(interface) {
+    else if context.builtins.operators.greater_than_or_equal_to.contains(function) {
         return transpile_binary_operator(">=");
     }
-    else if context.builtins.operators.lesser_than.contains(interface) {
+    else if context.builtins.operators.lesser_than.contains(function) {
         return transpile_binary_operator("<");
     }
-    else if context.builtins.operators.lesser_than_or_equal_to.contains(interface) {
+    else if context.builtins.operators.lesser_than_or_equal_to.contains(function) {
         return transpile_binary_operator("<=");
     }
 
-    else if context.builtins.operators.add.contains(interface) {
+    else if context.builtins.operators.add.contains(function) {
         return transpile_binary_operator("+");
     }
-    else if context.builtins.operators.subtract.contains(interface) {
+    else if context.builtins.operators.subtract.contains(function) {
         return transpile_binary_operator("-");
     }
-    else if context.builtins.operators.multiply.contains(interface) {
+    else if context.builtins.operators.multiply.contains(function) {
         return transpile_binary_operator("*");
     }
-    else if context.builtins.operators.divide.contains(interface) {
+    else if context.builtins.operators.divide.contains(function) {
         return transpile_binary_operator("/");
     }
-    else if context.builtins.operators.exponentiate.contains(interface) {
+    else if context.builtins.operators.exponentiate.contains(function) {
         return transpile_binary_operator("**");
     }
-    else if context.builtins.operators.modulo.contains(interface) {
+    else if context.builtins.operators.modulo.contains(function) {
         return transpile_binary_operator("%");
     }
 
