@@ -24,6 +24,16 @@ Luckily, we know how to solve hard problems in a readable and approachable way. 
 
 TenLang takes this to heart: Generic types are resolved with user code at compile time. The code is TenLang, so it is unnecessary to learn a separate language paradigm.
 
+### Polymorphism
+
+Polymorphism in TenLang is offered using traits with abstract functions. When some trait conformance is required for a function, the function is polymorphically callable.
+
+The implication depends on caller context. Specifically, it depends on whether the object has a deterministic polymorphism.
+
+- Deterministic polymorphism (regular): Polymorphism can be resolved completely at compile time. No polymorphism exists after compilation.
+- Indeterministic polymorphism (from I/O): Polymorphism cannot be resolved at compile time. Abstract function calls on these objects are resolved with virtual function tables.
+
+
 ## Roadmap
 
 ### Transpilation Targets
@@ -36,6 +46,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 * [Future] C++ with Eigen
 * [Future] Octave / MatLab
 * [Future] R
+
 
 ### TenLang 0.1 (Toy Language Stage)
 
@@ -87,7 +98,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] System Callback API / Permission Contexts
 - [ ] Exceptions
 - [ ] IntX, FloatX (big int & float, which are structs)
-- [ ] Polymorphic Enums (attached objects)
+- [ ] Polymorphic Enums (enums with attached objects)
 - [ ] Abstract functions + Higher order functions
 - [ ] Deep Function Currying
 - [ ] String comprehension
@@ -99,6 +110,12 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Staggered Dimensions
 - [ ] Array Dimension Index
 - [ ] Closed Int Range Dimension Index
+
+### TenLang 3.0
+
+- [ ] System I/O
+  - [ ] Indeterministic polymorphism
+    - [ ] Virtual function tables
 
 ### Standard Library
 
@@ -114,14 +131,10 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 - Compiler / LLVM / Virtual Machine
   - See [Transpilation Targets](#Transpilation Targets)
-- Runtime Polymorphism / Classes
-  - Very complex and of limited use for most mathematical applications.
 - for / for-each loops
   - .map / .forEach calls do the same. Instead, there will be a strong callable integration allowing for return / break / continue statements inside an anonymous closure. 
 - Global (mutable) variables
   - Global variables are usually bad practice. Instead, TenLang encourages context objects.
-- System I/O (input, GUI, filesystem, streams etc.)
-  - Very complex. TenLang encourages building that part of the program in the target ecosystem.
 - Multithreading
   - Very complex, and of limited use for (pure) mathematical applications.
 - Unsafe / Reflection
