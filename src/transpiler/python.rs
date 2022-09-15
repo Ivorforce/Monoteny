@@ -10,7 +10,7 @@ use guard::guard;
 use uuid::Uuid;
 
 use crate::program::builtins::TenLangBuiltins;
-use crate::linker::computation_tree::*;
+use crate::program::computation_tree::*;
 use crate::program::functions::{FunctionPointer, HumanFunctionInterface};
 use crate::program::primitives;
 use crate::program::types::{ParameterKey, Type, TypeUnit, Variable};

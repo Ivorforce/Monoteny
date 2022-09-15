@@ -169,6 +169,18 @@ impl Type {
             arguments: self.arguments.iter().map(|x| x.generify(seed)).collect()
         })
     }
+
+    pub fn replacing_any(&self, map: &HashMap<Uuid, Box<Type>>) -> Box<Type> {
+        match &self.unit {
+            TypeUnit::Any(id) => map.get(id)
+                .map(|x| x.clone())
+                .unwrap_or_else(|| Box::new(self.clone())),
+            _ => Box::new(Type {
+                unit: self.unit.clone(),
+                arguments: self.arguments.iter().map(|x| x.replacing_any(map)).collect()
+            }),
+        }
+    }
 }
 
 impl Variable {

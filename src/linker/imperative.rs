@@ -4,7 +4,7 @@ use uuid::Uuid;
 use std::iter::zip;
 use guard::guard;
 use crate::linker;
-use crate::linker::computation_tree::{Expression, ExpressionOperation, FunctionImplementation, Statement};
+use crate::program::computation_tree::{Expression, ExpressionOperation, FunctionImplementation, Statement};
 use crate::linker::global::{link_type};
 use crate::linker::scopes;
 use crate::parser::abstract_syntax;
@@ -328,10 +328,10 @@ impl <'a> ImperativeLinker<'a> {
         // TODO Only allow abstract candidates in relation to abstract requirements declared in our current scope
 
         if candidates.len() == 0 {
-            panic!("function could not be resolved for the passed arguments: {:?}", &argument_types)
+            panic!("function {} could not be resolved for the passed arguments: {:?}", fn_name, &argument_types)
         }
         else if candidates.len() > 1 {
-            panic!("function is ambiguous ({}x) for the passed arguments: {:?}", candidates.len(), &argument_types)
+            panic!("function {} is ambiguous ({}x) for the passed arguments: {:?}", fn_name, candidates.len(), &argument_types)
         }
         else {
             let (function, (param_types, binding)) = candidates.into_iter().next().unwrap();

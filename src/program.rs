@@ -4,3 +4,4 @@ pub mod primitives;
 pub mod generics;
 pub mod traits;
 pub mod functions;
+pub mod computation_tree;

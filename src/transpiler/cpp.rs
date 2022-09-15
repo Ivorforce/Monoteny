@@ -1,5 +1,5 @@
 use std::io::Write;
-use crate::linker::computation_tree::*;
+use crate::program::computation_tree::*;
 use crate::program::primitives;
 use crate::program::types::{Type, TypeUnit};
 

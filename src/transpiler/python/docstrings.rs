@@ -1,7 +1,7 @@
 use std::io::Write;
 use crate::transpiler::python::{get_external_name, TranspilerContext, types};
 use crate::program::builtins::TenLangBuiltins;
-use crate::linker::computation_tree::*;
+use crate::program::computation_tree::*;
 use crate::program::types::{Type, TypeUnit};
 
 pub fn dump(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {

@@ -1,11 +1,10 @@
-pub mod computation_tree;
 pub mod scopes;
 pub mod imperative;
 pub mod global;
 
 use crate::parser;
 use crate::parser::abstract_syntax;
-use crate::linker::computation_tree::*;
+use crate::program::computation_tree::*;
 use crate::linker::global::link_file;
 use crate::program::builtins::*;
 

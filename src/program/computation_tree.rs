@@ -16,7 +16,7 @@ use crate::program::traits::TraitBinding;
 // ================================ Global ==============================
 
 pub struct Program {
-    pub functions: Vec<Rc<FunctionImplementation>>,
+    pub functions: HashSet<Rc<FunctionImplementation>>,
 }
 
 pub struct FunctionImplementation {
@@ -50,4 +50,18 @@ pub enum ExpressionOperation {
     VariableLookup(Rc<Variable>),
     StringLiteral(String),
     ArrayLiteral(Vec<Box<Expression>>),
+}
+
+impl PartialEq for FunctionImplementation {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for FunctionImplementation {}
+
+impl Hash for FunctionImplementation {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
 }

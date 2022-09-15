@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::parser;
 use crate::parser::abstract_syntax;
-use crate::linker::computation_tree::*;
+use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::scopes;
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
@@ -40,7 +40,7 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
     let global_variable_scope = scope.subscope(&global_linker.global_variables);
 
     // Resolve function bodies
-    let functions: Vec<Rc<FunctionImplementation>> = global_linker.functions_with_bodies.iter().map(
+    let functions: HashSet<Rc<FunctionImplementation>> = global_linker.functions_with_bodies.iter().map(
         |(fun, statements)| {
             let mut resolver = Box::new(ImperativeLinker {
                 function: Rc::clone(fun),
@@ -48,6 +48,7 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
                 generics: GenericMapping::new(),
                 variable_names: HashMap::new()
             });
+            // TODO The scope is incorrect, because the body might be in any subscope.
             resolver.link_function_body(statements, &global_variable_scope)
         }
     ).collect();
@@ -61,35 +62,55 @@ impl <'a> GlobalLinker<'a> {
     pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, scope: &scopes::Hierarchy, requirements: &HashSet<Rc<TraitConformanceRequirement>>) {
         match statement {
             abstract_syntax::GlobalStatement::Scope(generics_scope) => {
-                let mut level = scopes::Level::new();
+                let mut level_with_generics = scopes::Level::new();
 
                 for generic_name in generics_scope.generics.iter().flat_map(|x| x.iter()) {
-                    level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(Type::meta(Type::make_any())), generic_name)
+                    level_with_generics.insert_singleton(scopes::Environment::Global, Variable::make_immutable(Type::meta(Type::make_any())), generic_name)
                 }
 
-                let subscope = scope.subscope(&level);
+                let subscope_with_generics = scope.subscope(&level_with_generics);
+                let mut level_with_requirements = scopes::Level::new();
 
                 let mut requirements = requirements.clone();
                 if let Some(requirements_syntax) = &generics_scope.requirements {
                     for requirement_syntax in requirements_syntax.iter() {
-                        let unit = subscope.resolve_trait(scopes::Environment::Global, &requirement_syntax.unit);
+                        let trait_ = Rc::clone(subscope_with_generics.resolve_trait(scopes::Environment::Global, &requirement_syntax.unit));
                         let arguments = requirement_syntax.elements.iter().map(|x| {
-                            link_specialized_type(x, &subscope)
+                            link_specialized_type(x, &subscope_with_generics)
                         }).collect();
 
                         // Add requirement to scope, which is used for declarations like trait conformance and functions
                         requirements.insert(Rc::new(TraitConformanceRequirement {
                             id: Uuid::new_v4(),
-                            trait_: Rc::clone(unit),
+                            trait_: Rc::clone(&trait_),
                             arguments
                         }));
 
                         // Add requirement's implied abstract functions to scope
-                        for fun in unit.abstract_functions.iter() {
-                            todo!("Add function, but specialized with parameters and return type")
+                        for fun in trait_.abstract_functions.iter() {
+                            let replace_map = HashMap::new();
+
+                            level_with_requirements.add_function(Rc::new(FunctionPointer {
+                                pointer_id: Uuid::new_v4(),
+                                function_id: fun.function_id,
+                                requirements: HashSet::new(),
+                                human_interface: Rc::clone(&fun.human_interface),
+                                machine_interface: Rc::new(MachineFunctionInterface {
+                                    // TODO Mapping variables seems wrong, especially since they are hashable by ID?
+                                    //  Parameters should probably not point to variables directly.
+                                    parameters: fun.machine_interface.parameters.iter().map(|x| Rc::new(Variable {
+                                        id: x.id,
+                                        type_declaration: x.type_declaration.replacing_any(&replace_map),
+                                        mutability: x.mutability
+                                    })).collect(),
+                                    return_type: fun.machine_interface.return_type.as_ref().map(|x| x.replacing_any(&replace_map))
+                                })
+                            }));
                         }
                     }
                 }
+
+                let subscope = subscope_with_generics.subscope(&level_with_requirements);
 
                 for statement in &generics_scope.statements {
                     self.link_global_statement(statement.as_ref(), &subscope, &requirements);
@@ -97,8 +118,6 @@ impl <'a> GlobalLinker<'a> {
             }
             abstract_syntax::GlobalStatement::FunctionDeclaration(syntax) => {
                 let fun = link_function_pointer(&syntax, scope, requirements.clone());
-
-                self.functions_with_bodies.push((Rc::clone(&fun), &syntax.body));
 
                 let environment = match fun.human_interface.form {
                     FunctionForm::Member => scopes::Environment::Member,

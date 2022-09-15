@@ -74,6 +74,7 @@ This will be possible by TenLang coming with several different transpilers. Here
       - [ ] Anonymous Structs: ... -> (a: Int, b: Float) ... return (a: a, b: b)
     - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
     - [ ] Properties conforming to property-like functions (automatically?)
+- [ ] Non-linear linking (allow references to identifiers declared below)
 - [ ] Comments (with transpilation
 - [ ] Subscript function syntax
 - [ ] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b .. * c .. .any()
