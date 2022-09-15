@@ -4,7 +4,7 @@ trait Twiceable<_ $Number> {
 
 // Introduce a generic on which Addition must be declared.
 // All functions inside a given() {} statement must expose the generics somewhere in their interface.
-given <Number> where Addition<Number> {
+given <Number> if Addition<Number> {
     // When encountering a declaration, check that all required functions exist.
     // It finds the below function, which matches the trait declaration.
     declare Twiceable<Number>;
@@ -17,7 +17,7 @@ given <Number> where Addition<Number> {
 }
 
 // Anonymous generics: $Number implies that the generic conforms to the trait,
-// as if writing: given <$Number> where Number<$Number>.
+// as if writing: given <$Number> if Number<$Number>.
 fun {self: $Number}.times_4: $Number :: self.twice.twice;
 
 fun main() :: {

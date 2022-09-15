@@ -6,7 +6,10 @@ use std::collections::{HashMap, HashSet};
 use std::iter::zip;
 use std::ops::BitXor;
 use guard::guard;
+use crate::fmtutil::write_comma_separated_list;
+use crate::program::traits::{Trait, TraitConformanceRequirement};
 use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
+use crate::program::functions::HumanFunctionInterface;
 use crate::program::generics::GenericMapping;
 
 use crate::program::primitives;
@@ -17,37 +20,14 @@ pub enum Mutability {
     Mutable,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum FunctionForm {
-    Global,
-    Member,
-    Operator,
-}
-
-pub struct FunctionInterface {
-    pub id: Uuid,
-    pub name: String,
-    pub alphanumeric_name: String,
-
-    pub form: FunctionForm,
-    pub parameters: Vec<Box<NamedParameter>>,
-    pub generics: Vec<Rc<Generic>>,
-
-    pub return_type: Option<Box<Type>>,
-}
-
 pub struct Struct {
     pub id: Uuid,
     pub name: String,
 }
 
-pub struct NamedParameter {
-    pub external_key: ParameterKey,
-    pub variable: Rc<Variable>
-}
-
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ParameterKey {
+    None,
     Name(String),
     Int(i32),
 }
@@ -55,12 +35,11 @@ pub enum ParameterKey {
 #[derive(Clone)]
 pub struct Variable {
     pub id: Uuid,
-    pub name: String,
     pub type_declaration: Box<Type>,
-    pub mutability: Mutability,
+    pub mutability: Mutability
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Type {
     pub unit: TypeUnit,
     pub arguments: Vec<Box<Type>>
@@ -69,11 +48,13 @@ pub struct Type {
 #[derive(Clone, PartialEq, Eq)]
 pub enum TypeUnit {
     MetaType,  // Type of a type
+    Any(Uuid),  // Bound to some unknown type
     Generic(Uuid),  // Bound to a type within a GenericMapping
     Monad,
     Primitive(primitives::Type),
     Struct(Rc<Struct>),
-    Function(Rc<FunctionInterface>),
+    Trait(Rc<Trait>),
+    Function(Rc<HumanFunctionInterface>),
     PrecedenceGroup(Rc<PrecedenceGroup>),
 }
 
@@ -91,11 +72,6 @@ pub struct Pattern {
     pub precedence_group: Rc<PrecedenceGroup>,
 }
 
-pub struct PassedArgumentType<'a> {
-    pub key: ParameterKey,
-    pub value_type: &'a Option<Box<Type>>,
-}
-
 impl PartialEq for Variable {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
@@ -105,20 +81,6 @@ impl PartialEq for Variable {
 impl Eq for Variable {}
 
 impl Hash for Variable {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-    }
-}
-
-impl PartialEq for FunctionInterface {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-
-impl Eq for FunctionInterface {}
-
-impl Hash for FunctionInterface {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
@@ -144,7 +106,20 @@ impl Debug for ParameterKey {
         match self {
             Name(n) => write!(fmt, "{}", n),
             Int(n) => write!(fmt, "{}", n),
+            None => Ok(())
         }
+    }
+}
+
+impl Debug for Type {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "{:?}", self.unit)?;
+        if !self.arguments.is_empty() {
+            write!(fmt, "<")?;
+            write_comma_separated_list(fmt, &self.arguments)?;
+            write!(fmt, ">")?;
+        }
+        Ok(())
     }
 }
 
@@ -153,42 +128,55 @@ impl Debug for TypeUnit {
         use TypeUnit::*;
         match self {
             Primitive(p) => write!(fmt, "{}", p.identifier_string()),
-            Monad => write!(fmt, "Monad"),
-            Function(f) => write!(fmt, "(?) -> ({:?})", f.return_type),
-            Generic(g) => write!(fmt, "{}", g),
-            MetaType => write!(fmt, "MetaType"),
             Struct(s) => write!(fmt, "{:?}", s.name),
+            Trait(t) => write!(fmt, "{:?}", t.name),
+            Monad => write!(fmt, "Monad"),
+            Function(f) => write!(fmt, "(?) -> ({:?})", f.machine_interface.return_type),
+            Generic(g) => write!(fmt, "Generic<{}>", g),
+            Any(g) => write!(fmt, "Any<{}>", g),
+            MetaType => write!(fmt, "MetaType"),
             PrecedenceGroup(p) => write!(fmt, "{:?}", p.name),
         }
     }
 }
 
-impl Debug for PassedArgumentType<'_> {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "{:?}: {:?}", &self.key, &self.value_type)
-    }
-}
-
 impl Type {
     pub fn make_any() -> Box<Type> {
-        Type::unit(TypeUnit::Generic(Uuid::new_v4()))
+        Type::unit(TypeUnit::Any(Uuid::new_v4()))
     }
 
     pub fn unit(unit: TypeUnit) -> Box<Type> {
         Box::new(Type { unit, arguments: vec![] })
     }
 
+    pub fn meta(subtype: Box<Type>) -> Box<Type> {
+        Box::new(Type {
+            unit: TypeUnit::MetaType,
+            arguments: vec![subtype]
+        })
+    }
+
     fn bitxor(lhs: &Uuid, rhs: &Uuid) -> Uuid {
         Uuid::from_u128(lhs.as_u128() ^ rhs.as_u128())
     }
 
-    pub fn uniqueify(&self, seed: &Uuid) -> Box<Type> {
+    pub fn generify(&self, seed: &Uuid) -> Box<Type> {
         Box::new(Type {
             unit: match &self.unit {
-                TypeUnit::Generic(id) => TypeUnit::Generic(Type::bitxor(seed, id)),
+                TypeUnit::Any(id) => TypeUnit::Generic(Type::bitxor(seed, id)),
                 _ => self.unit.clone(),
             },
-            arguments: self.arguments.iter().map(|x| x.uniqueify(seed)).collect()
+            arguments: self.arguments.iter().map(|x| x.generify(seed)).collect()
+        })
+    }
+}
+
+impl Variable {
+    pub fn make_immutable(type_declaration: Box<Type>) -> Rc<Variable> {
+        Rc::new(Variable {
+            id: Uuid::new_v4(),
+            type_declaration,
+            mutability: Mutability::Immutable
         })
     }
 }

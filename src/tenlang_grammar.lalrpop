@@ -15,9 +15,11 @@ match {
     ".",
     "(", ")", "{", "}", "[",  "]", "..",
     ";", ",", ":", "::", "->",
+    "<", ">",
     "=",
     "let", "var",
     "fun", "pattern",
+    "given", "if",
     _
 }
 
@@ -37,20 +39,23 @@ Identifier: String = {
 };
 
 OperatorIdentifier: String = {
-    _OperatorIdentifier => format!("{}", <>)
+    _OperatorIdentifier => format!("{}", <>),
+    "<" => String::from("<"),
+    ">" => String::from(">"),
 };
 
 // =============================== Global =====================================
 
 
 pub Program: Program = {
-    <stmts: (<GlobalStatement>)*> => Program { global_statements: stmts }
+    <stmts: GlobalStatement*> => Program { global_statements: stmts }
 };
 
 pub GlobalStatement: Box<GlobalStatement> = {
     Function => Box::new(GlobalStatement::FunctionDeclaration(<>)),
     Pattern => Box::new(GlobalStatement::Pattern(<>)),
-    Operator => Box::new(GlobalStatement::Operator(<>)),
+    OperatorFunction => Box::new(GlobalStatement::Operator(<>)),
+    GlobalScope => Box::new(GlobalStatement::Scope(<>)),
 };
 
 Pattern: Box<PatternDeclaration> = {
@@ -62,8 +67,20 @@ Function: Box<Function> = {
     "fun" <target: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <TypeDeclaration>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
 }
 
-Operator: Box<Operator> = {
+OperatorFunction: Box<Operator> = {
     "fun" <lhs: ContextualParameter?> <operator: OperatorIdentifier> <rhs: ContextualParameter> <return_type: ("->" <TypeDeclaration>)?> "::" <body: FunctionBody> => Box::new(Operator { <> }),
+}
+
+GlobalScope: Box<GlobalScope> = {
+    <generics: ("given" "<" <OptionalFinalSeparatorList<Identifier, ",">> ">")?> <requirements: ("if" <ConformanceDeclaration+>)?> "{" <statements: GlobalStatement*> "}" => Box::new(GlobalScope { <> }),
+}
+
+ConformanceDeclaration: Box<ConformanceDeclaration> = {
+    <unit: Identifier> "<" <elements: OptionalFinalSeparatorList<SpecializedType, ",">> ">" => Box::new(ConformanceDeclaration { <> }),
+}
+
+SpecializedType: Box<SpecializedType> = {
+    <unit: Identifier> <elements: ("<" <OptionalFinalSeparatorList<SpecializedType, ",">> ">")?> => Box::new(SpecializedType { <> }),
 }
 
 FunctionBody: Vec<Box<Statement>> = {
@@ -135,9 +152,9 @@ Term: Box<Expression> = {
 };
 
 PassedArgument: Box<PassedArgument> = {
-    <name: Number> ":" <value: Expression> => Box::new(PassedArgument { key: Some(ParameterKey::Int(name)), value }),
-    <name: Identifier> ":" <value: Expression> => Box::new(PassedArgument { key: Some(ParameterKey::Name(name)), value }),
-    <value: Expression> => Box::new(PassedArgument { key: None, value })
+    <name: Number> ":" <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Int(name), value }),
+    <name: Identifier> ":" <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Name(name), value }),
+    <value: Expression> => Box::new(PassedArgument { key: ParameterKey::None, value })
 }
 
 FunctionCallExpression<NextOperatorLevel>: Box<Expression> = {

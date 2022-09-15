@@ -1,15 +1,19 @@
 use std::collections::{HashMap, HashSet};
+use std::iter::zip;
 use std::rc::Rc;
 use uuid::Uuid;
 use strum::IntoEnumIterator;
 use crate::linker::scopes;
+use crate::program::traits::{Trait, TraitConformanceDeclaration};
 use crate::parser;
 use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::types::*;
 use crate::program::primitives;
 use crate::program;
+use crate::program::functions::{FunctionForm, HumanFunctionInterface, MachineFunctionInterface};
 
 pub struct TenLangBuiltins {
+    pub traits: TenLangBuiltinTraits,
     pub operators: TenLangBuiltinOperators,
     pub functions: TenLangBuiltinFunctions,
     pub primitive_metatypes: HashMap<primitives::Type, Box<Type>>,
@@ -21,31 +25,31 @@ pub struct TenLangBuiltins {
 }
 
 pub struct TenLangBuiltinOperators {
-    pub and: Rc<FunctionInterface>,
-    pub or: Rc<FunctionInterface>,
+    pub and: Rc<HumanFunctionInterface>,
+    pub or: Rc<HumanFunctionInterface>,
 
-    pub equal_to: Vec<Rc<FunctionInterface>>,
-    pub not_equal_to: Vec<Rc<FunctionInterface>>,
+    pub equal_to: Vec<Rc<HumanFunctionInterface>>,
+    pub not_equal_to: Vec<Rc<HumanFunctionInterface>>,
 
-    pub greater_than: Vec<Rc<FunctionInterface>>,
-    pub greater_than_or_equal_to: Vec<Rc<FunctionInterface>>,
-    pub lesser_than: Vec<Rc<FunctionInterface>>,
-    pub lesser_than_or_equal_to: Vec<Rc<FunctionInterface>>,
+    pub greater_than: Vec<Rc<HumanFunctionInterface>>,
+    pub greater_than_or_equal_to: Vec<Rc<HumanFunctionInterface>>,
+    pub lesser_than: Vec<Rc<HumanFunctionInterface>>,
+    pub lesser_than_or_equal_to: Vec<Rc<HumanFunctionInterface>>,
 
-    pub add: Vec<Rc<FunctionInterface>>,
-    pub subtract: Vec<Rc<FunctionInterface>>,
-    pub multiply: Vec<Rc<FunctionInterface>>,
-    pub divide: Vec<Rc<FunctionInterface>>,
-    pub exponentiate: Vec<Rc<FunctionInterface>>,
-    pub modulo: Vec<Rc<FunctionInterface>>,
+    pub add: Vec<Rc<HumanFunctionInterface>>,
+    pub subtract: Vec<Rc<HumanFunctionInterface>>,
+    pub multiply: Vec<Rc<HumanFunctionInterface>>,
+    pub divide: Vec<Rc<HumanFunctionInterface>>,
+    pub exponentiate: Vec<Rc<HumanFunctionInterface>>,
+    pub modulo: Vec<Rc<HumanFunctionInterface>>,
 
-    pub positive: Vec<Rc<FunctionInterface>>,
-    pub negative: Vec<Rc<FunctionInterface>>,
-    pub not: Rc<FunctionInterface>,
+    pub positive: Vec<Rc<HumanFunctionInterface>>,
+    pub negative: Vec<Rc<HumanFunctionInterface>>,
+    pub not: Rc<HumanFunctionInterface>,
 }
 
 pub struct TenLangBuiltinFunctions {
-    pub print: Rc<FunctionInterface>,
+    pub print: Rc<HumanFunctionInterface>,
 }
 
 #[allow(non_snake_case)]
@@ -60,115 +64,20 @@ pub struct TenLangBuiltinPrecedenceGroups {
 }
 
 #[allow(non_snake_case)]
+pub struct TenLangBuiltinTraits {
+    pub Number: Rc<Trait>,
+}
+
+#[allow(non_snake_case)]
 pub struct TenLangBuiltinStructs {
     pub String: Rc<Struct>,
-}
-
-pub fn create_function_variable(interface: &Rc<FunctionInterface>) -> Rc<Variable> {
-    return Rc::new(Variable {
-        id: Uuid::new_v4(),
-        name: interface.name.clone(),
-        type_declaration: Type::unit(TypeUnit::Function(Rc::clone(interface))),
-        mutability: Mutability::Immutable,
-    })
-}
-
-pub fn create_same_parameters(declared_type: &Box<Type>, names: Vec<&str>) -> Vec<Box<NamedParameter>> {
-    names.iter().enumerate()
-        .map(|(idx, name)|
-            Box::new(NamedParameter {
-                external_key: ParameterKey::Int(idx as i32),
-                variable: Rc::new(Variable {
-                    id: Uuid::new_v4(),
-                    name: String::from(*name),
-                    type_declaration: declared_type.clone(),
-                    mutability: Mutability::Immutable,
-                }),
-            })
-        )
-        .collect()
 }
 
 pub fn create_builtins() -> Rc<TenLangBuiltins> {
     let mut constants: scopes::Level = scopes::Level::new();
 
     let bool_type = Type::unit(TypeUnit::Primitive(primitives::Type::Bool));
-
-    // TODO Can we somehow change it so constants is not passed explicitly?
-    //  It seems that every use in other functions borrows this function as mutable, so that the
-    //  reference can be accessed from there. Only one mutable borrow can exist, so two functions
-    //  calling this one is impossible...?
-    let add_function = |constants: &mut scopes::Level, interface: Rc<FunctionInterface>| -> Rc<FunctionInterface> {
-        constants.add_function(scopes::Environment::Global, create_function_variable(&interface));
-        interface
-    };
-
-    // For now it's ok to assume the shape_returns types to be equal
-    let add_binary_aa_x = |constants: &mut scopes::Level, name: &str, alphanumeric_name: &str, parameters: &Vec<Box<Type>>, return_type: &Box<Type>| -> Vec<Rc<FunctionInterface>> {
-        parameters.iter().map(|x| {
-            add_function(constants, Rc::new(FunctionInterface {
-                id: Uuid::new_v4(),
-                name: String::from(name),
-                alphanumeric_name: String::from(alphanumeric_name),
-                form: FunctionForm::Operator,
-                parameters: create_same_parameters(
-                    x,
-                    vec!["lhs", "rhs"]
-                ),
-                return_type: Some(return_type.clone()),
-                generics: vec![],
-            }))
-        }).collect()
-    };
-
-    let add_binary_aa_a = |constants: &mut scopes::Level, name: &str, alphanumeric_name: &str, parameters: &Vec<Box<Type>>| -> Vec<Rc<FunctionInterface>> {
-        parameters.iter().map(|x| {
-            add_function(constants, Rc::new(FunctionInterface {
-                id: Uuid::new_v4(),
-                name: String::from(name),
-                alphanumeric_name: String::from(alphanumeric_name),
-                form: FunctionForm::Operator,
-                parameters: create_same_parameters(
-                    x,
-                    vec!["lhs", "rhs"]
-                ),
-                return_type: Some(x.clone()),
-                generics: vec![],
-            }))
-        }).collect()
-    };
-
-    let add_binary_xx_x = |constants: &mut scopes::Level, name: &str, alphanumeric_name: &str, declared_type: &Box<Type>| -> Rc<FunctionInterface> {
-        add_function(constants, Rc::new(FunctionInterface {
-            id: Uuid::new_v4(),
-            form: FunctionForm::Operator,
-            name: String::from(name),
-            alphanumeric_name: String::from(alphanumeric_name),
-            parameters: create_same_parameters(
-                &declared_type,
-                vec!["lhs", "rhs"]
-            ),
-            return_type: Some(declared_type.clone()),
-            generics: vec![],
-        }))
-    };
-
-    let add_unary_a_a = |constants: &mut scopes::Level, name: &str, alphanumeric_name: &str, parameters: &Vec<Box<Type>>| -> Vec<Rc<FunctionInterface>> {
-        parameters.iter().map(|x| {
-            add_function(constants, Rc::new(FunctionInterface {
-                id: Uuid::new_v4(),
-                name: String::from(name),
-                alphanumeric_name: String::from(alphanumeric_name),
-                form: FunctionForm::Operator,
-                parameters: create_same_parameters(
-                    x,
-                    vec!["value"]
-                ),
-                return_type: Some(x.clone()),
-                generics: vec![],
-            }))
-        }).collect()
-    };
+    let generic_type = Type::make_any();
 
     let primitive_metatypes = primitives::Type::iter()
         .map(|x| (x, Box::new(Type {
@@ -183,16 +92,17 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     for (primitive_type, metatype) in &primitive_metatypes {
         constants.insert_singleton(scopes::Environment::Global, Rc::new(Variable {
             id: Uuid::new_v4(),
-            name: primitive_type.identifier_string(),
             type_declaration: metatype.clone(),
             mutability: Mutability::Immutable
-        }));
+        }), &primitive_type.identifier_string());
     }
 
     let add_struct = |constants: &mut scopes::Level, name: &str| -> Rc<Struct> {
+        let name = String::from(name);
+
         let s = Rc::new(Struct {
             id: Uuid::new_v4(),
-            name: String::from(name),
+            name: name.clone(),
         });
         let s_type = Box::new(Type {
             unit: TypeUnit::MetaType,
@@ -201,13 +111,13 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
 
         constants.insert_singleton(scopes::Environment::Global, Rc::new(Variable {
             id: Uuid::new_v4(),
-            name: s.name.clone(),
             type_declaration: s_type,
             mutability: Mutability::Immutable,
-        }));
+        }), &name);
 
         s
     };
+
 
     let all_primitives: Vec<Box<Type>> = primitives::Type::iter()
         .map(|x| Type::unit(TypeUnit::Primitive(x)))
@@ -230,6 +140,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         }
         group
     };
+
 
     let mut parser_scope = parser::scopes::Level::new();
 
@@ -268,41 +179,179 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         ),
     };
 
+
+    let add_trait_with_xx_x = |constants: &mut scopes::Level, name: &str, fns: Vec<(&str, &str)>| -> (Rc<Trait>, Vec<Rc<HumanFunctionInterface>>) {
+        let generic_id = Uuid::new_v4();
+        let generic_type = Type::unit(TypeUnit::Any(generic_id));
+
+        let mut t = Trait {
+            id: Uuid::new_v4(),
+            name: String::from(name),
+            abstract_functions: HashSet::new()
+        };
+
+        let mut interfaces = vec![];
+        for (fn_name, fn_alphanumeric_name) in fns {
+            // Abstract functions are only added to scope on trait requirements.
+            let fun = HumanFunctionInterface::make_operator(fn_name, fn_alphanumeric_name, 2, &generic_type, &generic_type);
+            t.abstract_functions.insert(Rc::clone(&fun));
+            interfaces.push(fun);
+        }
+
+        let t = Rc::new(t);
+        constants.insert_singleton(
+            scopes::Environment::Global,
+            Rc::new(Variable {
+                id: Uuid::new_v4(),
+                type_declaration: Type::unit(TypeUnit::Trait(t.clone())),
+                mutability: Mutability::Immutable,
+            }),
+            &t.name
+        );
+        return (t, interfaces)
+    };
+
+    let (number_trait, number_fns) = add_trait_with_xx_x(&mut constants, "Number", vec![("+", "add"), ("-", "subtract"), ("*", "multiply"), ("/", "divide")]);
+
+    let traits = TenLangBuiltinTraits {
+        Number: number_trait
+    };
+
+    let mut add_ops: Vec<Rc<HumanFunctionInterface>> = vec![Rc::clone(&number_fns[0])];
+    let mut sub_ops: Vec<Rc<HumanFunctionInterface>> = vec![Rc::clone(&number_fns[1])];
+    let mut mul_ops: Vec<Rc<HumanFunctionInterface>> = vec![Rc::clone(&number_fns[2])];
+    let mut div_ops: Vec<Rc<HumanFunctionInterface>> = vec![Rc::clone(&number_fns[3])];
+
+    let mut exp_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+    let mut mod_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+
+    let mut gr__ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+    let mut geq_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+    let mut le__ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+    let mut leq_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+
+    let mut pos_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+    let mut neg_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+
+    for primitive_type in number_primitives.iter() {
+        let add_op = HumanFunctionInterface::make_operator("+", "add", 2, primitive_type, primitive_type);
+        constants.add_function(Rc::clone(&add_op));
+        add_ops.push(Rc::clone(&add_op));
+
+        let sub_op = HumanFunctionInterface::make_operator("-", "subtract", 2, primitive_type, primitive_type);
+        constants.add_function(Rc::clone(&sub_op));
+        sub_ops.push(Rc::clone(&sub_op));
+
+        let mul_op = HumanFunctionInterface::make_operator("*", "multiply",  2, primitive_type, primitive_type);
+        constants.add_function(Rc::clone(&mul_op));
+        mul_ops.push(Rc::clone(&mul_op));
+
+        let div_op = HumanFunctionInterface::make_operator("/", "divide", 2, primitive_type, primitive_type);
+        constants.add_function(Rc::clone(&div_op));
+        div_ops.push(Rc::clone(&div_op));
+
+        // TODO Exponentiate should work only on floats and uints, I think
+        let exp_op = HumanFunctionInterface::make_operator("**", "exponentiate", 2, primitive_type, primitive_type);
+        constants.add_function(Rc::clone(&exp_op));
+        exp_ops.push(Rc::clone(&exp_op));
+
+        let mod_op = HumanFunctionInterface::make_operator("%", "modulo", 2, primitive_type, primitive_type);
+        constants.add_function(Rc::clone(&mod_op));
+        mod_ops.push(Rc::clone(&mod_op));
+
+        constants.trait_conformance_declarations.add(Rc::new(TraitConformanceDeclaration {
+            id: Uuid::new_v4(),
+            trait_: Rc::clone(&traits.Number),
+            arguments: vec![primitive_type.clone()],
+            requirements: HashSet::new(),
+            function_implementations: HashMap::from([
+                (Rc::clone(&number_fns[0]), add_op),
+                (Rc::clone(&number_fns[1]), sub_op),
+                (Rc::clone(&number_fns[2]), mul_op),
+                (Rc::clone(&number_fns[3]), div_op),
+            ])
+        }));
+
+        // Pair-Associative
+        let gr__op = HumanFunctionInterface::make_operator(">", "is_greater", 2, primitive_type, &bool_type);
+        constants.add_function(Rc::clone(&gr__op));
+        gr__ops.push(gr__op);
+
+        let geq_op = HumanFunctionInterface::make_operator(">=", "is_greater_or_equal", 2, primitive_type, &bool_type);
+        constants.add_function(Rc::clone(&geq_op));
+        geq_ops.push(geq_op);
+
+        let le__op = HumanFunctionInterface::make_operator("<", "is_lesser", 2, primitive_type, &bool_type);
+        constants.add_function(Rc::clone(&le__op));
+        le__ops.push(le__op);
+
+        let leq_op = HumanFunctionInterface::make_operator("<=", "is_lesser_or_equal", 2, primitive_type, &bool_type);
+        constants.add_function(Rc::clone(&leq_op));
+        leq_ops.push(leq_op);
+
+        // Unary + -
+        let pos_op = HumanFunctionInterface::make_operator("+", "is_lesser_or_equal", 1, primitive_type, primitive_type);
+        constants.add_function(Rc::clone(&pos_op));
+        pos_ops.push(pos_op);
+
+        let neg_op = HumanFunctionInterface::make_operator("-", "is_lesser_or_equal", 1, primitive_type, primitive_type);
+        constants.add_function(Rc::clone(&neg_op));
+        neg_ops.push(neg_op);
+    }
+
+    let mut eq__ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+    let mut neq_ops: Vec<Rc<HumanFunctionInterface>> = vec![];
+    for primitive_type in all_primitives.iter() {
+        // Pair-Associative
+        let eq__op = HumanFunctionInterface::make_operator("==", "is_equal", 2, primitive_type, &bool_type);
+        constants.add_function(Rc::clone(&eq__op));
+        eq__ops.push(eq__op);
+
+        let neq_op = HumanFunctionInterface::make_operator("!=", "is_not_equal", 2, primitive_type, &bool_type);
+        constants.add_function(Rc::clone(&neq_op));
+        neq_ops.push(neq_op);
+    }
+
+    let and_op = HumanFunctionInterface::make_operator("&&", "and", 2, &bool_type, &bool_type);
+    constants.add_function(Rc::clone(&and_op));
+
+    let or__op = HumanFunctionInterface::make_operator("||", "or", 2, &bool_type, &bool_type);
+    constants.add_function(Rc::clone(&or__op));
+
+    let not_op = HumanFunctionInterface::make_operator("!", "not", 1, &bool_type, &bool_type);
+    constants.add_function(Rc::clone(&not_op));
+
+
+    let print_function = HumanFunctionInterface::make_global("print", "print", [generic_type.clone()].into_iter(), None);
+    constants.add_function(Rc::clone(&print_function));
+
     Rc::new(TenLangBuiltins {
+        traits,
         operators: TenLangBuiltinOperators {
-            and: add_binary_xx_x(&mut constants, "&&", "and", &bool_type),
-            or: add_binary_xx_x(&mut constants, "||","or",  &bool_type),
+            and: and_op,
+            or: or__op,
 
-            // These are n-ary in syntax but binary in implementation.
-            equal_to: add_binary_aa_x(&mut constants, "==", "is_equal", &all_primitives, &bool_type),
-            not_equal_to: add_binary_aa_x(&mut constants, "!=", "is_not_equal", &all_primitives, &bool_type),
+            equal_to: eq__ops,
+            not_equal_to: neq_ops,
 
-            greater_than: add_binary_aa_x(&mut constants, ">", "is_greater", &number_primitives, &bool_type),
-            greater_than_or_equal_to: add_binary_aa_x(&mut constants, ">=", "is_greater_or_equal", &number_primitives, &bool_type),
-            lesser_than: add_binary_aa_x(&mut constants, "<", "is_lesser", &number_primitives, &bool_type),
-            lesser_than_or_equal_to: add_binary_aa_x(&mut constants, "<=", "is_lesser_or_equal", &number_primitives, &bool_type),
+            greater_than: gr__ops,
+            greater_than_or_equal_to: geq_ops,
+            lesser_than: le__ops,
+            lesser_than_or_equal_to: leq_ops,
 
-            add: add_binary_aa_a(&mut constants, "+", "add", &number_primitives),
-            subtract: add_binary_aa_a(&mut constants, "-", "subtract", &number_primitives),
-            multiply: add_binary_aa_a(&mut constants, "*", "multiply", &number_primitives),
-            divide: add_binary_aa_a(&mut constants, "/", "divide", &number_primitives),
-            exponentiate: add_binary_aa_a(&mut constants, "**", "exponentiate", &number_primitives),
-            modulo: add_binary_aa_a(&mut constants, "%", "modulo", &number_primitives),
+            add: add_ops,
+            subtract: sub_ops,
+            multiply: mul_ops,
+            divide: div_ops,
+            exponentiate: exp_ops,
+            modulo: mod_ops,
 
-            positive: add_unary_a_a(&mut constants, "+", "positive", &number_primitives),
-            negative: add_unary_a_a(&mut constants, "-", "negative", &number_primitives),
-            not: add_unary_a_a(&mut constants, "!", "not", &vec![bool_type]).into_iter().next().unwrap(),
+            positive: pos_ops,
+            negative: neg_ops,
+            not: not_op,
         },
         functions: TenLangBuiltinFunctions {
-            print: add_function(&mut constants, Rc::new(FunctionInterface {
-                id: Uuid::new_v4(),
-                form: FunctionForm::Global,
-                name: String::from("print"),
-                alphanumeric_name: String::from("print"),
-                parameters: create_same_parameters(&Type::make_any(), vec!["object"]),
-                generics: vec![],
-                return_type: None
-            })),
+            print: print_function,
         },
         structs: TenLangBuiltinStructs {
             String: add_struct(&mut constants, "String")

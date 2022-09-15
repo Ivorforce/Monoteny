@@ -1,41 +1,47 @@
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
 use std::iter::zip;
+use guard::guard;
 use crate::linker;
-use crate::linker::computation_tree::{Expression, ExpressionOperation, Function, PassedArgument, Statement};
+use crate::linker::computation_tree::{Expression, ExpressionOperation, FunctionImplementation, Statement};
+use crate::linker::global::{link_type};
 use crate::linker::scopes;
 use crate::parser::abstract_syntax;
 use crate::program::builtins::TenLangBuiltins;
+use crate::program::functions::{HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::generics::GenericMapping;
 use crate::program::primitives;
+use crate::program::traits::TraitBinding;
 use crate::program::types::*;
 
-pub struct ImperativeResolver<'a> {
-    pub interface: &'a Rc<FunctionInterface>,
+pub struct ImperativeLinker<'a> {
+    pub interface: &'a Rc<HumanFunctionInterface>,
     pub builtins: &'a TenLangBuiltins,
-    pub generics: GenericMapping
+    pub generics: GenericMapping,
+    pub variable_names: HashMap<Rc<Variable>, String>
 }
 
-impl <'a> ImperativeResolver<'a> {
-    pub fn link_function_body(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Hierarchy) -> Rc<Function> {
+impl <'a> ImperativeLinker<'a> {
+    pub fn link_function_body(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Hierarchy) -> Rc<FunctionImplementation> {
         let mut parameter_variables = scopes::Level::new();
 
-        for parameter in &self.interface.parameters {
-            let variable = &parameter.variable;
-            parameter_variables.insert_singleton(scopes::Environment::Global, variable.clone());
+        for (internal_name, (_, variable)) in zip(self.interface.parameter_names_internal.iter(), self.interface.parameter_names.iter()) {
+            parameter_variables.insert_singleton(scopes::Environment::Global, variable.clone(), internal_name);
         }
 
         let subscope = scope.subscope(&parameter_variables);
         let statements: Vec<Box<Statement>> = self.link_top_scope(body, &subscope);
 
-        return Rc::new(Function {
+        return Rc::new(FunctionImplementation {
             interface: Rc::clone(self.interface),
             statements,
+            variable_names: self.variable_names.clone()
         });
     }
 
     pub fn link_top_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Hierarchy) -> Vec<Box<Statement>> {
-        if let Some(_) = &self.interface.return_type {
+        if let Some(_) = &self.interface.machine_interface.return_type {
             if let [statement] = &body[..] {
                 if let abstract_syntax::Statement::Expression(expression ) = statement.as_ref() {
                     // Single-Statement Return
@@ -61,7 +67,7 @@ impl <'a> ImperativeResolver<'a> {
                     let inferred_type = expression.result_type.as_ref().unwrap();
 
                     if let Some(type_declaration) = type_declaration {
-                        let type_declaration = linker::link_type(&type_declaration, &subscope);
+                        let type_declaration = link_type(&type_declaration, &subscope);
                         if &type_declaration != inferred_type {
                             panic!("Declared type of variable '{}' is not equal to inferred type '{:?}'", identifier, inferred_type);
                         }
@@ -69,7 +75,6 @@ impl <'a> ImperativeResolver<'a> {
 
                     let variable = Rc::new(Variable {
                         id: Uuid::new_v4(),
-                        name: identifier.clone(),
                         type_declaration: inferred_type.clone(),
                         mutability: mutability.clone(),
                     });
@@ -77,13 +82,13 @@ impl <'a> ImperativeResolver<'a> {
                     statements.push(Box::new(
                         Statement::VariableAssignment(Rc::clone(&variable), expression)
                     ));
-                    local_variables.push_variable(scopes::Environment::Global, variable);
+                    local_variables.push_variable(scopes::Environment::Global, variable, identifier);
                 },
                 abstract_syntax::Statement::Return(expression) => {
                     let subscope = scope.subscope(&local_variables);
                     let expression: Option<Box<Expression>> = expression.as_ref().map(|x| self.link_expression(x, &subscope));
 
-                    match (&self.interface.return_type, expression) {
+                    match (&self.interface.machine_interface.return_type, expression) {
                         (Some(_), None) => panic!("Return statement offers no value when the function declares an object."),
                         (None, Some(_)) => panic!("Return statement offers a value when the function declares void."),
                         (None, None) => {
@@ -163,44 +168,39 @@ impl <'a> ImperativeResolver<'a> {
             abstract_syntax::Expression::BinaryOperator { lhs, operator, rhs } => {
                 let lhs = self.link_expression(lhs, scope);
                 let rhs = self.link_expression(rhs, scope);
-                let function = self.link_binary_function(&lhs, operator, &rhs, scope);
-
-                link_static_function_call(
-                    function, link_arguments_to_parameters(function, vec![lhs, rhs])
-                )
+                self.link_binary_function(lhs, operator, rhs, scope)
             },
             abstract_syntax::Expression::ConjunctivePairOperators { arguments, operators } => {
-                let arguments: Vec<Box<Expression>> = arguments.into_iter()
-                    .map(|x| self.link_expression(x, scope))
-                    .collect();
-
-                let functions: Vec<Rc<FunctionInterface>> = zip(arguments.windows(2), operators.into_iter())
-                    .map(|(args, operator)| {
-                        let (lhs, rhs) = (&args[0], &args[1]);
-                        self.link_binary_function(lhs, operator, rhs, scope).clone()
-                    })
-                    .collect();
-
-                if arguments.len() != functions.len() + 1 || arguments.len() < 2 {
-                    panic!("Internal Error for PairAssociativeBinaryOperators: (args.len(): {}, functions.len(): {})", arguments.len(), functions.len());
-                }
-                else {
-                    if functions.len() == 1 {
-                        println!("Warning: Attempting making a pair-associative operator from just 1 pair. This should not happen.");
-                    }
-
-                    Box::new(Expression {
-                        // TODO This is not true; we have to see what (a > b) && (b > c) actually outputs
-                        result_type: Some(Type::unit(TypeUnit::Primitive(primitives::Type::Bool))),
-                        operation: Box::new(ExpressionOperation::PairwiseOperations { arguments, functions })
-                    })
-                }
+                todo!()
+                // let arguments: Vec<Box<Expression>> = arguments.into_iter()
+                //     .map(|x| self.link_expression(x, scope))
+                //     .collect();
+                //
+                // let functions: Vec<Rc<FunctionInterface>> = zip(arguments.windows(2), operators.into_iter())
+                //     .map(|(args, operator)| {
+                //         let (lhs, rhs) = (&args[0], &args[1]);
+                //         self.link_binary_function(lhs, operator, rhs, scope).clone()
+                //     })
+                //     .collect();
+                //
+                // if arguments.len() != functions.len() + 1 || arguments.len() < 2 {
+                //     panic!("Internal Error for PairAssociativeBinaryOperators: (args.len(): {}, functions.len(): {})", arguments.len(), functions.len());
+                // }
+                // else {
+                //     if functions.len() == 1 {
+                //         println!("Warning: Attempting making a pair-associative operator from just 1 pair. This should not happen.");
+                //     }
+                //
+                //     Box::new(Expression {
+                //         // TODO This is not true; we have to see what (a > b) && (b > c) actually outputs
+                //         result_type: Some(Type::unit(TypeUnit::Primitive(primitives::Type::Bool))),
+                //         operation: Box::new(ExpressionOperation::PairwiseOperations { arguments, functions })
+                //     })
+                // }
             }
             abstract_syntax::Expression::UnaryOperator { operator, argument} => {
                 let argument = self.link_expression(argument, scope);
-                let function = self.link_unary_function(operator, &argument, scope);
-
-                link_static_function_call(function, link_arguments_to_parameters(function, vec![argument]))
+                self.link_unary_function(operator, argument, scope)
             },
             abstract_syntax::Expression::VariableLookup(identifier) => {
                 let variable = scope.resolve_unambiguous(scopes::Environment::Global, identifier);
@@ -218,17 +218,11 @@ impl <'a> ImperativeResolver<'a> {
                 return match callee.as_ref() {
                     abstract_syntax::Expression::VariableLookup(function_name) => {
                         // Static Call
-                        let arguments: Vec<Box<PassedArgument>> = self.link_passed_arguments(
-                            arguments.iter(), scope, 0
-                        );
-
-                        let argument_types = arguments.iter()
-                            .map(|x| x.to_argument_type())
+                        let arguments: Vec<(ParameterKey, Box<Expression>)> = arguments.iter()
+                            .map(|arg| (arg.key.clone(), self.link_expression(&arg.value, scope)))
                             .collect();
 
-                        let function = scope.resolve_function(scopes::Environment::Global, function_name, &argument_types, &mut self.generics);
-
-                        link_static_function_call(function, arguments)
+                        self.link_function_call(function_name, scopes::Environment::Global, arguments, scope)
                     }
                     _ => {
                         match callee.as_ref() {
@@ -236,38 +230,30 @@ impl <'a> ImperativeResolver<'a> {
                                 let target = self.link_expression(target, scope);
 
                                 // Member Function
-                                let arguments: Vec<Box<PassedArgument>> = Some(Box::new(PassedArgument {
-                                    key: ParameterKey::Int(0),
-                                    value: target
-                                })).into_iter().chain(self.link_passed_arguments(
-                                    arguments.iter(), scope, 1
-                                ).into_iter()).collect();
-
-                                let argument_types = arguments.iter()
-                                    .map(|x| x.to_argument_type())
+                                let arguments: Vec<(ParameterKey, Box<Expression>)> = Some((ParameterKey::None, target)).into_iter()
+                                    .chain(arguments.iter().map(|x| (x.key.clone(), self.link_expression(&x.value, scope))))
                                     .collect();
 
-                                let function = scope.resolve_function(scopes::Environment::Member, member_name, &argument_types, &mut self.generics);
-
-                                link_static_function_call(function, arguments)
+                                self.link_function_call(member_name, scopes::Environment::Member, arguments, scope)
                             },
                             _ => {
-                                // Higher order function
-                                let target = self.link_expression(callee, scope);
-
-                                let arguments: Vec<Box<PassedArgument>> = self.link_passed_arguments(arguments.iter(), scope, 0);
-
-                                let function = match &target.result_type {
-                                    Some(result_type) => {
-                                        match &result_type.unit {
-                                            TypeUnit::Function(function) => function,
-                                            _ => panic!("Expression does not resolve to a function."),
-                                        }
-                                    }
-                                    _ => panic!("Expression does not return anything."),
-                                };
-
-                                link_static_function_call(function, arguments)
+                                // Function call on some object
+                                todo!()
+                                // let target = self.link_expression(callee, scope);
+                                //
+                                // let arguments: Vec<Box<PassedArgument>> = self.link_passed_arguments(arguments.iter(), scope, 0);
+                                //
+                                // let function = match &target.result_type {
+                                //     Some(result_type) => {
+                                //         match &result_type.unit {
+                                //             TypeUnit::Function(function) => function,
+                                //             _ => panic!("Expression does not resolve to a function."),
+                                //         }
+                                //     }
+                                //     _ => panic!("Expression does not return anything."),
+                                // };
+                                //
+                                // link_static_function_call(function, arguments)
                             }
                         }
                     }
@@ -282,55 +268,89 @@ impl <'a> ImperativeResolver<'a> {
         }
     }
 
-    pub fn link_passed_arguments<'b, I>(&mut self, arguments: I, scope: &scopes::Hierarchy, offset: usize) -> Vec<Box<PassedArgument>> where I: Iterator<Item = &'b Box<abstract_syntax::PassedArgument>> {
-        arguments.enumerate()
-            .map(|(idx, x)| {
-                Box::new(PassedArgument {
-                    key: link_parameter_key_option(&x.key, idx + offset),
-                    value: self.link_expression(&x.value, scope)
+    pub fn link_binary_function<'b>(&mut self, lhs: Box<Expression>, operator: &'b String, rhs: Box<Expression>, scope: &'b scopes::Hierarchy) -> Box<Expression> {
+        guard!(let Some(lhs_type) = &lhs.result_type else {
+            panic!("Left side of binary operator {} evaluates to void.", operator)
+        });
+        guard!(let Some(rhs_type) = &rhs.result_type else {
+            panic!("Right side of binary operator {} evaluates to void.", operator)
+        });
+
+        self.link_function_call(operator, scopes::Environment::Global, vec![
+            (ParameterKey::None, lhs),
+            (ParameterKey::None, rhs),
+        ], scope)
+    }
+
+    pub fn link_unary_function<'b>(&mut self, operator: &'b String, value: Box<Expression>, scope: &'b scopes::Hierarchy) -> Box<Expression> {
+        guard!(let Some(arg_type) = &value.result_type else {
+            panic!("Argument of unary operator {} evaluates to void.", operator)
+        });
+
+        self.link_function_call(operator, scopes::Environment::Global, vec![
+            (ParameterKey::None, value),
+        ], scope)
+    }
+
+    pub fn link_function_call(&mut self, fn_name: &String, environment: scopes::Environment, arguments: Vec<(ParameterKey, Box<Expression>)>, scope: &scopes::Hierarchy) -> Box<Expression> {
+        let seed = Uuid::new_v4();
+
+        let functions = scope.resolve_functions(environment, fn_name);
+
+        let (argument_keys, argument_expressions): (Vec<ParameterKey>, Vec<Box<Expression>>) = arguments.into_iter().unzip();
+        let argument_keys: Vec<&ParameterKey> = argument_keys.iter().collect();
+        let argument_types: Vec<&Type> = argument_expressions.iter().map(|x| x.result_type.as_ref().unwrap().as_ref()).collect();
+
+        let candidates: Vec<(Rc<HumanFunctionInterface>, Vec<Box<Type>>)> = functions.iter()
+            .flat_map(|fun| {
+                if fun.parameter_names.iter().map(|x| &x.0).collect::<Vec<&ParameterKey>>() != argument_keys {
+                    return None
+                }
+
+                let types: Vec<Box<Type>> = fun.parameter_names.iter().map(|x| x.1.type_declaration.generify(&seed)).collect();
+                return Some((Rc::clone(fun), types))
+            })
+            .collect();
+
+        let candidates: HashMap<Rc<HumanFunctionInterface>, (Vec<Box<Type>>, Box<TraitBinding>)> = candidates.into_iter().flat_map(|(fun, params)| {
+            let mut clone: GenericMapping = self.generics.clone();
+            clone.merge_pairs(zip(
+                argument_types.iter().map(|x| *x),
+                params.iter().map(|x| x.as_ref())
+            )).ok()?;
+            let binding = scope.trait_conformance_declarations.satisfy_requirements(&fun.machine_interface.requirements, &seed, &clone).ok()?;
+            Some((Rc::clone(&fun), (params, binding)))
+        }).collect();
+
+        // TODO Only allow abstract candidates in relation to abstract requirements declared in our current scope
+
+        if candidates.len() == 0 {
+            panic!("function could not be resolved for the passed arguments: {:?}", &argument_types)
+        }
+        else if candidates.len() > 1 {
+            panic!("function is ambiguous ({}x) for the passed arguments: {:?}", candidates.len(), &argument_types)
+        }
+        else {
+            let (function, (param_types, binding)) = candidates.into_iter().next().unwrap();
+            let return_type = function.machine_interface.return_type.as_ref()
+                .map(|x| x.generify(&seed));
+
+            // Actually bind the generics w.r.t. the selected function
+            self.generics.merge_pairs(zip(
+                argument_types,
+                param_types.iter().map(|x| x.as_ref())
+            )).unwrap();
+
+            return Box::new(Expression {
+                result_type: return_type,
+                operation: Box::new(ExpressionOperation::FunctionCall {
+                    function: Rc::clone(&function),
+                    arguments: zip(argument_expressions.into_iter(), function.parameter_names.iter())
+                        .map(|(exp, (_, variable))| (Rc::clone(variable), exp))
+                        .collect(),
+                    binding
                 })
             })
-            .collect()
-    }
-
-    pub fn link_binary_function<'b>(&mut self, lhs: &Expression, operator: &'b String, rhs: &Expression, scope: &'b scopes::Hierarchy) -> &'b Rc<FunctionInterface> {
-        let call_arguments = vec![
-            PassedArgumentType { key: ParameterKey::Int(0), value_type: &lhs.result_type },
-            PassedArgumentType { key: ParameterKey::Int(1), value_type: &rhs.result_type },
-        ];
-        scope.resolve_function(scopes::Environment::Global, operator, &call_arguments, &mut self.generics)
-    }
-
-    pub fn link_unary_function<'b>(&mut self, operator: &'b String, value: &Expression, scope: &'b scopes::Hierarchy) -> &'b Rc<FunctionInterface> {
-        let call_arguments = vec![
-            PassedArgumentType { key: ParameterKey::Int(0), value_type: &value.result_type },
-        ];
-        scope.resolve_function(scopes::Environment::Global, operator, &call_arguments, &mut self.generics)
-    }
-}
-
-fn link_static_function_call(function: &Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>>) -> Box<Expression> {
-    Box::new(Expression {
-        result_type: function.return_type.clone(),
-        operation: Box::new(ExpressionOperation::StaticFunctionCall {
-            function: Rc::clone(function),
-            arguments
-        })
-    })
-}
-
-pub fn link_arguments_to_parameters(function: &Rc<FunctionInterface>, arguments: Vec<Box<Expression>>) -> Vec<Box<PassedArgument>> {
-    arguments.into_iter()
-        .enumerate()
-        .map(|(idx, argument)| Box::new(PassedArgument { key: function.parameters[idx].external_key.clone(), value: argument }))
-        .collect()
-}
-
-pub fn link_parameter_key_option(key: &Option<ParameterKey>, index: usize) -> ParameterKey {
-    if let Some(key) = key {
-        linker::link_parameter_key(key, index)
-    }
-    else {
-        ParameterKey::Int(index as i32)
+        }
     }
 }

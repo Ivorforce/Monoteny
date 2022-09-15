@@ -5,20 +5,23 @@ use std::iter::zip;
 use std::rc::Rc;
 use guard::guard;
 use uuid::Uuid;
-use crate::program::types::{FunctionInterface, Mutability, ParameterKey, PassedArgumentType, Type, Variable};
+use crate::program::types::{Mutability, ParameterKey, Type, Variable};
 
 use crate::program::builtins::TenLangBuiltins;
+use crate::program::functions::HumanFunctionInterface;
 use crate::program::primitives;
+use crate::program::traits::TraitBinding;
 
 // ================================ Global ==============================
 
 pub struct Program {
-    pub functions: Vec<Rc<Function>>,
+    pub functions: Vec<Rc<FunctionImplementation>>,
 }
 
-pub struct Function {
-    pub interface: Rc<FunctionInterface>,
+pub struct FunctionImplementation {
+    pub interface: Rc<HumanFunctionInterface>,
     pub statements: Vec<Box<Statement>>,
+    pub variable_names: HashMap<Rc<Variable>, String>
 }
 
 // ================================ Code ==============================
@@ -36,26 +39,10 @@ pub struct Expression {
 
 pub enum ExpressionOperation {
     Primitive(primitives::Value),
-    StaticFunctionCall { function: Rc<FunctionInterface>, arguments: Vec<Box<PassedArgument>> },
-    PairwiseOperations { arguments: Vec<Box<Expression>>, functions: Vec<Rc<FunctionInterface>> },
+    FunctionCall { function: Rc<HumanFunctionInterface>, arguments: HashMap<Rc<Variable>, Box<Expression>>, binding: Box<TraitBinding> },
+    PairwiseOperations { arguments: Vec<Box<Expression>>, functions: Vec<Rc<HumanFunctionInterface>> },
     MemberLookup(Box<Expression>, String),
     VariableLookup(Rc<Variable>),
     StringLiteral(String),
     ArrayLiteral(Vec<Box<Expression>>),
-}
-
-pub struct PassedArgument {
-    pub key: ParameterKey,
-    pub value: Box<Expression>,
-}
-
-// Impl
-
-impl PassedArgument {
-    pub fn to_argument_type(&self) -> PassedArgumentType {
-        PassedArgumentType {
-            key: self.key.clone(),
-            value_type: &self.value.result_type
-        }
-    }
 }

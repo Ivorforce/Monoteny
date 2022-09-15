@@ -1,0 +1,54 @@
+trait Floatable<_ A, _ B> {
+    abstract fun either_is_float(l: A, r: B) -> Bool;
+}
+
+given <A> {
+    fun either_is_float(l: A, r: Float) -> Bool :: true;
+    fun either_is_float(l: Float, r: A) -> Bool :: true;
+
+    declare either_is_float<A, Float>;
+    declare either_is_float<Float, A>;
+}
+
+given <A> if Floatable<A, Float> {
+    // Floatable<A, Float> means either_is_float(l: A, r: Float) is declared.
+
+    fun main(a: A) :: {
+        // Matches no functions.
+        // ---> Error
+        either_is_float(l: a, r: a)
+
+        // Matches lower function (Float, ?).
+        either_is_float(l: 5.0, r: a)
+
+        // Matches both upper function (?, Float) and abstract function (through requirement)
+        // This is ambiguous because the abstract function might resolve to any function, i.e. might not be the upper function.
+        // ---> Error
+        either_is_float(l: a, r: 5.0)
+
+        // Matches both functions.
+        // ---> Error
+        either_is_float(l: 5.0, r: 5.0)
+    }
+}
+
+// Trying to call this with main(a: Float) would match both declarations
+// ---> Error
+given <A> if Floatable<A, A> {
+    // Floatable<A, A> means either_is_float(l: A, r: A) is declared.
+
+    fun main(a: A) :: {
+        // Matches abstract function through requirement.
+        either_is_float(l: a, r: a)
+
+        // Matches upper function.
+        either_is_float(l: 5.0, r: a)
+
+        // Matches lower function.
+        either_is_float(l: a, r: 5.0)
+
+        // Matches both functions.
+        // ---> Error
+        either_is_float(l: 5.0, r: 5.0)
+    }
+}

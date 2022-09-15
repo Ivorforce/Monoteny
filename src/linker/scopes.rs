@@ -1,11 +1,14 @@
 use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::iter::zip;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
+use crate::program::functions::{FunctionForm, HumanFunctionInterface};
+use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceDeclarations, TraitConformanceRequirement};
 use crate::program::generics::GenericMapping;
-use crate::program::types::{FunctionInterface, PassedArgumentType, Type, TypeUnit, Variable};
+use crate::program::types::{Mutability, ParameterKey, Type, TypeUnit, Variable};
 
 type VariablePool = HashMap<String, HashSet<Rc<Variable>>>;
 
@@ -16,8 +19,9 @@ pub enum Environment {
 }
 
 pub struct Level {
-    global: VariablePool,
-    member: VariablePool,
+    pub global: VariablePool,
+    pub member: VariablePool,
+    pub trait_conformance_declarations: TraitConformanceDeclarations,
 }
 
 impl Level {
@@ -25,12 +29,14 @@ impl Level {
         Level {
             global: HashMap::new(),
             member: HashMap::new(),
+            trait_conformance_declarations: TraitConformanceDeclarations::new()
         }
     }
 
     pub fn as_global_scope(&self) -> Hierarchy {
         Hierarchy {
-            levels: vec![self]
+            levels: vec![self],
+            trait_conformance_declarations: self.trait_conformance_declarations.clone()
         }
     }
 
@@ -48,41 +54,53 @@ impl Level {
         }
     }
 
-    pub fn add_function(&mut self, environment: Environment, variable: Rc<Variable>) {
+    pub fn add_function(&mut self, fun: Rc<HumanFunctionInterface>) {
+        let environment = match fun.form {
+            FunctionForm::Member => Environment::Member,
+            _ => Environment::Global
+        };
+
+        let variable = Rc::new(Variable {
+            id: Uuid::new_v4(),
+            type_declaration: Type::unit(TypeUnit::Function(Rc::clone(&fun))),
+            mutability: Mutability::Immutable
+        });
+
         let mut variables = self.variables_mut(environment);
 
-        if let Some(existing) = variables.get_mut(&variable.name) {
+        if let Some(existing) = variables.get_mut(&fun.name) {
             let existing_var = existing.iter().next().unwrap();
 
             if let TypeUnit::Function(_) = existing_var.type_declaration.as_ref().unit {
                 existing.insert(variable);
             }
             else {
-                panic!("Cannot overload with function '{}' if a variable exists in the same scope under the same name.", &variable.name);
+                panic!("Cannot overload with function '{}' if a variable exists in the same scope under the same name.", &fun.name);
             }
         }
         else {
-            variables.insert(variable.name.clone(), HashSet::from([variable]));
+            variables.insert(fun.name.clone(), HashSet::from([variable]));
         }
     }
 
-    pub fn insert_singleton(&mut self, environment: Environment, variable: Rc<Variable>) {
+    pub fn insert_singleton(&mut self, environment: Environment, variable: Rc<Variable>, name: &String) {
         let mut variables = self.variables_mut(environment);
 
-        if let Some(existing) = variables.insert(variable.name.clone(), HashSet::from([variable])) {
-            panic!("Multiple variables of the same name: {}", existing.iter().next().unwrap().name);
+        if let Some(_) = variables.insert(name.clone(), HashSet::from([variable])) {
+            panic!("Multiple variables of the same name: {}", name);
         }
     }
 
-    pub fn push_variable(&mut self, environment: Environment, variable: Rc<Variable>) {
+    pub fn push_variable(&mut self, environment: Environment, variable: Rc<Variable>, name: &String) {
         let mut variables = self.variables_mut(environment);
 
-        variables.insert(variable.name.clone(), HashSet::from([variable]));
+        variables.insert(name.clone(), HashSet::from([variable]));
     }
 }
 
 pub struct Hierarchy<'a> {
-    levels: Vec<&'a Level>
+    pub levels: Vec<&'a Level>,
+    pub trait_conformance_declarations: TraitConformanceDeclarations,
 }
 
 impl <'a> Hierarchy<'a> {
@@ -92,69 +110,13 @@ impl <'a> Hierarchy<'a> {
         levels.push(new_scope);
         levels.extend(self.levels.iter());
 
-        Hierarchy { levels }
-    }
-
-    fn pair_arguments_to_parameters<'b>(arguments: &'b Vec<PassedArgumentType>, function: &'b FunctionInterface) -> Option<Vec<(&'b Type, &'b Type)>> {
-        if arguments.len() != function.parameters.len() {
-            return None;
-        }
-
-        return zip(arguments.iter(), function.parameters.iter()).map(|(arg, param)| {
-            if &arg.key != &param.external_key {
-                return None;
-            }
-
-            return Some((
-                arg.value_type.as_deref().unwrap(),
-                param.variable.type_declaration.as_ref()
-            ))
-        }).collect()
-    }
-
-    pub fn resolve_function(&self, environment: Environment, variable_name: &String, arguments: &Vec<PassedArgumentType>, mapping: &mut GenericMapping) -> &'a Rc<FunctionInterface> {
-        for argument in arguments {
-            if argument.value_type.is_none() {
-                return panic!("Argument to function '{}({:?}: ?)' resolves to nothing.", variable_name, argument.key)
-            }
-        }
-
-        let candidates: Vec<(&Rc<FunctionInterface>, Vec<(&Type, &Type)>)> = self.resolve_functions(environment, variable_name).into_iter()
-            .flat_map(|x| Some((x, Hierarchy::pair_arguments_to_parameters(arguments, x)?)))
-            .collect();
-
-        if candidates.len() == 0 {
-            panic!("No function could be found with signature {}({:?})", variable_name, arguments.iter().map(|x| &x.key))
-        }
-
-        let candidates: Vec<(&Rc<FunctionInterface>, Vec<(&Type, &Type)>)> = candidates.into_iter().flat_map(|(x, pairs)| {
-            let mut clone: GenericMapping = mapping.clone();
-            clone.merge_pairs(&pairs).ok()?;
-            Some((x, pairs))
-        }).collect();
-
-        if candidates.len() == 0 {
-            panic!("{} could not be resolved for the passed arguments: {:?}", variable_name, arguments)
-        }
-        else if candidates.len() > 1 {
-            panic!("{} is ambiguous for the passed arguments: {:?}", variable_name, arguments)
-        }
-        else {
-            // TODO This kinda ugly code
-            let seed = Uuid::new_v4();
-            let unique_params: Vec<(&Type, Box<Type>)> = candidates[0].1.iter()
-                .map(|(arg, param)| (*arg, param.uniqueify(&seed)))
-                .collect();
-
-            // Actually bind the generics w.r.t. the selected function
-            mapping.merge_pairs(
-                &unique_params.iter().map(|(arg, param)| (*arg, param.as_ref())).collect()
-            ).unwrap();
-            candidates[0].0
+        Hierarchy {
+            levels,
+            trait_conformance_declarations: TraitConformanceDeclarations::merge(&self.trait_conformance_declarations, &new_scope.trait_conformance_declarations)
         }
     }
 
-    pub fn resolve_functions(&self, environment: Environment, variable_name: &String) -> Vec<&'a Rc<FunctionInterface>> {
+    pub fn resolve_functions(&self, environment: Environment, variable_name: &String) -> Vec<&'a Rc<HumanFunctionInterface>> {
         self.resolve(environment, variable_name).iter().map(|x|
             match &x.type_declaration.unit {
                 TypeUnit::Function(function) => function,
@@ -168,6 +130,15 @@ impl <'a> Hierarchy<'a> {
 
         match &type_declaration.unit {
             TypeUnit::MetaType => type_declaration.arguments.get(0).unwrap(),
+            _ => panic!("{}' is not a type.", variable_name)
+        }
+    }
+
+    pub fn resolve_trait(&self, environment: Environment, variable_name: &String) -> &'a Rc<Trait> {
+        let type_declaration = &self.resolve_unambiguous(environment, variable_name).type_declaration;
+
+        match &type_declaration.unit {
+            TypeUnit::Trait(t) => t,
             _ => panic!("{}' is not a type.", variable_name)
         }
     }

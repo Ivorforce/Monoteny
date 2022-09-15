@@ -8,11 +8,13 @@ pub fn transpile(stream: &mut (dyn Write), type_def: &Type, context: &Transpiler
     match &type_def.unit {
         TypeUnit::Primitive(n) => transpile_primitive(stream, n)?,
         TypeUnit::Struct(s) => transpile_struct(stream, s, context)?,
+        TypeUnit::Trait(t) => todo!(),
         TypeUnit::Monad => write!(stream, "np.ndarray")?,
         TypeUnit::Function(_) => todo!(),
         TypeUnit::Generic(_) => todo!(),
+        TypeUnit::Any(_) => todo!(),
         TypeUnit::MetaType => todo!(),
-        TypeUnit::PrecedenceGroup(_) => todo!()
+        TypeUnit::PrecedenceGroup(_) => todo!(),
     }
 
     Ok(())

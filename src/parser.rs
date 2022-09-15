@@ -43,22 +43,31 @@ pub fn parse_program(content: &String, scope: &mut scopes::Level) -> Program {
     }
 
     for statement in program.global_statements.iter_mut() {
-        match statement.as_mut() {
-            GlobalStatement::FunctionDeclaration(function) => {
-                function.body = function.body.iter()
-                    .map(|x| post_parse_statement(x.as_ref(), &scope))
-                    .collect()
-            },
-            GlobalStatement::Operator(operator) => {
-                operator.body = operator.body.iter()
-                    .map(|x| post_parse_statement(x.as_ref(), &scope))
-                    .collect()
-            }
-            _ => {}
-        }
+        post_parse_global_statement(statement.as_mut(), &scope);
     }
 
     program
+}
+
+pub fn post_parse_global_statement(statement: &mut GlobalStatement, scope: &scopes::Level) {
+    match statement {
+        GlobalStatement::Scope(generics_scope) => {
+            for statement in generics_scope.statements.iter_mut() {
+                post_parse_global_statement(statement, scope);
+            }
+        },
+        GlobalStatement::FunctionDeclaration(function) => {
+            function.body = function.body.iter()
+                .map(|x| post_parse_statement(x.as_ref(), scope))
+                .collect()
+        },
+        GlobalStatement::Operator(operator) => {
+            operator.body = operator.body.iter()
+                .map(|x| post_parse_statement(x.as_ref(), scope))
+                .collect()
+        }
+        _ => {}
+    }
 }
 
 pub fn post_parse_statement(statement: &Statement, scope: &scopes::Level) -> Box<Statement> {

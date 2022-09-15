@@ -4,7 +4,7 @@ use custom_error::custom_error;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::program::types::{TypeUnit, Type, PassedArgumentType, FunctionInterface};
+use crate::program::types::{TypeUnit, Type};
 
 pub type GenericIdentity = Uuid;
 pub type GenericAlias = Uuid;
@@ -52,6 +52,28 @@ impl GenericMapping {
         self.try_bind(generic, t)
     }
 
+    pub fn resolve_type(&self, type_: &Box<Type>) -> Result<Box<Type>, TypeError> {
+        match &type_.unit {
+            TypeUnit::Generic(alias) => self.resolve_binding_alias(alias).map(|x| x.clone()),
+            _ => Ok(Box::new(Type {
+                unit: type_.unit.clone(),
+                arguments: type_.arguments.iter().map(|x| self.resolve_type(x)).try_collect()?
+            }))
+        }
+    }
+
+    pub fn resolve_binding_alias(&self, alias: &GenericAlias) -> Result<&Box<Type>, TypeError> {
+        guard!(let Some(identity) = self.alias_to_identity.get(alias) else {
+            return Err(TypeError::MergeError { msg: format!("Unknown generic: {}", alias) })
+        });
+
+        guard!(let Some(binding) = self.identity_to_type.get(identity) else {
+            return Err(TypeError::MergeError { msg: format!("Unbound generic: {}", alias) })
+        });
+
+        return Ok(binding)
+    }
+
     //  ----- non-alias
 
     pub fn try_bind(&mut self, identity: GenericIdentity, t: &Type) -> Result<Box<Type>, TypeError> {
@@ -90,8 +112,9 @@ impl GenericMapping {
                 }
 
                 // Remove rhs identity, and point alias towards lhs identity.
-                let rhs_aliases = &self.identity_to_alias.remove(rhs).unwrap();
-                self.identity_to_alias.get_mut(lhs).unwrap().extend(rhs_aliases);
+                if let Some(rhs_aliases) = &self.identity_to_alias.remove(rhs) {
+                    self.identity_to_alias.get_mut(lhs).unwrap().extend(rhs_aliases);
+                }
 
                 TypeUnit::Generic(lhs.clone())
             },
@@ -141,8 +164,8 @@ impl GenericMapping {
         return Ok(reference)
     }
 
-    pub fn merge_pairs(&mut self, pairs: &Vec<(&Type, &Type)>) -> Result<Vec<Box<Type>>, TypeError> {
-        pairs.iter().map(|(lhs, rhs)| {
+    pub fn merge_pairs<'a, I>(&mut self, pairs: I) -> Result<Vec<Box<Type>>, TypeError> where I: Iterator<Item=(&'a Type, &'a Type)> {
+        pairs.map(|(lhs, rhs)| {
             self.merge(lhs, rhs)
         }).try_collect()
     }

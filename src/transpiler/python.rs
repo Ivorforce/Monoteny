@@ -11,8 +11,9 @@ use uuid::Uuid;
 
 use crate::program::builtins::TenLangBuiltins;
 use crate::linker::computation_tree::*;
+use crate::program::functions::HumanFunctionInterface;
 use crate::program::primitives;
-use crate::program::types::{FunctionForm, FunctionInterface, NamedParameter, ParameterKey, Type, TypeUnit};
+use crate::program::types::{ParameterKey, Type, TypeUnit, Variable};
 use crate::transpiler::namespaces;
 
 
@@ -30,7 +31,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 
     for function in program.functions.iter() {
         namespaces.register_definition(function.interface.id, &function.interface.alphanumeric_name);
-        register_names(&function.statements, namespaces.add_sublevel(), builtins);
+        register_names(&function.statements, namespaces.add_sublevel(), builtins, function.variable_names.clone());
     }
 
     let context = TranspilerContext {
@@ -45,30 +46,30 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     return Ok(())
 }
 
-pub fn register_names(statements: &Vec<Box<Statement>>, namespace: &mut namespaces::Level, builtins: &TenLangBuiltins) {
+pub fn register_names(statements: &Vec<Box<Statement>>, namespace: &mut namespaces::Level, builtins: &TenLangBuiltins, mapping: HashMap<Rc<Variable>, String>) {
     for statement in statements {
         match statement.as_ref() {
             Statement::VariableAssignment(variable, _) => {
-                namespace.register_definition(variable.id.clone(), &variable.name);
+                namespace.register_definition(variable.id.clone(), &mapping.get(variable).unwrap());
             }
             _ => {}
         }
     }
 }
 
-pub fn transpile_function(stream: &mut (dyn Write), function: &Function, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
     write!(stream, "\n\ndef {}(", context.names[&function.interface.id])?;
 
     // TODO Can we somehow transpile function.interface.is_member_function?
-    for parameter in function.interface.parameters.iter() {
-        write!(stream, "{}: ", get_external_name(&parameter))?;
-        types::transpile(stream, &parameter.variable.type_declaration, context)?;
+    for (idx, (key, variable)) in function.interface.parameter_names.iter().enumerate() {
+        write!(stream, "{}: ", get_external_name(key, idx))?;
+        types::transpile(stream, &variable.type_declaration, context)?;
         write!(stream, ",")?;
     }
 
     write!(stream, ")")?;
 
-    if let Some(return_type) = &function.interface.return_type {
+    if let Some(return_type) = &function.interface.machine_interface.return_type {
         write!(stream, " -> ", )?;
         types::transpile(stream, return_type, context)?;
     }
@@ -81,16 +82,19 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, context
         return Ok(())
     }
 
-    for parameter in function.interface.parameters.iter() {
-        match &parameter.variable.type_declaration.unit {
+    for (idx, (key, variable)) in function.interface.parameter_names.iter().enumerate() {
+        let variable_name = context.names.get(&variable.id).unwrap();
+        let external_name = get_external_name(key, idx);
+
+        match &variable.type_declaration.unit {
             TypeUnit::Monad => {
-                let unit = &parameter.variable.type_declaration.arguments[0].as_ref().unit;
+                let unit = &variable.type_declaration.arguments[0].as_ref().unit;
 
                 if let TypeUnit::Struct(s) = unit {
                     write!(
                         stream, "    {} = np.asarray({}, dtype=",
-                        parameter.variable.name,
-                        get_external_name(parameter)
+                        variable_name,
+                        external_name
                     )?;
                     types::transpile_struct(stream, s, context)?;
                     write!(stream, ")\n")?;
@@ -98,8 +102,8 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, context
                 else if let TypeUnit::Primitive(primitive) = unit {
                     write!(
                         stream, "    {} = np.asarray({}, dtype=",
-                        parameter.variable.name,
-                        get_external_name(parameter)
+                        variable_name,
+                        external_name
                     )?;
                     types::transpile_primitive(stream, primitive)?;
                     write!(stream, ")\n")?;
@@ -109,14 +113,12 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, context
                 }
             }
             _ => {
-                let external_name = get_external_name(&parameter);
-
-                if parameter.variable.name == external_name {
+                if variable_name == &external_name {
                     continue
                 }
 
                 writeln!(
-                    stream, "    {} = {}", parameter.variable.name, external_name,
+                    stream, "    {} = {}", variable_name, external_name,
                 )?;
             }
         }
@@ -132,7 +134,9 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &Function, context
                 write!(stream, "    return")?;
             }
             Statement::VariableAssignment(variable, expression) => {
-                write!(stream, "    {} = ", variable.name)?;
+                let variable_name = context.names.get(&variable.id).unwrap();
+
+                write!(stream, "    {} = ", variable_name)?;
                 transpile_expression(stream, expression, context)?;
             }
             Statement::Expression(expression) => {
@@ -156,9 +160,20 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
             write!(stream, "\"{}\"", escape_string(&string))?;
         }
         ExpressionOperation::VariableLookup(variable) => {
-            write!(stream, "{}", variable.name)?;
+            let variable_name = context.names.get(&variable.id).unwrap();
+
+            write!(stream, "{}", variable_name)?;
         }
-        ExpressionOperation::StaticFunctionCall { function, arguments } => {
+        ExpressionOperation::FunctionCall { function, arguments, binding } => {
+            if !binding.is_empty() {
+                // The called function has dynamic calls which are resolved here
+                // Possible Solutions:
+                //  -- Ignore all calls that can make use of builtin python polymorphism (eg. + on numbers)
+                //  -- Inject functions as parameters
+
+                todo!()
+            }
+
             if try_transpile_binary_operator(stream, function, arguments, context)? {
                 // no-op
             }
@@ -167,11 +182,13 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
             }
             else {
                 write!(stream, "{}(", context.names[&function.id])?;
-                for (idx, argument) in arguments.iter().enumerate() {
-                    if let ParameterKey::Name(name) = &argument.key {
+                for (idx, (param_key, variable)) in function.parameter_names.iter().enumerate() {
+                    if let ParameterKey::Name(name) = &param_key {
                         write!(stream, "{}=", name)?;
                     }
-                    transpile_expression(stream, &argument.value, context)?;
+                    // Otherwise, pass as *args
+
+                    transpile_expression(stream, &expression, context)?;
 
                     if idx < arguments.len() -1 {
                         write!(stream, ", ")?;
@@ -179,7 +196,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
                 }
                 write!(stream, ")")?;
             }
-        }
+        },
         ExpressionOperation::MemberLookup(_, _) => todo!(),
         ExpressionOperation::ArrayLiteral(expressions) => {
             write!(stream, "[")?;
@@ -233,15 +250,13 @@ pub fn escape_string(string: &String) -> String {
     return string
 }
 
-pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &Rc<FunctionInterface>, arguments: &Vec<Box<PassedArgument>>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
-    guard!(let [expression] = &arguments[..] else {
-        return Ok(false);
-    });
+pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &Rc<HumanFunctionInterface>, arguments: &HashMap<Rc<Variable>, Box<Expression>>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+    let expression = arguments.values().next().unwrap();
 
     // TODO We can probably avoid unnecessary parentheses here and in the other operators if we ask the expression for its (python) precedence, and compare it with ours.
     let mut transpile_unary_operator = |name: &str| -> Result<bool, std::io::Error> {
         write!(stream, "{}", name)?;
-        transpile_maybe_parenthesized_expression(stream, &expression.value, context)?;
+        transpile_maybe_parenthesized_expression(stream, expression.as_ref(), context)?;
         Ok(true)
     };
 
@@ -258,15 +273,17 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), interface: &Rc<Fun
     return Ok(false);
 }
 
-pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Rc<FunctionInterface>, arguments: &Vec<Box<PassedArgument>>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
-    guard!(let [lhs, rhs] = &arguments[..] else {
-        return Ok(false);
-    });
+pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Rc<HumanFunctionInterface>, arguments: &HashMap<Rc<Variable>, Box<Expression>>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+    let arguments: Vec<&Box<Expression>> = interface.parameter_names.iter()
+        .map(|(_, var)| arguments.get(var).unwrap())
+        .collect();
+    let lhs = arguments[0];
+    let rhs = arguments[1];
 
     let mut transpile_binary_operator = |name: &str| -> Result<bool, std::io::Error> {
-        transpile_maybe_parenthesized_expression(stream, &lhs.value, context)?;
+        transpile_maybe_parenthesized_expression(stream, &lhs, context)?;
         write!(stream, " {} ", name)?;
-        transpile_maybe_parenthesized_expression(stream, &rhs.value, context)?;
+        transpile_maybe_parenthesized_expression(stream, &rhs, context)?;
 
         Ok(true)
     };
@@ -322,11 +339,13 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), interface: &Rc<Fu
     return Ok(false);
 }
 
-pub fn get_external_name(parameter: &NamedParameter) -> String {
-    match &parameter.external_key {
-        ParameterKey::Name(key) => key.clone(),
-        // Int keying is not supported in python. Just use the variable name.
-        ParameterKey::Int(_) => parameter.variable.name.clone(),
+pub fn get_external_name(key: &ParameterKey, idx: usize) -> String {
+    match &key {
+        ParameterKey::Name(name) => name.clone(),
+        // Int keying is not supported in python. Let's prefix via underscore.
+        ParameterKey::Int(n) => String::from(format!("_{}", n)),
+        // None keying is not supported; let's use two underscores as prefix! lol
+        ParameterKey::None => String::from(format!("__{}", idx))
     }
 }
 
@@ -336,7 +355,7 @@ pub fn is_simple(operation: &ExpressionOperation) -> bool {
         ExpressionOperation::VariableLookup(_) => true,
         ExpressionOperation::StringLiteral(_) => true,
         ExpressionOperation::ArrayLiteral(_) => true,
-        ExpressionOperation::StaticFunctionCall { .. } => false,
+        ExpressionOperation::FunctionCall { .. } => false,
         ExpressionOperation::MemberLookup(_, _) => false,
         ExpressionOperation::PairwiseOperations { .. } => false,
     }

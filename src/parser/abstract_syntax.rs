@@ -1,5 +1,6 @@
 use std::fmt::{Binary, Debug, Error, Formatter};
 use std::iter::zip;
+use crate::fmtutil::write_comma_separated_list;
 use crate::program::types::{Mutability, ParameterKey};
 
 // =============================== Global =====================================
@@ -8,10 +9,17 @@ pub struct Program {
     pub global_statements: Vec<Box<GlobalStatement>>
 }
 
+pub struct GlobalScope {
+    pub generics: Option<Vec<String>>,
+    pub requirements: Option<Vec<Box<ConformanceDeclaration>>>,
+    pub statements: Vec<Box<GlobalStatement>>
+}
+
 pub enum GlobalStatement {
     FunctionDeclaration(Box<Function>),
     Operator(Box<Operator>),
     Pattern(Box<PatternDeclaration>),
+    Scope(Box<GlobalScope>),
 }
 
 pub struct Function {
@@ -56,6 +64,16 @@ pub struct PatternDeclaration {
     pub alias: String,
 }
 
+pub struct ConformanceDeclaration {
+    pub unit: String,
+    pub elements: Vec<Box<SpecializedType>>
+}
+
+pub struct SpecializedType {
+    pub unit: String,
+    pub elements: Option<Vec<Box<SpecializedType>>>
+}
+
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum PatternForm {
     Unary, Binary
@@ -97,7 +115,7 @@ pub enum Expression {
 }
 
 pub struct PassedArgument {
-    pub key: Option<ParameterKey>,
+    pub key: ParameterKey,
     pub value: Box<Expression>,
 }
 
@@ -127,10 +145,10 @@ fn is_simple(expression: &Expression) -> bool {
 
 impl Mutability {
     fn variable_declaration_keyword(&self) -> &str {
-        return match *self {
+        match *self {
             Mutable => "var",
             Immutable => "let",
-        };
+        }
     }
 }
 
@@ -141,14 +159,6 @@ fn write_maybe_parenthesized_expression(fmt: &mut Formatter, expression: &Expres
     else {
         write!(fmt, "({:?})", expression)
     }
-}
-
-fn write_comma_separated_list<E>(fmt: &mut Formatter, list: &Vec<E>) -> Result<(), Error> where E: Debug {
-    if let Some(first) = list.first() {
-        write!(fmt, "{:?}", first)?
-    }
-    for item in list.iter().skip(1) { write!(fmt, ", {:?}", item)? }
-    Ok(())
 }
 
 impl Debug for Program {
@@ -167,6 +177,19 @@ impl Debug for GlobalStatement {
             FunctionDeclaration(function) => write!(fmt, "{:?}", function),
             Pattern(pattern) => write!(fmt, "{:?}", pattern),
             Operator(operator) => write!(fmt, "{:?}", operator),
+            Scope(scope) => {
+                write!(fmt, "given <")?;
+                for item in scope.generics.iter() { write!(fmt, "{:?},", item)? };
+                write!(fmt, ">")?;
+                if let Some(requirements) = &scope.requirements {
+                    write!(fmt, "if ")?;
+                    for item in requirements.iter() { write!(fmt, "{:?}, ", item)? };
+                }
+                write!(fmt, "{{")?;
+                for item in scope.statements.iter() { write!(fmt, "{:?}\n\n", item)? };
+                write!(fmt, "}}")?;
+                return Ok(())
+            }
         }
     }
 }
@@ -311,6 +334,27 @@ impl Debug for KeyedParameter {
 impl Debug for ContextualParameter {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "{{{}: {:?}}}", self.internal_name, self.param_type)
+    }
+}
+
+impl Debug for ConformanceDeclaration {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "{:?}<", self.unit)?;
+        write_comma_separated_list(fmt, &self.elements)?;
+        write!(fmt, ">")?;
+        return Ok(())
+    }
+}
+
+impl Debug for SpecializedType {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "{:?}", self.unit)?;
+        if let Some(arguments) = &self.elements {
+            write!(fmt, "<")?;
+            write_comma_separated_list(fmt, arguments)?;
+            write!(fmt, ">")?;
+        }
+        return Ok(())
     }
 }
 
