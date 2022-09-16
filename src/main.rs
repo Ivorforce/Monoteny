@@ -73,7 +73,7 @@ fn main() {
             let should_output_all = sub_matches.is_present("ALL");
 
             let output_extensions: Vec<&str> = match should_output_all {
-                true => vec!["py", "cpp"],
+                true => vec!["py"],
                 false => vec![output_path.extension().and_then(OsStr::to_str).unwrap()]
             };
 
