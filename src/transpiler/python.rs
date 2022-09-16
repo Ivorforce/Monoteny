@@ -4,9 +4,9 @@ pub mod builtins;
 
 use std::collections::HashMap;
 use std::io::Write;
-use std::iter::zip;
 use std::rc::Rc;
 use guard::guard;
+use itertools::zip_eq;
 use uuid::Uuid;
 
 use crate::program::builtins::TenLangBuiltins;
@@ -25,13 +25,18 @@ pub struct TranspilerContext<'a> {
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     writeln!(stream, "import numpy as np")?;
     writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
+    writeln!(stream, "from typing import Any")?;
 
     let mut builtin_namespaces = builtins::create(builtins);
-    let mut namespaces = builtin_namespaces.add_sublevel();
+    let mut file_namespace = builtin_namespaces.add_sublevel();
 
     for function in program.functions.iter() {
-        namespaces.register_definition(function.id, &function.human_interface.alphanumeric_name);
-        register_names(&function.statements, namespaces.add_sublevel(), builtins, function.variable_names.clone());
+        file_namespace.register_definition(function.id, &function.human_interface.alphanumeric_name);
+
+        let function_namespace = file_namespace.add_sublevel();
+        for (variable, name) in function.variable_names.iter() {
+            function_namespace.register_definition(variable.id.clone(), name);
+        }
     }
 
     let context = TranspilerContext {
@@ -44,17 +49,6 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     }
 
     return Ok(())
-}
-
-pub fn register_names(statements: &Vec<Box<Statement>>, namespace: &mut namespaces::Level, builtins: &TenLangBuiltins, mapping: HashMap<Rc<Variable>, String>) {
-    for statement in statements {
-        match statement.as_ref() {
-            Statement::VariableAssignment(variable, _) => {
-                namespace.register_definition(variable.id.clone(), &mapping.get(variable).unwrap());
-            }
-            _ => {}
-        }
-    }
 }
 
 pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
@@ -181,7 +175,11 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
                 // no-op
             }
             else {
+                // TODO This currently fails for abstract functions because we don't map them
+                //  to actual functions. Instead, the function implementation should be passed as
+                //  a parameter to us, so we can call it by parameter name here.
                 write!(stream, "{}(", context.names[&function.function_id])?;
+
                 for (idx, (param_key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
                     if let ParameterKey::Name(name) = &param_key {
                         write!(stream, "{}=", name)?;
@@ -213,7 +211,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
             // TODO Unfortunately, python's a > b > c syntax does not support non-bool results.
             //  For true boolean results, we could actually use it for readability.
             // This is suboptimal, but easy: Just compute arguments twice lol.
-            for (idx, (args, function)) in zip(arguments.windows(2), functions.iter()).enumerate() {
+            for (idx, (args, function)) in zip_eq(arguments.windows(2), functions.iter()).enumerate() {
                 // TODO Use try_transpile_binary_operator / try_transpile_unary_operator so we correctly map names / alphanumeric names.
                 write!(stream, "(")?;
                 transpile_expression(stream, &args[0], context)?;
@@ -251,6 +249,10 @@ pub fn escape_string(string: &String) -> String {
 }
 
 pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &HashMap<Rc<Variable>, Box<Expression>>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+    if arguments.len() != 1 {
+        return Ok(false);
+    }
+
     let expression = arguments.values().next().unwrap();
 
     // TODO We can probably avoid unnecessary parentheses here and in the other operators if we ask the expression for its (python) precedence, and compare it with ours.
@@ -277,6 +279,10 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
     let arguments: Vec<&Box<Expression>> = function.human_interface.parameter_names.iter()
         .map(|(_, var)| arguments.get(var).unwrap())
         .collect();
+    if arguments.len() != 2 {
+        return Ok(false);
+    }
+
     let lhs = arguments[0];
     let rhs = arguments[1];
 
@@ -345,7 +351,7 @@ pub fn get_external_name(key: &ParameterKey, idx: usize) -> String {
         // Int keying is not supported in python. Let's prefix via underscore.
         ParameterKey::Int(n) => String::from(format!("_{}", n)),
         // None keying is not supported; let's use two underscores as prefix! lol
-        ParameterKey::None => String::from(format!("__{}", idx))
+        ParameterKey::Positional => String::from(format!("__{}", idx))
     }
 }
 

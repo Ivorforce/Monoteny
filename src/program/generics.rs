@@ -1,8 +1,7 @@
 use std::collections::{HashMap, HashSet};
-use std::iter::zip;
 use custom_error::custom_error;
 use guard::guard;
-use itertools::Itertools;
+use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use crate::program::types::{TypeUnit, Type};
 
@@ -143,7 +142,7 @@ impl GenericMapping {
             return Err(TypeError::MergeError { msg: format!("Types {:?} and {:?} are not compatible: argument count", lhs, rhs) })
         }
 
-        let arguments = zip(lhs.arguments.iter(), rhs.arguments.iter()).map(|(lhs, rhs)|
+        let arguments = zip_eq(lhs.arguments.iter(), rhs.arguments.iter()).map(|(lhs, rhs)|
             self.merge(lhs, rhs)
         ).try_collect()?;
 

@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
-use std::iter::zip;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;

@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
-use std::iter::zip;
 use std::rc::Rc;
+use itertools::zip_eq;
 use uuid::Uuid;
 use crate::program::traits::TraitConformanceRequirement;
 use crate::program::types::{Mutability, ParameterKey, Type, Variable};
@@ -48,7 +49,7 @@ impl MachineFunctionInterface {
 
 impl FunctionPointer {
     pub fn make_operator<'a>(name: &'a str, alphanumeric_name: &'a str, count: usize, parameter_type: &Box<Type>, return_type: &Box<Type>) -> Rc<FunctionPointer> {
-        let parameter_names = (0..count).map(|_| ParameterKey::None);
+        let parameter_names = (0..count).map(|_| ParameterKey::Positional);
         let parameters: Vec<Rc<Variable>> = (0..count).map(|x| Rc::new(Variable {
             id: Uuid::new_v4(),
             type_declaration: parameter_type.clone(),
@@ -63,7 +64,7 @@ impl FunctionPointer {
             human_interface: Rc::new(HumanFunctionInterface {
                 name: String::from(name),
                 alphanumeric_name: String::from(alphanumeric_name),
-                parameter_names: zip(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
+                parameter_names: zip_eq(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
                 parameter_names_internal: vec![],  // TODO Internal names shouldn't need to be specified for builtins?
                 form: FunctionForm::Operator,
             }),
@@ -77,7 +78,7 @@ impl FunctionPointer {
             type_declaration: x.clone(),
             mutability: Mutability::Immutable
         })).collect();
-        let parameter_names = (0..parameters.len()).map(|_| ParameterKey::None);
+        let parameter_names = (0..parameters.len()).map(|_| ParameterKey::Positional);
 
         Rc::new(FunctionPointer {
             function_id: Uuid::new_v4(),
@@ -87,7 +88,7 @@ impl FunctionPointer {
             human_interface: Rc::new(HumanFunctionInterface {
                 name: String::from(name),
                 alphanumeric_name: String::from(alphanumeric_name),
-                parameter_names: zip(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
+                parameter_names: zip_eq(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
                 parameter_names_internal: vec![],  // TODO Internal names shouldn't need to be specified for builtins?
                 form: FunctionForm::Global,
             }),
@@ -107,5 +108,31 @@ impl Eq for FunctionPointer {}
 impl Hash for FunctionPointer {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.pointer_id.hash(state);
+    }
+}
+
+impl Debug for HumanFunctionInterface {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut head = 0;
+
+        match self.form {
+            FunctionForm::Global => {}
+            FunctionForm::Member => {
+                write!(fmt, "{:?}.", self.parameter_names.get(head).unwrap().1.type_declaration)?;
+                head += 1;
+            },
+            // TODO Unary operators?
+            FunctionForm::Operator => {}
+        }
+
+        write!(fmt, "{}(", self.name)?;
+
+        for (name, variable) in self.parameter_names.iter().skip(head) {
+            write!(fmt, "{:?}: {:?},", name, variable.type_declaration)?;
+        }
+
+        write!(fmt, ")")?;
+
+        Ok(())
     }
 }

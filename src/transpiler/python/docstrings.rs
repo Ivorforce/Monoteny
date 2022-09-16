@@ -39,7 +39,7 @@ pub fn transpile_type(stream: &mut (dyn Write), type_def: &Type, context: &Trans
         }
         TypeUnit::Function(_) => todo!(),
         TypeUnit::Generic(_) => todo!(),
-        TypeUnit::Any(_) => todo!(),
+        TypeUnit::Any(_) => write!(stream, "Any")?,  // TODO Use generics instead
         TypeUnit::MetaType => todo!(),
         TypeUnit::PrecedenceGroup(_) => todo!(),
     }

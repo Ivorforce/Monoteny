@@ -96,7 +96,7 @@ KeyedParameter: Box<KeyedParameter> = {
         key: ParameterKey::Int(key), internal_name, param_type
     }),
     <key: Identifier> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
-        key: ParameterKey::Name(key), internal_name, param_type
+        key: ParameterKey::from_string(key), internal_name, param_type
     }),
 }
 
@@ -154,7 +154,7 @@ Term: Box<Expression> = {
 PassedArgument: Box<PassedArgument> = {
     <name: Number> ":" <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Int(name), value }),
     <name: Identifier> ":" <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Name(name), value }),
-    <value: Expression> => Box::new(PassedArgument { key: ParameterKey::None, value })
+    <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Positional, value })
 }
 
 FunctionCallExpression<NextOperatorLevel>: Box<Expression> = {

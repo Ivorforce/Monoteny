@@ -1,5 +1,5 @@
 use std::fmt::{Binary, Debug, Error, Formatter};
-use std::iter::zip;
+use itertools::zip_eq;
 use crate::fmtutil::write_comma_separated_list;
 use crate::program::types::{Mutability, ParameterKey};
 
@@ -291,7 +291,7 @@ impl Debug for Expression {
                 panic!("Cannot debug at this stage; please run parser fully before printing.")
             }
             ConjunctivePairOperators { arguments, operators } => {
-                for (argument, operator) in zip(arguments, operators) {
+                for (argument, operator) in zip_eq(arguments, operators) {
                     write_maybe_parenthesized_expression(fmt, argument.as_ref())?;
                     write!(fmt, " {:?} ", operator)?;
                 }

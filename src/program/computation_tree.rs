@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
-use std::iter::zip;
 use std::rc::Rc;
 use guard::guard;
 use uuid::Uuid;

@@ -13,6 +13,8 @@ pub struct Trait {
     pub id: Uuid,
     pub name: String,
 
+    pub parameters: Vec<Uuid>,
+
     pub abstract_functions: HashSet<Rc<FunctionPointer>>
 }
 

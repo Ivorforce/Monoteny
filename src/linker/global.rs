@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
-use std::iter::zip;
 use std::rc::Rc;
 use guard::guard;
+use itertools::zip_eq;
 use uuid::Uuid;
 
 use crate::parser;
@@ -18,38 +18,59 @@ use crate::program::types::*;
 
 
 struct GlobalLinker<'a> {
-    functions_with_bodies: Vec<(Rc<FunctionPointer>, &'a Vec<Box<abstract_syntax::Statement>>)>,
+    functions: Vec<FunctionWithoutBody<'a>>,
     global_variables: scopes::Level,
     parser_scope: &'a parser::scopes::Level,
     builtins: &'a TenLangBuiltins,
 }
 
+struct FunctionWithoutBody<'a> {
+    pointer: Rc<FunctionPointer>,
+    body: &'a Vec<Box<abstract_syntax::Statement>>,
+    injected_pointers: Vec<Rc<FunctionPointer>>
+}
+
 pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> Program {
     let mut global_linker = GlobalLinker {
-        functions_with_bodies: Vec::new(),
+        functions: Vec::new(),
         global_variables: scopes::Level::new(),
         parser_scope,
         builtins
     };
 
-    // Resolve things in global scope
+    // Alias global names
+    // TODO
+
+    // Resolve global types / interfaces
     for statement in &syntax.global_statements {
-        global_linker.link_global_statement(statement.as_ref(), scope, &HashSet::new());
+        global_linker.link_global_statement(statement.as_ref(), scope, &HashSet::new(), vec![]);
     }
 
     let global_variable_scope = scope.subscope(&global_linker.global_variables);
 
     // Resolve function bodies
-    let functions: HashSet<Rc<FunctionImplementation>> = global_linker.functions_with_bodies.iter().map(
-        |(fun, statements)| {
+    let functions: HashSet<Rc<FunctionImplementation>> = global_linker.functions.iter().map(
+        |fun| {
+            let mut variable_names = HashMap::new();
+            for (name, (_, variable)) in zip_eq(fun.pointer.human_interface.parameter_names_internal.iter(), fun.pointer.human_interface.parameter_names.iter()) {
+                variable_names.insert(Rc::clone(variable), name.clone());
+            }
+
             let mut resolver = Box::new(ImperativeLinker {
-                function: Rc::clone(fun),
+                function: Rc::clone(&fun.pointer),
                 builtins,
                 generics: GenericMapping::new(),
-                variable_names: HashMap::new()
+                variable_names
             });
-            // TODO The scope is incorrect, because the body might be in any subscope.
-            resolver.link_function_body(statements, &global_variable_scope)
+
+            let mut injection_level = scopes::Level::new();
+            for fun in fun.injected_pointers.iter() {
+                injection_level.add_function(Rc::clone(fun));
+            }
+
+            let function_scope = global_variable_scope.subscope(&injection_level);
+
+            resolver.link_function_body(fun.body, &function_scope)
         }
     ).collect();
 
@@ -59,7 +80,7 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
 }
 
 impl <'a> GlobalLinker<'a> {
-    pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, scope: &scopes::Hierarchy, requirements: &HashSet<Rc<TraitConformanceRequirement>>) {
+    pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, scope: &scopes::Hierarchy, requirements: &HashSet<Rc<TraitConformanceRequirement>>, injected_pointers: Vec<Rc<FunctionPointer>>) {
         match statement {
             abstract_syntax::GlobalStatement::Scope(generics_scope) => {
                 let mut level_with_generics = scopes::Level::new();
@@ -71,13 +92,20 @@ impl <'a> GlobalLinker<'a> {
                 let subscope_with_generics = scope.subscope(&level_with_generics);
                 let mut level_with_requirements = scopes::Level::new();
 
+                let mut injected_pointers = injected_pointers.clone();
+
                 let mut requirements = requirements.clone();
                 if let Some(requirements_syntax) = &generics_scope.requirements {
                     for requirement_syntax in requirements_syntax.iter() {
                         let trait_ = Rc::clone(subscope_with_generics.resolve_trait(scopes::Environment::Global, &requirement_syntax.unit));
-                        let arguments = requirement_syntax.elements.iter().map(|x| {
+                        let arguments: Vec<Box<Type>> = requirement_syntax.elements.iter().map(|x| {
                             link_specialized_type(x, &subscope_with_generics)
                         }).collect();
+
+                        let mut replace_map = HashMap::new();
+                        for (param, arg) in zip_eq(trait_.parameters.iter(), arguments.iter()) {
+                            replace_map.insert(param.clone(), arg.clone());
+                        }
 
                         // Add requirement to scope, which is used for declarations like trait conformance and functions
                         requirements.insert(Rc::new(TraitConformanceRequirement {
@@ -88,9 +116,7 @@ impl <'a> GlobalLinker<'a> {
 
                         // Add requirement's implied abstract functions to scope
                         for fun in trait_.abstract_functions.iter() {
-                            let replace_map = HashMap::new();
-
-                            level_with_requirements.add_function(Rc::new(FunctionPointer {
+                            let mapped_pointer = Rc::new(FunctionPointer {
                                 pointer_id: Uuid::new_v4(),
                                 function_id: fun.function_id,
                                 requirements: HashSet::new(),
@@ -105,7 +131,10 @@ impl <'a> GlobalLinker<'a> {
                                     })).collect(),
                                     return_type: fun.machine_interface.return_type.as_ref().map(|x| x.replacing_any(&replace_map))
                                 })
-                            }));
+                            });
+
+                            injected_pointers.push(Rc::clone(&mapped_pointer));
+                            level_with_requirements.add_function(mapped_pointer);
                         }
                     }
                 }
@@ -113,16 +142,17 @@ impl <'a> GlobalLinker<'a> {
                 let subscope = subscope_with_generics.subscope(&level_with_requirements);
 
                 for statement in &generics_scope.statements {
-                    self.link_global_statement(statement.as_ref(), &subscope, &requirements);
+                    self.link_global_statement(statement.as_ref(), &subscope, &requirements, injected_pointers.clone());
                 }
             }
             abstract_syntax::GlobalStatement::FunctionDeclaration(syntax) => {
                 let fun = link_function_pointer(&syntax, scope, requirements.clone());
 
-                let environment = match fun.human_interface.form {
-                    FunctionForm::Member => scopes::Environment::Member,
-                    _ => scopes::Environment::Global,
-                };
+                self.functions.push(FunctionWithoutBody {
+                    pointer: Rc::clone(&fun),
+                    body: &syntax.body,
+                    injected_pointers
+                });
 
                 // Create a variable for the function
                 self.global_variables.add_function(fun);
@@ -131,13 +161,17 @@ impl <'a> GlobalLinker<'a> {
                 // TODO Create an additional variable as Metatype.function...?
                 // }
             }
-            abstract_syntax::GlobalStatement::Operator(operator) => {
-                let interface = link_operator_pointer(&operator, self.parser_scope, scope, requirements.clone());
+            abstract_syntax::GlobalStatement::Operator(syntax) => {
+                let fun = link_operator_pointer(&syntax, self.parser_scope, scope, requirements.clone());
 
-                self.functions_with_bodies.push((Rc::clone(&interface), &operator.body));
+                self.functions.push(FunctionWithoutBody {
+                    pointer: Rc::clone(&fun),
+                    body: &syntax.body,
+                    injected_pointers
+                });
 
                 // Create a variable for the function
-                self.global_variables.add_function(interface);
+                self.global_variables.add_function(fun);
             }
             _ => {}
         }
@@ -155,7 +189,7 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
         let variable = Variable::make_immutable(link_type(&parameter.param_type, scope));
 
         parameters.insert(Rc::clone(&variable));
-        parameter_names.push((ParameterKey::Int(0), variable));
+        parameter_names.push((ParameterKey::Positional, variable));
         parameter_names_internal.push(parameter.internal_name.clone());
     }
 
@@ -199,7 +233,7 @@ pub fn link_operator_pointer(function: &abstract_syntax::Operator, parser_scope:
         let variable = Variable::make_immutable(link_type(&parameter.param_type, scope));
 
         parameters.insert(Rc::clone(&variable));
-        parameter_names.push((ParameterKey::None, variable));
+        parameter_names.push((ParameterKey::Positional, variable));
         parameter_names_internal.push(parameter.internal_name.clone());
     }
 

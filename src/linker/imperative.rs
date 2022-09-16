@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
-use std::iter::zip;
 use guard::guard;
+use itertools::zip_eq;
 use crate::linker;
 use crate::program::computation_tree::{Expression, ExpressionOperation, FunctionImplementation, Statement};
 use crate::linker::global::{link_type};
@@ -27,7 +27,7 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_function_body(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Hierarchy) -> Rc<FunctionImplementation> {
         let mut parameter_variables = scopes::Level::new();
 
-        for (internal_name, (_, variable)) in zip(self.function.human_interface.parameter_names_internal.iter(), self.function.human_interface.parameter_names.iter()) {
+        for (internal_name, (_, variable)) in zip_eq(self.function.human_interface.parameter_names_internal.iter(), self.function.human_interface.parameter_names.iter()) {
             parameter_variables.insert_singleton(scopes::Environment::Global, variable.clone(), internal_name);
         }
 
@@ -85,6 +85,7 @@ impl <'a> ImperativeLinker<'a> {
                     statements.push(Box::new(
                         Statement::VariableAssignment(Rc::clone(&variable), expression)
                     ));
+                    self.variable_names.insert(Rc::clone(&variable), identifier.clone());
                     local_variables.push_variable(scopes::Environment::Global, variable, identifier);
                 },
                 abstract_syntax::Statement::Return(expression) => {
@@ -179,7 +180,7 @@ impl <'a> ImperativeLinker<'a> {
                 //     .map(|x| self.link_expression(x, scope))
                 //     .collect();
                 //
-                // let functions: Vec<Rc<FunctionInterface>> = zip(arguments.windows(2), operators.into_iter())
+                // let functions: Vec<Rc<FunctionInterface>> = zip_eq(arguments.windows(2), operators.into_iter())
                 //     .map(|(args, operator)| {
                 //         let (lhs, rhs) = (&args[0], &args[1]);
                 //         self.link_binary_function(lhs, operator, rhs, scope).clone()
@@ -233,7 +234,7 @@ impl <'a> ImperativeLinker<'a> {
                                 let target = self.link_expression(target, scope);
 
                                 // Member Function
-                                let arguments: Vec<(ParameterKey, Box<Expression>)> = Some((ParameterKey::None, target)).into_iter()
+                                let arguments: Vec<(ParameterKey, Box<Expression>)> = Some((ParameterKey::Positional, target)).into_iter()
                                     .chain(arguments.iter().map(|x| (x.key.clone(), self.link_expression(&x.value, scope))))
                                     .collect();
 
@@ -280,8 +281,8 @@ impl <'a> ImperativeLinker<'a> {
         });
 
         self.link_function_call(operator, scopes::Environment::Global, vec![
-            (ParameterKey::None, lhs),
-            (ParameterKey::None, rhs),
+            (ParameterKey::Positional, lhs),
+            (ParameterKey::Positional, rhs),
         ], scope)
     }
 
@@ -291,7 +292,7 @@ impl <'a> ImperativeLinker<'a> {
         });
 
         self.link_function_call(operator, scopes::Environment::Global, vec![
-            (ParameterKey::None, value),
+            (ParameterKey::Positional, value),
         ], scope)
     }
 
@@ -304,42 +305,51 @@ impl <'a> ImperativeLinker<'a> {
         let argument_keys: Vec<&ParameterKey> = argument_keys.iter().collect();
         let argument_types: Vec<&Type> = argument_expressions.iter().map(|x| x.result_type.as_ref().unwrap().as_ref()).collect();
 
-        let candidates: Vec<(Rc<FunctionPointer>, Vec<Box<Type>>)> = functions.iter()
-            .flat_map(|fun| {
-                if fun.human_interface.parameter_names.iter().map(|x| &x.0).collect::<Vec<&ParameterKey>>() != argument_keys {
-                    return None
-                }
+        let mut candidates_with_failed_signature = vec![];
+        let mut candidates_with_failed_types = vec![];
+        let mut candidates_with_failed_requirements = vec![];
+        let mut candidates = vec![];
 
-                let types: Vec<Box<Type>> = fun.human_interface.parameter_names.iter().map(|x| x.1.type_declaration.generify(&seed)).collect();
-                return Some((Rc::clone(fun), types))
-            })
-            .collect();
+        for fun in functions {
+            if fun.human_interface.parameter_names.iter().map(|x| &x.0).collect::<Vec<&ParameterKey>>() != argument_keys {
+                candidates_with_failed_signature.push(fun);
+                continue;
+            }
 
-        let candidates: HashMap<Rc<FunctionPointer>, (Vec<Box<Type>>, Box<TraitBinding>)> = candidates.into_iter().flat_map(|(fun, params)| {
-            let mut clone: GenericMapping = self.generics.clone();
-            clone.merge_pairs(zip(
+            let param_types: Vec<Box<Type>> = fun.human_interface.parameter_names.iter()
+                .map(|x| x.1.type_declaration.generify(&seed))
+                .collect();
+
+            let mut generic_mapping: GenericMapping = self.generics.clone();
+            let mapping_result = generic_mapping.merge_pairs(zip_eq(
                 argument_types.iter().map(|x| *x),
-                params.iter().map(|x| x.as_ref())
-            )).ok()?;
-            let binding = scope.trait_conformance_declarations.satisfy_requirements(&fun.requirements, &seed, &clone).ok()?;
-            Some((Rc::clone(&fun), (params, binding)))
-        }).collect();
+                param_types.iter().map(|x| x.as_ref())
+            ));
 
-        // TODO Only allow abstract candidates in relation to abstract requirements declared in our current scope
+            if mapping_result.is_err() {
+                candidates_with_failed_types.push(fun);
+                continue;
+            }
 
-        if candidates.len() == 0 {
-            panic!("function {} could not be resolved for the passed arguments: {:?}", fn_name, &argument_types)
+            let binding = scope.trait_conformance_declarations
+                .satisfy_requirements(&fun.requirements, &seed, &generic_mapping);
+
+            if binding.is_err() {
+                candidates_with_failed_requirements.push(fun);
+                continue;
+            }
+            let binding = binding.unwrap();
+
+            candidates.push((fun, param_types, binding));
         }
-        else if candidates.len() > 1 {
-            panic!("function {} is ambiguous ({}x) for the passed arguments: {:?}", fn_name, candidates.len(), &argument_types)
-        }
-        else {
-            let (function, (param_types, binding)) = candidates.into_iter().next().unwrap();
+
+        if candidates.len() == 1 {
+            let (function, param_types, binding) = candidates.into_iter().next().unwrap();
             let return_type = function.machine_interface.return_type.as_ref()
                 .map(|x| x.generify(&seed));
 
             // Actually bind the generics w.r.t. the selected function
-            self.generics.merge_pairs(zip(
+            self.generics.merge_pairs(zip_eq(
                 argument_types,
                 param_types.iter().map(|x| x.as_ref())
             )).unwrap();
@@ -348,12 +358,46 @@ impl <'a> ImperativeLinker<'a> {
                 result_type: return_type,
                 operation: Box::new(ExpressionOperation::FunctionCall {
                     function: Rc::clone(&function),
-                    arguments: zip(argument_expressions.into_iter(), function.human_interface.parameter_names.iter())
+                    arguments: zip_eq(argument_expressions.into_iter(), function.human_interface.parameter_names.iter())
                         .map(|(exp, (_, variable))| (Rc::clone(variable), exp))
                         .collect(),
                     binding
                 })
-            })
+            });
         }
+
+        if candidates.len() > 1 {
+            panic!("function {} is ambiguous ({}x) for the passed arguments: {:?}", fn_name, candidates.len(), &argument_types);
+        }
+
+        if candidates_with_failed_requirements.len() > 1 {
+            // TODO Print types of arguments too, for context.
+            panic!("function {} has {}x candidates that failed satisfying requirements: {:?}", fn_name, candidates_with_failed_requirements.len(), &argument_types)
+        }
+
+        if candidates_with_failed_requirements.len() == 1 {
+            // TODO How so?
+            panic!("function {:?} failed satisfying requirements: {:?}", candidates_with_failed_requirements.iter().next().unwrap().human_interface, &argument_types)
+        }
+
+        if candidates_with_failed_types.len() > 1 {
+            // TODO Print passed argument signature, not just types
+            panic!("function {} has {}x candidates with mismatching types: {:?}", fn_name, candidates_with_failed_types.len(), &argument_types)
+        }
+
+        if candidates_with_failed_types.len() == 1 {
+            panic!("function {:?} has mismatching types: {:?}", candidates_with_failed_types.iter().next().unwrap().human_interface, &argument_types)
+        }
+
+        if candidates_with_failed_signature.len() > 1 {
+            panic!("function {} cannot be resolved with argument keys: {:?}", fn_name, argument_keys)
+        }
+
+        if candidates_with_failed_signature.len() == 1 {
+            // TODO Print passed arguments like a signature, not array
+            panic!("function {:?} got mismatching argument keys: {:?}", candidates_with_failed_signature.iter().next().unwrap().human_interface, argument_keys)
+        }
+
+        panic!("function {} could not be resolved.", fn_name)
     }
 }

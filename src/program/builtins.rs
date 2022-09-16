@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::iter::zip;
 use std::rc::Rc;
 use uuid::Uuid;
 use strum::IntoEnumIterator;

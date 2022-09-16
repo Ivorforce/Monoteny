@@ -3,7 +3,6 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use std::fmt::{Debug, Formatter};
 use std::collections::{HashMap, HashSet};
-use std::iter::zip;
 use std::ops::BitXor;
 use guard::guard;
 use crate::fmtutil::write_comma_separated_list;
@@ -27,7 +26,7 @@ pub struct Struct {
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ParameterKey {
-    None,
+    Positional,
     Name(String),
     Int(i32),
 }
@@ -104,9 +103,9 @@ impl Debug for ParameterKey {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         use ParameterKey::*;
         match self {
-            Name(n) => write!(fmt, "{}", n),
+            Name(s) => write!(fmt, "{}", s),
             Int(n) => write!(fmt, "{}", n),
-            None => Ok(())
+            Positional => write!(fmt, "_"),
         }
     }
 }
@@ -190,5 +189,11 @@ impl Variable {
             type_declaration,
             mutability: Mutability::Immutable
         })
+    }
+}
+
+impl ParameterKey {
+    pub fn from_string(s: String) -> ParameterKey {
+        if s == "_" { ParameterKey::Positional } else { ParameterKey::Name(s) }
     }
 }
