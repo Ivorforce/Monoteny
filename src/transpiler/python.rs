@@ -25,7 +25,7 @@ pub struct TranspilerContext<'a> {
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     writeln!(stream, "import numpy as np")?;
     writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
-    writeln!(stream, "from typing import Any")?;
+    writeln!(stream, "from typing import Any, Callable")?;
 
     let mut builtin_namespaces = builtins::create(builtins);
     let mut file_namespace = builtin_namespaces.add_sublevel();
@@ -36,6 +36,10 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         let function_namespace = file_namespace.add_sublevel();
         for (variable, name) in function.variable_names.iter() {
             function_namespace.register_definition(variable.id.clone(), name);
+        }
+
+        for pointer in function.injected_pointers.iter() {
+            function_namespace.register_definition(pointer.pointer_id.clone(), &pointer.human_interface.alphanumeric_name);
         }
     }
 
@@ -54,11 +58,14 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
     write!(stream, "\n\ndef {}(", context.names[&function.id])?;
 
-    // TODO Can we somehow transpile function.interface.is_member_function?
     for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
         write!(stream, "{}: ", get_external_name(key, idx))?;
         types::transpile(stream, &variable.type_declaration, context)?;
-        write!(stream, ",")?;
+        write!(stream, ", ")?;
+    }
+
+    for injected_pointer in function.injected_pointers.iter() {
+        write!(stream, "{}: Callable, ", context.names.get(&injected_pointer.pointer_id).unwrap())?;
     }
 
     write!(stream, ")")?;
@@ -175,18 +182,17 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
                 // no-op
             }
             else {
-                // TODO This currently fails for abstract functions because we don't map them
-                //  to actual functions. Instead, the function implementation should be passed as
-                //  a parameter to us, so we can call it by parameter name here.
-                write!(stream, "{}(", context.names[&function.function_id])?;
+                write!(stream, "{}(", context.names[&function.pointer_id])?;
 
                 for (idx, (param_key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
+                    let argument = arguments.get(variable).unwrap();
+
                     if let ParameterKey::Name(name) = &param_key {
                         write!(stream, "{}=", name)?;
                     }
                     // Otherwise, pass as *args
 
-                    transpile_expression(stream, &expression, context)?;
+                    transpile_expression(stream, &argument, context)?;
 
                     if idx < arguments.len() -1 {
                         write!(stream, ", ")?;

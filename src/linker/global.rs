@@ -27,7 +27,7 @@ struct GlobalLinker<'a> {
 struct FunctionWithoutBody<'a> {
     pointer: Rc<FunctionPointer>,
     body: &'a Vec<Box<abstract_syntax::Statement>>,
-    injected_pointers: Vec<Rc<FunctionPointer>>
+    injected_pointers: HashSet<Rc<FunctionPointer>>
 }
 
 pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> Program {
@@ -43,7 +43,7 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
 
     // Resolve global types / interfaces
     for statement in &syntax.global_statements {
-        global_linker.link_global_statement(statement.as_ref(), scope, &HashSet::new(), vec![]);
+        global_linker.link_global_statement(statement.as_ref(), scope, &HashSet::new(), HashSet::new());
     }
 
     let global_variable_scope = scope.subscope(&global_linker.global_variables);
@@ -60,7 +60,8 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
                 function: Rc::clone(&fun.pointer),
                 builtins,
                 generics: GenericMapping::new(),
-                variable_names
+                variable_names,
+                injected_pointers: fun.injected_pointers.clone()
             });
 
             let mut injection_level = scopes::Level::new();
@@ -80,7 +81,7 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
 }
 
 impl <'a> GlobalLinker<'a> {
-    pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, scope: &scopes::Hierarchy, requirements: &HashSet<Rc<TraitConformanceRequirement>>, injected_pointers: Vec<Rc<FunctionPointer>>) {
+    pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, scope: &scopes::Hierarchy, requirements: &HashSet<Rc<TraitConformanceRequirement>>, injected_pointers: HashSet<Rc<FunctionPointer>>) {
         match statement {
             abstract_syntax::GlobalStatement::Scope(generics_scope) => {
                 let mut level_with_generics = scopes::Level::new();
@@ -133,7 +134,7 @@ impl <'a> GlobalLinker<'a> {
                                 })
                             });
 
-                            injected_pointers.push(Rc::clone(&mapped_pointer));
+                            injected_pointers.insert(Rc::clone(&mapped_pointer));
                             level_with_requirements.add_function(mapped_pointer);
                         }
                     }

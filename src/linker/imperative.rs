@@ -20,7 +20,8 @@ pub struct ImperativeLinker<'a> {
 
     pub builtins: &'a TenLangBuiltins,
     pub generics: GenericMapping,
-    pub variable_names: HashMap<Rc<Variable>, String>
+    pub injected_pointers: HashSet<Rc<FunctionPointer>>,
+    pub variable_names: HashMap<Rc<Variable>, String>,
 }
 
 impl <'a> ImperativeLinker<'a> {
@@ -35,11 +36,14 @@ impl <'a> ImperativeLinker<'a> {
         let statements: Vec<Box<Statement>> = self.link_top_scope(body, &subscope);
 
         return Rc::new(FunctionImplementation {
-            id: self.function.function_id,
+            id: self.function.pointer_id,
+            function_id: self.function.function_id,
             human_interface: Rc::clone(&self.function.human_interface),
             machine_interface: Rc::clone(&self.function.machine_interface),
             statements,
-            variable_names: self.variable_names.clone()
+            variable_names: self.variable_names.clone(),
+            // TODO Trim to those that are actually used in the function.
+            injected_pointers: self.injected_pointers.clone(),
         });
     }
 

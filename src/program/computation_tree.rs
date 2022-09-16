@@ -20,12 +20,14 @@ pub struct Program {
 
 pub struct FunctionImplementation {
     pub id: Uuid,
+    pub function_id: Uuid,
 
     pub human_interface: Rc<HumanFunctionInterface>,
     pub machine_interface: Rc<MachineFunctionInterface>,
 
     pub statements: Vec<Box<Statement>>,
-    pub variable_names: HashMap<Rc<Variable>, String>
+    pub variable_names: HashMap<Rc<Variable>, String>,
+    pub injected_pointers: HashSet<Rc<FunctionPointer>>
 }
 
 // ================================ Code ==============================
