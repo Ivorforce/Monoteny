@@ -65,8 +65,8 @@ This will be possible by TenLang coming with several different transpilers. Here
 ### TenLang 0.2 (Proof of Concept Stage)
 
 - [x] Forward generic type checking
-- [ ] Traits
-  - [ ] Abstract Functions
+- [x] Traits
+  - [ ] Abstract Functions, conformance declarations
   - [ ] Anonymous generic with implicit type conformance (`$Number` -> `given <$Number> where Number<$Number>`)
   - [ ] Inheritance (`inherit OtherTrait<A, B>`)
   - [ ] Stored Properties (1-argument traits only)
