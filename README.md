@@ -68,7 +68,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Traits
   - [x] Anonymous generics (`$Number` -> `given <$Number> {}`)
     - [x] ... with implicit type conformance (`$:Number` -> `given <$:Number> where Number<$:Number> {}`)
-  - [ ] Abstract Functions, conformance declarations
+  - [ ] Abstract Functions, Conformance Declarations
   - [ ] Inheritance (`inherit OtherTrait<A, B>`)
   - [ ] Stored Properties (1-argument traits only)
     - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only on single-argument, non abstract
@@ -98,20 +98,25 @@ This will be possible by TenLang coming with several different transpilers. Here
 ### TenLang 1.0
 
 - [ ] System Callback API / Permission Contexts
-- [ ] Exceptions
+- [ ] Exceptions (as monads)
+  - [ ] Early return syntax
 - [ ] IntX, FloatX (big int & float, which are structs)
+- [ ] IntNative, FloatNative (platform-optimized int and float)
 - [ ] Polymorphic Enums (enums with attached objects)
-- [ ] Abstract functions + Higher order functions
-- [ ] Deep Function Currying
-- [ ] String comprehension
+- [ ] Higher Order Functions
+  - [ ] Deep Function Currying
+- [ ] Local functions and declarations
+  - [ ] Anonymous functions
+- [ ] String Comprehension
 - [ ] Non-Varargs subscripts and subscript overloads
 
 ### TenLang 2.0
 
-- [ ] Implicit tensor building
 - [ ] Staggered Dimensions
-- [ ] Array Dimension Index
-- [ ] Closed Int Range Dimension Index
+  - [ ] Implicit Tensors
+- [ ] Compile-Time Shape Tests
+  - [ ] Array Dimension Index
+  - [ ] Closed Int Range Dimension Index
 
 ### TenLang 3.0
 
