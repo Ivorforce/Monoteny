@@ -19,6 +19,7 @@ use crate::transpiler::namespaces;
 
 pub struct TranspilerContext<'a> {
     names: HashMap<Uuid, String>,
+    functions_by_function_id: HashMap<Uuid, Rc<FunctionImplementation>>,
     builtins: &'a TenLangBuiltins,
 }
 
@@ -30,6 +31,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 
     let mut builtin_namespaces = builtins::create(builtins);
     let mut file_namespace = builtin_namespaces.add_sublevel();
+    let mut functions_by_function_id = HashMap::new();
 
     for function in program.functions.iter() {
         file_namespace.register_definition(function.id, &function.human_interface.alphanumeric_name);
@@ -39,14 +41,17 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
             function_namespace.register_definition(variable.id.clone(), name);
         }
 
-        for pointer in function.used_pointers.iter() {
+        for pointer in function.machine_interface.injectable_pointers.iter() {
             function_namespace.register_definition(pointer.pointer_id.clone(), &pointer.human_interface.alphanumeric_name);
         }
+
+        functions_by_function_id.insert(function.function_id, Rc::clone(function));
     }
 
     let context = TranspilerContext {
         names: builtin_namespaces.map_names(),
-        builtins
+        functions_by_function_id,
+        builtins,
     };
 
     for function in program.functions.iter() {
@@ -65,8 +70,17 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
         write!(stream, ", ")?;
     }
 
-    for injected_pointer in function.used_pointers.iter() {
-        write!(stream, "{}: Callable, ", context.names.get(&injected_pointer.pointer_id).unwrap())?;
+    for pointer in function.used_pointers.iter() {
+        write!(stream, "{}: Callable, ", context.names.get(&pointer.pointer_id).unwrap())?;
+    }
+    // TODO For now, we need to allow passing these in, too. If not, an abstract function might pass
+    //  some that are unneeded, crashing the program.
+    for pointer in function.machine_interface.injectable_pointers.iter() {
+        if function.used_pointers.contains(pointer) {
+            continue;
+        }
+
+        write!(stream, "{}=None, ", context.names.get(&pointer.pointer_id).unwrap())?;
     }
 
     write!(stream, ")")?;
@@ -177,7 +191,12 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
             else {
                 write!(stream, "{}(", context.names[&function.pointer_id])?;
 
-                let mut arguments_left = arguments.len() + function.machine_interface.injectable_pointers.len();
+                let pointers_to_inject = match context.functions_by_function_id.get(&function.function_id) {
+                    None => &function.machine_interface.injectable_pointers,
+                    Some(implementation) => &implementation.used_pointers,
+                };
+
+                let mut arguments_left = arguments.len() + pointers_to_inject.len();
 
                 for (param_key, variable) in function.human_interface.parameter_names.iter() {
                     let argument = arguments.get(variable).unwrap();
@@ -198,7 +217,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
                 // TODO We can solve this better by translating required bindings to arguments in the actual interface
                 // TODO Consider making a copy of the function, especially if all bindings are 'default builtins', i.e. +-*/
                 // TODO Trim down to the pointers we actually need in the function
-                for pointer in function.machine_interface.injectable_pointers.iter() {
+                for pointer in pointers_to_inject.iter() {
                     let resolved_pointer = binding.pointers_resolution.get(pointer).unwrap();
 
                     let param_name = context.names.get(&pointer.pointer_id).unwrap();

@@ -21,6 +21,7 @@ pub struct ImperativeLinker<'a> {
     pub builtins: &'a TenLangBuiltins,
     pub generics: GenericMapping,
     pub injected_pointers: HashSet<Rc<FunctionPointer>>,
+    pub used_functions: HashSet<Rc<FunctionPointer>>,
     pub variable_names: HashMap<Rc<Variable>, String>,
 }
 
@@ -42,8 +43,7 @@ impl <'a> ImperativeLinker<'a> {
             machine_interface: Rc::clone(&self.function.machine_interface),
             statements,
             variable_names: self.variable_names.clone(),
-            // TODO Trim to those that are actually used in the function.
-            used_pointers: self.injected_pointers.clone(),
+            used_pointers: self.used_functions.intersection(&self.injected_pointers).map(Rc::clone).collect(),
         });
     }
 
@@ -357,6 +357,8 @@ impl <'a> ImperativeLinker<'a> {
                 argument_types,
                 param_types.iter().map(|x| x.as_ref())
             )).unwrap();
+
+            self.used_functions.insert(Rc::clone(function));
 
             return Box::new(Expression {
                 result_type: return_type,

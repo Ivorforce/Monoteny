@@ -61,7 +61,8 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
                 builtins,
                 generics: GenericMapping::new(),
                 variable_names,
-                injected_pointers: fun.injected_pointers.clone()
+                injected_pointers: fun.injected_pointers.clone(),
+                used_functions: HashSet::new(),
             });
 
             let mut injection_level = scopes::Level::new();

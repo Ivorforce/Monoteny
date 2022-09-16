@@ -3,7 +3,7 @@
 #include <Eigen/Tensor>
 
 
-void no_op() {
+Any square(Any a,) {
 
 }
 
@@ -19,7 +19,7 @@ void main() {
 
 }
 
-Any square(Any a,) {
+void no_op() {
 
 }
 
