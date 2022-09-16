@@ -67,31 +67,31 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Forward generic type checking
 - [ ] Traits
   - [ ] Abstract Functions
-  - [ ] Anonymous generic with implicit type conformance ($Number => given <$Number> where Number<$Number>)
+  - [ ] Anonymous generic with implicit type conformance (`$Number` -> `given <$Number> where Number<$Number>`)
   - [ ] Inheritance (`inherit OtherTrait<A, B>`)
   - [ ] Stored Properties (1-argument traits only)
     - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only on single-argument, non abstract
-      - [ ] Anonymous Structs: ... -> (a: Int, b: Float) ... return (a: a, b: b)
+      - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
     - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
     - [ ] Properties conforming to property-like functions (automatically?)
+    - [ ] Tuples (`tuple(x, y, z)` -> `trait<A> { let x: A, y: A, z: A }`)
 - [ ] Non-linear linking (allow references to identifiers declared below)
 - [ ] Comments (with transpilation
 - [ ] Subscript function syntax
-- [ ] 'equivalence transformation' syntax: ((a + b) * c).any() becomes a + b .. * c .. .any()
-  - [ ] 'transformation assignment' syntax: a .= + 5; b .= .union(c)
-- [ ] Var-Like 0 parameter function syntax (let c = a.b; a.b = c;)
-- [ ] Expression Scopes (let a = { ... yield b; })
+- [ ] 'equivalence transformation' syntax: `((a + b) * c).any()` becomes `a + b .. * c .. .any()`
+  - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`
+- [ ] Var-Like 0 parameter function syntax (`let c = a.b`; `a.b = c`;)
+- [ ] Expression Scopes (`let a = { ... yield b; }`)
 - [ ] If / Else, if let, Guard, Guard let
-- [ ] Varargs: Int keying with infinite parameters (syntax: a...: Type[0...] for print(a, b) and a...: Type[String] for print(a: a, b: b))
 - [ ] Enums / Enum type inheritance
-- [ ] Specializations: Raw data is some type, but additional functions will match
 - [ ] Monads
   - [ ] Tuple Dimension Index
   - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
   - [ ] Open Int Range Dimension Index, array start / end handle syntax (>|, <|)
   - [ ] Auto Broadcast
-- [ ] Optionals
-- [ ] Sets
+  - [ ] Varargs: Int keying with infinite parameters (syntax: `a...: Type[0...]` for `print(a, b)` and `a...: Type[String]` for `print(a: a, b: b)`)
+  - [ ] Optionals
+  - [ ] Sets
 
 ### TenLang 1.0
 
@@ -117,6 +117,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] System I/O
   - [ ] Indeterministic polymorphism
     - [ ] Virtual function tables
+- [ ] Pointer Monad (-> shared object reference, mutable or immutable)
 
 ### Standard Library
 

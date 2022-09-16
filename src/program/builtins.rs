@@ -187,6 +187,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         let mut t = Trait {
             id: Uuid::new_v4(),
             name: String::from(name),
+            parameters: vec![generic_id],
             abstract_functions: HashSet::new()
         };
 
