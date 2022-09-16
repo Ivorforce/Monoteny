@@ -4,7 +4,7 @@ from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint
 from typing import Any, Callable
 
 
-def square_0(__0: Any, multiply: Callable, add=None, divide=None, subtract=None, ) -> Any:
+def square_0(__0: Any, multiply: Callable, divide=None, add=None, subtract=None, ) -> Any:
     """
     <Docstring TODO!>
 
@@ -44,7 +44,7 @@ def floor_div(__0: Any, __1: Any, divide: Callable, add=None, multiply=None, sub
     return divide(lhs, rhs)
 
 
-def square_1(__0: Any, multiply: Callable, subtract=None, add=None, divide=None, ) -> Any:
+def square_1(__0: Any, multiply: Callable, divide=None, add=None, subtract=None, ) -> Any:
     """
     <Docstring TODO!>
 

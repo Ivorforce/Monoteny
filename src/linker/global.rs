@@ -149,14 +149,15 @@ pub fn with_anonymous_generics<'a, F>(type_names: &'a Vec<&'a String>, scope: &s
     let mut needs_requirements = false;
 
     for type_name in type_names {
-        if type_name.starts_with("$") && !level.contains(scopes::Environment::Global, type_name) {
+        if type_name.starts_with("#") && !level.contains(scopes::Environment::Global, type_name) {
+            level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(Type::meta(Type::make_any())), type_name);
+            needs_scope = true;
+        }
+        else if type_name.starts_with("$") && !level.contains(scopes::Environment::Global, type_name) {
             level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(Type::meta(Type::make_any())), type_name);
             needs_scope = true;
 
             let trait_name = String::from(&type_name[1..]);
-            if trait_name.starts_with("Any") {
-                continue
-            }
 
             requirements_syntax.push(abstract_syntax::TraitDeclaration {
                 unit: trait_name,
