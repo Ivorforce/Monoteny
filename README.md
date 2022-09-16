@@ -77,7 +77,8 @@ This will be possible by TenLang coming with several different transpilers. Here
     - [ ] Properties conforming to property-like functions (automatically?)
     - [ ] Tuples (`tuple(x, y, z)` -> `trait<A> { let x: A, y: A, z: A }`)
 - [ ] Non-linear linking (allow references to identifiers declared below)
-- [ ] Comments (with transpilation
+- [ ] Comments (with transpilation)
+- [ ] Reverse generic type checking (output types determined from inputs)
 - [ ] Subscript function syntax
 - [ ] 'equivalence transformation' syntax: `((a + b) * c).any()` becomes `a + b .. * c .. .any()`
   - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`
@@ -96,7 +97,6 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 ### TenLang 1.0
 
-- [ ] Reverse generic type checking (output types determined from inputs)
 - [ ] System Callback API / Permission Contexts
 - [ ] Exceptions
 - [ ] IntX, FloatX (big int & float, which are structs)
