@@ -17,7 +17,7 @@ pub fn create(builtins: &TenLangBuiltins) -> namespaces::Level {
         "for", "not"
     ] {
         // Don't really need an ID but it's easy to just do it like this here.
-        namespace.register_definition(Uuid::new_v4(), &String::from(keyword));
+        namespace.insert_keyword(Uuid::new_v4(), &String::from(keyword));
     }
 
     for type_name in [
@@ -26,13 +26,27 @@ pub fn create(builtins: &TenLangBuiltins) -> namespaces::Level {
         "uint8", "uint16", "uint32", "uint64", "uint128",
         "float32", "float64",
         // This is actually built-in but we don't want to accidentally shadow it.
-        "bool"
+        "bool",
+        "np", "op",
     ] {
-        namespace.register_definition(Uuid::new_v4(), &String::from(type_name));
+        namespace.insert_keyword(Uuid::new_v4(), &String::from(type_name));
     }
 
+    // The operators can normally be referenced as operators (which the transpiler does do).
+    // However, if a reference is required, we need to resort to another strategy.
+    for (name, functions) in [
+        ("op.add", &builtins.operators.add),
+        ("op.sub", &builtins.operators.subtract),
+        ("op.mul", &builtins.operators.multiply),
+        // TODO This is not true for int types, there it has to be floordiv
+        ("op.truediv", &builtins.operators.divide),
+    ]{
+        for fun in functions {
+            namespace.insert_keyword(fun.pointer_id, &String::from(name));
+        }
+    }
 
-    namespace.register_definition(builtins.functions.print.pointer_id, &String::from("print"));
+    namespace.insert_keyword(builtins.functions.print.pointer_id, &String::from("print"));
 
     namespace
 }

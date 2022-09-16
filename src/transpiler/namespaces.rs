@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 pub struct Level {
     claims: HashMap<String, Vec<Uuid>>,
+    keywords: HashSet<Uuid>,
     sublevels: Vec<Level>
 }
 
@@ -11,7 +12,8 @@ impl Level {
     pub fn new() -> Level {
         Level {
             claims: HashMap::new(),
-            sublevels: Vec::new()
+            keywords: HashSet::new(),
+            sublevels: Vec::new(),
         }
     }
 
@@ -25,6 +27,11 @@ impl Level {
                 vec![uuid.clone()]
             );
         }
+    }
+
+    pub fn insert_keyword(&mut self, uuid: Uuid, name: &String) {
+        self.register_definition(uuid, name);
+        self.keywords.insert(uuid);
     }
 
     pub fn add_sublevel(&mut self) -> &mut Level {
@@ -41,14 +48,14 @@ impl Level {
         }
 
         for (name, claims) in self.claims.iter().sorted_by_key(|(name, claims)| name.len()) {
-            if claims.len() == 1 {
+            if let [claim] = claims[..] {
                 // Can use plain name
                 let mut name = name.clone();
                 while reserved.contains(&name) {
                     name = format!("{}_", name);
                 }
                 reserved.insert(name.clone());
-                mapping.insert(claims.iter().next().unwrap().clone(), name);
+                mapping.insert(claim, name);
             }
             else {
                 // Need to postfix each name with an idx
@@ -57,10 +64,19 @@ impl Level {
                     prefix = format!("{}_", prefix);
                 }
 
-                for (idx, claim) in claims.iter().enumerate() {
-                    let name = make_name(&prefix, idx);
-                    reserved.insert(name.clone());
-                    mapping.insert(claim.clone(), name);
+                let mut idx = 0;
+                for claim in claims.iter() {
+                    if self.keywords.contains(claim) {
+                        reserved.insert(name.clone());
+                        mapping.insert(claim.clone(), name.clone());
+                    }
+                    else {
+                        let postfixed_name = make_name(&prefix, idx);
+                        reserved.insert(postfixed_name.clone());
+
+                        mapping.insert(claim.clone(), postfixed_name);
+                        idx += 1;
+                    }
                 }
             }
         }

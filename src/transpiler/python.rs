@@ -24,6 +24,7 @@ pub struct TranspilerContext<'a> {
 
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
     writeln!(stream, "import numpy as np")?;
+    writeln!(stream, "import operator as op")?;
     writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
     writeln!(stream, "from typing import Any, Callable")?;
 
@@ -38,7 +39,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
             function_namespace.register_definition(variable.id.clone(), name);
         }
 
-        for pointer in function.injected_pointers.iter() {
+        for pointer in function.used_pointers.iter() {
             function_namespace.register_definition(pointer.pointer_id.clone(), &pointer.human_interface.alphanumeric_name);
         }
     }
@@ -64,7 +65,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
         write!(stream, ", ")?;
     }
 
-    for injected_pointer in function.injected_pointers.iter() {
+    for injected_pointer in function.used_pointers.iter() {
         write!(stream, "{}: Callable, ", context.names.get(&injected_pointer.pointer_id).unwrap())?;
     }
 
@@ -85,6 +86,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
 
     for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
         let variable_name = context.names.get(&variable.id).unwrap();
+        // TODO Rather than re-using the external name, we should map it to a new variable and register its name
         let external_name = get_external_name(key, idx);
 
         match &variable.type_declaration.unit {
@@ -166,15 +168,6 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
             write!(stream, "{}", variable_name)?;
         }
         ExpressionOperation::FunctionCall { function, arguments, binding } => {
-            if !binding.is_empty() {
-                // The called function has dynamic calls which are resolved here
-                // Possible Solutions:
-                //  -- Ignore all calls that can make use of builtin python polymorphism (eg. + on numbers)
-                //  -- Inject functions as parameters
-
-                todo!()
-            }
-
             if try_transpile_binary_operator(stream, function, arguments, context)? {
                 // no-op
             }
@@ -184,7 +177,9 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
             else {
                 write!(stream, "{}(", context.names[&function.pointer_id])?;
 
-                for (idx, (param_key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
+                let mut arguments_left = arguments.len() + function.machine_interface.injectable_pointers.len();
+
+                for (param_key, variable) in function.human_interface.parameter_names.iter() {
                     let argument = arguments.get(variable).unwrap();
 
                     if let ParameterKey::Name(name) = &param_key {
@@ -194,10 +189,28 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
 
                     transpile_expression(stream, &argument, context)?;
 
-                    if idx < arguments.len() -1 {
+                    arguments_left -= 1;
+                    if arguments_left > 0 {
                         write!(stream, ", ")?;
                     }
                 }
+
+                // TODO We can solve this better by translating required bindings to arguments in the actual interface
+                // TODO Consider making a copy of the function, especially if all bindings are 'default builtins', i.e. +-*/
+                // TODO Trim down to the pointers we actually need in the function
+                for pointer in function.machine_interface.injectable_pointers.iter() {
+                    let resolved_pointer = binding.pointers_resolution.get(pointer).unwrap();
+
+                    let param_name = context.names.get(&pointer.pointer_id).unwrap();
+                    let arg_name = context.names.get(&resolved_pointer.pointer_id).unwrap();
+                    write!(stream, "{}={}", param_name, arg_name)?;
+
+                    arguments_left -= 1;
+                    if arguments_left > 0 {
+                        write!(stream, ", ")?;
+                    }
+                }
+
                 write!(stream, ")")?;
             }
         },

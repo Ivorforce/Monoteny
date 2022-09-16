@@ -26,7 +26,9 @@ custom_error!{pub TraitConformanceError
 pub struct TraitConformanceRequirement {
     pub id: Uuid,
     pub trait_: Rc<Trait>,
-    pub arguments: Vec<Box<Type>>
+    pub arguments: Vec<Box<Type>>,
+
+    pub functions_pointers: HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>,
 }
 
 #[derive(Clone)]
@@ -44,7 +46,11 @@ pub struct TraitConformanceDeclarations {
     declarations: HashMap<Rc<Trait>, Vec<Rc<TraitConformanceDeclaration>>>
 }
 
-pub type TraitBinding = HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>;
+pub struct TraitBinding {
+    pub conformance: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
+    pub pointers_resolution: HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>,
+}
+
 
 impl TraitConformanceDeclarations {
     pub fn new() -> TraitConformanceDeclarations {
@@ -78,7 +84,10 @@ impl TraitConformanceDeclarations {
 
     pub fn satisfy_requirements(&self, requirements: &HashSet<Rc<TraitConformanceRequirement>>, seed: &Uuid, mapping: &GenericMapping) -> Result<Box<TraitBinding>, TraitConformanceError> {
         if requirements.len() == 0 {
-            return Ok(Box::new(HashMap::new()));
+            return Ok(Box::new(TraitBinding {
+                conformance: HashMap::new(),
+                pointers_resolution: HashMap::new(),
+            }));
         }
 
         if requirements.len() > 1 {
@@ -90,30 +99,43 @@ impl TraitConformanceDeclarations {
             .map(|x| mapping.resolve_type(&x.generify(seed)).unwrap())
             .collect();
 
-        let candidates: Vec<Box<TraitBinding>> = self.declarations.get(&requirement.trait_).unwrap_or(&vec![]).iter()
-            .flat_map(|d| {
-                if !d.requirements.is_empty() {
-                    todo!("Trait conformance declarations with requirements are not supported yet")
-                }
+        let mut candidate: Option<HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>> = None;
 
-                if bound_requirement_arguments != d.arguments {
-                    return None
-                }
+        for declaration in self.declarations.get(&requirement.trait_).unwrap_or(&vec![]).iter() {
+            if !declaration.requirements.is_empty() {
+                todo!("Trait conformance declarations with requirements are not supported yet")
+            }
 
-                return Some(Box::new(TraitBinding::from([
-                    (Rc::clone(requirement), Rc::clone(d))
-                ])))
-            })
-            .collect();
+            if bound_requirement_arguments != declaration.arguments {
+                return continue
+            }
 
-        if candidates.len() == 0 {
-            return Err(TraitConformanceError::Error { msg: String::from(format!("No candidates for trait conformance: {}", requirement.trait_.name)) })
-        }
-        else if candidates.len() > 1 {
-            return Err(TraitConformanceError::Error { msg: String::from(format!("Trait conformance is ambiguous: {}", requirement.trait_.name)) })
+            if candidate.is_some() {
+                return Err(TraitConformanceError::Error { msg: String::from(format!("No candidates for trait conformance: {}", requirement.trait_.name)) })
+            }
+
+            candidate = Some(HashMap::from([
+                (Rc::clone(requirement), Rc::clone(declaration))
+            ]));
         }
 
-        return Ok(candidates.into_iter().next().unwrap())
+        if let Some(conformance) = candidate {
+            let mut pointers_resolution = HashMap::new();
+
+            for (requirement, declaration) in conformance.iter() {
+                for (abstract_func, injectable_pointer) in requirement.functions_pointers.iter() {
+                    let function_implementation = declaration.function_implementations.get(abstract_func).unwrap();
+                    pointers_resolution.insert(Rc::clone(injectable_pointer), Rc::clone(function_implementation));
+                }
+            }
+
+            return Ok(Box::new(TraitBinding {
+                conformance,
+                pointers_resolution,
+            }));
+        }
+
+        panic!("Trait conformance is ambiguous: {}", requirement.trait_.name);
     }
 }
 

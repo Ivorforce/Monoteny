@@ -25,9 +25,13 @@ pub struct FunctionImplementation {
     pub human_interface: Rc<HumanFunctionInterface>,
     pub machine_interface: Rc<MachineFunctionInterface>,
 
+    // While the function declares some machine interface,
+    //  a compiler might be able to make use of the info of which parts
+    //  of the interface are actually in use in the function.
+    pub used_pointers: HashSet<Rc<FunctionPointer>>,
+
     pub statements: Vec<Box<Statement>>,
     pub variable_names: HashMap<Rc<Variable>, String>,
-    pub injected_pointers: HashSet<Rc<FunctionPointer>>
 }
 
 // ================================ Code ==============================

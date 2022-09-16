@@ -18,7 +18,6 @@ pub struct FunctionPointer {
     pub pointer_id: Uuid,
     pub function_id: Uuid,
 
-    pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
     pub human_interface: Rc<HumanFunctionInterface>,
     pub machine_interface: Rc<MachineFunctionInterface>,
 }
@@ -29,6 +28,7 @@ pub struct HumanFunctionInterface {
 
     pub parameter_names: Vec<(ParameterKey, Rc<Variable>)>,
     pub parameter_names_internal: Vec<String>,
+    pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 
     pub form: FunctionForm,
 }
@@ -36,15 +36,10 @@ pub struct HumanFunctionInterface {
 pub struct MachineFunctionInterface {
     pub parameters: HashSet<Rc<Variable>>,
     pub return_type: Option<Box<Type>>,
-}
-
-impl MachineFunctionInterface {
-    pub fn make_static<I>(parameters: I, return_type: Option<Box<Type>>) -> Rc<MachineFunctionInterface> where I: Iterator<Item=Rc<Variable>> {
-        Rc::new(MachineFunctionInterface {
-            parameters: parameters.collect(),
-            return_type,
-        })
-    }
+    // Note: This set will almost certainly be larger than actually required, because
+    //  it is automatically assembled from traits. To avoid unnecessary function passing,
+    //  use an implementation's (if known) hint for which pointers are actually in use.
+    pub injectable_pointers: HashSet<Rc<FunctionPointer>>,
 }
 
 impl FunctionPointer {
@@ -60,15 +55,19 @@ impl FunctionPointer {
             function_id: Uuid::new_v4(),
             pointer_id: Uuid::new_v4(),
 
-            requirements: HashSet::new(),
             human_interface: Rc::new(HumanFunctionInterface {
                 name: String::from(name),
                 alphanumeric_name: String::from(alphanumeric_name),
                 parameter_names: zip_eq(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
                 parameter_names_internal: vec![],  // TODO Internal names shouldn't need to be specified for builtins?
+                requirements: HashSet::new(),
                 form: FunctionForm::Operator,
             }),
-            machine_interface: MachineFunctionInterface::make_static(parameters.into_iter(), Some(return_type.clone()))
+            machine_interface:Rc::new(MachineFunctionInterface {
+                parameters: parameters.into_iter().collect(),
+                return_type: Some(return_type.clone()),
+                injectable_pointers: HashSet::new(),
+            })
         })
     }
 
@@ -84,15 +83,19 @@ impl FunctionPointer {
             function_id: Uuid::new_v4(),
             pointer_id: Uuid::new_v4(),
 
-            requirements: HashSet::new(),
             human_interface: Rc::new(HumanFunctionInterface {
                 name: String::from(name),
                 alphanumeric_name: String::from(alphanumeric_name),
                 parameter_names: zip_eq(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
                 parameter_names_internal: vec![],  // TODO Internal names shouldn't need to be specified for builtins?
+                requirements: HashSet::new(),
                 form: FunctionForm::Global,
             }),
-            machine_interface: MachineFunctionInterface::make_static(parameters.into_iter(), return_type)
+            machine_interface:Rc::new(MachineFunctionInterface {
+                parameters: parameters.into_iter().collect(),
+                return_type: return_type.clone(),
+                injectable_pointers: HashSet::new(),
+            })
         })
     }
 }

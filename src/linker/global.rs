@@ -43,7 +43,7 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
 
     // Resolve global types / interfaces
     for statement in &syntax.global_statements {
-        global_linker.link_global_statement(statement.as_ref(), scope, &HashSet::new(), HashSet::new());
+        global_linker.link_global_statement(statement.as_ref(), scope, &HashSet::new());
     }
 
     let global_variable_scope = scope.subscope(&global_linker.global_variables);
@@ -81,7 +81,7 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
 }
 
 impl <'a> GlobalLinker<'a> {
-    pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, scope: &scopes::Hierarchy, requirements: &HashSet<Rc<TraitConformanceRequirement>>, injected_pointers: HashSet<Rc<FunctionPointer>>) {
+    pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, scope: &scopes::Hierarchy, requirements: &HashSet<Rc<TraitConformanceRequirement>>) {
         match statement {
             abstract_syntax::GlobalStatement::Scope(generics_scope) => {
                 let mut level_with_generics = scopes::Level::new();
@@ -92,8 +92,6 @@ impl <'a> GlobalLinker<'a> {
 
                 let subscope_with_generics = scope.subscope(&level_with_generics);
                 let mut level_with_requirements = scopes::Level::new();
-
-                let mut injected_pointers = injected_pointers.clone();
 
                 let mut requirements = requirements.clone();
                 if let Some(requirements_syntax) = &generics_scope.requirements {
@@ -108,42 +106,45 @@ impl <'a> GlobalLinker<'a> {
                             replace_map.insert(param.clone(), arg.clone());
                         }
 
-                        // Add requirement to scope, which is used for declarations like trait conformance and functions
-                        requirements.insert(Rc::new(TraitConformanceRequirement {
-                            id: Uuid::new_v4(),
-                            trait_: Rc::clone(&trait_),
-                            arguments
-                        }));
+                        let mut functions_pointers = HashMap::new();
 
                         // Add requirement's implied abstract functions to scope
-                        for fun in trait_.abstract_functions.iter() {
+                        for abstract_fun in trait_.abstract_functions.iter() {
                             let mapped_pointer = Rc::new(FunctionPointer {
                                 pointer_id: Uuid::new_v4(),
-                                function_id: fun.function_id,
-                                requirements: HashSet::new(),
-                                human_interface: Rc::clone(&fun.human_interface),
+                                function_id: abstract_fun.function_id,
+                                human_interface: Rc::clone(&abstract_fun.human_interface),
                                 machine_interface: Rc::new(MachineFunctionInterface {
                                     // TODO Mapping variables seems wrong, especially since they are hashable by ID?
                                     //  Parameters should probably not point to variables directly.
-                                    parameters: fun.machine_interface.parameters.iter().map(|x| Rc::new(Variable {
+                                    parameters: abstract_fun.machine_interface.parameters.iter().map(|x| Rc::new(Variable {
                                         id: x.id,
                                         type_declaration: x.type_declaration.replacing_any(&replace_map),
                                         mutability: x.mutability
                                     })).collect(),
-                                    return_type: fun.machine_interface.return_type.as_ref().map(|x| x.replacing_any(&replace_map))
+                                    return_type: abstract_fun.machine_interface.return_type.as_ref().map(|x| x.replacing_any(&replace_map)),
+                                    injectable_pointers: abstract_fun.machine_interface.injectable_pointers.clone(),
                                 })
                             });
 
-                            injected_pointers.insert(Rc::clone(&mapped_pointer));
+                            functions_pointers.insert(Rc::clone(abstract_fun), Rc::clone(&mapped_pointer));
                             level_with_requirements.add_function(mapped_pointer);
                         }
+
+                        // Add requirement to scope, which is used for declarations like trait conformance and functions
+                        requirements.insert(Rc::new(TraitConformanceRequirement {
+                            id: Uuid::new_v4(),
+                            trait_: Rc::clone(&trait_),
+                            arguments,
+                            functions_pointers
+                        }));
                     }
                 }
 
                 let subscope = subscope_with_generics.subscope(&level_with_requirements);
 
                 for statement in &generics_scope.statements {
-                    self.link_global_statement(statement.as_ref(), &subscope, &requirements, injected_pointers.clone());
+                    self.link_global_statement(statement.as_ref(), &subscope, &requirements);
                 }
             }
             abstract_syntax::GlobalStatement::FunctionDeclaration(syntax) => {
@@ -152,7 +153,9 @@ impl <'a> GlobalLinker<'a> {
                 self.functions.push(FunctionWithoutBody {
                     pointer: Rc::clone(&fun),
                     body: &syntax.body,
-                    injected_pointers
+                    injected_pointers: requirements.iter()
+                        .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
+                        .collect()
                 });
 
                 // Create a variable for the function
@@ -168,7 +171,9 @@ impl <'a> GlobalLinker<'a> {
                 self.functions.push(FunctionWithoutBody {
                     pointer: Rc::clone(&fun),
                     body: &syntax.body,
-                    injected_pointers
+                    injected_pointers: requirements.iter()
+                        .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
+                        .collect()
                 });
 
                 // Create a variable for the function
@@ -206,7 +211,13 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
         function_id: Uuid::new_v4(),
         pointer_id: Uuid::new_v4(),
 
-        requirements,
+        machine_interface: Rc::new(MachineFunctionInterface {
+            parameters,
+            return_type,
+            injectable_pointers: requirements.iter()
+                .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
+                .collect()
+        }),
         human_interface: Rc::new(HumanFunctionInterface {
             name: function.identifier.clone(),
             alphanumeric_name: function.identifier.clone(),
@@ -214,12 +225,9 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
             parameter_names,
             parameter_names_internal,
 
+            requirements,
             form: if function.target.is_none() { FunctionForm::Global } else { FunctionForm::Member },
         }),
-        machine_interface: Rc::new(MachineFunctionInterface {
-            parameters,
-            return_type
-        })
     });
 }
 
@@ -245,19 +253,22 @@ pub fn link_operator_pointer(function: &abstract_syntax::Operator, parser_scope:
         function_id: Uuid::new_v4(),
         pointer_id: Uuid::new_v4(),
 
-        requirements,
+        machine_interface: Rc::new(MachineFunctionInterface {
+            parameters,
+            return_type,
+            injectable_pointers: requirements.iter()
+                .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
+                .collect()
+        }),
         human_interface: Rc::new(HumanFunctionInterface {
             name: function.operator.clone(),
             alphanumeric_name: pattern.alias.clone(),
             parameter_names,
             parameter_names_internal,
 
+            requirements,
             form: FunctionForm::Operator,
         }),
-        machine_interface: Rc::new(MachineFunctionInterface {
-            parameters,
-            return_type
-        })
     });
 }
 

@@ -43,7 +43,7 @@ impl <'a> ImperativeLinker<'a> {
             statements,
             variable_names: self.variable_names.clone(),
             // TODO Trim to those that are actually used in the function.
-            injected_pointers: self.injected_pointers.clone(),
+            used_pointers: self.injected_pointers.clone(),
         });
     }
 
@@ -336,7 +336,7 @@ impl <'a> ImperativeLinker<'a> {
             }
 
             let binding = scope.trait_conformance_declarations
-                .satisfy_requirements(&fun.requirements, &seed, &generic_mapping);
+                .satisfy_requirements(&fun.human_interface.requirements, &seed, &generic_mapping);
 
             if binding.is_err() {
                 candidates_with_failed_requirements.push(fun);
