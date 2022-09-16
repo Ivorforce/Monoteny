@@ -8,7 +8,7 @@ grammar;
 
 match {
     r"[0-9]+" => _Number,
-    r"[a-zA-Z_]\w*" => _Identifier,
+    r"\$?[a-zA-Z_]\w*" => _Identifier,
     r"[!+\-*/&%=><|.^?]+" => _OperatorIdentifier,
     "true", "false",
     "return",
@@ -72,11 +72,11 @@ OperatorFunction: Box<Operator> = {
 }
 
 GlobalScope: Box<GlobalScope> = {
-    <generics: ("given" "<" <OptionalFinalSeparatorList<Identifier, ",">> ">")?> <requirements: ("if" <ConformanceDeclaration+>)?> "{" <statements: GlobalStatement*> "}" => Box::new(GlobalScope { <> }),
+    <generics: ("given" "<" <OptionalFinalSeparatorList<Identifier, ",">> ">")?> <requirements: ("if" <TraitDeclaration+>)?> "{" <statements: GlobalStatement*> "}" => Box::new(GlobalScope { <> }),
 }
 
-ConformanceDeclaration: Box<ConformanceDeclaration> = {
-    <unit: Identifier> "<" <elements: OptionalFinalSeparatorList<SpecializedType, ",">> ">" => Box::new(ConformanceDeclaration { <> }),
+TraitDeclaration: Box<TraitDeclaration> = {
+    <unit: Identifier> "<" <elements: OptionalFinalSeparatorList<SpecializedType, ",">> ">" => Box::new(TraitDeclaration { <> }),
 }
 
 SpecializedType: Box<SpecializedType> = {

@@ -9,6 +9,7 @@ use crate::parser::abstract_syntax;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::scopes;
+use crate::parser::abstract_syntax::Function;
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::primitives;
 use crate::program::builtins::*;
@@ -84,105 +85,157 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
 impl <'a> GlobalLinker<'a> {
     pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, scope: &scopes::Hierarchy, requirements: &HashSet<Rc<TraitConformanceRequirement>>) {
         match statement {
-            abstract_syntax::GlobalStatement::Scope(generics_scope) => {
+            abstract_syntax::GlobalStatement::Scope(syntax) => {
                 let mut level_with_generics = scopes::Level::new();
 
-                for generic_name in generics_scope.generics.iter().flat_map(|x| x.iter()) {
+                for generic_name in syntax.generics.iter().flat_map(|x| x.iter()) {
                     level_with_generics.insert_singleton(scopes::Environment::Global, Variable::make_immutable(Type::meta(Type::make_any())), generic_name)
                 }
 
-                let subscope_with_generics = scope.subscope(&level_with_generics);
-                let mut level_with_requirements = scopes::Level::new();
+                let subscope = scope.subscope(&level_with_generics);
 
-                let mut requirements = requirements.clone();
-                if let Some(requirements_syntax) = &generics_scope.requirements {
-                    for requirement_syntax in requirements_syntax.iter() {
-                        let trait_ = Rc::clone(subscope_with_generics.resolve_trait(scopes::Environment::Global, &requirement_syntax.unit));
-                        let arguments: Vec<Box<Type>> = requirement_syntax.elements.iter().map(|x| {
-                            link_specialized_type(x, &subscope_with_generics)
-                        }).collect();
-
-                        let mut replace_map = HashMap::new();
-                        for (param, arg) in zip_eq(trait_.parameters.iter(), arguments.iter()) {
-                            replace_map.insert(param.clone(), arg.clone());
-                        }
-
-                        let mut functions_pointers = HashMap::new();
-
-                        // Add requirement's implied abstract functions to scope
-                        for abstract_fun in trait_.abstract_functions.iter() {
-                            let mapped_pointer = Rc::new(FunctionPointer {
-                                pointer_id: Uuid::new_v4(),
-                                function_id: abstract_fun.function_id,
-                                human_interface: Rc::clone(&abstract_fun.human_interface),
-                                machine_interface: Rc::new(MachineFunctionInterface {
-                                    // TODO Mapping variables seems wrong, especially since they are hashable by ID?
-                                    //  Parameters should probably not point to variables directly.
-                                    parameters: abstract_fun.machine_interface.parameters.iter().map(|x| Rc::new(Variable {
-                                        id: x.id,
-                                        type_declaration: x.type_declaration.replacing_any(&replace_map),
-                                        mutability: x.mutability
-                                    })).collect(),
-                                    return_type: abstract_fun.machine_interface.return_type.as_ref().map(|x| x.replacing_any(&replace_map)),
-                                    injectable_pointers: abstract_fun.machine_interface.injectable_pointers.clone(),
-                                })
-                            });
-
-                            functions_pointers.insert(Rc::clone(abstract_fun), Rc::clone(&mapped_pointer));
-                            level_with_requirements.add_function(mapped_pointer);
-                        }
-
-                        // Add requirement to scope, which is used for declarations like trait conformance and functions
-                        requirements.insert(Rc::new(TraitConformanceRequirement {
-                            id: Uuid::new_v4(),
-                            trait_: Rc::clone(&trait_),
-                            arguments,
-                            functions_pointers
-                        }));
+                with_requirements(&subscope, syntax.requirements.iter().flat_map(|x| x.iter()).map(|x| x.as_ref()), requirements, |scope, requirements| {
+                    for statement in &syntax.statements {
+                        self.link_global_statement(statement.as_ref(), scope, &requirements);
                     }
-                }
-
-                let subscope = subscope_with_generics.subscope(&level_with_requirements);
-
-                for statement in &generics_scope.statements {
-                    self.link_global_statement(statement.as_ref(), &subscope, &requirements);
-                }
+                });
             }
             abstract_syntax::GlobalStatement::FunctionDeclaration(syntax) => {
-                let fun = link_function_pointer(&syntax, scope, requirements.clone());
+                with_anonymous_generics(&syntax.gather_type_names(), scope, requirements, |scope, requirements| {
+                    let fun = link_function_pointer(&syntax, scope, requirements.clone());
 
-                self.functions.push(FunctionWithoutBody {
-                    pointer: Rc::clone(&fun),
-                    body: &syntax.body,
-                    injected_pointers: requirements.iter()
-                        .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
-                        .collect()
+                    self.functions.push(FunctionWithoutBody {
+                        pointer: Rc::clone(&fun),
+                        body: &syntax.body,
+                        injected_pointers: requirements.iter()
+                            .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
+                            .collect()
+                    });
+
+                    // Create a variable for the function
+                    self.global_variables.add_function(fun);
+
+                    // if interface.is_member_function {
+                    // TODO Create an additional variable as Metatype.function...?
+                    // }
                 });
-
-                // Create a variable for the function
-                self.global_variables.add_function(fun);
-
-                // if interface.is_member_function {
-                // TODO Create an additional variable as Metatype.function...?
-                // }
             }
             abstract_syntax::GlobalStatement::Operator(syntax) => {
-                let fun = link_operator_pointer(&syntax, self.parser_scope, scope, requirements.clone());
+                with_anonymous_generics(&syntax.gather_type_names(), scope, requirements, |scope, requirements| {
+                    let fun = link_operator_pointer(&syntax, self.parser_scope, scope, requirements.clone());
 
-                self.functions.push(FunctionWithoutBody {
-                    pointer: Rc::clone(&fun),
-                    body: &syntax.body,
-                    injected_pointers: requirements.iter()
-                        .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
-                        .collect()
+                    self.functions.push(FunctionWithoutBody {
+                        pointer: Rc::clone(&fun),
+                        body: &syntax.body,
+                        injected_pointers: requirements.iter()
+                            .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
+                            .collect()
+                    });
+
+                    // Create a variable for the function
+                    self.global_variables.add_function(fun);
                 });
-
-                // Create a variable for the function
-                self.global_variables.add_function(fun);
             }
             _ => {}
         }
     }
+}
+
+pub fn with_anonymous_generics<'a, F>(type_names: &'a Vec<&'a String>, scope: &scopes::Hierarchy, requirements: &HashSet<Rc<TraitConformanceRequirement>>, fun: F) where F: FnOnce(&scopes::Hierarchy, &HashSet<Rc<TraitConformanceRequirement>>) {
+    let mut level = Box::new(scopes::Level::new());
+    let mut requirements_syntax = Vec::new();
+
+    let mut needs_scope = false;
+    let mut needs_requirements = false;
+
+    for type_name in type_names {
+        if type_name.starts_with("$") && !level.contains(scopes::Environment::Global, type_name) {
+            level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(Type::meta(Type::make_any())), type_name);
+            needs_scope = true;
+
+            let trait_name = String::from(&type_name[1..]);
+            if trait_name.starts_with("Any") {
+                continue
+            }
+
+            requirements_syntax.push(abstract_syntax::TraitDeclaration {
+                unit: trait_name,
+                elements: vec![Box::new(abstract_syntax::SpecializedType {
+                    unit: (*type_name).clone(),
+                    elements: None
+                })]
+            });
+            needs_requirements = true;
+        }
+    }
+
+    if needs_scope {
+        let subscope = scope.subscope(&level);
+
+        if needs_requirements {
+            with_requirements(&subscope, requirements_syntax.iter(), requirements, fun);
+        }
+        else {
+            fun(&subscope, requirements);
+        }
+    }
+    else {
+        fun(&scope, requirements);
+    }
+}
+
+pub fn with_requirements<'a, I, F>(scope: &scopes::Hierarchy, requirements_syntax: I, requirements: &HashSet<Rc<TraitConformanceRequirement>>, fun: F) where F: FnOnce(&scopes::Hierarchy, &HashSet<Rc<TraitConformanceRequirement>>), I: Iterator<Item=&'a abstract_syntax::TraitDeclaration> {
+    let mut level_with_requirements = scopes::Level::new();
+
+    let mut requirements = requirements.clone();
+    for requirement_syntax in requirements_syntax {
+        let trait_ = Rc::clone(scope.resolve_trait(scopes::Environment::Global, &requirement_syntax.unit));
+        let arguments: Vec<Box<Type>> = requirement_syntax.elements.iter().map(|x| {
+            link_specialized_type(x, &scope)
+        }).collect();
+
+        let mut replace_map = HashMap::new();
+        for (param, arg) in zip_eq(trait_.parameters.iter(), arguments.iter()) {
+            replace_map.insert(param.clone(), arg.clone());
+        }
+
+        let mut functions_pointers = HashMap::new();
+
+        // Add requirement's implied abstract functions to scope
+        for abstract_fun in trait_.abstract_functions.iter() {
+            let mapped_pointer = Rc::new(FunctionPointer {
+                pointer_id: Uuid::new_v4(),
+                function_id: abstract_fun.function_id,
+                human_interface: Rc::clone(&abstract_fun.human_interface),
+                machine_interface: Rc::new(MachineFunctionInterface {
+                    // TODO Mapping variables seems wrong, especially since they are hashable by ID?
+                    //  Parameters should probably not point to variables directly.
+                    parameters: abstract_fun.machine_interface.parameters.iter().map(|x| Rc::new(Variable {
+                        id: x.id,
+                        type_declaration: x.type_declaration.replacing_any(&replace_map),
+                        mutability: x.mutability
+                    })).collect(),
+                    return_type: abstract_fun.machine_interface.return_type.as_ref().map(|x| x.replacing_any(&replace_map)),
+                    injectable_pointers: abstract_fun.machine_interface.injectable_pointers.clone(),
+                })
+            });
+
+            functions_pointers.insert(Rc::clone(abstract_fun), Rc::clone(&mapped_pointer));
+            level_with_requirements.add_function(mapped_pointer);
+        }
+
+        // Add requirement to scope, which is used for declarations like trait conformance and functions
+        requirements.insert(Rc::new(TraitConformanceRequirement {
+            id: Uuid::new_v4(),
+            trait_: Rc::clone(&trait_),
+            arguments,
+            functions_pointers
+        }));
+    }
+
+    let subscope = scope.subscope(&level_with_requirements);
+
+    fun(&subscope, &requirements);
 }
 
 pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scopes::Hierarchy, requirements: HashSet<Rc<TraitConformanceRequirement>>) -> Rc<FunctionPointer> {

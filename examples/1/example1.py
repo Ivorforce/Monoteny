@@ -32,7 +32,20 @@ def floor_div(__0: Any, __1: Any, divide: Callable, add=None, subtract=None, mul
     return divide(lhs, rhs)
 
 
-def square_1(__0: Any, multiply: Callable, add=None, subtract=None, divide=None, ) -> Any:
+def main():
+    """
+    <Docstring TODO!>
+    """
+    b = int32(5)
+    b = int32(3)
+    print("b: ")
+    print(int32(5) > (floor_div(int32(2) ** int32(3), int32(2), divide=op.truediv)))
+    print((int32(5) > int32(2)) | True)
+    print((int32(2) ** (int32(3) ** int32(5))) + int32(2))
+    print([b, square_0(b, multiply=op.mul), square_1(int32(2), multiply=op.mul)])
+
+
+def square_1(__0: Any, multiply: Callable, divide=None, subtract=None, add=None, ) -> Any:
     """
     <Docstring TODO!>
 
@@ -43,24 +56,3 @@ def square_1(__0: Any, multiply: Callable, add=None, subtract=None, divide=None,
     """
     self = __0
     return multiply(self, self)
-
-
-def main():
-    """
-    <Docstring TODO!>
-    """
-    b = int32(5)
-    b = int32(3)
-    no_op()
-    print("b: ")
-    print(int32(5) > (floor_div(int32(2) ** int32(3), int32(2), divide=op.truediv)))
-    print((int32(5) > int32(2)) | True)
-    print((int32(2) ** (int32(3) ** int32(5))) + int32(2))
-    print([b, square_0(b, multiply=op.mul), square_1(int32(2), multiply=op.mul)])
-
-
-def no_op():
-    """
-    <Docstring TODO!>
-    """
-    pass

@@ -66,8 +66,9 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 - [x] Forward generic type checking
 - [x] Traits
+  - [x] Anonymous generics (`$Number` -> `given <$Number> {}`)
+    - [x] ... with implicit type conformance (`$:Number` -> `given <$:Number> where Number<$:Number> {}`)
   - [ ] Abstract Functions, conformance declarations
-  - [ ] Anonymous generic with implicit type conformance (`$Number` -> `given <$Number> where Number<$Number>`)
   - [ ] Inheritance (`inherit OtherTrait<A, B>`)
   - [ ] Stored Properties (1-argument traits only)
     - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only on single-argument, non abstract

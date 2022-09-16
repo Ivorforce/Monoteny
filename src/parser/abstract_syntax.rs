@@ -11,7 +11,7 @@ pub struct Program {
 
 pub struct GlobalScope {
     pub generics: Option<Vec<String>>,
-    pub requirements: Option<Vec<Box<ConformanceDeclaration>>>,
+    pub requirements: Option<Vec<Box<TraitDeclaration>>>,
     pub statements: Vec<Box<GlobalStatement>>
 }
 
@@ -64,7 +64,7 @@ pub struct PatternDeclaration {
     pub alias: String,
 }
 
-pub struct ConformanceDeclaration {
+pub struct TraitDeclaration {
     pub unit: String,
     pub elements: Vec<Box<SpecializedType>>
 }
@@ -337,7 +337,7 @@ impl Debug for ContextualParameter {
     }
 }
 
-impl Debug for ConformanceDeclaration {
+impl Debug for TraitDeclaration {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "{:?}<", self.unit)?;
         write_comma_separated_list(fmt, &self.elements)?;
@@ -365,5 +365,41 @@ impl FunctionCallType {
             Call => "()",
             Subscript => "[]",
         };
+    }
+}
+
+impl TypeDeclaration {
+    pub fn add_type_names<'a>(&'a self, items: &mut Vec<&'a String>) {
+        match self {
+            TypeDeclaration::Identifier(s) => items.push(s),
+            TypeDeclaration::Monad { unit, shape } => {
+                unit.add_type_names(items);
+                // TODO Shape
+            }
+        }
+    }
+}
+
+impl Function {
+    pub fn gather_type_names<'a>(&'a self) -> Vec<&'a String> {
+        let mut type_names = Vec::new();
+
+        self.return_type.iter().for_each(|x| x.add_type_names(&mut type_names));
+        self.parameters.iter().for_each(|x| x.param_type.add_type_names(&mut type_names));
+        self.target.iter().for_each(|x| x.param_type.add_type_names(&mut type_names));
+
+        type_names
+    }
+}
+
+impl Operator {
+    pub fn gather_type_names<'a>(&'a self) -> Vec<&'a String> {
+        let mut type_names = Vec::new();
+
+        self.return_type.iter().for_each(|x| x.add_type_names(&mut type_names));
+        self.lhs.iter().for_each(|x| x.param_type.add_type_names(&mut type_names));
+        self.rhs.param_type.add_type_names(&mut type_names);
+
+        type_names
     }
 }

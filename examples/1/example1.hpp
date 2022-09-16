@@ -11,15 +11,11 @@ Any floor_div(Any lhs,Any rhs,) {
 
 }
 
-Any square(Any self,) {
-
-}
-
 void main() {
 
 }
 
-void no_op() {
+Any square(Any self,) {
 
 }
 

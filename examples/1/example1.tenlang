@@ -1,22 +1,14 @@
 // alias: floor_div
 pattern {} /. {} :: MultiplicationPrecedence;
 
-given <Num> if Number<Num> {
-    fun {lhs: Num} /. {rhs: Num} -> Num :: lhs / rhs;
-}
+fun {lhs: $Number} /. {rhs: $Number} -> $Number :: lhs / rhs;
 
-given <Num> if Number<Num> {
-    fun square(_ a: Num) -> Num :: a * a;
-    fun {self: Num}.square() -> Num :: self * self;
-}
-
-fun no_op() :: {}
+fun square(_ a: $Number) -> $Number :: a * a;
+fun {self: $Number}.square() -> $Number :: self * self;
 
 fun main() :: {
     var b = 5;
     b = 3;
-
-    no_op();
 
     print("b: ");
     print(5 > 2 ** 3 /. 2);

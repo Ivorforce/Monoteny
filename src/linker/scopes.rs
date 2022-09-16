@@ -95,6 +95,10 @@ impl Level {
 
         variables.insert(name.clone(), HashSet::from([variable]));
     }
+
+    pub fn contains(&mut self, environment: Environment, name: &String) -> bool {
+        self.variables(environment).contains_key(name)
+    }
 }
 
 pub struct Hierarchy<'a> {
