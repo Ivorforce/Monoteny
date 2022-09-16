@@ -7,7 +7,8 @@ grammar;
 // =============================== Lexer Precedence =====================================
 
 match {
-    r"[0-9]+" => _Number,
+    r"[0-9]+" => _Int,
+    r"[0-9]+\.[0-9]+" => _Float,
     r"\$?[a-zA-Z_]\w*" => _Identifier,
     r"[!+\-*/&%=><|.^?]+" => _OperatorIdentifier,
     "true", "false",
@@ -25,8 +26,12 @@ match {
 
 // =============================== Primitive =====================================
 
-Number: i32 = {
-    _Number => i32::from_str(<>).unwrap()
+Int: i128 = {
+    _Int => i128::from_str(<>).unwrap()
+};
+
+Float: f64 = {
+    _Float => f64::from_str(<>).unwrap()
 };
 
 BoolLiteral: bool = {
@@ -92,8 +97,8 @@ KeyedParameter: Box<KeyedParameter> = {
     <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
         key: ParameterKey::Name(internal_name.clone()), internal_name, param_type
     }),
-    <key: Number> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
-        key: ParameterKey::Int(key), internal_name, param_type
+    <key: Int> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
+        key: ParameterKey::Int(i32::try_from(key).unwrap()), internal_name, param_type
     }),
     <key: Identifier> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
         key: ParameterKey::from_string(key), internal_name, param_type
@@ -140,7 +145,8 @@ UnaryOperatatorPrecedenceGroup = LeftUnaryOperator<OperatorIdentifier, FunctionC
 FunctionCallPrecedenceGroup = FunctionCallExpression<Term>;
 
 Term: Box<Expression> = {
-    Number => Box::new(Expression::Number(<>)),
+    Int => Box::new(Expression::Int(<>)),
+    Float => Box::new(Expression::Float(<>)),
     BoolLiteral => Box::new(Expression::Bool(<>)),
     Identifier => Box::new(Expression::VariableLookup(<>)),
     "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(Expression::ArrayLiteral(<>)),
@@ -152,7 +158,7 @@ Term: Box<Expression> = {
 };
 
 PassedArgument: Box<PassedArgument> = {
-    <name: Number> ":" <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Int(name), value }),
+    <name: Int> ":" <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Int(i32::try_from(name).unwrap()), value }),
     <name: Identifier> ":" <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Name(name), value }),
     <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Positional, value })
 }

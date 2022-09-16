@@ -3,11 +3,7 @@
 #include <Eigen/Tensor>
 
 
-Any square(Any a,) {
-
-}
-
-Any floor_div(Any lhs,Any rhs,) {
+Any square(Any self,) {
 
 }
 
@@ -15,7 +11,11 @@ void main() {
 
 }
 
-Any square(Any self,) {
+Any floor_div(Any lhs,Any rhs,) {
+
+}
+
+Any square(Any a,) {
 
 }
 

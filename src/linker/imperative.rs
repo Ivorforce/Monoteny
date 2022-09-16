@@ -141,9 +141,16 @@ impl <'a> ImperativeLinker<'a> {
 
     pub fn link_expression(&mut self, syntax: &abstract_syntax::Expression, scope: &scopes::Hierarchy) -> Box<Expression> {
         match syntax {
-            abstract_syntax::Expression::Number(n) => {
+            abstract_syntax::Expression::Int(n) => {
                 // TODO The type should be inferred
-                let value = primitives::Value::Int32(n.clone());
+                let value = primitives::Value::Int64(i64::try_from(*n).unwrap());
+                Box::new(Expression {
+                    result_type: Some(Type::unit(TypeUnit::Primitive(value.get_type()))),
+                    operation: Box::new(ExpressionOperation::Primitive(value)),
+                })
+            },
+            abstract_syntax::Expression::Float(n) => {
+                let value = primitives::Value::Float64(*n);
                 Box::new(Expression {
                     result_type: Some(Type::unit(TypeUnit::Primitive(value.get_type()))),
                     operation: Box::new(ExpressionOperation::Primitive(value)),

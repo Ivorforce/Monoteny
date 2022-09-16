@@ -101,7 +101,8 @@ pub enum Statement {
 }
 
 pub enum Expression {
-    Number(i32),
+    Int(i128),
+    Float(f64),
     Bool(bool),
     BinaryOperator { lhs: Box<Expression>, operator: String, rhs: Box<Expression> },
     UnaryOperator { operator: String, argument: Box<Expression> },
@@ -129,7 +130,8 @@ pub enum FunctionCallType {
 
 fn is_simple(expression: &Expression) -> bool {
     match expression {
-        Expression::Number(_) => true,
+        Expression::Int(_) => true,
+        Expression::Float(_) => true,
         Expression::Bool(_) => true,
         Expression::BinaryOperator { .. } => false,
         Expression::UnsortedBinaryOperators { .. } => false,
@@ -279,7 +281,8 @@ impl Debug for Expression {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Expression::*;
         match self {
-            Number(n) => write!(fmt, "{:?}", n),
+            Int(n) => write!(fmt, "{:?}", n),
+            Float(n) => write!(fmt, "{:?}", n),
             BinaryOperator { lhs, operator, rhs } => {
                 write_maybe_parenthesized_expression(fmt, lhs.as_ref())?;
                 write!(fmt, " {:?} ", operator)?;

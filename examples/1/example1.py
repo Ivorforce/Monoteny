@@ -4,7 +4,7 @@ from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint
 from typing import Any, Callable
 
 
-def square_0(__0: Any, multiply: Callable, subtract=None, add=None, divide=None, ) -> Any:
+def square_0(__0: Any, multiply: Callable, add=None, divide=None, subtract=None, ) -> Any:
     """
     <Docstring TODO!>
 
@@ -13,11 +13,23 @@ def square_0(__0: Any, multiply: Callable, subtract=None, add=None, divide=None,
 
     Returns: Any
     """
-    a = __0
-    return multiply(a, a)
+    self = __0
+    return multiply(self, self)
 
 
-def floor_div(__0: Any, __1: Any, divide: Callable, add=None, subtract=None, multiply=None, ) -> Any:
+def main():
+    """
+    <Docstring TODO!>
+    """
+    a = floor_div(square_1(float64(2), multiply=op.mul), float64(5), divide=op.truediv)
+    b = int64(5)
+    b = (square_0(b, multiply=op.mul)) ** int64(2)
+    print("Test: ")
+    print(a)
+    print(b)
+
+
+def floor_div(__0: Any, __1: Any, divide: Callable, add=None, multiply=None, subtract=None, ) -> Any:
     """
     <Docstring TODO!>
 
@@ -32,20 +44,7 @@ def floor_div(__0: Any, __1: Any, divide: Callable, add=None, subtract=None, mul
     return divide(lhs, rhs)
 
 
-def main():
-    """
-    <Docstring TODO!>
-    """
-    b = int32(5)
-    b = int32(3)
-    print("b: ")
-    print(int32(5) > (floor_div(int32(2) ** int32(3), int32(2), divide=op.truediv)))
-    print((int32(5) > int32(2)) | True)
-    print((int32(2) ** (int32(3) ** int32(5))) + int32(2))
-    print([b, square_0(b, multiply=op.mul), square_1(int32(2), multiply=op.mul)])
-
-
-def square_1(__0: Any, multiply: Callable, divide=None, subtract=None, add=None, ) -> Any:
+def square_1(__0: Any, multiply: Callable, subtract=None, add=None, divide=None, ) -> Any:
     """
     <Docstring TODO!>
 
@@ -54,5 +53,5 @@ def square_1(__0: Any, multiply: Callable, divide=None, subtract=None, add=None,
 
     Returns: Any
     """
-    self = __0
-    return multiply(self, self)
+    a = __0
+    return multiply(a, a)
