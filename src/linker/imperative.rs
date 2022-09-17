@@ -328,7 +328,7 @@ impl <'a> ImperativeLinker<'a> {
             }
 
             let param_types: Vec<Box<Type>> = fun.human_interface.parameter_names.iter()
-                .map(|x| x.1.type_declaration.generify(&seed))
+                .map(|x| x.1.type_declaration.with_any_as_generic(&seed))
                 .collect();
 
             let mut generic_mapping: GenericMapping = self.generics.clone();
@@ -357,7 +357,7 @@ impl <'a> ImperativeLinker<'a> {
         if candidates.len() == 1 {
             let (function, param_types, binding) = candidates.into_iter().next().unwrap();
             let return_type = function.machine_interface.return_type.as_ref()
-                .map(|x| x.generify(&seed));
+                .map(|x| x.with_any_as_generic(&seed));
 
             // Actually bind the generics w.r.t. the selected function
             self.generics.merge_pairs(zip_eq(

@@ -43,6 +43,7 @@ impl GenericMapping {
 
         let new = Uuid::new_v4();
         self.alias_to_identity.insert(alias, new.clone());
+        self.identity_to_alias.insert(new.clone(), HashSet::from([alias.clone()]));
         return new
     }
 
@@ -90,32 +91,51 @@ impl GenericMapping {
 
     pub fn merge(&mut self, lhs: &Type, rhs: &Type) -> Result<Box<Type>, TypeError> {
         let unit: TypeUnit = match (&lhs.unit, &rhs.unit) {
-            // Two generics; merge rhs into lhs.
-            (TypeUnit::Generic(lhs), TypeUnit::Generic(rhs)) => {
-                let new_type = match (
-                    self.alias_to_identity.get(lhs).and_then(|x| self.identity_to_type.remove(x)),
-                    self.alias_to_identity.get(rhs).and_then(|x| self.identity_to_type.remove(x))
-                ) {
-                    // Two bound generics; merge them.
-                    (Some(lhs), Some(rhs)) => Some(self.merge(&lhs, &rhs)?),
-                    // One bound generic; use that one.
-                    (Some(lhs), None) => Some(lhs.clone()),
-                    (None, Some(rhs)) => Some(rhs.clone()),
-                    // No bound generic; just merge aliases but bind no type.
-                    (None, None) => None,
-                };
+            // Two generics; merge into lhs.
+            (TypeUnit::Generic(lhs_alias), TypeUnit::Generic(rhs_alias)) => {
+                // TODO What's the best way to do this, especially if we don't know if lhs or rhs are bound?
+                let lhs = &self.register_alias(lhs_alias.clone());
 
-                // If we have binding info, insert it into lhs' identity.
-                if let Some(new_type) = new_type {
-                    self.identity_to_type.insert(lhs.clone(), new_type);
+                if let Some(rhs) = self.alias_to_identity.get(rhs_alias).map(Clone::clone) {
+                    // rhs exists too; need to merge
+
+                    match (
+                        // Have to remove both so we can call self.merge() without cloning the types.
+                        self.identity_to_type.remove(lhs),
+                        self.identity_to_type.remove(&rhs)
+                    ) {
+                        // Two bound generics; use lhs and bind the merge result
+                        (Some(lhs_type), Some(rhs_type)) => {
+                            let merged_type = self.merge(&lhs_type, &rhs_type)?;
+                            self.identity_to_type.insert(lhs.clone(), merged_type);
+                        }
+                        // Just lhs was bound; bind to lhs
+                        (Some(lhs_type), None) => {
+                            self.identity_to_type.insert(lhs.clone(), lhs_type);
+                        },
+                        // Just rhs was bound; bind to lhs
+                        (None, Some(rhs_type)) => {
+                            self.identity_to_type.insert(lhs.clone(), rhs_type);
+                        },
+                        // No bound generic
+                        (None, None) => {},
+                    }
+
+                    // Merge rhs aliases into lhs identity
+                    let aliases = self.identity_to_alias.remove(&rhs).unwrap();
+                    for alias in aliases.iter() {
+                        self.alias_to_identity.insert(alias.clone(), lhs.clone());
+                    }
+                    self.identity_to_alias.get_mut(lhs).unwrap().extend(aliases);
+                }
+                else {
+                    // Register rhs alias into lhs identity
+                    self.identity_to_alias.get_mut(lhs).unwrap().insert(rhs_alias.clone());
+                    self.alias_to_identity.insert(rhs_alias.clone(), lhs.clone());
                 }
 
-                // Remove rhs identity, and point alias towards lhs identity.
-                if let Some(rhs_aliases) = &self.identity_to_alias.remove(rhs) {
-                    self.identity_to_alias.get_mut(lhs).unwrap().extend(rhs_aliases);
-                }
-
-                TypeUnit::Generic(lhs.clone())
+                // Return lhs alias as generic
+                TypeUnit::Generic(lhs_alias.clone())
             },
             // Just one generic; use that and merge the other into it.
             (TypeUnit::Generic(lhs), _) => {

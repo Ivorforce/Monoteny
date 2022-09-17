@@ -100,7 +100,7 @@ impl TraitConformanceDeclarations {
 
         let requirement = requirements.iter().next().unwrap();
         let bound_requirement_arguments: Vec<Box<Type>> = requirement.arguments.iter()
-            .map(|x| mapping.resolve_type(&x.generify(seed)).unwrap())
+            .map(|x| mapping.resolve_type(&x.with_any_as_generic(seed)).unwrap())
             .collect();
 
         let mut candidate: Option<HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>> = None;

@@ -159,13 +159,13 @@ impl Type {
         Uuid::from_u128(lhs.as_u128() ^ rhs.as_u128())
     }
 
-    pub fn generify(&self, seed: &Uuid) -> Box<Type> {
+    pub fn with_any_as_generic(&self, seed: &Uuid) -> Box<Type> {
         Box::new(Type {
             unit: match &self.unit {
                 TypeUnit::Any(id) => TypeUnit::Generic(Type::bitxor(seed, id)),
                 _ => self.unit.clone(),
             },
-            arguments: self.arguments.iter().map(|x| x.generify(seed)).collect()
+            arguments: self.arguments.iter().map(|x| x.with_any_as_generic(seed)).collect()
         })
     }
 

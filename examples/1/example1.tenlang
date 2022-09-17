@@ -7,12 +7,13 @@ fun square(_ a: $Number) -> $Number :: a * a;
 fun {self: $Number}.square() -> $Number :: self * self;
 
 fun main() :: {
-    let a = square(2) * 2;
-
-    var b = 5.1;
-    b = b.square() ** 2.2 /. 2.4;
-
     print("Test: ");
+
+    let a = 2.square() * 3;
+
+    var b = square(5.1);
+    b = b.square() ** 2.2 /. 2.0;
+
     print(a);
     print(b);
 }

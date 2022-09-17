@@ -9,7 +9,6 @@ use crate::parser::abstract_syntax;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::scopes;
-use crate::parser::abstract_syntax::Function;
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::primitives;
 use crate::program::builtins::*;
