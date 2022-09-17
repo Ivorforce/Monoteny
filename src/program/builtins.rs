@@ -27,23 +27,23 @@ pub struct TenLangBuiltinOperators {
     pub and: Rc<FunctionPointer>,
     pub or: Rc<FunctionPointer>,
 
-    pub equal_to: Vec<Rc<FunctionPointer>>,
-    pub not_equal_to: Vec<Rc<FunctionPointer>>,
+    pub equal_to: HashSet<Rc<FunctionPointer>>,
+    pub not_equal_to: HashSet<Rc<FunctionPointer>>,
 
-    pub greater_than: Vec<Rc<FunctionPointer>>,
-    pub greater_than_or_equal_to: Vec<Rc<FunctionPointer>>,
-    pub lesser_than: Vec<Rc<FunctionPointer>>,
-    pub lesser_than_or_equal_to: Vec<Rc<FunctionPointer>>,
+    pub greater_than: HashSet<Rc<FunctionPointer>>,
+    pub greater_than_or_equal_to: HashSet<Rc<FunctionPointer>>,
+    pub lesser_than: HashSet<Rc<FunctionPointer>>,
+    pub lesser_than_or_equal_to: HashSet<Rc<FunctionPointer>>,
 
-    pub add: Vec<Rc<FunctionPointer>>,
-    pub subtract: Vec<Rc<FunctionPointer>>,
-    pub multiply: Vec<Rc<FunctionPointer>>,
-    pub divide: Vec<Rc<FunctionPointer>>,
-    pub exponentiate: Vec<Rc<FunctionPointer>>,
-    pub modulo: Vec<Rc<FunctionPointer>>,
+    pub add: HashSet<Rc<FunctionPointer>>,
+    pub subtract: HashSet<Rc<FunctionPointer>>,
+    pub multiply: HashSet<Rc<FunctionPointer>>,
+    pub divide: HashSet<Rc<FunctionPointer>>,
+    pub exponentiate: HashSet<Rc<FunctionPointer>>,
+    pub modulo: HashSet<Rc<FunctionPointer>>,
 
-    pub positive: Vec<Rc<FunctionPointer>>,
-    pub negative: Vec<Rc<FunctionPointer>>,
+    pub positive: HashSet<Rc<FunctionPointer>>,
+    pub negative: HashSet<Rc<FunctionPointer>>,
     pub not: Rc<FunctionPointer>,
 }
 
@@ -119,10 +119,6 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         s
     };
 
-
-    let all_primitives: Vec<Box<Type>> = primitives::Type::iter()
-        .map(|x| Type::unit(TypeUnit::Primitive(x)))
-        .collect();
 
     let add_precedence_group = |scope: &mut parser::scopes::Level, name: &str, associativity: OperatorAssociativity, operators: Vec<(&str, &str)>| -> Rc<PrecedenceGroup> {
         let group = Rc::new(PrecedenceGroup::new(name, associativity));
@@ -232,24 +228,24 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         Int: int_trait,
     };
 
-    let mut eq__ops: Vec<Rc<FunctionPointer>> = vec![];
-    let mut neq_ops: Vec<Rc<FunctionPointer>> = vec![];
+    let mut eq__ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut neq_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
 
-    let mut add_ops: Vec<Rc<FunctionPointer>> = vec![Rc::clone(&number_fns[0])];
-    let mut sub_ops: Vec<Rc<FunctionPointer>> = vec![Rc::clone(&number_fns[1])];
-    let mut mul_ops: Vec<Rc<FunctionPointer>> = vec![Rc::clone(&number_fns[2])];
-    let mut div_ops: Vec<Rc<FunctionPointer>> = vec![Rc::clone(&number_fns[3])];
+    let mut add_ops: HashSet<Rc<FunctionPointer>> = HashSet::from([Rc::clone(&number_fns[0])]);
+    let mut sub_ops: HashSet<Rc<FunctionPointer>> = HashSet::from([Rc::clone(&number_fns[1])]);
+    let mut mul_ops: HashSet<Rc<FunctionPointer>> = HashSet::from([Rc::clone(&number_fns[2])]);
+    let mut div_ops: HashSet<Rc<FunctionPointer>> = HashSet::from([Rc::clone(&number_fns[3])]);
 
-    let mut exp_ops: Vec<Rc<FunctionPointer>> = vec![];
-    let mut mod_ops: Vec<Rc<FunctionPointer>> = vec![];
+    let mut exp_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut mod_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
 
-    let mut gr__ops: Vec<Rc<FunctionPointer>> = vec![];
-    let mut geq_ops: Vec<Rc<FunctionPointer>> = vec![];
-    let mut le__ops: Vec<Rc<FunctionPointer>> = vec![];
-    let mut leq_ops: Vec<Rc<FunctionPointer>> = vec![];
+    let mut gr__ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut geq_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut le__ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut leq_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
 
-    let mut pos_ops: Vec<Rc<FunctionPointer>> = vec![];
-    let mut neg_ops: Vec<Rc<FunctionPointer>> = vec![];
+    let mut pos_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut neg_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
 
     for primitive_type in primitives::Type::iter() {
         let type_ = &Type::unit(TypeUnit::Primitive(primitive_type));
@@ -257,11 +253,11 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         // Pair-Associative
         let eq__op = FunctionPointer::make_operator("==", "is_equal", 2, type_, &bool_type);
         constants.add_function(Rc::clone(&eq__op));
-        eq__ops.push(eq__op);
+        eq__ops.insert(eq__op);
 
         let neq_op = FunctionPointer::make_operator("!=", "is_not_equal", 2, type_, &bool_type);
         constants.add_function(Rc::clone(&neq_op));
-        neq_ops.push(neq_op);
+        neq_ops.insert(neq_op);
 
         if !primitive_type.is_number() {
             continue;
@@ -269,23 +265,23 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
 
         let add_op = FunctionPointer::make_operator("+", "add", 2, type_, type_);
         constants.add_function(Rc::clone(&add_op));
-        add_ops.push(Rc::clone(&add_op));
+        add_ops.insert(Rc::clone(&add_op));
 
         let sub_op = FunctionPointer::make_operator("-", "subtract", 2, type_, type_);
         constants.add_function(Rc::clone(&sub_op));
-        sub_ops.push(Rc::clone(&sub_op));
+        sub_ops.insert(Rc::clone(&sub_op));
 
         let mul_op = FunctionPointer::make_operator("*", "multiply", 2, type_, type_);
         constants.add_function(Rc::clone(&mul_op));
-        mul_ops.push(Rc::clone(&mul_op));
+        mul_ops.insert(Rc::clone(&mul_op));
 
         let div_op = FunctionPointer::make_operator("/", "divide", 2, type_, type_);
         constants.add_function(Rc::clone(&div_op));
-        div_ops.push(Rc::clone(&div_op));
+        div_ops.insert(Rc::clone(&div_op));
 
         let mod_op = FunctionPointer::make_operator("%", "modulo", 2, type_, type_);
         constants.add_function(Rc::clone(&mod_op));
-        mod_ops.push(Rc::clone(&mod_op));
+        mod_ops.insert(Rc::clone(&mod_op));
 
         let number_conformance = Rc::new(TraitConformanceDeclaration {
             id: Uuid::new_v4(),
@@ -305,33 +301,33 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         // Pair-Associative
         let gr__op = FunctionPointer::make_operator(">", "is_greater", 2, type_, &bool_type);
         constants.add_function(Rc::clone(&gr__op));
-        gr__ops.push(gr__op);
+        gr__ops.insert(gr__op);
 
         let geq_op = FunctionPointer::make_operator(">=", "is_greater_or_equal", 2, type_, &bool_type);
         constants.add_function(Rc::clone(&geq_op));
-        geq_ops.push(geq_op);
+        geq_ops.insert(geq_op);
 
         let le__op = FunctionPointer::make_operator("<", "is_lesser", 2, type_, &bool_type);
         constants.add_function(Rc::clone(&le__op));
-        le__ops.push(le__op);
+        le__ops.insert(le__op);
 
         let leq_op = FunctionPointer::make_operator("<=", "is_lesser_or_equal", 2, type_, &bool_type);
         constants.add_function(Rc::clone(&leq_op));
-        leq_ops.push(leq_op);
+        leq_ops.insert(leq_op);
 
         // Unary + -
         let pos_op = FunctionPointer::make_operator("+", "is_lesser_or_equal", 1, type_, type_);
         constants.add_function(Rc::clone(&pos_op));
-        pos_ops.push(pos_op);
+        pos_ops.insert(pos_op);
 
         let neg_op = FunctionPointer::make_operator("-", "is_lesser_or_equal", 1, type_, type_);
         constants.add_function(Rc::clone(&neg_op));
-        neg_ops.push(neg_op);
+        neg_ops.insert(neg_op);
 
         if primitive_type.is_float() {
             let exp_op = FunctionPointer::make_operator("**", "exponentiate", 2, type_, type_);
             constants.add_function(Rc::clone(&exp_op));
-            exp_ops.push(Rc::clone(&exp_op));
+            exp_ops.insert(Rc::clone(&exp_op));
 
             constants.trait_conformance_declarations.add(
                 TraitConformanceDeclaration::create_for_trivial_inheritance(&traits.Float, &number_conformance)
