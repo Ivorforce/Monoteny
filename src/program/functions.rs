@@ -72,11 +72,9 @@ impl FunctionPointer {
     }
 
     pub fn make_global<'a, I>(name: &'a str, alphanumeric_name: &'a str, parameter_types: I, return_type: Option<Box<Type>>) -> Rc<FunctionPointer> where I: Iterator<Item=Box<Type>> {
-        let parameters: Vec<Rc<Variable>> = parameter_types.map(|x| Rc::new(Variable {
-            id: Uuid::new_v4(),
-            type_declaration: x.clone(),
-            mutability: Mutability::Immutable
-        })).collect();
+        let parameters: Vec<Rc<Variable>> = parameter_types
+            .map(|x| Variable::make_immutable(x.clone()))
+            .collect();
         let parameter_names = (0..parameters.len()).map(|_| ParameterKey::Positional);
 
         Rc::new(FunctionPointer {

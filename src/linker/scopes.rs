@@ -59,11 +59,7 @@ impl Level {
             _ => Environment::Global
         };
 
-        let variable = Rc::new(Variable {
-            id: Uuid::new_v4(),
-            type_declaration: Type::unit(TypeUnit::Function(Rc::clone(&fun))),
-            mutability: Mutability::Immutable
-        });
+        let variable = Variable::make_immutable(Type::unit(TypeUnit::Function(Rc::clone(&fun))));
 
         let mut variables = self.variables_mut(environment);
 
@@ -80,6 +76,15 @@ impl Level {
         else {
             variables.insert(fun.human_interface.name.clone(), HashSet::from([variable]));
         }
+    }
+
+    pub fn add_trait(&mut self, t: Rc<Trait>) {
+        let name = t.name.clone();
+        self.insert_singleton(
+            Environment::Global,
+            Variable::make_immutable(Type::unit(TypeUnit::Trait(t))),
+            &name
+        );
     }
 
     pub fn insert_singleton(&mut self, environment: Environment, variable: Rc<Variable>, name: &String) {

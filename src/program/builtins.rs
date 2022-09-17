@@ -3,7 +3,7 @@ use std::rc::Rc;
 use uuid::Uuid;
 use strum::IntoEnumIterator;
 use crate::linker::scopes;
-use crate::program::traits::{Trait, TraitConformanceDeclaration};
+use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::parser;
 use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::types::*;
@@ -89,11 +89,11 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         .collect::<HashMap<primitives::Type, Box<Type>>>();
 
     for (primitive_type, metatype) in &primitive_metatypes {
-        constants.insert_singleton(scopes::Environment::Global, Rc::new(Variable {
-            id: Uuid::new_v4(),
-            type_declaration: metatype.clone(),
-            mutability: Mutability::Immutable
-        }), &primitive_type.identifier_string());
+        constants.insert_singleton(
+            scopes::Environment::Global,
+            Variable::make_immutable(metatype.clone()),
+            &primitive_type.identifier_string()
+        );
     }
 
     let add_struct = |constants: &mut scopes::Level, name: &str| -> Rc<Struct> {
@@ -108,11 +108,11 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             arguments: vec![Type::unit(TypeUnit::Struct(Rc::clone(&s)))]
         });
 
-        constants.insert_singleton(scopes::Environment::Global, Rc::new(Variable {
-            id: Uuid::new_v4(),
-            type_declaration: s_type,
-            mutability: Mutability::Immutable,
-        }), &name);
+        constants.insert_singleton(
+            scopes::Environment::Global,
+            Variable::make_immutable(s_type),
+            &name
+        );
 
         s
     };
@@ -179,7 +179,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     };
 
 
-    let add_trait_with_xx_x = |constants: &mut scopes::Level, name: &str, fns: Vec<(&str, &str)>| -> (Rc<Trait>, Vec<Rc<FunctionPointer>>) {
+    let make_trait_with_xx_x = |name: &str, fns: Vec<(&str, &str)>, requirements: Vec<Box<TraitConformanceRequirement>>| -> (Rc<Trait>, Vec<Rc<FunctionPointer>>) {
         let generic_id = Uuid::new_v4();
         let generic_type = Type::unit(TypeUnit::Any(generic_id));
 
@@ -187,7 +187,8 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             id: Uuid::new_v4(),
             name: String::from(name),
             parameters: vec![generic_id],
-            abstract_functions: HashSet::new()
+            abstract_functions: HashSet::new(),
+            requirements: HashSet::new(),
         };
 
         let mut functions = vec![];
@@ -198,20 +199,15 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             functions.push(fun);
         }
 
-        let t = Rc::new(t);
-        constants.insert_singleton(
-            scopes::Environment::Global,
-            Rc::new(Variable {
-                id: Uuid::new_v4(),
-                type_declaration: Type::unit(TypeUnit::Trait(t.clone())),
-                mutability: Mutability::Immutable,
-            }),
-            &t.name
-        );
-        return (t, functions)
+        return (Rc::new(t), functions)
     };
 
-    let (number_trait, number_fns) = add_trait_with_xx_x(&mut constants, "Number", vec![("+", "add"), ("-", "subtract"), ("*", "multiply"), ("/", "divide")]);
+    let (number_trait, number_fns) = make_trait_with_xx_x(
+        "Number",
+        vec![("+", "add"), ("-", "subtract"), ("*", "multiply"), ("/", "divide")],
+        vec![]
+    );
+    constants.add_trait(Rc::clone(&number_trait));
 
     let traits = TenLangBuiltinTraits {
         Number: number_trait

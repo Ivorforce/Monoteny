@@ -13,8 +13,10 @@ pub struct Trait {
     pub id: Uuid,
     pub name: String,
 
-    pub parameters: Vec<Uuid>,
+    // You can interpret this like 'inheritance' in other languages
+    pub requirements: HashSet<Box<TraitConformanceRequirement>>,
 
+    pub parameters: Vec<Uuid>,
     pub abstract_functions: HashSet<Rc<FunctionPointer>>
 }
 
