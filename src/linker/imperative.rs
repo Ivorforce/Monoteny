@@ -379,36 +379,41 @@ impl <'a> ImperativeLinker<'a> {
             });
         }
 
+        // TODO We should probably output the locations of candidates.
+
         if candidates.len() > 1 {
-            panic!("function {} is ambiguous ({}x) for the passed arguments: {:?}", fn_name, candidates.len(), &argument_types);
+            panic!("function {} is ambiguous. {} candidates found with the arguments: {:?}", fn_name, candidates.len(), &argument_types);
         }
 
         if candidates_with_failed_requirements.len() > 1 {
             // TODO Print types of arguments too, for context.
-            panic!("function {} has {}x candidates that failed satisfying requirements: {:?}", fn_name, candidates_with_failed_requirements.len(), &argument_types)
+            panic!("function {}could not be resolved. {} candidates failed satisfying requirements: {:?}", fn_name, candidates_with_failed_requirements.len(), &argument_types)
         }
 
         if candidates_with_failed_requirements.len() == 1 {
             // TODO How so?
-            panic!("function {:?} failed satisfying requirements: {:?}", candidates_with_failed_requirements.iter().next().unwrap().human_interface, &argument_types)
+            let candidate = candidates_with_failed_requirements.iter().next().unwrap();
+            panic!("function {:?} could not be resolved. Candidate failed satisfying requirements: {:?}", candidate.human_interface, &argument_types)
         }
 
         if candidates_with_failed_types.len() > 1 {
             // TODO Print passed argument signature, not just types
-            panic!("function {} has {}x candidates with mismatching types: {:?}", fn_name, candidates_with_failed_types.len(), &argument_types)
+            panic!("function {} could not be resolved. {} candidates have mismatching types: {:?}", fn_name, candidates_with_failed_types.len(), &argument_types)
         }
 
         if candidates_with_failed_types.len() == 1 {
-            panic!("function {:?} has mismatching types: {:?}", candidates_with_failed_types.iter().next().unwrap().human_interface, &argument_types)
+            let candidate = candidates_with_failed_types.iter().next().unwrap();
+            panic!("function {:?} could not be resolved. Candidate has mismatching types: {:?}", candidate.human_interface, &argument_types)
         }
 
         if candidates_with_failed_signature.len() > 1 {
-            panic!("function {} cannot be resolved with argument keys: {:?}", fn_name, argument_keys)
+            panic!("function {} could not be resolved. {} candidates have mismatching arguments: {:?}", fn_name, candidates_with_failed_signature.len(), argument_keys)
         }
 
         if candidates_with_failed_signature.len() == 1 {
             // TODO Print passed arguments like a signature, not array
-            panic!("function {:?} got mismatching argument keys: {:?}", candidates_with_failed_signature.iter().next().unwrap().human_interface, argument_keys)
+            let candidate = candidates_with_failed_signature.iter().next().unwrap();
+            panic!("function {:?} could not be resolved. Candidate has mismatching arguments: {:?}", candidate.human_interface, argument_keys)
         }
 
         panic!("function {} could not be resolved.", fn_name)

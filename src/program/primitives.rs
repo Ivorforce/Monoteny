@@ -56,24 +56,29 @@ impl Value {
 }
 
 impl Type {
-    pub const NUMBERS: [Type; 12] = {
-        use Type::*;
+    pub fn is_number(&self) -> bool {
+        match self {
+            Type::Bool => false,
+            _ => true,
+        }
+    }
 
-        [
-            Int8,
-            Int16,
-            Int32,
-            Int64,
-            Int128,
-            UInt8,
-            UInt16,
-            UInt32,
-            UInt64,
-            UInt128,
-            Float32,
-            Float64,
-        ]
-    };
+    pub fn is_float(&self) -> bool {
+        match self {
+            Type::Float32 => true,
+            Type::Float64 => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_int(&self) -> bool {
+        match self {
+            Type::Bool => false,
+            Type::Float32 => false,
+            Type::Float64 => false,
+            _ => true,
+        }
+    }
 
     pub fn identifier_string(&self) -> String {
         use Type::*;

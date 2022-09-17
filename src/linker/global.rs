@@ -107,9 +107,7 @@ impl <'a> GlobalLinker<'a> {
                     self.functions.push(FunctionWithoutBody {
                         pointer: Rc::clone(&fun),
                         body: &syntax.body,
-                        injected_pointers: requirements.iter()
-                            .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
-                            .collect()
+                        injected_pointers: TraitConformanceRequirement::gather_injectable_pointers(requirements.iter())
                     });
 
                     // Create a variable for the function
@@ -127,9 +125,7 @@ impl <'a> GlobalLinker<'a> {
                     self.functions.push(FunctionWithoutBody {
                         pointer: Rc::clone(&fun),
                         body: &syntax.body,
-                        injected_pointers: requirements.iter()
-                            .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
-                            .collect()
+                        injected_pointers: TraitConformanceRequirement::gather_injectable_pointers(requirements.iter())
                     });
 
                     // Create a variable for the function
@@ -195,43 +191,17 @@ pub fn with_requirements<'a, I, F>(scope: &scopes::Hierarchy, requirements_synta
             link_specialized_type(x, &scope)
         }).collect();
 
-        let mut replace_map = HashMap::new();
-        for (param, arg) in zip_eq(trait_.parameters.iter(), arguments.iter()) {
-            replace_map.insert(param.clone(), arg.clone());
-        }
+        let mut new_requirements = HashSet::new();
+        TraitConformanceRequirement::bind(&trait_, arguments, &mut new_requirements);
 
-        let mut functions_pointers = HashMap::new();
-
-        // Add requirement's implied abstract functions to scope
-        for abstract_fun in trait_.abstract_functions.iter() {
-            let mapped_pointer = Rc::new(FunctionPointer {
-                pointer_id: Uuid::new_v4(),
-                function_id: abstract_fun.function_id,
-                human_interface: Rc::clone(&abstract_fun.human_interface),
-                machine_interface: Rc::new(MachineFunctionInterface {
-                    // TODO Mapping variables seems wrong, especially since they are hashable by ID?
-                    //  Parameters should probably not point to variables directly.
-                    parameters: abstract_fun.machine_interface.parameters.iter().map(|x| Rc::new(Variable {
-                        id: x.id,
-                        type_declaration: x.type_declaration.replacing_any(&replace_map),
-                        mutability: x.mutability
-                    })).collect(),
-                    return_type: abstract_fun.machine_interface.return_type.as_ref().map(|x| x.replacing_any(&replace_map)),
-                    injectable_pointers: abstract_fun.machine_interface.injectable_pointers.clone(),
-                })
-            });
-
-            functions_pointers.insert(Rc::clone(abstract_fun), Rc::clone(&mapped_pointer));
-            level_with_requirements.add_function(mapped_pointer);
+        for requirement in new_requirements.iter() {
+            for pointer in requirement.functions_pointers.values() {
+                level_with_requirements.add_function(Rc::clone(pointer));
+            }
         }
 
         // Add requirement to scope, which is used for declarations like trait conformance and functions
-        requirements.insert(Rc::new(TraitConformanceRequirement {
-            id: Uuid::new_v4(),
-            trait_: Rc::clone(&trait_),
-            arguments,
-            functions_pointers
-        }));
+        requirements.extend(new_requirements);
     }
 
     let subscope = scope.subscope(&level_with_requirements);
@@ -269,9 +239,7 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
         machine_interface: Rc::new(MachineFunctionInterface {
             parameters,
             return_type,
-            injectable_pointers: requirements.iter()
-                .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
-                .collect()
+            injectable_pointers: TraitConformanceRequirement::gather_injectable_pointers(requirements.iter())
         }),
         human_interface: Rc::new(HumanFunctionInterface {
             name: function.identifier.clone(),
@@ -311,9 +279,7 @@ pub fn link_operator_pointer(function: &abstract_syntax::Operator, parser_scope:
         machine_interface: Rc::new(MachineFunctionInterface {
             parameters,
             return_type,
-            injectable_pointers: requirements.iter()
-                .flat_map(|x| x.functions_pointers.iter().map(|x| Rc::clone(&x.1)))
-                .collect()
+            injectable_pointers: TraitConformanceRequirement::gather_injectable_pointers(requirements.iter())
         }),
         human_interface: Rc::new(HumanFunctionInterface {
             name: function.operator.clone(),

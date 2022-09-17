@@ -65,6 +65,8 @@ pub struct TenLangBuiltinPrecedenceGroups {
 #[allow(non_snake_case)]
 pub struct TenLangBuiltinTraits {
     pub Number: Rc<Trait>,
+    pub Float: Rc<Trait>,
+    pub Int: Rc<Trait>,
 }
 
 #[allow(non_snake_case)]
@@ -121,9 +123,6 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     let all_primitives: Vec<Box<Type>> = primitives::Type::iter()
         .map(|x| Type::unit(TypeUnit::Primitive(x)))
         .collect();
-    let number_primitives: Vec<Box<Type>> = primitives::Type::NUMBERS.iter()
-        .map(|x| Type::unit(TypeUnit::Primitive(*x)))
-        .collect();
 
     let add_precedence_group = |scope: &mut parser::scopes::Level, name: &str, associativity: OperatorAssociativity, operators: Vec<(&str, &str)>| -> Rc<PrecedenceGroup> {
         let group = Rc::new(PrecedenceGroup::new(name, associativity));
@@ -179,7 +178,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     };
 
 
-    let make_trait_with_xx_x = |name: &str, fns: Vec<(&str, &str)>, requirements: Vec<Box<TraitConformanceRequirement>>| -> (Rc<Trait>, Vec<Rc<FunctionPointer>>) {
+    let make_trait_with_xx_x = |name: &str, fns: Vec<(&str, &str)>, parents: Vec<Rc<Trait>>| -> (Rc<Trait>, Vec<Rc<FunctionPointer>>) {
         let generic_id = Uuid::new_v4();
         let generic_type = Type::unit(TypeUnit::Any(generic_id));
 
@@ -190,6 +189,10 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             abstract_functions: HashSet::new(),
             requirements: HashSet::new(),
         };
+
+        for parent in parents {
+            TraitConformanceRequirement::bind(&parent, vec![generic_type.clone()], &mut t.requirements);
+        }
 
         let mut functions = vec![];
         for (fn_name, fn_alphanumeric_name) in fns {
@@ -209,9 +212,28 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     );
     constants.add_trait(Rc::clone(&number_trait));
 
+    let (float_trait, _) = make_trait_with_xx_x(
+        "Float",
+        vec![],
+        vec![Rc::clone(&number_trait)]
+    );
+    constants.add_trait(Rc::clone(&float_trait));
+
+    let (int_trait, _) = make_trait_with_xx_x(
+        "Int",
+        vec![],
+        vec![Rc::clone(&number_trait)]
+    );
+    constants.add_trait(Rc::clone(&int_trait));
+
     let traits = TenLangBuiltinTraits {
-        Number: number_trait
+        Number: number_trait,
+        Float: float_trait,
+        Int: int_trait,
     };
+
+    let mut eq__ops: Vec<Rc<FunctionPointer>> = vec![];
+    let mut neq_ops: Vec<Rc<FunctionPointer>> = vec![];
 
     let mut add_ops: Vec<Rc<FunctionPointer>> = vec![Rc::clone(&number_fns[0])];
     let mut sub_ops: Vec<Rc<FunctionPointer>> = vec![Rc::clone(&number_fns[1])];
@@ -229,83 +251,98 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     let mut pos_ops: Vec<Rc<FunctionPointer>> = vec![];
     let mut neg_ops: Vec<Rc<FunctionPointer>> = vec![];
 
-    for primitive_type in number_primitives.iter() {
-        let add_op = FunctionPointer::make_operator("+", "add", 2, primitive_type, primitive_type);
+    for primitive_type in primitives::Type::iter() {
+        let type_ = &Type::unit(TypeUnit::Primitive(primitive_type));
+
+        // Pair-Associative
+        let eq__op = FunctionPointer::make_operator("==", "is_equal", 2, type_, &bool_type);
+        constants.add_function(Rc::clone(&eq__op));
+        eq__ops.push(eq__op);
+
+        let neq_op = FunctionPointer::make_operator("!=", "is_not_equal", 2, type_, &bool_type);
+        constants.add_function(Rc::clone(&neq_op));
+        neq_ops.push(neq_op);
+
+        if !primitive_type.is_number() {
+            continue;
+        }
+
+        let add_op = FunctionPointer::make_operator("+", "add", 2, type_, type_);
         constants.add_function(Rc::clone(&add_op));
         add_ops.push(Rc::clone(&add_op));
 
-        let sub_op = FunctionPointer::make_operator("-", "subtract", 2, primitive_type, primitive_type);
+        let sub_op = FunctionPointer::make_operator("-", "subtract", 2, type_, type_);
         constants.add_function(Rc::clone(&sub_op));
         sub_ops.push(Rc::clone(&sub_op));
 
-        let mul_op = FunctionPointer::make_operator("*", "multiply",  2, primitive_type, primitive_type);
+        let mul_op = FunctionPointer::make_operator("*", "multiply", 2, type_, type_);
         constants.add_function(Rc::clone(&mul_op));
         mul_ops.push(Rc::clone(&mul_op));
 
-        let div_op = FunctionPointer::make_operator("/", "divide", 2, primitive_type, primitive_type);
+        let div_op = FunctionPointer::make_operator("/", "divide", 2, type_, type_);
         constants.add_function(Rc::clone(&div_op));
         div_ops.push(Rc::clone(&div_op));
 
-        // TODO Exponentiate should work only on floats and uints, I think
-        let exp_op = FunctionPointer::make_operator("**", "exponentiate", 2, primitive_type, primitive_type);
-        constants.add_function(Rc::clone(&exp_op));
-        exp_ops.push(Rc::clone(&exp_op));
-
-        let mod_op = FunctionPointer::make_operator("%", "modulo", 2, primitive_type, primitive_type);
+        let mod_op = FunctionPointer::make_operator("%", "modulo", 2, type_, type_);
         constants.add_function(Rc::clone(&mod_op));
         mod_ops.push(Rc::clone(&mod_op));
 
-        constants.trait_conformance_declarations.add(Rc::new(TraitConformanceDeclaration {
+        let number_conformance = Rc::new(TraitConformanceDeclaration {
             id: Uuid::new_v4(),
             trait_: Rc::clone(&traits.Number),
-            arguments: vec![primitive_type.clone()],
+            arguments: vec![type_.clone()],
             requirements: HashSet::new(),
+            trait_requirements_conformance: HashMap::new(),
             function_implementations: HashMap::from([
                 (Rc::clone(&number_fns[0]), add_op),
                 (Rc::clone(&number_fns[1]), sub_op),
                 (Rc::clone(&number_fns[2]), mul_op),
                 (Rc::clone(&number_fns[3]), div_op),
             ])
-        }));
+        });
+        constants.trait_conformance_declarations.add(Rc::clone(&number_conformance));
 
         // Pair-Associative
-        let gr__op = FunctionPointer::make_operator(">", "is_greater", 2, primitive_type, &bool_type);
+        let gr__op = FunctionPointer::make_operator(">", "is_greater", 2, type_, &bool_type);
         constants.add_function(Rc::clone(&gr__op));
         gr__ops.push(gr__op);
 
-        let geq_op = FunctionPointer::make_operator(">=", "is_greater_or_equal", 2, primitive_type, &bool_type);
+        let geq_op = FunctionPointer::make_operator(">=", "is_greater_or_equal", 2, type_, &bool_type);
         constants.add_function(Rc::clone(&geq_op));
         geq_ops.push(geq_op);
 
-        let le__op = FunctionPointer::make_operator("<", "is_lesser", 2, primitive_type, &bool_type);
+        let le__op = FunctionPointer::make_operator("<", "is_lesser", 2, type_, &bool_type);
         constants.add_function(Rc::clone(&le__op));
         le__ops.push(le__op);
 
-        let leq_op = FunctionPointer::make_operator("<=", "is_lesser_or_equal", 2, primitive_type, &bool_type);
+        let leq_op = FunctionPointer::make_operator("<=", "is_lesser_or_equal", 2, type_, &bool_type);
         constants.add_function(Rc::clone(&leq_op));
         leq_ops.push(leq_op);
 
         // Unary + -
-        let pos_op = FunctionPointer::make_operator("+", "is_lesser_or_equal", 1, primitive_type, primitive_type);
+        let pos_op = FunctionPointer::make_operator("+", "is_lesser_or_equal", 1, type_, type_);
         constants.add_function(Rc::clone(&pos_op));
         pos_ops.push(pos_op);
 
-        let neg_op = FunctionPointer::make_operator("-", "is_lesser_or_equal", 1, primitive_type, primitive_type);
+        let neg_op = FunctionPointer::make_operator("-", "is_lesser_or_equal", 1, type_, type_);
         constants.add_function(Rc::clone(&neg_op));
         neg_ops.push(neg_op);
-    }
 
-    let mut eq__ops: Vec<Rc<FunctionPointer>> = vec![];
-    let mut neq_ops: Vec<Rc<FunctionPointer>> = vec![];
-    for primitive_type in all_primitives.iter() {
-        // Pair-Associative
-        let eq__op = FunctionPointer::make_operator("==", "is_equal", 2, primitive_type, &bool_type);
-        constants.add_function(Rc::clone(&eq__op));
-        eq__ops.push(eq__op);
+        if primitive_type.is_float() {
+            let exp_op = FunctionPointer::make_operator("**", "exponentiate", 2, type_, type_);
+            constants.add_function(Rc::clone(&exp_op));
+            exp_ops.push(Rc::clone(&exp_op));
 
-        let neq_op = FunctionPointer::make_operator("!=", "is_not_equal", 2, primitive_type, &bool_type);
-        constants.add_function(Rc::clone(&neq_op));
-        neq_ops.push(neq_op);
+            constants.trait_conformance_declarations.add(
+                TraitConformanceDeclaration::create_for_trivial_inheritance(&traits.Float, &number_conformance)
+            );
+        }
+
+        if primitive_type.is_int() {
+            constants.trait_conformance_declarations.add(
+                TraitConformanceDeclaration::create_for_trivial_inheritance(&traits.Int, &number_conformance)
+            );
+        }
     }
 
     let and_op = FunctionPointer::make_operator("&&", "and", 2, &bool_type, &bool_type);
