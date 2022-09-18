@@ -24,27 +24,34 @@ pub struct TenLangBuiltins {
 }
 
 pub struct TenLangBuiltinOperators {
+    // logical
     pub and: Rc<FunctionPointer>,
     pub or: Rc<FunctionPointer>,
+    pub not: Rc<FunctionPointer>,
 
+    // equatable
     pub equal_to: HashSet<Rc<FunctionPointer>>,
     pub not_equal_to: HashSet<Rc<FunctionPointer>>,
 
+    // comparable
     pub greater_than: HashSet<Rc<FunctionPointer>>,
     pub greater_than_or_equal_to: HashSet<Rc<FunctionPointer>>,
     pub lesser_than: HashSet<Rc<FunctionPointer>>,
     pub lesser_than_or_equal_to: HashSet<Rc<FunctionPointer>>,
 
+    // number
     pub add: HashSet<Rc<FunctionPointer>>,
     pub subtract: HashSet<Rc<FunctionPointer>>,
     pub multiply: HashSet<Rc<FunctionPointer>>,
     pub divide: HashSet<Rc<FunctionPointer>>,
-    pub exponentiate: HashSet<Rc<FunctionPointer>>,
-    pub modulo: HashSet<Rc<FunctionPointer>>,
 
     pub positive: HashSet<Rc<FunctionPointer>>,
     pub negative: HashSet<Rc<FunctionPointer>>,
-    pub not: Rc<FunctionPointer>,
+
+    pub modulo: HashSet<Rc<FunctionPointer>>,
+
+    // float
+    pub exponentiate: HashSet<Rc<FunctionPointer>>,
 }
 
 pub struct TenLangBuiltinFunctions {
@@ -80,6 +87,8 @@ pub struct NumberFunctions {
     pub multiply: Rc<FunctionPointer>,
     pub divide: Rc<FunctionPointer>,
 
+    pub modulo: Rc<FunctionPointer>,
+
     pub positive: Rc<FunctionPointer>,
     pub negative: Rc<FunctionPointer>,
 }
@@ -93,6 +102,8 @@ pub fn make_number_functions(type_: &Box<Type>) -> NumberFunctions {
 
         positive: FunctionPointer::make_operator("+", "is_lesser_or_equal", 1, type_, type_),
         negative: FunctionPointer::make_operator("-", "is_lesser_or_equal", 1, type_, type_),
+
+        modulo: FunctionPointer::make_operator("%", "modulo", 2, type_, type_),
     }
 }
 
@@ -237,20 +248,27 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
 
 
     let abstract_number_functions = make_number_functions(&generic_type);
+
     add_ops.insert(Rc::clone(&abstract_number_functions.add));
     sub_ops.insert(Rc::clone(&abstract_number_functions.subtract));
     mul_ops.insert(Rc::clone(&abstract_number_functions.multiply));
     div_ops.insert(Rc::clone(&abstract_number_functions.divide));
+
     pos_ops.insert(Rc::clone(&abstract_number_functions.positive));
     neg_ops.insert(Rc::clone(&abstract_number_functions.negative));
+
+    mod_ops.insert(Rc::clone(&abstract_number_functions.modulo));
 
     let number_trait = make_trait("Number", &generic_id, vec![
         &abstract_number_functions.add,
         &abstract_number_functions.subtract,
         &abstract_number_functions.multiply,
         &abstract_number_functions.divide,
+
         &abstract_number_functions.positive,
-        &abstract_number_functions.negative
+        &abstract_number_functions.negative,
+
+        &abstract_number_functions.modulo,
     ], vec![]);
     constants.add_trait(&number_trait);
 
@@ -302,9 +320,8 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         neg_ops.insert(Rc::clone(&number_functions.negative));
         constants.add_function(&number_functions.negative);
 
-        let mod_op = FunctionPointer::make_operator("%", "modulo", 2, type_, type_);
-        constants.add_function(&mod_op);
-        mod_ops.insert(Rc::clone(&mod_op));
+        mod_ops.insert(Rc::clone(&number_functions.modulo));
+        constants.add_function(&number_functions.modulo);
 
         let number_conformance = Rc::new(TraitConformanceDeclaration {
             id: Uuid::new_v4(),
@@ -320,6 +337,8 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
 
                 (Rc::clone(&abstract_number_functions.positive), Rc::clone(&number_functions.positive)),
                 (Rc::clone(&abstract_number_functions.negative), Rc::clone(&number_functions.negative)),
+
+                (Rc::clone(&abstract_number_functions.modulo), Rc::clone(&number_functions.modulo)),
             ])
         });
         constants.trait_conformance_declarations.add(Rc::clone(&number_conformance));
