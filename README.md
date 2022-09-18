@@ -117,9 +117,10 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 - [ ] Staggered Dimensions
   - [ ] Implicit Tensors
-- [ ] Compile-Time Shape Tests
-  - [ ] Array Dimension Index
+- [ ] Post Link-Time Shape Tests
+  - [ ] Array Dimension Index (i.e. 'anonymous enum')
   - [ ] Closed Int Range Dimension Index
+- [ ] Computation Tree Folding (resolve static results post link-time)
 - [ ] System I/O API / Permission Contexts
 - [ ] Pointer Monad (-> shared object reference, mutable or immutable)
 
