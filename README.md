@@ -99,18 +99,19 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 ### TenLang 1.0
 
-- [ ] System Callback API / Permission Contexts
 - [ ] Exceptions (as monads)
   - [ ] Early return syntax
 - [ ] IntX, FloatX (big int & float, which are structs)
 - [ ] IntNative, FloatNative (platform-optimized int and float)
-- [ ] Polymorphic Enums (enums with attached objects)
-- [ ] Higher Order Functions
-  - [ ] Deep Function Currying
 - [ ] Local functions and declarations
   - [ ] Anonymous functions
 - [ ] String Comprehension
 - [ ] Non-Varargs subscripts and subscript overloads
+- [ ] Indeterministic polymorphism
+  - [ ] Virtual function tables
+  - [ ] Polymorphic Enums (enums with attached objects)
+  - [ ] Higher Order Functions
+    - [ ] Deep Function Currying
 
 ### TenLang 2.0
 
@@ -119,12 +120,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Compile-Time Shape Tests
   - [ ] Array Dimension Index
   - [ ] Closed Int Range Dimension Index
-
-### TenLang 3.0
-
-- [ ] System I/O
-  - [ ] Indeterministic polymorphism
-    - [ ] Virtual function tables
+- [ ] System I/O API / Permission Contexts
 - [ ] Pointer Monad (-> shared object reference, mutable or immutable)
 
 ### Standard Library
