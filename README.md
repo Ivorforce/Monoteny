@@ -69,7 +69,7 @@ This will be possible by TenLang coming with several different transpilers. Here
   - [x] Anonymous generics (`#A` -> `given <#A> {}`)
     - [x] ... with implicit type conformance (`$Number` -> `given <$Number> where Number<$Number> {}`)
     - [ ] ... in imperative code (coercing types)
-  - [x] Inheritance (`inherit OtherTrait<A, B>`)
+  - [x] Inheritance (`if Number<#A> { trait OtherTrait<#A> }`)
   - [ ] Abstract Functions, Conformance Declarations
   - [ ] Stored Properties (1-argument traits only)
     - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only on single-argument, non abstract
