@@ -103,7 +103,7 @@ impl TraitConformanceDeclarations {
             .map(|x| mapping.resolve_type(&x.with_any_as_generic(seed)).unwrap())
             .collect();
 
-        let mut candidate: Option<HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>> = None;
+        let mut candidates: Vec<HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>> = vec![];
 
         for declaration in self.declarations.get(&requirement.trait_).unwrap_or(&vec![]).iter() {
             if !declaration.requirements.is_empty() {
@@ -114,16 +114,13 @@ impl TraitConformanceDeclarations {
                 return continue
             }
 
-            if candidate.is_some() {
-                return Err(TraitConformanceError::Error { msg: String::from(format!("No candidates for trait conformance: {}", requirement.trait_.name)) })
-            }
-
-            candidate = Some(HashMap::from([
+            candidates.push(HashMap::from([
                 (Rc::clone(requirement), Rc::clone(declaration))
             ]));
         }
 
-        if let Some(conformances) = candidate {
+        if candidates.len() == 1 {
+            let conformances = candidates.into_iter().next().unwrap();
             let mut pointers_resolution = HashMap::new();
 
             for (requirement, conformance_declaration) in conformances.iter() {
@@ -136,7 +133,14 @@ impl TraitConformanceDeclarations {
             }));
         }
 
-        panic!("Trait conformance is ambiguous: {}", requirement.trait_.name);
+        if candidates.len() > 1 {
+            // TODO Due to unbound generics, trait conformance may be coerced later.
+            //  However, we don't want to accidentally use another function while this function has ambiguous conformance.
+            //  In that case, evaluation should fail when no further generics can be decided.
+            panic!("Trait conformance is ambiguous ({}x): {}", candidates.len(), requirement.trait_.name);
+        }
+
+        Err(TraitConformanceError::Error { msg: String::from(format!("No candidates for trait conformance: {}", requirement.trait_.name)) })
     }
 }
 
@@ -184,6 +188,9 @@ impl TraitConformanceRequirement {
     }
 
     pub fn gather_injectable_pointers<'a, I>(requirements: I) -> HashSet<Rc<FunctionPointer>> where I: Iterator<Item=&'a Rc<TraitConformanceRequirement>> {
+        // TODO This is not sufficient - we'd need to inject _all_ other functions that unlock with the requirements as well.
+        //  The current setup prevents calling non-abstract functions from a requirement.
+
         let mut injected_pointers = HashSet::new();
         for requirement in requirements {
             requirement.add_injectable_pointers(&mut injected_pointers);
