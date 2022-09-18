@@ -210,17 +210,6 @@ impl TraitConformanceDeclaration {
             conformance.gather_pointer_resolutions(requirement, pointers_resolution);
         }
     }
-
-    pub fn create_for_trivial_inheritance(trait_: &Rc<Trait>, parent_conformance: &Rc<TraitConformanceDeclaration>) -> Rc<TraitConformanceDeclaration> {
-        Rc::new(TraitConformanceDeclaration {
-            id: Uuid::new_v4(),
-            trait_: Rc::clone(trait_),
-            arguments: parent_conformance.arguments.clone(),
-            requirements: HashSet::new(),
-            trait_requirements_conformance: zip_eq(trait_.requirements.iter().map(Rc::clone), [parent_conformance].map(Rc::clone)).collect(),
-            function_implementations: HashMap::new()
-        })
-    }
 }
 
 impl PartialEq for Trait {
