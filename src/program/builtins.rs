@@ -317,6 +317,11 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     };
 
 
+    let mut add_function = |function: &Rc<FunctionPointer>, category: &mut HashSet<Rc<FunctionPointer>>, constants: &mut scopes::Level| {
+        category.insert(Rc::clone(&function));
+        constants.add_function(&function);
+    };
+
     for primitive_type in primitives::Type::iter() {
         let type_ = &Type::unit(TypeUnit::Primitive(primitive_type));
         let metatype = Type::meta(type_.clone());
@@ -330,11 +335,8 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
 
         // Pair-Associative
         let eq_functions = make_eq_functions(type_);
-        eq__ops.insert(Rc::clone(&eq_functions.equal_to));
-        constants.add_function(&eq_functions.equal_to);
-
-        neq_ops.insert(Rc::clone(&eq_functions.not_equal_to));
-        constants.add_function(&eq_functions.not_equal_to);
+        add_function(&eq_functions.equal_to, &mut eq__ops, &mut constants);
+        add_function(&eq_functions.not_equal_to, &mut neq_ops, &mut constants);
 
         let eq_conformance = Rc::new(TraitConformanceDeclaration {
             id: Uuid::new_v4(),
@@ -356,17 +358,10 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         let number_functions = make_number_functions(&type_);
 
         // Ord
-        gr__ops.insert(Rc::clone(&number_functions.greater_than));
-        constants.add_function(&number_functions.greater_than);
-
-        geq_ops.insert(Rc::clone(&number_functions.greater_than_or_equal_to));
-        constants.add_function(&number_functions.greater_than_or_equal_to);
-
-        le__ops.insert(Rc::clone(&number_functions.lesser_than));
-        constants.add_function(&number_functions.lesser_than);
-
-        leq_ops.insert(Rc::clone(&number_functions.lesser_than_or_equal_to));
-        constants.add_function(&number_functions.lesser_than_or_equal_to);
+        add_function(&number_functions.greater_than, &mut gr__ops, &mut constants);
+        add_function(&number_functions.greater_than_or_equal_to, &mut geq_ops, &mut constants);
+        add_function(&number_functions.lesser_than, &mut le__ops, &mut constants);
+        add_function(&number_functions.lesser_than_or_equal_to, &mut leq_ops, &mut constants);
 
         let ord_conformance = make_conformance_declaration(
             &traits.Ord, &eq_conformance, vec![
@@ -379,26 +374,13 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         constants.trait_conformance_declarations.add(Rc::clone(&ord_conformance));
 
         // Number
-        add_ops.insert(Rc::clone(&number_functions.add));
-        constants.add_function(&number_functions.add);
-
-        sub_ops.insert(Rc::clone(&number_functions.subtract));
-        constants.add_function(&number_functions.subtract);
-
-        mul_ops.insert(Rc::clone(&number_functions.multiply));
-        constants.add_function(&number_functions.multiply);
-
-        div_ops.insert(Rc::clone(&number_functions.divide));
-        constants.add_function(&number_functions.divide);
-
-        pos_ops.insert(Rc::clone(&number_functions.positive));
-        constants.add_function(&number_functions.positive);
-
-        neg_ops.insert(Rc::clone(&number_functions.negative));
-        constants.add_function(&number_functions.negative);
-
-        mod_ops.insert(Rc::clone(&number_functions.modulo));
-        constants.add_function(&number_functions.modulo);
+        add_function(&number_functions.add, &mut add_ops, &mut constants);
+        add_function(&number_functions.subtract, &mut sub_ops, &mut constants);
+        add_function(&number_functions.multiply, &mut mul_ops, &mut constants);
+        add_function(&number_functions.divide, &mut div_ops, &mut constants);
+        add_function(&number_functions.modulo, &mut mod_ops, &mut constants);
+        add_function(&number_functions.positive, &mut pos_ops, &mut constants);
+        add_function(&number_functions.negative, &mut neg_ops, &mut constants);
 
         let number_conformance = make_conformance_declaration(
             &traits.Number, &ord_conformance, vec![
