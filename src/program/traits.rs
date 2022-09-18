@@ -105,6 +105,9 @@ impl TraitConformanceDeclarations {
 
         let mut candidates: Vec<HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>> = vec![];
 
+        // TODO Also look through the requirements already declared on the function to see if any fit.
+        //  This will add to candidates separately - so if there is a fit from our requirements AND native declarations, it's an error.
+
         for declaration in self.declarations.get(&requirement.trait_).unwrap_or(&vec![]).iter() {
             if !declaration.requirements.is_empty() {
                 todo!("Trait conformance declarations with requirements are not supported yet")
@@ -188,9 +191,6 @@ impl TraitConformanceRequirement {
     }
 
     pub fn gather_injectable_pointers<'a, I>(requirements: I) -> HashSet<Rc<FunctionPointer>> where I: Iterator<Item=&'a Rc<TraitConformanceRequirement>> {
-        // TODO This is not sufficient - we'd need to inject _all_ other functions that unlock with the requirements as well.
-        //  The current setup prevents calling non-abstract functions from a requirement.
-
         let mut injected_pointers = HashSet::new();
         for requirement in requirements {
             requirement.add_injectable_pointers(&mut injected_pointers);
