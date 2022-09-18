@@ -313,13 +313,13 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             requirements: HashSet::new(),
             trait_requirements_conformance: HashMap::new(),
             function_implementations: HashMap::from([
-                (Rc::clone(&abstract_number_functions.add), Rc::clone(&abstract_number_functions.add)),
-                (Rc::clone(&abstract_number_functions.subtract), Rc::clone(&abstract_number_functions.subtract)),
-                (Rc::clone(&abstract_number_functions.multiply), Rc::clone(&abstract_number_functions.multiply)),
-                (Rc::clone(&abstract_number_functions.divide), Rc::clone(&abstract_number_functions.divide)),
+                (Rc::clone(&abstract_number_functions.add), Rc::clone(&number_functions.add)),
+                (Rc::clone(&abstract_number_functions.subtract), Rc::clone(&number_functions.subtract)),
+                (Rc::clone(&abstract_number_functions.multiply), Rc::clone(&number_functions.multiply)),
+                (Rc::clone(&abstract_number_functions.divide), Rc::clone(&number_functions.divide)),
 
-                (Rc::clone(&abstract_number_functions.positive), Rc::clone(&abstract_number_functions.positive)),
-                (Rc::clone(&abstract_number_functions.negative), Rc::clone(&abstract_number_functions.negative)),
+                (Rc::clone(&abstract_number_functions.positive), Rc::clone(&number_functions.positive)),
+                (Rc::clone(&abstract_number_functions.negative), Rc::clone(&number_functions.negative)),
             ])
         });
         constants.trait_conformance_declarations.add(Rc::clone(&number_conformance));
