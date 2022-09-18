@@ -110,6 +110,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [ ] Indeterministic polymorphism
   - [ ] Virtual function tables
   - [ ] Polymorphic Enums (enums with attached objects)
+    - [ ] Anonymous Enums (`-> A | B`) 
   - [ ] Higher Order Functions
     - [ ] Deep Function Currying
 
