@@ -53,13 +53,13 @@ impl Level {
         }
     }
 
-    pub fn add_function(&mut self, fun: Rc<FunctionPointer>) {
+    pub fn add_function(&mut self, fun: &Rc<FunctionPointer>) {
         let environment = match fun.human_interface.form {
             FunctionForm::Member => Environment::Member,
             _ => Environment::Global
         };
 
-        let variable = Variable::make_immutable(Type::unit(TypeUnit::Function(Rc::clone(&fun))));
+        let variable = Variable::make_immutable(Type::unit(TypeUnit::Function(Rc::clone(fun))));
 
         let mut variables = self.variables_mut(environment);
 
@@ -78,11 +78,11 @@ impl Level {
         }
     }
 
-    pub fn add_trait(&mut self, t: Rc<Trait>) {
+    pub fn add_trait(&mut self, t: &Rc<Trait>) {
         let name = t.name.clone();
         self.insert_singleton(
             Environment::Global,
-            Variable::make_immutable(Type::unit(TypeUnit::Trait(t))),
+            Variable::make_immutable(Type::unit(TypeUnit::Trait(Rc::clone(t)))),
             &name
         );
     }

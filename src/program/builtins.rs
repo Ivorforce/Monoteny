@@ -206,21 +206,21 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         vec![("+", "add"), ("-", "subtract"), ("*", "multiply"), ("/", "divide")],
         vec![]
     );
-    constants.add_trait(Rc::clone(&number_trait));
+    constants.add_trait(&number_trait);
 
     let (float_trait, _) = make_trait_with_xx_x(
         "Float",
         vec![],
         vec![Rc::clone(&number_trait)]
     );
-    constants.add_trait(Rc::clone(&float_trait));
+    constants.add_trait(&float_trait);
 
     let (int_trait, _) = make_trait_with_xx_x(
         "Int",
         vec![],
         vec![Rc::clone(&number_trait)]
     );
-    constants.add_trait(Rc::clone(&int_trait));
+    constants.add_trait(&int_trait);
 
     let traits = TenLangBuiltinTraits {
         Number: number_trait,
@@ -252,11 +252,11 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
 
         // Pair-Associative
         let eq__op = FunctionPointer::make_operator("==", "is_equal", 2, type_, &bool_type);
-        constants.add_function(Rc::clone(&eq__op));
+        constants.add_function(&eq__op);
         eq__ops.insert(eq__op);
 
         let neq_op = FunctionPointer::make_operator("!=", "is_not_equal", 2, type_, &bool_type);
-        constants.add_function(Rc::clone(&neq_op));
+        constants.add_function(&neq_op);
         neq_ops.insert(neq_op);
 
         if !primitive_type.is_number() {
@@ -264,23 +264,23 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         }
 
         let add_op = FunctionPointer::make_operator("+", "add", 2, type_, type_);
-        constants.add_function(Rc::clone(&add_op));
+        constants.add_function(&add_op);
         add_ops.insert(Rc::clone(&add_op));
 
         let sub_op = FunctionPointer::make_operator("-", "subtract", 2, type_, type_);
-        constants.add_function(Rc::clone(&sub_op));
+        constants.add_function(&sub_op);
         sub_ops.insert(Rc::clone(&sub_op));
 
         let mul_op = FunctionPointer::make_operator("*", "multiply", 2, type_, type_);
-        constants.add_function(Rc::clone(&mul_op));
+        constants.add_function(&mul_op);
         mul_ops.insert(Rc::clone(&mul_op));
 
         let div_op = FunctionPointer::make_operator("/", "divide", 2, type_, type_);
-        constants.add_function(Rc::clone(&div_op));
+        constants.add_function(&div_op);
         div_ops.insert(Rc::clone(&div_op));
 
         let mod_op = FunctionPointer::make_operator("%", "modulo", 2, type_, type_);
-        constants.add_function(Rc::clone(&mod_op));
+        constants.add_function(&mod_op);
         mod_ops.insert(Rc::clone(&mod_op));
 
         let number_conformance = Rc::new(TraitConformanceDeclaration {
@@ -300,33 +300,33 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
 
         // Pair-Associative
         let gr__op = FunctionPointer::make_operator(">", "is_greater", 2, type_, &bool_type);
-        constants.add_function(Rc::clone(&gr__op));
+        constants.add_function(&gr__op);
         gr__ops.insert(gr__op);
 
         let geq_op = FunctionPointer::make_operator(">=", "is_greater_or_equal", 2, type_, &bool_type);
-        constants.add_function(Rc::clone(&geq_op));
+        constants.add_function(&geq_op);
         geq_ops.insert(geq_op);
 
         let le__op = FunctionPointer::make_operator("<", "is_lesser", 2, type_, &bool_type);
-        constants.add_function(Rc::clone(&le__op));
+        constants.add_function(&le__op);
         le__ops.insert(le__op);
 
         let leq_op = FunctionPointer::make_operator("<=", "is_lesser_or_equal", 2, type_, &bool_type);
-        constants.add_function(Rc::clone(&leq_op));
+        constants.add_function(&leq_op);
         leq_ops.insert(leq_op);
 
         // Unary + -
         let pos_op = FunctionPointer::make_operator("+", "is_lesser_or_equal", 1, type_, type_);
-        constants.add_function(Rc::clone(&pos_op));
+        constants.add_function(&pos_op);
         pos_ops.insert(pos_op);
 
         let neg_op = FunctionPointer::make_operator("-", "is_lesser_or_equal", 1, type_, type_);
-        constants.add_function(Rc::clone(&neg_op));
+        constants.add_function(&neg_op);
         neg_ops.insert(neg_op);
 
         if primitive_type.is_float() {
             let exp_op = FunctionPointer::make_operator("**", "exponentiate", 2, type_, type_);
-            constants.add_function(Rc::clone(&exp_op));
+            constants.add_function(&exp_op);
             exp_ops.insert(Rc::clone(&exp_op));
 
             constants.trait_conformance_declarations.add(
@@ -342,17 +342,17 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     }
 
     let and_op = FunctionPointer::make_operator("&&", "and", 2, &bool_type, &bool_type);
-    constants.add_function(Rc::clone(&and_op));
+    constants.add_function(&and_op);
 
     let or__op = FunctionPointer::make_operator("||", "or", 2, &bool_type, &bool_type);
-    constants.add_function(Rc::clone(&or__op));
+    constants.add_function(&or__op);
 
     let not_op = FunctionPointer::make_operator("!", "not", 1, &bool_type, &bool_type);
-    constants.add_function(Rc::clone(&not_op));
+    constants.add_function(&not_op);
 
 
     let print_function = FunctionPointer::make_global("print", "print", [generic_type.clone()].into_iter(), None);
-    constants.add_function(Rc::clone(&print_function));
+    constants.add_function(&print_function);
 
     Rc::new(TenLangBuiltins {
         traits,

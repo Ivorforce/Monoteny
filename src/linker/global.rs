@@ -67,7 +67,7 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
 
             let mut injection_level = scopes::Level::new();
             for fun in fun.injected_pointers.iter() {
-                injection_level.add_function(Rc::clone(fun));
+                injection_level.add_function(fun);
             }
 
             let function_scope = global_variable_scope.subscope(&injection_level);
@@ -110,7 +110,7 @@ impl <'a> GlobalLinker<'a> {
                     });
 
                     // Create a variable for the function
-                    self.global_variables.add_function(fun);
+                    self.global_variables.add_function(&fun);
 
                     // if interface.is_member_function {
                     // TODO Create an additional variable as Metatype.function...?
@@ -128,7 +128,7 @@ impl <'a> GlobalLinker<'a> {
                     });
 
                     // Create a variable for the function
-                    self.global_variables.add_function(fun);
+                    self.global_variables.add_function(&fun);
                 });
             }
             _ => {}
@@ -195,7 +195,7 @@ pub fn with_requirements<'a, I, F>(scope: &scopes::Hierarchy, requirements_synta
 
         for requirement in new_requirements.iter() {
             for pointer in requirement.functions_pointers.values() {
-                level_with_requirements.add_function(Rc::clone(pointer));
+                level_with_requirements.add_function(pointer);
             }
         }
 
