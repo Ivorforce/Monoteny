@@ -114,24 +114,6 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     let generic_id = Uuid::new_v4();
     let generic_type = Type::unit(TypeUnit::Any(generic_id));
 
-    let primitive_metatypes = primitives::Type::iter()
-        .map(|x| (x, Box::new(Type {
-            unit: TypeUnit::MetaType,
-            arguments: vec![Box::new(Type {
-                unit: TypeUnit::Primitive(x),
-                arguments: vec![]
-            })],
-        })))
-        .collect::<HashMap<primitives::Type, Box<Type>>>();
-
-    for (primitive_type, metatype) in &primitive_metatypes {
-        constants.insert_singleton(
-            scopes::Environment::Global,
-            Variable::make_immutable(metatype.clone()),
-            &primitive_type.identifier_string()
-        );
-    }
-
     let add_struct = |constants: &mut scopes::Level, name: &str| -> Rc<Struct> {
         let name = String::from(name);
 
@@ -139,10 +121,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             id: Uuid::new_v4(),
             name: name.clone(),
         });
-        let s_type = Box::new(Type {
-            unit: TypeUnit::MetaType,
-            arguments: vec![Type::unit(TypeUnit::Struct(Rc::clone(&s)))]
-        });
+        let s_type = Type::meta(Type::unit(TypeUnit::Struct(Rc::clone(&s))));
 
         constants.insert_singleton(
             scopes::Environment::Global,
@@ -226,6 +205,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         return Rc::new(t)
     };
 
+    let mut primitive_metatypes = HashMap::new();
 
     let mut eq__ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
     let mut neq_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
@@ -287,6 +267,14 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
 
     for primitive_type in primitives::Type::iter() {
         let type_ = &Type::unit(TypeUnit::Primitive(primitive_type));
+        let metatype = Type::meta(type_.clone());
+
+        primitive_metatypes.insert(primitive_type, metatype.clone());
+        constants.insert_singleton(
+            scopes::Environment::Global,
+            Variable::make_immutable(metatype.clone()),
+            &primitive_type.identifier_string()
+        );
 
         // Pair-Associative
         let eq__op = FunctionPointer::make_operator("==", "is_equal", 2, type_, &bool_type);
