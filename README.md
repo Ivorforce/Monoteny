@@ -95,6 +95,7 @@ This will be possible by TenLang coming with several different transpilers. Here
   - [ ] Varargs: Int keying with infinite parameters (syntax: `a...: Type[0...]` for `print(a, b)` and `a...: Type[String]` for `print(a: a, b: b)`)
   - [ ] Optionals
   - [ ] Sets
+  - [ ] Defaults (`a: $Float[Default]` for parameters to be omittable)
 
 ### TenLang 1.0
 
