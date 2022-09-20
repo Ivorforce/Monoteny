@@ -93,15 +93,7 @@ impl <'a> GlobalLinker<'a> {
     pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, scope: &scopes::Hierarchy, conformance_delegations: &HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>) {
         match statement {
             abstract_syntax::GlobalStatement::Scope(syntax) => {
-                let mut level_with_generics = scopes::Level::new();
-
-                for generic_name in syntax.generics.iter().flat_map(|x| x.iter()) {
-                    level_with_generics.insert_singleton(scopes::Environment::Global, Variable::make_immutable(Type::meta(Type::make_any())), generic_name)
-                }
-
-                let subscope = scope.subscope(&level_with_generics);
-
-                with_delegations(&subscope, conformance_delegations, syntax.requirements.iter().flat_map(|x| x.iter()).map(|x| x.as_ref()), |scope, conformance_delegations| {
+                with_delegations(scope, conformance_delegations, syntax.requirements.iter().flat_map(|x| x.iter()).map(|x| x.as_ref()), |scope, conformance_delegations| {
                     for statement in &syntax.statements {
                         self.link_global_statement(statement.as_ref(), scope, conformance_delegations);
                     }

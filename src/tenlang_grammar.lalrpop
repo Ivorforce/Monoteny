@@ -20,7 +20,7 @@ match {
     "=",
     "let", "var",
     "fun", "pattern",
-    "given", "if",
+    "if",
     _
 }
 
@@ -77,7 +77,7 @@ OperatorFunction: Box<Operator> = {
 }
 
 GlobalScope: Box<GlobalScope> = {
-    <generics: ("given" "<" <OptionalFinalSeparatorList<Identifier, ",">> ">")?> <requirements: ("if" <TraitDeclaration+>)?> "{" <statements: GlobalStatement*> "}" => Box::new(GlobalScope { <> }),
+    <requirements: ("if" <TraitDeclaration+>)?> "{" <statements: GlobalStatement*> "}" => Box::new(GlobalScope { <> }),
 }
 
 TraitDeclaration: Box<TraitDeclaration> = {

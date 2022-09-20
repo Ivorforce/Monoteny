@@ -10,7 +10,6 @@ pub struct Program {
 }
 
 pub struct GlobalScope {
-    pub generics: Option<Vec<String>>,
     pub requirements: Option<Vec<Box<TraitDeclaration>>>,
     pub statements: Vec<Box<GlobalStatement>>
 }
@@ -180,9 +179,6 @@ impl Debug for GlobalStatement {
             Pattern(pattern) => write!(fmt, "{:?}", pattern),
             Operator(operator) => write!(fmt, "{:?}", operator),
             Scope(scope) => {
-                write!(fmt, "given <")?;
-                for item in scope.generics.iter() { write!(fmt, "{:?},", item)? };
-                write!(fmt, ">")?;
                 if let Some(requirements) = &scope.requirements {
                     write!(fmt, "if ")?;
                     for item in requirements.iter() { write!(fmt, "{:?}, ", item)? };
