@@ -30,23 +30,27 @@ fun main() :: {
     //   $$Number: Int32
     //   $Number: Int32
     //   $Ordered: OpenIntRange
-    let a: Int32[0...] = [3, 2, 5].sort();
+    // .sort called in an expression, so it copies it first and then returns the result.
+    let list_a: Int32[0...] = [3, 2, 5].sort();
 
     // FloatWithComment<Self: Float32>
-    let commented_list = [
+    var commented_list = [
         FloatWithComment(Float32(2.5), comment: "Test 1"),
         FloatWithComment(2.8, comment: "Test 2"),
         FloatWithComment(1.2, comment: "Test 3"),
     ];
 
-    // FloatWithComment<Self: Float32> inherits from Float32, and is now coerced to it.
-    // Which means Float32 + Float32 -> Float32 is defined.
-    // So b's type is Float32, not FloatWithComment<Self: Float32>.
-    let b = commented_list@[0] + commented_list@[1];
-
     // Bind:
     //   $$Number: FloatWithComment
     //   $Number: Float32
     //   $Ordered: OpenIntRange
-    let a = [3, 2, 5].sort();
+    // .sort called in equivalence update syntax, so it's updated in-place.
+    commented_list |= .sort();
+
+    // For illustration:
+
+    // FloatWithComment<Self: Float32> inherits from Float32, and is now coerced to it.
+    // Which means Float32 + Float32 -> Float32 is defined.
+    // So b's type is Float32, not FloatWithComment<Self: Float32>.
+    let f = commented_list@[0] + commented_list@[1];
 }
