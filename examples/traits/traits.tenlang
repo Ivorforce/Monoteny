@@ -1,34 +1,28 @@
-trait Twiceable<_ $Number> {
+trait Twiceable if $Number {
     abstract fun $Number.twice: $Number;
 }
 
-// Introduce a generic on which Addition must be declared.
-// All functions inside a given() {} statement must expose the generics somewhere in their interface.
-given <Number> if Addition<Number> {
-    // When encountering a declaration, check that all required functions exist.
-    // It finds the below function, which matches the trait declaration.
-    declare Twiceable<Number>;
-
+// When encountering a declaration, check that all required functions exist.
+// It finds the below function, which matches the trait declaration.
+declare Twiceable<$Number> {
     // A polymorphic function that runs on numbers that can do addition.
-    // This is, by itself, independent of Twiceable's function.
-    // abstract function '+' is matched by the linker because Number is of type 'Addition'.
+    // This is, first and foremost, a static function like any other.
+    // abstract function '+' is matched by the linker because Number is of type 'Number'.
     // This results in a dynamic function call.
-    fun {self: Number}.twice: Number :: self + self;
+    fun {self: $Number}.twice: $Number :: self + self;
 }
 
-// Anonymous generics: $Number implies that the generic conforms to the trait,
-// as if writing: given <$Number> if Number<$Number>.
-fun {self: $Number}.times_4: $Number :: self.twice.twice;
+// Require a twiceable type, and dynamically call twice twice on it.
+fun {self: $Twiceable}.times_4: $Twiceable :: self.twice.twice;
 
 fun main() :: {
-    // Linker finds function 'twice' declared above because 5 conforms to Addition.
-    // It does not find abstract function 'twice' because 5 is it of declared type Twiceable.
+    // Linker finds static function 'twice' declared above because 5 conforms to Number.
     // This results in a static function call.
     let a: Int32 = 5.twice;  // yields 10
 
-    // Addition<Int32> is declared (builtin).
+    // Number<Int32> is declared (builtin).
     // -> Twiceable<Int32> is declared.
     // Linker function 'times_4' declared above because of this.
-    // This results in a static function call, wherein 'twice' is called dynamically.
+    // This results in a static function call to times_4, which makes two dynamic function calls.
     let b: Int32 = 5.times_4;  // yields 20
 }
