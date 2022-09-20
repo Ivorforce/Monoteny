@@ -33,7 +33,7 @@ fun main() :: {
     // .sort called in an expression, so it copies it first and then returns the result.
     let list_a: Int32[0...] = [3, 2, 5].sort();
 
-    // FloatWithComment<Self: Float32>
+    // FloatWithComment<Float32>
     var commented_list = [
         FloatWithComment(Float32(2.5), comment: "Test 1"),
         FloatWithComment(2.8, comment: "Test 2"),
@@ -41,7 +41,7 @@ fun main() :: {
     ];
 
     // Bind:
-    //   $$Number: FloatWithComment
+    //   $$Number: FloatWithComment<Float32>
     //   $Number: Float32
     //   $Ordered: OpenIntRange
     // .sort called in equivalence update syntax, so it's updated in-place.
@@ -49,8 +49,8 @@ fun main() :: {
 
     // For illustration:
 
-    // FloatWithComment<Self: Float32> inherits from Float32, and is now coerced to it.
+    // FloatWithComment<Float32> inherits from Float32, and is now coerced to it.
     // Which means Float32 + Float32 -> Float32 is defined.
-    // So b's type is Float32, not FloatWithComment<Self: Float32>.
+    // So b's type is Float32, not FloatWithComment<Float32>.
     let f = commented_list@[0] + commented_list@[1];
 }
