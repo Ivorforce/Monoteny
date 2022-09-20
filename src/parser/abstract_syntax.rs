@@ -1,7 +1,7 @@
 use std::fmt::{Binary, Debug, Error, Formatter};
 use itertools::zip_eq;
-use crate::fmtutil::write_comma_separated_list;
 use crate::program::types::{Mutability, ParameterKey};
+use crate::util::fmt::write_comma_separated_list;
 
 // =============================== Global =====================================
 

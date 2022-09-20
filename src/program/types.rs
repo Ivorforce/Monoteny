@@ -5,13 +5,13 @@ use std::fmt::{Debug, Formatter};
 use std::collections::{HashMap, HashSet};
 use std::ops::BitXor;
 use guard::guard;
-use crate::fmtutil::write_comma_separated_list;
 use crate::program::traits::{Trait, TraitConformanceRequirement};
 use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::functions::{FunctionPointer, HumanFunctionInterface};
 use crate::program::generics::GenericMapping;
 
 use crate::program::primitives;
+use crate::util::fmt::write_comma_separated_list;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Mutability {

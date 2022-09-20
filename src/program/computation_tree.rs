@@ -10,25 +10,23 @@ use crate::program::types::{Mutability, ParameterKey, Type, Variable};
 use crate::program::builtins::TenLangBuiltins;
 use crate::program::functions::{FunctionPointer, HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::primitives;
-use crate::program::traits::TraitBinding;
+use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
 
 // ================================ Global ==============================
 
 pub struct Program {
     pub functions: HashSet<Rc<FunctionImplementation>>,
+    pub traits: HashSet<Rc<Trait>>,
 }
 
 pub struct FunctionImplementation {
-    pub id: Uuid,
+    pub implementation_id: Uuid,
     pub function_id: Uuid,
 
     pub human_interface: Rc<HumanFunctionInterface>,
     pub machine_interface: Rc<MachineFunctionInterface>,
 
-    // While the function declares some machine interface,
-    //  a compiler might be able to make use of the info of which parts
-    //  of the interface are actually in use in the function.
-    pub used_pointers: HashSet<Rc<FunctionPointer>>,
+    pub conformance_delegations: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
 
     pub statements: Vec<Box<Statement>>,
     pub variable_names: HashMap<Rc<Variable>, String>,
@@ -59,7 +57,7 @@ pub enum ExpressionOperation {
 
 impl PartialEq for FunctionImplementation {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
+        self.implementation_id == other.implementation_id
     }
 }
 
@@ -67,6 +65,6 @@ impl Eq for FunctionImplementation {}
 
 impl Hash for FunctionImplementation {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
+        self.implementation_id.hash(state);
     }
 }

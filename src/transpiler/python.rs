@@ -11,46 +11,58 @@ use uuid::Uuid;
 
 use crate::program::builtins::TenLangBuiltins;
 use crate::program::computation_tree::*;
-use crate::program::functions::{FunctionPointer, HumanFunctionInterface};
+use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface};
 use crate::program::primitives;
+use crate::program::traits::TraitConformanceDeclaration;
 use crate::program::types::{ParameterKey, Type, TypeUnit, Variable};
 use crate::transpiler::namespaces;
 
 
 pub struct TranspilerContext<'a> {
     names: HashMap<Uuid, String>,
-    functions_by_function_id: HashMap<Uuid, Rc<FunctionImplementation>>,
+    functions_by_id: HashMap<Uuid, Rc<FunctionImplementation>>,
     builtins: &'a TenLangBuiltins,
 }
 
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
+    writeln!(stream, "import tenlang as tl")?;
     writeln!(stream, "import numpy as np")?;
     writeln!(stream, "import operator as op")?;
     writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
     writeln!(stream, "from typing import Any, Callable")?;
 
-    let mut builtin_namespaces = builtins::create(builtins);
-    let mut file_namespace = builtin_namespaces.add_sublevel();
-    let mut functions_by_function_id = HashMap::new();
+    let mut global_namespace = builtins::create(builtins);
+    let mut file_namespace = global_namespace.add_sublevel();
+    let mut object_namespace = namespaces::Level::new();
+    let mut functions_by_id = HashMap::new();
+
+    for trait_ in program.traits.iter() {
+        todo!("Register names like the builtins do")
+    }
 
     for function in program.functions.iter() {
-        file_namespace.register_definition(function.id, &function.human_interface.alphanumeric_name);
+        file_namespace.register_definition(function.implementation_id, &function.human_interface.alphanumeric_name);
 
         let function_namespace = file_namespace.add_sublevel();
         for (variable, name) in function.variable_names.iter() {
             function_namespace.register_definition(variable.id.clone(), name);
         }
 
-        for pointer in function.machine_interface.injectable_pointers.iter() {
-            function_namespace.register_definition(pointer.pointer_id.clone(), &pointer.human_interface.alphanumeric_name);
+        for declaration in function.conformance_delegations.values() {
+            // The declaration will be a parameter later
+            // TODO If two traits of the same type are registered, names will clash. We need to add aliases (later?)
+            add_ids_as_name(declaration, &declaration.trait_.name, function_namespace);
         }
 
-        functions_by_function_id.insert(function.function_id, Rc::clone(function));
+        functions_by_id.insert(function.implementation_id, Rc::clone(function));
     }
 
+    let mut names = global_namespace.map_names();
+    names.extend(object_namespace.map_names());
+
     let context = TranspilerContext {
-        names: builtin_namespaces.map_names(),
-        functions_by_function_id,
+        names,
+        functions_by_id,
         builtins,
     };
 
@@ -61,8 +73,26 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     return Ok(())
 }
 
+fn add_ids_as_name(declaration: &Rc<TraitConformanceDeclaration>, name: &String, namespace: &mut namespaces::Level) {
+    namespace.insert_keyword(declaration.id, name);
+
+    for declaration in declaration.trait_requirements_conformance.values() {
+        add_ids_as_name(declaration, name, namespace);
+    }
+}
+
+fn add_injections_to_namespace(declaration: &Rc<TraitConformanceDeclaration>, namespace: &mut namespaces::Level) {
+    for injected_function in declaration.function_implementations.values() {
+        namespace.register_definition(injected_function.pointer_id.clone(), &injected_function.human_interface.alphanumeric_name);
+    }
+
+    for declaration in declaration.trait_requirements_conformance.values() {
+        add_injections_to_namespace(declaration, namespace);
+    }
+}
+
 pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
-    write!(stream, "\n\ndef {}(", context.names[&function.id])?;
+    write!(stream, "\n\ndef {}(", context.names[&function.implementation_id])?;
 
     for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
         write!(stream, "{}: ", get_external_name(key, idx))?;
@@ -70,17 +100,8 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
         write!(stream, ", ")?;
     }
 
-    for pointer in function.used_pointers.iter() {
-        write!(stream, "{}: Callable, ", context.names.get(&pointer.pointer_id).unwrap())?;
-    }
-    // TODO For now, we need to allow passing these in, too. If not, an abstract function might pass
-    //  some that are unneeded, crashing the program.
-    for pointer in function.machine_interface.injectable_pointers.iter() {
-        if function.used_pointers.contains(pointer) {
-            continue;
-        }
-
-        write!(stream, "{}=None, ", context.names.get(&pointer.pointer_id).unwrap())?;
+    for declaration in function.conformance_delegations.values() {
+        write!(stream, "{}: {}, ", context.names.get(&declaration.id).unwrap(), context.names.get(&declaration.trait_.id).unwrap())?;
     }
 
     write!(stream, ")")?;
@@ -189,14 +210,17 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
                 // no-op
             }
             else {
-                write!(stream, "{}(", context.names[&function.pointer_id])?;
+                match &function.target {
+                    // Can reference the static function
+                    FunctionPointerTarget::Static { .. } => write!(stream, "{}", context.names[&function.pointer_id])?,
+                    // Have to reference the function by trait
+                    FunctionPointerTarget::Polymorphic { declaration_id, abstract_function } => {
+                        write!(stream, "{}.{}", &context.names[declaration_id], context.names[&abstract_function.pointer_id])?;
+                    }
+                }
+                write!(stream, "(")?;
 
-                let pointers_to_inject = match context.functions_by_function_id.get(&function.function_id) {
-                    None => &function.machine_interface.injectable_pointers,
-                    Some(implementation) => &implementation.used_pointers,
-                };
-
-                let mut arguments_left = arguments.len() + pointers_to_inject.len();
+                let mut arguments_left = arguments.len() + function.machine_interface.requirements.len();
 
                 for (param_key, variable) in function.human_interface.parameter_names.iter() {
                     let argument = arguments.get(variable).unwrap();
@@ -214,14 +238,11 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
                     }
                 }
 
-                // TODO We can solve this better by translating required bindings to arguments in the actual interface
-                // TODO Consider making a copy of the function, especially if all bindings are 'default builtins', i.e. +-*/
-                // TODO Trim down to the pointers we actually need in the function
-                for pointer in pointers_to_inject.iter() {
-                    let resolved_pointer = binding.pointers_resolution.get(pointer).unwrap();
+                for requirement in function.machine_interface.requirements.iter() {
+                    let declaration = &context.functions_by_id[&function.pointer_id].conformance_delegations[requirement];
 
-                    let param_name = context.names.get(&pointer.pointer_id).unwrap();
-                    let arg_name = context.names.get(&resolved_pointer.pointer_id).unwrap();
+                    let param_name = context.names.get(&declaration.id).unwrap();
+                    let arg_name = context.names.get(&binding.resolution[requirement].id).unwrap();
                     write!(stream, "{}={}", param_name, arg_name)?;
 
                     arguments_left -= 1;

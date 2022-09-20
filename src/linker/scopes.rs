@@ -5,7 +5,7 @@ use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface};
-use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceDeclarations, TraitConformanceRequirement};
+use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceScope, TraitConformanceRequirement};
 use crate::program::generics::GenericMapping;
 use crate::program::types::{Mutability, ParameterKey, Type, TypeUnit, Variable};
 
@@ -20,7 +20,7 @@ pub enum Environment {
 pub struct Level {
     pub global: VariablePool,
     pub member: VariablePool,
-    pub trait_conformance_declarations: TraitConformanceDeclarations,
+    pub trait_conformance_declarations: TraitConformanceScope,
 }
 
 impl Level {
@@ -28,7 +28,7 @@ impl Level {
         Level {
             global: HashMap::new(),
             member: HashMap::new(),
-            trait_conformance_declarations: TraitConformanceDeclarations::new()
+            trait_conformance_declarations: TraitConformanceScope::new()
         }
     }
 
@@ -87,6 +87,16 @@ impl Level {
         );
     }
 
+    pub fn add_trait_conformance(&mut self, declaration: &Rc<TraitConformanceDeclaration>) {
+        self.trait_conformance_declarations.add(declaration);
+        for (_, pointer) in declaration.function_implementations.iter() {
+            self.add_function(pointer);
+        }
+        for (_, declaration) in declaration.trait_requirements_conformance.iter() {
+            self.add_trait_conformance(declaration);
+        }
+    }
+
     pub fn insert_singleton(&mut self, environment: Environment, variable: Rc<Variable>, name: &String) {
         let mut variables = self.variables_mut(environment);
 
@@ -108,7 +118,7 @@ impl Level {
 
 pub struct Hierarchy<'a> {
     pub levels: Vec<&'a Level>,
-    pub trait_conformance_declarations: TraitConformanceDeclarations,
+    pub trait_conformance_declarations: TraitConformanceScope,
 }
 
 impl <'a> Hierarchy<'a> {
@@ -120,7 +130,7 @@ impl <'a> Hierarchy<'a> {
 
         Hierarchy {
             levels,
-            trait_conformance_declarations: TraitConformanceDeclarations::merge(&self.trait_conformance_declarations, &new_scope.trait_conformance_declarations)
+            trait_conformance_declarations: TraitConformanceScope::merge(&self.trait_conformance_declarations, &new_scope.trait_conformance_declarations)
         }
     }
 

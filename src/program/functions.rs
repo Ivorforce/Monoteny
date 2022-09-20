@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use itertools::zip_eq;
 use uuid::Uuid;
-use crate::program::traits::TraitConformanceRequirement;
+use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::{Mutability, ParameterKey, Type, Variable};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -14,9 +14,15 @@ pub enum FunctionForm {
     Operator,
 }
 
+#[derive(Clone, PartialEq, Eq)]
+pub enum FunctionPointerTarget {
+    Static { implementation_id: Uuid },
+    Polymorphic { declaration_id: Uuid, abstract_function: Rc<FunctionPointer> },
+}
+
 pub struct FunctionPointer {
     pub pointer_id: Uuid,
-    pub function_id: Uuid,
+    pub target: FunctionPointerTarget,
 
     pub human_interface: Rc<HumanFunctionInterface>,
     pub machine_interface: Rc<MachineFunctionInterface>,
@@ -28,7 +34,6 @@ pub struct HumanFunctionInterface {
 
     pub parameter_names: Vec<(ParameterKey, Rc<Variable>)>,
     pub parameter_names_internal: Vec<String>,
-    pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 
     pub form: FunctionForm,
 }
@@ -37,9 +42,9 @@ pub struct MachineFunctionInterface {
     pub parameters: HashSet<Rc<Variable>>,
     pub return_type: Option<Box<Type>>,
     // Note: This set will almost certainly be larger than actually required, because
-    //  it is automatically assembled from traits. To avoid unnecessary function passing,
-    //  use an implementation's (if known) hint for which pointers are actually in use.
-    pub injectable_pointers: HashSet<Rc<FunctionPointer>>,
+    //  it is automatically assembled. To avoid unnecessary arguments,
+    //  use an implementation's (if known) hint for which are actually in use.
+    pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 }
 
 impl FunctionPointer {
@@ -52,21 +57,20 @@ impl FunctionPointer {
         })).collect();
 
         Rc::new(FunctionPointer {
-            function_id: Uuid::new_v4(),
             pointer_id: Uuid::new_v4(),
+            target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
 
             human_interface: Rc::new(HumanFunctionInterface {
                 name: String::from(name),
                 alphanumeric_name: String::from(alphanumeric_name),
                 parameter_names: zip_eq(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
                 parameter_names_internal: vec![],  // TODO Internal names shouldn't need to be specified for builtins?
-                requirements: HashSet::new(),
                 form: FunctionForm::Operator,
             }),
             machine_interface:Rc::new(MachineFunctionInterface {
                 parameters: parameters.into_iter().collect(),
                 return_type: Some(return_type.clone()),
-                injectable_pointers: HashSet::new(),
+                requirements: HashSet::new(),
             })
         })
     }
@@ -78,21 +82,20 @@ impl FunctionPointer {
         let parameter_names = (0..parameters.len()).map(|_| ParameterKey::Positional);
 
         Rc::new(FunctionPointer {
-            function_id: Uuid::new_v4(),
             pointer_id: Uuid::new_v4(),
+            target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
 
             human_interface: Rc::new(HumanFunctionInterface {
                 name: String::from(name),
                 alphanumeric_name: String::from(alphanumeric_name),
                 parameter_names: zip_eq(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
                 parameter_names_internal: vec![],  // TODO Internal names shouldn't need to be specified for builtins?
-                requirements: HashSet::new(),
                 form: FunctionForm::Global,
             }),
             machine_interface:Rc::new(MachineFunctionInterface {
                 parameters: parameters.into_iter().collect(),
                 return_type: return_type.clone(),
-                injectable_pointers: HashSet::new(),
+                requirements: HashSet::new(),
             })
         })
     }

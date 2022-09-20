@@ -4,7 +4,7 @@ pattern {} /. {} :: MultiplicationPrecedence;
 fun {lhs: $Float} /. {rhs: $Float} -> $Float :: lhs / rhs;
 
 fun square(_ a: $Number) -> $Number :: a * a;
-fun {self: $Number}.square() -> $Number :: self * self;
+fun {self: $Number}.square() -> $Number :: square(self);
 
 fun main() :: {
     print("Test: ");

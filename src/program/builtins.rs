@@ -72,6 +72,8 @@ pub struct TenLangBuiltinPrecedenceGroups {
 
 #[allow(non_snake_case)]
 pub struct TenLangBuiltinTraits {
+    pub all: HashSet<Rc<Trait>>,
+
     pub Eq: Rc<Trait>,
     pub Ord: Rc<Trait>,
 
@@ -231,7 +233,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
         };
 
         for parent in parents {
-            TraitConformanceRequirement::bind(&parent, vec![generic_type.clone()], &mut t.requirements);
+            t.requirements.insert(Trait::require(&parent, vec![generic_type.clone()]));
         }
 
         return Rc::new(t)
@@ -309,6 +311,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     constants.add_trait(&int_trait);
 
     let traits = TenLangBuiltinTraits {
+        all: [&eq_trait, &ord_trait, &number_trait, &float_trait, &int_trait].map(Rc::clone).into_iter().collect(),
         Eq: eq_trait,
         Ord: ord_trait,
         Number: number_trait,
@@ -349,7 +352,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
                 (Rc::clone(&abstract_eq_functions.not_equal_to), Rc::clone(&eq_functions.not_equal_to)),
             ])
         });
-        constants.trait_conformance_declarations.add(Rc::clone(&eq_conformance));
+        constants.trait_conformance_declarations.add(&eq_conformance);
 
         if !primitive_type.is_number() {
             continue;
@@ -371,7 +374,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
                 (&abstract_number_functions.lesser_than_or_equal_to, &number_functions.lesser_than_or_equal_to),
             ]
         );
-        constants.trait_conformance_declarations.add(Rc::clone(&ord_conformance));
+        constants.trait_conformance_declarations.add(&ord_conformance);
 
         // Number
         add_function(&number_functions.add, &mut add_ops, &mut constants);
@@ -395,7 +398,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
                 (&abstract_number_functions.modulo, &number_functions.modulo),
             ]
         );
-        constants.trait_conformance_declarations.add(Rc::clone(&number_conformance));
+        constants.trait_conformance_declarations.add(&number_conformance);
 
         if primitive_type.is_float() {
             let exp_op = FunctionPointer::make_operator("**", "exponentiate", 2, type_, type_);
@@ -403,13 +406,13 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             exp_ops.insert(Rc::clone(&exp_op));
 
             constants.trait_conformance_declarations.add(
-                make_conformance_declaration(&traits.Float, &number_conformance, vec![])
+                &make_conformance_declaration(&traits.Float, &number_conformance, vec![])
             );
         }
 
         if primitive_type.is_int() {
             constants.trait_conformance_declarations.add(
-                make_conformance_declaration(&traits.Int, &number_conformance, vec![])
+                &make_conformance_declaration(&traits.Int, &number_conformance, vec![])
             );
         }
     }

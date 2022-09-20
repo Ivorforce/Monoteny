@@ -7,7 +7,7 @@ pub mod parser;
 pub mod linker;
 pub mod transpiler;
 pub mod program;
-pub mod fmtutil;
+pub mod util;
 
 use std::ffi::OsStr;
 use std::fs::File;

@@ -1,3 +1,4 @@
+use std::arch::x86_64::_mm256_i32gather_pd;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
@@ -5,9 +6,10 @@ use std::rc::Rc;
 use custom_error::custom_error;
 use itertools::zip_eq;
 use uuid::Uuid;
-use crate::program::functions::{FunctionPointer, HumanFunctionInterface, MachineFunctionInterface};
+use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::generics::GenericMapping;
 use crate::program::types::{Type, Variable};
+use crate::util::multimap::{extend_multimap, push_into_multimap};
 
 #[derive(Clone)]
 pub struct Trait {
@@ -30,8 +32,6 @@ pub struct TraitConformanceRequirement {
     pub id: Uuid,
     pub trait_: Rc<Trait>,
     pub arguments: Vec<Box<Type>>,
-
-    pub functions_pointers: HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>,
 }
 
 #[derive(Clone)]
@@ -46,53 +46,41 @@ pub struct TraitConformanceDeclaration {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct TraitConformanceDeclarations {
-    declarations: HashMap<Rc<Trait>, Vec<Rc<TraitConformanceDeclaration>>>
+pub struct TraitConformanceScope {
+    /// Which declarations are defined in the scope?
+    pub declarations: HashMap<Rc<Trait>, Vec<Rc<TraitConformanceDeclaration>>>,
 }
 
 pub struct TraitBinding {
-    pub conformances: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
-    pub pointers_resolution: HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>,
+    pub resolution: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
 }
 
-
-impl TraitConformanceDeclarations {
-    pub fn new() -> TraitConformanceDeclarations {
-        TraitConformanceDeclarations {
-            declarations: HashMap::new()
+impl TraitConformanceScope {
+    pub fn new() -> TraitConformanceScope {
+        TraitConformanceScope {
+            declarations: HashMap::new(),
         }
     }
 
-    pub fn merge(lhs: &TraitConformanceDeclarations, rhs: &TraitConformanceDeclarations) -> TraitConformanceDeclarations {
-        let mut copy = lhs.declarations.clone();
-        for (trait_, declarations) in rhs.declarations.iter() {
-            if let Some(existing) = copy.get_mut(trait_.as_ref()) {
-                existing.extend(declarations.clone());
-            }
-            else {
-                copy.insert(trait_.clone(), declarations.clone());
-            }
-        }
+    pub fn merge(lhs: &TraitConformanceScope, rhs: &TraitConformanceScope) -> TraitConformanceScope {
+        let mut declarations = lhs.declarations.clone();
+        extend_multimap(&mut declarations, &rhs.declarations);
 
-        TraitConformanceDeclarations { declarations: copy }
+        TraitConformanceScope { declarations }
     }
 
-    pub fn add(&mut self, declaration: Rc<TraitConformanceDeclaration>) {
-        if let Some(existing) = self.declarations.get_mut(declaration.trait_.as_ref()) {
-            existing.push(declaration);
-        }
-        else {
-            self.declarations.insert(declaration.trait_.clone(), vec![declaration]);
-        }
+    pub fn add(&mut self, declaration: &Rc<TraitConformanceDeclaration>) {
+        push_into_multimap(&mut self.declarations, &declaration.trait_, Rc::clone(declaration));
     }
 
     pub fn satisfy_requirements(&self, requirements: &HashSet<Rc<TraitConformanceRequirement>>, seed: &Uuid, mapping: &GenericMapping) -> Result<Box<TraitBinding>, TraitConformanceError> {
         if requirements.len() == 0 {
             return Ok(Box::new(TraitBinding {
-                conformances: HashMap::new(),
-                pointers_resolution: HashMap::new(),
+                resolution: HashMap::new(),
             }));
         }
+
+        let requirements = requirements.clone();
 
         if requirements.len() > 1 {
             todo!("Multiple requirements are not supported yet")
@@ -103,10 +91,7 @@ impl TraitConformanceDeclarations {
             .map(|x| mapping.resolve_type(&x.with_any_as_generic(seed)).unwrap())
             .collect();
 
-        let mut candidates: Vec<HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>> = vec![];
-
-        // TODO Also look through the requirements already declared on the function to see if any fit.
-        //  This will add to candidates separately - so if there is a fit from our requirements AND native declarations, it's an error.
+        let mut candidates: Vec<Box<TraitBinding>> = vec![];
 
         for declaration in self.declarations.get(&requirement.trait_).unwrap_or(&vec![]).iter() {
             if !declaration.requirements.is_empty() {
@@ -114,26 +99,16 @@ impl TraitConformanceDeclarations {
             }
 
             if bound_requirement_arguments != declaration.arguments {
-                return continue
+                continue
             }
 
-            candidates.push(HashMap::from([
-                (Rc::clone(requirement), Rc::clone(declaration))
-            ]));
+            candidates.push(Box::new(TraitBinding {
+                resolution: HashMap::from([(Rc::clone(requirement), Rc::clone(declaration))]),
+            }));
         }
 
         if candidates.len() == 1 {
-            let conformances = candidates.into_iter().next().unwrap();
-            let mut pointers_resolution = HashMap::new();
-
-            for (requirement, conformance_declaration) in conformances.iter() {
-                conformance_declaration.gather_pointer_resolutions(requirement, &mut pointers_resolution);
-            }
-
-            return Ok(Box::new(TraitBinding {
-                conformances,
-                pointers_resolution,
-            }));
+            return Ok(candidates.into_iter().next().unwrap());
         }
 
         if candidates.len() > 1 {
@@ -147,21 +122,33 @@ impl TraitConformanceDeclarations {
     }
 }
 
-impl TraitConformanceRequirement {
-    pub fn bind(trait_: &Rc<Trait>, arguments: Vec<Box<Type>>, requirements: &mut HashSet<Rc<TraitConformanceRequirement>>) {
+impl Trait {
+    pub fn require(trait_: &Rc<Trait>, arguments: Vec<Box<Type>>) -> Rc<TraitConformanceRequirement> {
+        Rc::new(TraitConformanceRequirement {
+            id: Uuid::new_v4(),
+            trait_: Rc::clone(trait_),
+            arguments
+        })
+    }
+
+    pub fn assume_granted(trait_: &Rc<Trait>, arguments: Vec<Box<Type>>) -> Rc<TraitConformanceDeclaration> {
         let mut replace_map = HashMap::new();
         for (param, arg) in zip_eq(trait_.parameters.iter(), arguments.iter()) {
             replace_map.insert(param.clone(), arg.clone());
         }
 
-        let mut functions_pointers = HashMap::new();
+        let declaration_id = Uuid::new_v4();
+        let mut abstract_to_mapped = HashMap::new();
 
         // Add requirement's implied abstract functions to scope
         for abstract_fun in trait_.abstract_functions.iter() {
             // TODO Re-use existing functions, otherwise we'll have clashes in the scope
             let mapped_pointer = Rc::new(FunctionPointer {
                 pointer_id: Uuid::new_v4(),
-                function_id: abstract_fun.function_id,
+                target: FunctionPointerTarget::Polymorphic {
+                    abstract_function: Rc::clone(abstract_fun),
+                    declaration_id
+                },
                 human_interface: Rc::clone(&abstract_fun.human_interface),
                 machine_interface: Rc::new(MachineFunctionInterface {
                     // TODO Mapping variables seems wrong, especially since they are hashable by ID?
@@ -173,49 +160,26 @@ impl TraitConformanceRequirement {
                         mutability: x.mutability
                     })).collect(),
                     return_type: abstract_fun.machine_interface.return_type.as_ref().map(|x| x.replacing_any(&replace_map)),
-                    // Note: abstract functions will never have injectable pointers, because they're defined
-                    //  in the scope of the trait, which already resolves pointers.
-                    injectable_pointers: abstract_fun.machine_interface.injectable_pointers.clone(),
+                    // Note: abstract functions will never have requirements, because abstract functions are not allowed
+                    // any requirements beyond what the trait requires.
+                    requirements: HashSet::new(),
                 })
             });
 
-            functions_pointers.insert(Rc::clone(abstract_fun), Rc::clone(&mapped_pointer));
+            abstract_to_mapped.insert(Rc::clone(abstract_fun), Rc::clone(&mapped_pointer));
         }
 
-        requirements.insert(Rc::new(TraitConformanceRequirement {
-            id: Uuid::new_v4(),
+        Rc::new(TraitConformanceDeclaration {
+            id: declaration_id,
             trait_: Rc::clone(trait_),
             arguments,
-            functions_pointers
-        }));
-    }
-
-    pub fn gather_injectable_pointers<'a, I>(requirements: I) -> HashSet<Rc<FunctionPointer>> where I: Iterator<Item=&'a Rc<TraitConformanceRequirement>> {
-        let mut injected_pointers = HashSet::new();
-        for requirement in requirements {
-            requirement.add_injectable_pointers(&mut injected_pointers);
-        }
-        return injected_pointers
-    }
-
-    pub fn add_injectable_pointers(&self, pointers: &mut HashSet<Rc<FunctionPointer>>) {
-        pointers.extend(self.functions_pointers.values().map(Rc::clone));
-        for requirement in self.trait_.requirements.iter() {
-            requirement.add_injectable_pointers(pointers);
-        }
-    }
-}
-
-impl TraitConformanceDeclaration {
-    pub fn gather_pointer_resolutions(&self, requirement: &TraitConformanceRequirement, pointers_resolution: &mut HashMap<Rc<FunctionPointer>,Rc<FunctionPointer>>) {
-        for (abstract_func, injectable_pointer) in requirement.functions_pointers.iter() {
-            let function_implementation = self.function_implementations.get(abstract_func).unwrap();
-            pointers_resolution.insert(Rc::clone(injectable_pointer), Rc::clone(function_implementation));
-        }
-
-        for (requirement, conformance) in self.trait_requirements_conformance.iter() {
-            conformance.gather_pointer_resolutions(requirement, pointers_resolution);
-        }
+            // This declaration can be treated as fulfilled within the scope
+            requirements: HashSet::new(),
+            trait_requirements_conformance: trait_.requirements.iter().map(|requirement| {
+                (Rc::clone(requirement), Trait::assume_granted(&requirement.trait_, requirement.arguments.iter().map(|x| x.replacing_any(&replace_map)).collect()))
+            }).collect(),
+            function_implementations: abstract_to_mapped
+        })
     }
 }
 

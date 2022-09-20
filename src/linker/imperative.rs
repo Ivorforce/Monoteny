@@ -9,10 +9,10 @@ use crate::linker::global::{link_type};
 use crate::linker::scopes;
 use crate::parser::abstract_syntax;
 use crate::program::builtins::TenLangBuiltins;
-use crate::program::functions::{FunctionPointer, HumanFunctionInterface, MachineFunctionInterface};
+use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::generics::GenericMapping;
 use crate::program::primitives;
-use crate::program::traits::TraitBinding;
+use crate::program::traits::{TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
@@ -20,8 +20,7 @@ pub struct ImperativeLinker<'a> {
 
     pub builtins: &'a TenLangBuiltins,
     pub generics: GenericMapping,
-    pub injected_pointers: HashSet<Rc<FunctionPointer>>,
-    pub used_functions: HashSet<Rc<FunctionPointer>>,
+    pub conformance_delegations: &'a HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
     pub variable_names: HashMap<Rc<Variable>, String>,
 }
 
@@ -37,13 +36,16 @@ impl <'a> ImperativeLinker<'a> {
         let statements: Vec<Box<Statement>> = self.link_top_scope(body, &subscope);
 
         return Rc::new(FunctionImplementation {
-            id: self.function.pointer_id,
-            function_id: self.function.function_id,
+            implementation_id: self.function.pointer_id,
+            function_id: match self.function.target {
+                FunctionPointerTarget::Static { implementation_id: ímplementation_id } => ímplementation_id,
+                _ => panic!()
+            },
             human_interface: Rc::clone(&self.function.human_interface),
             machine_interface: Rc::clone(&self.function.machine_interface),
             statements,
             variable_names: self.variable_names.clone(),
-            used_pointers: self.used_functions.intersection(&self.injected_pointers).map(Rc::clone).collect(),
+            conformance_delegations: self.conformance_delegations.clone()
         });
     }
 
@@ -343,7 +345,7 @@ impl <'a> ImperativeLinker<'a> {
             }
 
             let binding = scope.trait_conformance_declarations
-                .satisfy_requirements(&fun.human_interface.requirements, &seed, &generic_mapping);
+                .satisfy_requirements(&fun.machine_interface.requirements, &seed, &generic_mapping);
 
             if binding.is_err() {
                 candidates_with_failed_requirements.push(fun);
@@ -364,8 +366,6 @@ impl <'a> ImperativeLinker<'a> {
                 argument_types,
                 param_types.iter().map(|x| x.as_ref())
             )).unwrap();
-
-            self.used_functions.insert(Rc::clone(function));
 
             return Box::new(Expression {
                 result_type: return_type,
