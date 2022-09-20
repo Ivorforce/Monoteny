@@ -1,0 +1,52 @@
+// Trait that inherits from float but adds a comment string.
+trait FloatWithComment if Self: Float {
+    var comment: String;
+}
+
+// $$Number means it's a type that inherits from a $Number, where $Number is a type that inherits from Number.
+if Self: $$Number[$Ordered] {
+    mut fun .sort(ascending: Bool[Default]) :: {
+        let ascending = ascending@.or(true);
+
+        // Imagine a functioning algorithm here lol
+
+        // Each element is of type $$Number
+        // --> Valid
+        (self@[0], self@[1]) = (self@[1], self@[0]);
+
+        // $$Number + $$Number is not defined.
+        // But $$Number inherits from $Number, and $Number + $Number exists,
+        //   so this call would be coerced to $Number + $Number -> $Number.
+        // $Number is not equal to $$Number so it can't be placed in the monad.
+        // --> Error
+        self@[0] = self@[0] + self@[1];
+
+        return self
+    }
+}
+
+fun main() :: {
+    // Bind:
+    //   $$Number: Int32
+    //   $Number: Int32
+    //   $Ordered: OpenIntRange
+    let a: Int32[0...] = [3, 2, 5].sort();
+
+    // FloatWithComment<Self: Float32>
+    let commented_list = [
+        FloatWithComment(Float32(2.5), comment: "Test 1"),
+        FloatWithComment(2.8, comment: "Test 2"),
+        FloatWithComment(1.2, comment: "Test 3"),
+    ];
+
+    // FloatWithComment<Self: Float32> inherits from Float32, and is now coerced to it.
+    // Which means Float32 + Float32 -> Float32 is defined.
+    // So b's type is Float32, not FloatWithComment<Self: Float32>.
+    let b = commented_list@[0] + commented_list@[1];
+
+    // Bind:
+    //   $$Number: FloatWithComment
+    //   $Number: Float32
+    //   $Ordered: OpenIntRange
+    let a = [3, 2, 5].sort();
+}
