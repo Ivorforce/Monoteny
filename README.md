@@ -68,9 +68,11 @@ This will be possible by TenLang coming with several different transpilers. Here
 - [x] Traits
   - [x] Requirements (`if Number<A> {}`)
   - [x] Anonymous generics (`#A`)
-    - [x] ... with implicit conformance requirements (`$Number` -> `if Number<$Number> {}`)
+    - [x] ... with implicit conformance requirements (`$Number` -> `if $Number: Number {}`)
+    - [ ] ... recursive (`$$Number: $Number`)
     - [ ] ... in imperative code (coercing types)
   - [x] Inheritance (`if Number<#A> { trait OtherTrait<#A> }`)
+  - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
   - [ ] Abstract Functions, Conformance Declarations
   - [ ] Stored Properties (1-argument traits only)
     - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only on single-argument, non abstract
