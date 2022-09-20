@@ -1,5 +1,5 @@
 use std::io::Write;
-use crate::transpiler::python::{get_external_name, TranspilerContext, types};
+use crate::transpiler::python::{TranspilerContext, types};
 use crate::program::builtins::TenLangBuiltins;
 use crate::program::computation_tree::*;
 use crate::program::types::{Type, TypeUnit};
@@ -11,7 +11,7 @@ pub fn dump(stream: &mut (dyn Write), function: &FunctionImplementation, context
         write!(stream, "\n    Args:\n")?;
 
         for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
-            write!(stream, "        {}: ", get_external_name(key, idx))?;
+            write!(stream, "        {}: ", context.names.get(&variable.id).unwrap())?;
             transpile_type(stream, &variable.type_declaration, context)?;
             write!(stream, "\n")?;
         }

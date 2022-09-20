@@ -95,7 +95,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
     write!(stream, "\n\ndef {}(", context.names[&function.implementation_id])?;
 
     for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
-        write!(stream, "{}: ", get_external_name(key, idx))?;
+        write!(stream, "{}: ", context.names.get(&variable.id).unwrap())?;
         types::transpile(stream, &variable.type_declaration, context)?;
         write!(stream, ", ")?;
     }
@@ -121,8 +121,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
 
     for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
         let variable_name = context.names.get(&variable.id).unwrap();
-        // TODO Rather than re-using the external name, we should map it to a new variable and register its name
-        let external_name = get_external_name(key, idx);
+        let external_name = variable_name;  // external names are not supported in python
 
         match &variable.type_declaration.unit {
             TypeUnit::Monad => {
@@ -150,15 +149,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
                     panic!("Can't have a nested monad in numpy.")
                 }
             }
-            _ => {
-                if variable_name == &external_name {
-                    continue
-                }
-
-                writeln!(
-                    stream, "    {} = {}", variable_name, external_name,
-                )?;
-            }
+            _ => {}
         }
     }
 
@@ -402,16 +393,6 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
     }
 
     return Ok(false);
-}
-
-pub fn get_external_name(key: &ParameterKey, idx: usize) -> String {
-    match &key {
-        ParameterKey::Name(name) => name.clone(),
-        // Int keying is not supported in python. Let's prefix via underscore.
-        ParameterKey::Int(n) => String::from(format!("_{}", n)),
-        // None keying is not supported; let's use two underscores as prefix! lol
-        ParameterKey::Positional => String::from(format!("__{}", idx))
-    }
 }
 
 pub fn is_simple(operation: &ExpressionOperation) -> bool {

@@ -97,9 +97,6 @@ KeyedParameter: Box<KeyedParameter> = {
     <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
         key: ParameterKey::Name(internal_name.clone()), internal_name, param_type
     }),
-    <key: Int> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
-        key: ParameterKey::Int(i32::try_from(key).unwrap()), internal_name, param_type
-    }),
     <key: Identifier> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
         key: ParameterKey::from_string(key), internal_name, param_type
     }),
@@ -158,7 +155,6 @@ Term: Box<Expression> = {
 };
 
 PassedArgument: Box<PassedArgument> = {
-    <name: Int> ":" <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Int(i32::try_from(name).unwrap()), value }),
     <name: Identifier> ":" <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Name(name), value }),
     <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Positional, value })
 }

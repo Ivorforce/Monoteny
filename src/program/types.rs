@@ -28,7 +28,6 @@ pub struct Struct {
 pub enum ParameterKey {
     Positional,
     Name(String),
-    Int(i32),
 }
 
 #[derive(Clone)]
@@ -104,7 +103,6 @@ impl Debug for ParameterKey {
         use ParameterKey::*;
         match self {
             Name(s) => write!(fmt, "{}", s),
-            Int(n) => write!(fmt, "{}", n),
             Positional => write!(fmt, "_"),
         }
     }
