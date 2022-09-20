@@ -1,19 +1,21 @@
-trait Twiceable if $Number {
-    abstract fun $Number.twice: $Number;
+trait Twiceable if Self: Number {
+    abstract fun .twice: $Number;
 }
 
 // When encountering a declaration, check that all required functions exist.
 // It finds the below function, which matches the trait declaration.
-declare Twiceable<$Number> {
+if Self: Number declare Self: Twiceable {
     // A polymorphic function that runs on numbers that can do addition.
     // This is, first and foremost, a static function like any other.
     // abstract function '+' is matched by the linker because Number is of type 'Number'.
     // This results in a dynamic function call.
-    fun {self: $Number}.twice: $Number :: self + self;
+    fun .twice: Self :: self + self;
 }
 
 // Require a twiceable type, and dynamically call twice twice on it.
-fun {self: $Twiceable}.times_4: $Twiceable :: self.twice.twice;
+if Self: Number {
+    fun .times_4: Self :: self.twice.twice;
+}
 
 fun main() :: {
     // Linker finds static function 'twice' declared above because 5 conforms to Number.

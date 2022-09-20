@@ -10,20 +10,24 @@ fun times_two(value: Int32) -> Int32 :: value * 2;
 // ================ Member Functions ====================
 // Functions that are mostly associated with one object.
 
-// 5.times_two()
-fun <value: Int32>.times_two() -> Int32 :: value * 2;
+if Self: Int32 {
+    // 5.times_two()
+    fun .times_two() -> Self :: value * 2;
 
-// 5(added: 2)
-fun <value:Int32>(added: Int32) -> Int32 :: value + added;
+    // 5(added: 2)
+    fun self(added: Int32) -> Int32 :: value + added;
+}
 
 // ================ Var-Like Member Functions ====================
 // Getters and setters that look like member variables in practice.
 
-// 5.times_two
-fun <value: Int32>.times_two -> Int32 :: value * 2;
+if Self: Int32 {
+    // 5.times_two
+    fun .times_two -> Self :: value * 2;
 
-// 5.times_two = 2
-fun <value: Int32>.times_two = <value: Int32> :: todo();
+    // 5.times_two = 2
+    fun .times_two = <value: Self> :: todo();
+}
 
 // ================ External vs Internal Parameter Names ====================
 // Parameters are keyed by syntactically deterministic identifiers: String, Int or simply their position.
