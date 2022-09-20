@@ -66,8 +66,9 @@ This will be possible by TenLang coming with several different transpilers. Here
 
 - [x] Forward generic type checking
 - [x] Traits
+  - [x] Requirements (`given <A> where Number<A> {}`)
   - [x] Anonymous generics (`#A` -> `given <#A> {}`)
-    - [x] ... with implicit type conformance (`$Number` -> `given <$Number> where Number<$Number> {}`)
+    - [x] ... with implicit conformance requirements (`$Number` -> `given <$Number> where Number<$Number> {}`)
     - [ ] ... in imperative code (coercing types)
   - [x] Inheritance (`if Number<#A> { trait OtherTrait<#A> }`)
   - [ ] Abstract Functions, Conformance Declarations
