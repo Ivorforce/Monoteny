@@ -47,6 +47,8 @@ This will be possible by TenLang coming with several different transpilers. Here
 * [Future] Octave / MatLab
 * [Future] R
 
+Note: Transpilation of some features is quite difficult and cannot be achieved in human-readable fashion easily. For that reason, documentation keywords exist to specify how to export some things to specific languages. Everything not explicitly exported will not have readability as a high priority.
+
 
 ### TenLang 0.1 (Toy Language Stage)
 
