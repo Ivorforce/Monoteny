@@ -1,0 +1,40 @@
+use std::rc::Rc;
+use uuid::Uuid;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use crate::program::computation_tree::Statement;
+use crate::program::functions::{HumanFunctionInterface, MachineFunctionInterface};
+use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
+use crate::program::allocation::Variable;
+
+pub enum GlobalStatement {
+    Trait(Rc<Trait>),
+    Function(Rc<FunctionImplementation>),
+}
+
+pub struct FunctionImplementation {
+    pub implementation_id: Uuid,
+    pub function_id: Uuid,
+
+    pub human_interface: Rc<HumanFunctionInterface>,
+    pub machine_interface: Rc<MachineFunctionInterface>,
+
+    pub conformance_delegations: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
+
+    pub statements: Vec<Box<Statement>>,
+    pub variable_names: HashMap<Rc<Variable>, String>,
+}
+
+impl PartialEq for FunctionImplementation {
+    fn eq(&self, other: &Self) -> bool {
+        self.implementation_id == other.implementation_id
+    }
+}
+
+impl Eq for FunctionImplementation {}
+
+impl Hash for FunctionImplementation {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.implementation_id.hash(state);
+    }
+}

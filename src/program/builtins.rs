@@ -10,7 +10,9 @@ use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::types::*;
 use crate::program::primitives;
 use crate::program;
+use crate::program::allocation::Variable;
 use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface, MachineFunctionInterface};
+use crate::program::structs::Struct;
 
 pub struct TenLangBuiltins {
     pub traits: TenLangBuiltinTraits,

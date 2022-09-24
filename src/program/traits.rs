@@ -6,9 +6,10 @@ use std::rc::Rc;
 use custom_error::custom_error;
 use itertools::zip_eq;
 use uuid::Uuid;
+use crate::program::allocation::Variable;
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::generics::GenericMapping;
-use crate::program::types::{Type, Variable};
+use crate::program::types::Type;
 use crate::util::multimap::{extend_multimap, push_into_multimap};
 
 #[derive(Clone)]

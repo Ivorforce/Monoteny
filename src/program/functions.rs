@@ -4,14 +4,21 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use itertools::zip_eq;
 use uuid::Uuid;
+use crate::program::allocation::{Mutability, Variable};
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
-use crate::program::types::{Mutability, ParameterKey, Type, Variable};
+use crate::program::types::Type;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FunctionForm {
     Global,
     Member,
     Operator,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum ParameterKey {
+    Positional,
+    Name(String),
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -138,5 +145,22 @@ impl Debug for HumanFunctionInterface {
         write!(fmt, ")")?;
 
         Ok(())
+    }
+}
+
+impl Debug for ParameterKey {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        use ParameterKey::*;
+        use crate::program::functions::ParameterKey::Positional;
+        match self {
+            Name(s) => write!(fmt, "{}", s),
+            Positional => write!(fmt, "_"),
+        }
+    }
+}
+
+impl ParameterKey {
+    pub fn from_string(s: String) -> ParameterKey {
+        if s == "_" { ParameterKey::Positional } else { ParameterKey::Name(s) }
     }
 }

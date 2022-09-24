@@ -1,6 +1,6 @@
 use std::io::Write;
 use crate::program::computation_tree::*;
-use crate::program::primitives;
+use crate::program::{primitives, Program};
 use crate::program::types::{Type, TypeUnit};
 
 pub fn transpile_program(

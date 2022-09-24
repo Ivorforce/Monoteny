@@ -4,10 +4,11 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface};
-use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceScope, TraitConformanceRequirement};
+use crate::program::allocation::{Mutability, Variable};
+use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface, ParameterKey};
+use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::generics::GenericMapping;
-use crate::program::types::{Mutability, ParameterKey, Type, TypeUnit, Variable};
+use crate::program::types::{Type, TypeUnit};
 
 type VariablePool = HashMap<String, HashSet<Rc<Variable>>>;
 

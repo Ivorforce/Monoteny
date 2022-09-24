@@ -7,6 +7,7 @@ use crate::parser::abstract_syntax;
 use crate::program::computation_tree::*;
 use crate::linker::global::link_file;
 use crate::program::builtins::*;
+use crate::program::Program;
 
 
 pub fn link_program(syntax: abstract_syntax::Program, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> Program {

@@ -1,7 +1,8 @@
 use std::io::Write;
 use crate::program::builtins::TenLangBuiltins;
 use crate::program::primitives;
-use crate::program::types::{Struct, Type, TypeUnit};
+use crate::program::structs::Struct;
+use crate::program::types::{Type, TypeUnit};
 use crate::transpiler::python::TranspilerContext;
 
 pub fn transpile(stream: &mut (dyn Write), type_def: &Type, context: &TranspilerContext) -> Result<(), std::io::Error> {

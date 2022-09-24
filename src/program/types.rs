@@ -11,31 +11,8 @@ use crate::program::functions::{FunctionPointer, HumanFunctionInterface};
 use crate::program::generics::GenericMapping;
 
 use crate::program::primitives;
+use crate::program::structs::Struct;
 use crate::util::fmt::write_comma_separated_list;
-
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum Mutability {
-    Immutable,
-    Mutable,
-}
-
-pub struct Struct {
-    pub id: Uuid,
-    pub name: String,
-}
-
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub enum ParameterKey {
-    Positional,
-    Name(String),
-}
-
-#[derive(Clone)]
-pub struct Variable {
-    pub id: Uuid,
-    pub type_declaration: Box<Type>,
-    pub mutability: Mutability
-}
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Type {
@@ -68,44 +45,6 @@ pub struct Pattern {
     pub operator: String,
     pub alias: String,
     pub precedence_group: Rc<PrecedenceGroup>,
-}
-
-impl PartialEq for Variable {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-
-impl Eq for Variable {}
-
-impl Hash for Variable {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-    }
-}
-
-impl PartialEq for Struct {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-
-impl Eq for Struct {}
-
-impl Hash for Struct {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-    }
-}
-
-impl Debug for ParameterKey {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        use ParameterKey::*;
-        match self {
-            Name(s) => write!(fmt, "{}", s),
-            Positional => write!(fmt, "_"),
-        }
-    }
 }
 
 impl Debug for Type {
@@ -177,21 +116,5 @@ impl Type {
                 arguments: self.arguments.iter().map(|x| x.replacing_any(map)).collect()
             }),
         }
-    }
-}
-
-impl Variable {
-    pub fn make_immutable(type_declaration: Box<Type>) -> Rc<Variable> {
-        Rc::new(Variable {
-            id: Uuid::new_v4(),
-            type_declaration,
-            mutability: Mutability::Immutable
-        })
-    }
-}
-
-impl ParameterKey {
-    pub fn from_string(s: String) -> ParameterKey {
-        if s == "_" { ParameterKey::Positional } else { ParameterKey::Name(s) }
     }
 }

@@ -1,6 +1,8 @@
 use std::str::FromStr;
 use crate::parser::abstract_syntax::*;
 use crate::program::types::*;
+use crate::program::allocation::*;
+use crate::program::functions::ParameterKey;
 
 grammar;
 

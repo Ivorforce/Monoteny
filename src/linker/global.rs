@@ -9,11 +9,13 @@ use crate::parser::abstract_syntax;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::scopes;
-use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceScope, TraitConformanceRequirement, Trait};
-use crate::program::primitives;
+use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
+use crate::program::{primitives, Program};
+use crate::program::allocation::Variable;
 use crate::program::builtins::*;
-use crate::program::functions::{FunctionForm, FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface};
+use crate::program::functions::{FunctionForm, FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
 use crate::program::generics::GenericMapping;
+use crate::program::global::{FunctionImplementation, GlobalStatement};
 use crate::program::types::*;
 use crate::util::multimap::extend_multimap;
 

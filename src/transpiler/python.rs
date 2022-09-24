@@ -11,10 +11,12 @@ use uuid::Uuid;
 
 use crate::program::builtins::TenLangBuiltins;
 use crate::program::computation_tree::*;
-use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface};
-use crate::program::primitives;
+use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, ParameterKey};
+use crate::program::{primitives, Program};
+use crate::program::allocation::Variable;
+use crate::program::global::{FunctionImplementation, GlobalStatement};
 use crate::program::traits::TraitConformanceDeclaration;
-use crate::program::types::{ParameterKey, Type, TypeUnit, Variable};
+use crate::program::types::{Type, TypeUnit};
 use crate::transpiler::namespaces;
 
 
