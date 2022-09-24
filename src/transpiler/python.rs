@@ -70,6 +70,10 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         transpile_function(stream, function.as_ref(), &context)?
     }
 
+    if let Some(main_function) = &program.main_function {
+        write!(stream, "\n\nif __name__ == '__main__':\n    {}()\n", context.names.get(&main_function.implementation_id).unwrap())?;
+    }
+
     return Ok(())
 }
 

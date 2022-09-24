@@ -83,9 +83,19 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
         }
     ).collect();
 
+    let main_function = functions.iter()
+        .filter(|f| {
+            f.human_interface.name == "main"
+            && f.human_interface.form == FunctionForm::Global
+            && f.human_interface.parameter_names.is_empty()
+        })
+        .map(Rc::clone)
+        .next();
+
     return Program {
         functions,
         traits: global_linker.traits.iter().map(Rc::clone).collect(),
+        main_function
     }
 }
 

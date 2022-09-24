@@ -17,6 +17,7 @@ use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, T
 pub struct Program {
     pub functions: HashSet<Rc<FunctionImplementation>>,
     pub traits: HashSet<Rc<Trait>>,
+    pub main_function: Option<Rc<FunctionImplementation>>,
 }
 
 pub struct FunctionImplementation {
