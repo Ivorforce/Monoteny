@@ -17,7 +17,14 @@ use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, T
 pub struct Program {
     pub functions: HashSet<Rc<FunctionImplementation>>,
     pub traits: HashSet<Rc<Trait>>,
+
+    pub global_statements: Vec<GlobalStatement>,
     pub main_function: Option<Rc<FunctionImplementation>>,
+}
+
+pub enum GlobalStatement {
+    Trait(Rc<Trait>),
+    Function(Rc<FunctionImplementation>),
 }
 
 pub struct FunctionImplementation {

@@ -5,18 +5,6 @@ from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint
 from typing import Any, Callable
 
 
-def square_0(self: Any, Number: tl.traits.Number, ) -> Any:
-    """
-    <Docstring TODO!>
-
-    Args:
-        self: Any
-
-    Returns: Any
-    """
-    return square_1(self, Number=Number)
-
-
 def floor_div(lhs: Any, rhs: Any, Float: tl.traits.Float, ) -> Any:
     """
     <Docstring TODO!>
@@ -40,6 +28,18 @@ def square_1(a: Any, Number: tl.traits.Number, ) -> Any:
     Returns: Any
     """
     return Number.multiply(a, a)
+
+
+def square_0(self: Any, Number: tl.traits.Number, ) -> Any:
+    """
+    <Docstring TODO!>
+
+    Args:
+        self: Any
+
+    Returns: Any
+    """
+    return square_1(self, Number=Number)
 
 
 def main():

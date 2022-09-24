@@ -50,38 +50,40 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
     }
 
     let global_variable_scope = scope.subscope(&global_linker.global_variables);
+    let mut global_statements = vec![];
+    let mut functions: HashSet<Rc<FunctionImplementation>> = HashSet::new();
 
     // Resolve function bodies
-    let functions: HashSet<Rc<FunctionImplementation>> = global_linker.functions.iter().map(
-        |fun| {
-            let mut variable_names = HashMap::new();
-            for (name, (_, variable)) in zip_eq(fun.pointer.human_interface.parameter_names_internal.iter(), fun.pointer.human_interface.parameter_names.iter()) {
-                variable_names.insert(Rc::clone(variable), name.clone());
-            }
-
-            // TODO Inject traits, not pointers
-            let mut resolver = Box::new(ImperativeLinker {
-                function: Rc::clone(&fun.pointer),
-                builtins,
-                generics: GenericMapping::new(),
-                variable_names,
-                conformance_delegations: &fun.conformance_delegations,
-            });
-
-            // TODO Maybe we should just re-use the whole scope level instead of doing this manually
-            //  ... but only from > file level, i.e. scopes. Can't do that without trait shadowing though.
-            let mut injection_level = scopes::Level::new();
-
-            // Add the local declarations (derived from requirements) to the scope
-            for declaration in fun.conformance_delegations.values() {
-                injection_level.add_trait_conformance(declaration);
-            }
-
-            let function_scope = global_variable_scope.subscope(&injection_level);
-
-            resolver.link_function_body(fun.body, &function_scope)
+    for fun in global_linker.functions.iter() {
+        let mut variable_names = HashMap::new();
+        for (name, (_, variable)) in zip_eq(fun.pointer.human_interface.parameter_names_internal.iter(), fun.pointer.human_interface.parameter_names.iter()) {
+            variable_names.insert(Rc::clone(variable), name.clone());
         }
-    ).collect();
+
+        // TODO Inject traits, not pointers
+        let mut resolver = Box::new(ImperativeLinker {
+            function: Rc::clone(&fun.pointer),
+            builtins,
+            generics: GenericMapping::new(),
+            variable_names,
+            conformance_delegations: &fun.conformance_delegations,
+        });
+
+        // TODO Maybe we should just re-use the whole scope level instead of doing this manually
+        //  ... but only from > file level, i.e. scopes. Can't do that without trait shadowing though.
+        let mut injection_level = scopes::Level::new();
+
+        // Add the local declarations (derived from requirements) to the scope
+        for declaration in fun.conformance_delegations.values() {
+            injection_level.add_trait_conformance(declaration);
+        }
+
+        let function_scope = global_variable_scope.subscope(&injection_level);
+
+        let implementation = resolver.link_function_body(fun.body, &function_scope);
+        functions.insert(Rc::clone(&implementation));
+        global_statements.push(GlobalStatement::Function(implementation));
+    }
 
     let main_function = functions.iter()
         .filter(|f| {
@@ -95,7 +97,8 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
     return Program {
         functions,
         traits: global_linker.traits.iter().map(Rc::clone).collect(),
-        main_function
+        global_statements,
+        main_function,
     }
 }
 

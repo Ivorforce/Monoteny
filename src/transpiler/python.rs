@@ -66,8 +66,11 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         builtins,
     };
 
-    for function in program.functions.iter() {
-        transpile_function(stream, function.as_ref(), &context)?
+    for statement in program.global_statements.iter() {
+        match statement {
+            GlobalStatement::Trait(_) => todo!("Cannot transpile traits yet!"),
+            GlobalStatement::Function(function) => transpile_function(stream, function.as_ref(), &context)?,
+        }
     }
 
     if let Some(main_function) = &program.main_function {
