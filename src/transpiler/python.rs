@@ -16,14 +16,15 @@ use crate::program::{primitives, Program};
 use crate::program::allocation::Variable;
 use crate::program::global::{FunctionImplementation, GlobalStatement};
 use crate::program::traits::TraitConformanceDeclaration;
-use crate::program::types::{Type, TypeUnit};
+use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::namespaces;
 
 
 pub struct TranspilerContext<'a> {
-    names: HashMap<Uuid, String>,
-    functions_by_id: HashMap<Uuid, Rc<FunctionImplementation>>,
+    names: &'a HashMap<Uuid, String>,
+    functions_by_id: &'a HashMap<Uuid, Rc<FunctionImplementation>>,
     builtins: &'a TenLangBuiltins,
+    expressions: &'a ExpressionForest,
 }
 
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
@@ -62,21 +63,24 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     let mut names = global_namespace.map_names();
     names.extend(object_namespace.map_names());
 
-    let context = TranspilerContext {
-        names,
-        functions_by_id,
-        builtins,
-    };
-
     for statement in program.global_statements.iter() {
         match statement {
             GlobalStatement::Trait(_) => todo!("Cannot transpile traits yet!"),
-            GlobalStatement::Function(function) => transpile_function(stream, function.as_ref(), &context)?,
+            GlobalStatement::Function(function) => {
+                let context = TranspilerContext {
+                    names: &names,
+                    functions_by_id: &functions_by_id,
+                    builtins,
+                    expressions: &function.expression_forest
+                };
+
+                transpile_function(stream, function.as_ref(), &context)?
+            },
         }
     }
 
     if let Some(main_function) = &program.main_function {
-        write!(stream, "\n\nif __name__ == '__main__':\n    {}()\n", context.names.get(&main_function.implementation_id).unwrap())?;
+        write!(stream, "\n\nif __name__ == '__main__':\n    {}()\n", names.get(&main_function.implementation_id).unwrap())?;
     }
 
     return Ok(())
@@ -166,7 +170,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
         match statement.as_ref() {
             Statement::Return(Some(expression)) => {
                 write!(stream, "    return ")?;
-                transpile_expression(stream, &expression, context)?;
+                transpile_expression(stream, expression.clone(), context)?;
             }
             Statement::Return(None) => {
                 write!(stream, "    return")?;
@@ -175,11 +179,11 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
                 let variable_name = context.names.get(&variable.id).unwrap();
 
                 write!(stream, "    {} = ", variable_name)?;
-                transpile_expression(stream, expression, context)?;
+                transpile_expression(stream, expression.clone(), context)?;
             }
             Statement::Expression(expression) => {
                 write!(stream, "    ")?;
-                transpile_expression(stream, expression, context)?;
+                transpile_expression(stream, expression.clone(), context)?;
             }
         }
 
@@ -189,8 +193,8 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
     Ok(())
 }
 
-pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, context: &TranspilerContext) -> Result<(), std::io::Error> {
-    match &expression.operation.as_ref() {
+pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, context: &TranspilerContext) -> Result<(), std::io::Error> {
+    match &context.expressions.operations.get(&expression).unwrap() {
         ExpressionOperation::Primitive(value) => {
             types::transpile_primitive_value(stream, value)?;
         }
@@ -202,94 +206,97 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: &Expression, c
 
             write!(stream, "{}", variable_name)?;
         }
-        ExpressionOperation::FunctionCall { function, arguments, binding } => {
-            if try_transpile_binary_operator(stream, function, arguments, context)? {
-                // no-op
-            }
-            else if try_transpile_unary_operator(stream, function, arguments, context)? {
-                // no-op
-            }
-            else {
-                match &function.target {
-                    // Can reference the static function
-                    FunctionPointerTarget::Static { .. } => write!(stream, "{}", context.names[&function.pointer_id])?,
-                    // Have to reference the function by trait
-                    FunctionPointerTarget::Polymorphic { declaration_id, abstract_function } => {
-                        write!(stream, "{}.{}", &context.names[declaration_id], context.names[&abstract_function.pointer_id])?;
-                    }
-                }
-                write!(stream, "(")?;
-
-                let mut arguments_left = arguments.len() + function.machine_interface.requirements.len();
-
-                for (param_key, variable) in function.human_interface.parameter_names.iter() {
-                    let argument = arguments.get(variable).unwrap();
-
-                    if let ParameterKey::Name(name) = &param_key {
-                        write!(stream, "{}=", name)?;
-                    }
-                    // Otherwise, pass as *args
-
-                    transpile_expression(stream, &argument, context)?;
-
-                    arguments_left -= 1;
-                    if arguments_left > 0 {
-                        write!(stream, ", ")?;
-                    }
-                }
-
-                for requirement in function.machine_interface.requirements.iter() {
-                    let declaration = &context.functions_by_id[&function.pointer_id].conformance_delegations[requirement];
-
-                    let param_name = context.names.get(&declaration.id).unwrap();
-                    let arg_name = context.names.get(&binding.resolution[requirement].id).unwrap();
-                    write!(stream, "{}={}", param_name, arg_name)?;
-
-                    arguments_left -= 1;
-                    if arguments_left > 0 {
-                        write!(stream, ", ")?;
-                    }
-                }
-
-                write!(stream, ")")?;
-            }
+        ExpressionOperation::FunctionCall { function, argument_targets, binding } => {
+            todo!()
+            // if try_transpile_binary_operator(stream, function, arguments, context)? {
+            //     // no-op
+            // }
+            // else if try_transpile_unary_operator(stream, function, arguments, context)? {
+            //     // no-op
+            // }
+            // else {
+            //     match &function.target {
+            //         // Can reference the static function
+            //         FunctionPointerTarget::Static { .. } => write!(stream, "{}", context.names[&function.pointer_id])?,
+            //         // Have to reference the function by trait
+            //         FunctionPointerTarget::Polymorphic { declaration_id, abstract_function } => {
+            //             write!(stream, "{}.{}", &context.names[declaration_id], context.names[&abstract_function.pointer_id])?;
+            //         }
+            //     }
+            //     write!(stream, "(")?;
+            //
+            //     let mut arguments_left = arguments.len() + function.machine_interface.requirements.len();
+            //
+            //     for (param_key, variable) in function.human_interface.parameter_names.iter() {
+            //         let argument = arguments.get(variable).unwrap();
+            //
+            //         if let ParameterKey::Name(name) = &param_key {
+            //             write!(stream, "{}=", name)?;
+            //         }
+            //         // Otherwise, pass as *args
+            //
+            //         transpile_expression(stream, argument, context)?;
+            //
+            //         arguments_left -= 1;
+            //         if arguments_left > 0 {
+            //             write!(stream, ", ")?;
+            //         }
+            //     }
+            //
+            //     for requirement in function.machine_interface.requirements.iter() {
+            //         let declaration = &context.functions_by_id[&function.pointer_id].conformance_delegations[requirement];
+            //
+            //         let param_name = context.names.get(&declaration.id).unwrap();
+            //         let arg_name = context.names.get(&binding.resolution[requirement].id).unwrap();
+            //         write!(stream, "{}={}", param_name, arg_name)?;
+            //
+            //         arguments_left -= 1;
+            //         if arguments_left > 0 {
+            //             write!(stream, ", ")?;
+            //         }
+            //     }
+            //
+            //     write!(stream, ")")?;
+            // }
         },
-        ExpressionOperation::MemberLookup(_, _) => todo!(),
-        ExpressionOperation::ArrayLiteral(expressions) => {
-            write!(stream, "[")?;
-            for (idx, expression) in expressions.iter().enumerate() {
-                transpile_expression(stream, expression, context)?;
-
-                if idx < expressions.len() -1 {
-                    write!(stream, ", ")?;
-                }
-            }
-            write!(stream, "]")?;
+        ExpressionOperation::MemberLookup(_) => todo!(),
+        ExpressionOperation::ArrayLiteral => {
+            todo!()
+            // write!(stream, "[")?;
+            // for (idx, expression) in expressions.iter().enumerate() {
+            //     transpile_expression(stream, expression, context)?;
+            //
+            //     if idx < expressions.len() -1 {
+            //         write!(stream, ", ")?;
+            //     }
+            // }
+            // write!(stream, "]")?;
         },
-        ExpressionOperation::PairwiseOperations { arguments, functions } => {
-            // TODO Unfortunately, python's a > b > c syntax does not support non-bool results.
-            //  For true boolean results, we could actually use it for readability.
-            // This is suboptimal, but easy: Just compute arguments twice lol.
-            for (idx, (args, function)) in zip_eq(arguments.windows(2), functions.iter()).enumerate() {
-                // TODO Use try_transpile_binary_operator / try_transpile_unary_operator so we correctly map names / alphanumeric names.
-                write!(stream, "(")?;
-                transpile_expression(stream, &args[0], context)?;
-                write!(stream, ") {} (", function.name)?;
-                transpile_expression(stream, &args[1], context)?;
-                write!(stream, ")")?;
-
-                if idx < functions.len() - 1 {
-                    write!(stream, " and ")?;
-                }
-            }
+        ExpressionOperation::PairwiseOperations { functions } => {
+            todo!()
+            // // TODO Unfortunately, python's a > b > c syntax does not support non-bool results.
+            // //  For true boolean results, we could actually use it for readability.
+            // // This is suboptimal, but easy: Just compute arguments twice lol.
+            // for (idx, (args, function)) in zip_eq(arguments.windows(2), functions.iter()).enumerate() {
+            //     // TODO Use try_transpile_binary_operator / try_transpile_unary_operator so we correctly map names / alphanumeric names.
+            //     write!(stream, "(")?;
+            //     transpile_expression(stream, &args[0], context)?;
+            //     write!(stream, ") {} (", function.name)?;
+            //     transpile_expression(stream, &args[1], context)?;
+            //     write!(stream, ")")?;
+            //
+            //     if idx < functions.len() - 1 {
+            //         write!(stream, " and ")?;
+            //     }
+            // }
         }
     }
 
     Ok(())
 }
 
-pub fn transpile_maybe_parenthesized_expression(stream: &mut (dyn Write), expression: &Expression, context: &TranspilerContext) -> Result<(), std::io::Error> {
-    if is_simple(&expression.operation) {
+pub fn transpile_maybe_parenthesized_expression(stream: &mut (dyn Write), expression: ExpressionID, context: &TranspilerContext) -> Result<(), std::io::Error> {
+    if is_simple(&context.expressions.operations.get(&expression).unwrap()) {
         transpile_expression(stream, expression, context)?;
     }
     else {
@@ -307,7 +314,7 @@ pub fn escape_string(string: &String) -> String {
     return string
 }
 
-pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &HashMap<Rc<Variable>, Box<Expression>>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &HashMap<Rc<Variable>, ExpressionID>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
     if arguments.len() != 1 {
         return Ok(false);
     }
@@ -317,7 +324,7 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<Func
     // TODO We can probably avoid unnecessary parentheses here and in the other operators if we ask the expression for its (python) precedence, and compare it with ours.
     let mut transpile_unary_operator = |name: &str| -> Result<bool, std::io::Error> {
         write!(stream, "{}", name)?;
-        transpile_maybe_parenthesized_expression(stream, expression.as_ref(), context)?;
+        transpile_maybe_parenthesized_expression(stream, expression.clone(), context)?;
         Ok(true)
     };
 
@@ -334,8 +341,8 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<Func
     return Ok(false);
 }
 
-pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &HashMap<Rc<Variable>, Box<Expression>>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
-    let arguments: Vec<&Box<Expression>> = function.human_interface.parameter_names.iter()
+pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &HashMap<Rc<Variable>, ExpressionID>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+    let arguments: Vec<&ExpressionID> = function.human_interface.parameter_names.iter()
         .map(|(_, var)| arguments.get(var).unwrap())
         .collect();
     if arguments.len() != 2 {
@@ -346,9 +353,9 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
     let rhs = arguments[1];
 
     let mut transpile_binary_operator = |name: &str| -> Result<bool, std::io::Error> {
-        transpile_maybe_parenthesized_expression(stream, &lhs, context)?;
+        transpile_maybe_parenthesized_expression(stream, lhs.clone(), context)?;
         write!(stream, " {} ", name)?;
-        transpile_maybe_parenthesized_expression(stream, &rhs, context)?;
+        transpile_maybe_parenthesized_expression(stream, rhs.clone(), context)?;
 
         Ok(true)
     };
@@ -409,9 +416,9 @@ pub fn is_simple(operation: &ExpressionOperation) -> bool {
         ExpressionOperation::Primitive(_) => true,
         ExpressionOperation::VariableLookup(_) => true,
         ExpressionOperation::StringLiteral(_) => true,
-        ExpressionOperation::ArrayLiteral(_) => true,
+        ExpressionOperation::ArrayLiteral => true,
         ExpressionOperation::FunctionCall { .. } => false,
-        ExpressionOperation::MemberLookup(_, _) => false,
+        ExpressionOperation::MemberLookup(_) => false,
         ExpressionOperation::PairwiseOperations { .. } => false,
     }
 }

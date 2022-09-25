@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 use std::rc::Rc;
-use crate::program::types::Type;
+use crate::program::types::TypeProto;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Mutability {
@@ -12,7 +12,7 @@ pub enum Mutability {
 #[derive(Clone)]
 pub struct Variable {
     pub id: Uuid,
-    pub type_declaration: Box<Type>,
+    pub type_declaration: Box<TypeProto>,
     pub mutability: Mutability
 }
 
@@ -31,7 +31,7 @@ impl Hash for Variable {
 }
 
 impl Variable {
-    pub fn make_immutable(type_declaration: Box<Type>) -> Rc<Variable> {
+    pub fn make_immutable(type_declaration: Box<TypeProto>) -> Rc<Variable> {
         Rc::new(Variable {
             id: Uuid::new_v4(),
             type_declaration,

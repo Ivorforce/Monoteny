@@ -101,8 +101,8 @@ pub enum Statement {
 }
 
 pub enum Expression {
-    Int(i128),
-    Float(f64),
+    Int(String),
+    Float(String),
     Bool(bool),
     BinaryOperator { lhs: Box<Expression>, operator: String, rhs: Box<Expression> },
     UnaryOperator { operator: String, argument: Box<Expression> },

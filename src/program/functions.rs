@@ -6,7 +6,7 @@ use itertools::zip_eq;
 use uuid::Uuid;
 use crate::program::allocation::{Mutability, Variable};
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
-use crate::program::types::Type;
+use crate::program::types::TypeProto;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FunctionForm {
@@ -47,7 +47,7 @@ pub struct HumanFunctionInterface {
 
 pub struct MachineFunctionInterface {
     pub parameters: HashSet<Rc<Variable>>,
-    pub return_type: Option<Box<Type>>,
+    pub return_type: Option<Box<TypeProto>>,
     // Note: This set will almost certainly be larger than actually required, because
     //  it is automatically assembled. To avoid unnecessary arguments,
     //  use an implementation's (if known) hint for which are actually in use.
@@ -55,7 +55,7 @@ pub struct MachineFunctionInterface {
 }
 
 impl FunctionPointer {
-    pub fn make_operator<'a>(name: &'a str, alphanumeric_name: &'a str, count: usize, parameter_type: &Box<Type>, return_type: &Box<Type>) -> Rc<FunctionPointer> {
+    pub fn make_operator<'a>(name: &'a str, alphanumeric_name: &'a str, count: usize, parameter_type: &Box<TypeProto>, return_type: &Box<TypeProto>) -> Rc<FunctionPointer> {
         let parameter_names = (0..count).map(|_| ParameterKey::Positional);
         let parameters: Vec<Rc<Variable>> = (0..count).map(|x| Rc::new(Variable {
             id: Uuid::new_v4(),
@@ -82,7 +82,7 @@ impl FunctionPointer {
         })
     }
 
-    pub fn make_global<'a, I>(name: &'a str, alphanumeric_name: &'a str, parameter_types: I, return_type: Option<Box<Type>>) -> Rc<FunctionPointer> where I: Iterator<Item=Box<Type>> {
+    pub fn make_global<'a, I>(name: &'a str, alphanumeric_name: &'a str, parameter_types: I, return_type: Option<Box<TypeProto>>) -> Rc<FunctionPointer> where I: Iterator<Item=Box<TypeProto>> {
         let parameters: Vec<Rc<Variable>> = parameter_types
             .map(|x| Variable::make_immutable(x.clone()))
             .collect();

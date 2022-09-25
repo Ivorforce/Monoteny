@@ -8,8 +8,8 @@ use itertools::zip_eq;
 use uuid::Uuid;
 use crate::program::allocation::Variable;
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface};
-use crate::program::generics::GenericMapping;
-use crate::program::types::Type;
+use crate::program::generics::TypeForest;
+use crate::program::types::TypeProto;
 use crate::util::multimap::{extend_multimap, push_into_multimap};
 
 #[derive(Clone)]
@@ -32,14 +32,14 @@ custom_error!{pub TraitConformanceError
 pub struct TraitConformanceRequirement {
     pub id: Uuid,
     pub trait_: Rc<Trait>,
-    pub arguments: Vec<Box<Type>>,
+    pub arguments: Vec<Box<TypeProto>>,
 }
 
 #[derive(Clone)]
 pub struct TraitConformanceDeclaration {
     pub id: Uuid,
     pub trait_: Rc<Trait>,
-    pub arguments: Vec<Box<Type>>,
+    pub arguments: Vec<Box<TypeProto>>,
     pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 
     pub trait_requirements_conformance: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
@@ -74,7 +74,7 @@ impl TraitConformanceScope {
         push_into_multimap(&mut self.declarations, &declaration.trait_, Rc::clone(declaration));
     }
 
-    pub fn satisfy_requirements(&self, requirements: &HashSet<Rc<TraitConformanceRequirement>>, seed: &Uuid, mapping: &GenericMapping) -> Result<Box<TraitBinding>, TraitConformanceError> {
+    pub fn satisfy_requirements(&self, requirements: &HashSet<Rc<TraitConformanceRequirement>>, seed: &Uuid, mapping: &TypeForest) -> Result<Box<TraitBinding>, TraitConformanceError> {
         if requirements.len() == 0 {
             return Ok(Box::new(TraitBinding {
                 resolution: HashMap::new(),
@@ -88,7 +88,7 @@ impl TraitConformanceScope {
         }
 
         let requirement = requirements.iter().next().unwrap();
-        let bound_requirement_arguments: Vec<Box<Type>> = requirement.arguments.iter()
+        let bound_requirement_arguments: Vec<Box<TypeProto>> = requirement.arguments.iter()
             .map(|x| mapping.resolve_type(&x.with_any_as_generic(seed)).unwrap())
             .collect();
 
@@ -124,7 +124,7 @@ impl TraitConformanceScope {
 }
 
 impl Trait {
-    pub fn require(trait_: &Rc<Trait>, arguments: Vec<Box<Type>>) -> Rc<TraitConformanceRequirement> {
+    pub fn require(trait_: &Rc<Trait>, arguments: Vec<Box<TypeProto>>) -> Rc<TraitConformanceRequirement> {
         Rc::new(TraitConformanceRequirement {
             id: Uuid::new_v4(),
             trait_: Rc::clone(trait_),
@@ -132,7 +132,7 @@ impl Trait {
         })
     }
 
-    pub fn assume_granted(trait_: &Rc<Trait>, arguments: Vec<Box<Type>>) -> Rc<TraitConformanceDeclaration> {
+    pub fn assume_granted(trait_: &Rc<Trait>, arguments: Vec<Box<TypeProto>>) -> Rc<TraitConformanceDeclaration> {
         let mut replace_map = HashMap::new();
         for (param, arg) in zip_eq(trait_.parameters.iter(), arguments.iter()) {
             replace_map.insert(param.clone(), arg.clone());

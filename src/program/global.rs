@@ -2,7 +2,7 @@ use std::rc::Rc;
 use uuid::Uuid;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use crate::program::computation_tree::Statement;
+use crate::program::computation_tree::{ExpressionForest, Statement};
 use crate::program::functions::{HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::allocation::Variable;
@@ -22,6 +22,7 @@ pub struct FunctionImplementation {
     pub conformance_delegations: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
 
     pub statements: Vec<Box<Statement>>,
+    pub expression_forest: Box<ExpressionForest>,
     pub variable_names: HashMap<Rc<Variable>, String>,
 }
 

@@ -86,7 +86,7 @@ fn main() {
             let syntax_tree = parser::parse_program(&content, &mut global_parser_scope);
 
             let builtin_variable_scope = builtins.global_constants.as_global_scope();
-            let computation_tree = linker::link_program(syntax_tree, &global_parser_scope, &builtin_variable_scope, &builtins);
+            let computation_tree = linker::link_program(syntax_tree, &global_parser_scope, &builtin_variable_scope, &builtins).unwrap();
 
             for output_extension in output_extensions {
                 match output_extension {

@@ -8,13 +8,13 @@ use crate::parser;
 use crate::parser::abstract_syntax;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
-use crate::linker::scopes;
+use crate::linker::{LinkError, scopes};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::{primitives, Program};
 use crate::program::allocation::Variable;
 use crate::program::builtins::*;
 use crate::program::functions::{FunctionForm, FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
-use crate::program::generics::GenericMapping;
+use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation, GlobalStatement};
 use crate::program::types::*;
 use crate::util::multimap::extend_multimap;
@@ -34,7 +34,7 @@ struct FunctionWithoutBody<'a> {
     conformance_delegations: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
 }
 
-pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> Program {
+pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> Result<Program, LinkError> {
     let mut global_linker = GlobalLinker {
         functions: Vec::new(),
         traits: HashSet::new(),
@@ -66,9 +66,10 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
         let mut resolver = Box::new(ImperativeLinker {
             function: Rc::clone(&fun.pointer),
             builtins,
-            generics: GenericMapping::new(),
+            expressions: Box::new(ExpressionForest::new()),
             variable_names,
             conformance_delegations: &fun.conformance_delegations,
+            unfinished_expressions: vec![]
         });
 
         // TODO Maybe we should just re-use the whole scope level instead of doing this manually
@@ -82,7 +83,7 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
 
         let function_scope = global_variable_scope.subscope(&injection_level);
 
-        let implementation = resolver.link_function_body(fun.body, &function_scope);
+        let implementation = resolver.link_function_body(fun.body, &function_scope)?;
         functions.insert(Rc::clone(&implementation));
         global_statements.push(GlobalStatement::Function(implementation));
     }
@@ -96,12 +97,12 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
         .map(Rc::clone)
         .next();
 
-    return Program {
+    Ok(Program {
         functions,
         traits: global_linker.traits.iter().map(Rc::clone).collect(),
         global_statements,
         main_function,
-    }
+    })
 }
 
 impl <'a> GlobalLinker<'a> {
@@ -160,11 +161,11 @@ pub fn with_anonymous_generics<'a, F>(type_names: &'a Vec<&'a String>, scope: &s
 
     for type_name in type_names {
         if type_name.starts_with("#") && !level.contains(scopes::Environment::Global, type_name) {
-            level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(Type::meta(Type::make_any())), type_name);
+            level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(TypeProto::meta(TypeProto::make_any())), type_name);
             needs_scope = true;
         }
         else if type_name.starts_with("$") && !level.contains(scopes::Environment::Global, type_name) {
-            level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(Type::meta(Type::make_any())), type_name);
+            level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(TypeProto::meta(TypeProto::make_any())), type_name);
             needs_scope = true;
 
             let trait_name = String::from(&type_name[1..]);
@@ -201,7 +202,7 @@ pub fn with_delegations<'a, I, F>(scope: &scopes::Hierarchy, conformance_delegat
 
     for requirement_syntax in requirements_syntax {
         let trait_ = Rc::clone(scope.resolve_trait(scopes::Environment::Global, &requirement_syntax.unit));
-        let arguments: Vec<Box<Type>> = requirement_syntax.elements.iter().map(|x| {
+        let arguments: Vec<Box<TypeProto>> = requirement_syntax.elements.iter().map(|x| {
             link_specialized_type(x, &scope)
         }).collect();
 
@@ -302,13 +303,13 @@ pub fn link_operator_pointer(function: &abstract_syntax::Operator, parser_scope:
     });
 }
 
-pub fn link_type(syntax: &abstract_syntax::TypeDeclaration, scope: &scopes::Hierarchy) -> Box<Type> {
+pub fn link_type(syntax: &abstract_syntax::TypeDeclaration, scope: &scopes::Hierarchy) -> Box<TypeProto> {
     match syntax {
         abstract_syntax::TypeDeclaration::Identifier(id) => {
             scope.resolve_metatype(scopes::Environment::Global, id).clone()
         },
         abstract_syntax::TypeDeclaration::Monad { unit, shape } => {
-            Box::new(Type {
+            Box::new(TypeProto {
                 unit: TypeUnit::Monad,
                 arguments: vec![link_type(&unit, scope)]
             })
@@ -316,8 +317,8 @@ pub fn link_type(syntax: &abstract_syntax::TypeDeclaration, scope: &scopes::Hier
     }
 }
 
-pub fn link_specialized_type(syntax: &abstract_syntax::SpecializedType, scope: &scopes::Hierarchy) -> Box<Type> {
-    Box::new(Type {
+pub fn link_specialized_type(syntax: &abstract_syntax::SpecializedType, scope: &scopes::Hierarchy) -> Box<TypeProto> {
+    Box::new(TypeProto {
         unit: scope.resolve_metatype(scopes::Environment::Global, &syntax.unit).unit.clone(),
         arguments: syntax.elements.iter()
             .flat_map(|x| x)

@@ -7,8 +7,8 @@ use uuid::Uuid;
 use crate::program::allocation::{Mutability, Variable};
 use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface, ParameterKey};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
-use crate::program::generics::GenericMapping;
-use crate::program::types::{Type, TypeUnit};
+use crate::program::generics::TypeForest;
+use crate::program::types::{TypeProto, TypeUnit};
 
 type VariablePool = HashMap<String, HashSet<Rc<Variable>>>;
 
@@ -60,7 +60,7 @@ impl Level {
             _ => Environment::Global
         };
 
-        let variable = Variable::make_immutable(Type::unit(TypeUnit::Function(Rc::clone(fun))));
+        let variable = Variable::make_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(fun))));
 
         let mut variables = self.variables_mut(environment);
 
@@ -83,7 +83,7 @@ impl Level {
         let name = t.name.clone();
         self.insert_singleton(
             Environment::Global,
-            Variable::make_immutable(Type::unit(TypeUnit::Trait(Rc::clone(t)))),
+            Variable::make_immutable(TypeProto::unit(TypeUnit::Trait(Rc::clone(t)))),
             &name
         );
     }
@@ -144,7 +144,7 @@ impl <'a> Hierarchy<'a> {
         ).collect()
     }
 
-    pub fn resolve_metatype(&self, environment: Environment, variable_name: &String) -> &'a Box<Type> {
+    pub fn resolve_metatype(&self, environment: Environment, variable_name: &String) -> &'a Box<TypeProto> {
         let type_declaration = &self.resolve_unambiguous(environment, variable_name).type_declaration;
 
         match &type_declaration.unit {

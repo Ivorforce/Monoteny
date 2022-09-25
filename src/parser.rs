@@ -106,8 +106,8 @@ pub fn post_parse_type_declaration(declaration: &TypeDeclaration, scope: &scopes
 
 pub fn post_parse_expression(expression: &Expression, scope: &scopes::Level) -> Box<Expression> {
     Box::new(match expression {
-        Expression::Int(v) => Expression::Int(*v),
-        Expression::Float(v) => Expression::Float(*v),
+        Expression::Int(v) => Expression::Int(v.clone()),
+        Expression::Float(v) => Expression::Float(v.clone()),
         Expression::Bool(v) => Expression::Bool(*v),
         Expression::BinaryOperator { lhs, operator, rhs } => {
             Expression::BinaryOperator {

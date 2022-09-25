@@ -2,10 +2,10 @@ use std::io::Write;
 use crate::program::builtins::TenLangBuiltins;
 use crate::program::primitives;
 use crate::program::structs::Struct;
-use crate::program::types::{Type, TypeUnit};
+use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::python::TranspilerContext;
 
-pub fn transpile(stream: &mut (dyn Write), type_def: &Type, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile(stream: &mut (dyn Write), type_def: &TypeProto, context: &TranspilerContext) -> Result<(), std::io::Error> {
     match &type_def.unit {
         TypeUnit::Primitive(n) => transpile_primitive(stream, n)?,
         TypeUnit::Struct(s) => transpile_struct(stream, s, context)?,
@@ -16,6 +16,7 @@ pub fn transpile(stream: &mut (dyn Write), type_def: &Type, context: &Transpiler
         TypeUnit::Any(_) => write!(stream, "Any")?,  // TODO Use generics instead
         TypeUnit::MetaType => todo!(),
         TypeUnit::PrecedenceGroup(_) => todo!(),
+        TypeUnit::Void => todo!(),
     }
 
     Ok(())

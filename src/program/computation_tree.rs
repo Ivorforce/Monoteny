@@ -6,30 +6,57 @@ use guard::guard;
 use uuid::Uuid;
 use crate::parser::abstract_syntax::Function;
 use crate::program::allocation::{Mutability, Variable};
-use crate::program::types::Type;
+use crate::program::types::TypeProto;
 
 use crate::program::builtins::TenLangBuiltins;
 use crate::program::functions::{FunctionPointer, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
+use crate::program::generics::{GenericAlias, TypeError, TypeForest};
 use crate::program::primitives;
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
 
-pub enum Statement {
-    VariableAssignment(Rc<Variable>, Box<Expression>),
-    Expression(Box<Expression>),
-    Return(Option<Box<Expression>>),
-}
+pub type ExpressionID = GenericAlias;
 
-pub struct Expression {
-    pub result_type: Option<Box<Type>>,
-    pub operation: Box<ExpressionOperation>,
+pub enum Statement {
+    VariableAssignment(Rc<Variable>, ExpressionID),
+    Expression(ExpressionID),
+    Return(Option<ExpressionID>),
 }
 
 pub enum ExpressionOperation {
     Primitive(primitives::Value),
-    FunctionCall { function: Rc<FunctionPointer>, arguments: HashMap<Rc<Variable>, Box<Expression>>, binding: Box<TraitBinding> },
-    PairwiseOperations { arguments: Vec<Box<Expression>>, functions: Vec<Rc<HumanFunctionInterface>> },
-    MemberLookup(Box<Expression>, String),
+    FunctionCall { function: Rc<FunctionPointer>, argument_targets: Vec<Rc<Variable>>, binding: Box<TraitBinding> },
+    PairwiseOperations { functions: Vec<Rc<HumanFunctionInterface>> },
+    MemberLookup(String),
     VariableLookup(Rc<Variable>),
     StringLiteral(String),
-    ArrayLiteral(Vec<Box<Expression>>),
+    ArrayLiteral,
+}
+
+pub struct ExpressionForest {
+    /// Expressions' return types can be looked up under the expressions' IDs.
+    pub type_forest: Box<TypeForest>,
+
+    /// Will be set for every expression ID
+    pub arguments: HashMap<ExpressionID, Vec<ExpressionID>>,
+    /// Might not be set for a while
+    pub operations: HashMap<ExpressionID, ExpressionOperation>,
+}
+
+impl ExpressionForest {
+    pub fn new() -> ExpressionForest {
+        ExpressionForest {
+            type_forest: Box::new(TypeForest::new() ),
+            operations: HashMap::new(),
+            arguments: HashMap::new(),
+        }
+    }
+
+    pub fn register_new_expression(&mut self, arguments: Vec<ExpressionID>) -> ExpressionID {
+        let id = ExpressionID::new_v4();
+
+        self.type_forest.register(id);
+        self.arguments.insert(id, arguments);
+
+        id
+    }
 }

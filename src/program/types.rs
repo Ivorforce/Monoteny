@@ -8,23 +8,24 @@ use guard::guard;
 use crate::program::traits::{Trait, TraitConformanceRequirement};
 use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::functions::{FunctionPointer, HumanFunctionInterface};
-use crate::program::generics::GenericMapping;
+use crate::program::generics::{GenericAlias, TypeForest};
 
 use crate::program::primitives;
 use crate::program::structs::Struct;
 use crate::util::fmt::write_comma_separated_list;
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Type {
+pub struct TypeProto {
     pub unit: TypeUnit,
-    pub arguments: Vec<Box<Type>>
+    pub arguments: Vec<Box<TypeProto>>
 }
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum TypeUnit {
+    Void,  // Not a type
     MetaType,  // Type of a type
     Any(Uuid),  // Bound to some unknown type
-    Generic(Uuid),  // Bound to a type within a GenericMapping
+    Generic(GenericAlias),  // Bound to a type within a GenericMapping
     Monad,
     Primitive(primitives::Type),
     Struct(Rc<Struct>),
@@ -47,7 +48,7 @@ pub struct Pattern {
     pub precedence_group: Rc<PrecedenceGroup>,
 }
 
-impl Debug for Type {
+impl Debug for TypeProto {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "{:?}", self.unit)?;
         if !self.arguments.is_empty() {
@@ -72,46 +73,51 @@ impl Debug for TypeUnit {
             Any(g) => write!(fmt, "Any<{}>", g),
             MetaType => write!(fmt, "MetaType"),
             PrecedenceGroup(p) => write!(fmt, "{:?}", p.name),
+            Void => write!(fmt, "Void"),
         }
     }
 }
 
-impl Type {
-    pub fn make_any() -> Box<Type> {
-        Type::unit(TypeUnit::Any(Uuid::new_v4()))
+impl TypeProto {
+    pub fn make_any() -> Box<TypeProto> {
+        TypeProto::unit(TypeUnit::Any(Uuid::new_v4()))
     }
 
-    pub fn unit(unit: TypeUnit) -> Box<Type> {
-        Box::new(Type { unit, arguments: vec![] })
+    pub fn unit(unit: TypeUnit) -> Box<TypeProto> {
+        Box::new(TypeProto { unit, arguments: vec![] })
     }
 
-    pub fn meta(subtype: Box<Type>) -> Box<Type> {
-        Box::new(Type {
+    pub fn meta(subtype: Box<TypeProto>) -> Box<TypeProto> {
+        Box::new(TypeProto {
             unit: TypeUnit::MetaType,
             arguments: vec![subtype]
         })
+    }
+
+    pub fn monad(unit: Box<TypeProto>) -> Box<TypeProto> {
+        Box::new(TypeProto { unit: TypeUnit::Monad, arguments: vec![unit] })
     }
 
     fn bitxor(lhs: &Uuid, rhs: &Uuid) -> Uuid {
         Uuid::from_u128(lhs.as_u128() ^ rhs.as_u128())
     }
 
-    pub fn with_any_as_generic(&self, seed: &Uuid) -> Box<Type> {
-        Box::new(Type {
+    pub fn with_any_as_generic(&self, seed: &Uuid) -> Box<TypeProto> {
+        Box::new(TypeProto {
             unit: match &self.unit {
-                TypeUnit::Any(id) => TypeUnit::Generic(Type::bitxor(seed, id)),
+                TypeUnit::Any(id) => TypeUnit::Generic(TypeProto::bitxor(seed, id)),
                 _ => self.unit.clone(),
             },
             arguments: self.arguments.iter().map(|x| x.with_any_as_generic(seed)).collect()
         })
     }
 
-    pub fn replacing_any(&self, map: &HashMap<Uuid, Box<Type>>) -> Box<Type> {
+    pub fn replacing_any(&self, map: &HashMap<Uuid, Box<TypeProto>>) -> Box<TypeProto> {
         match &self.unit {
             TypeUnit::Any(id) => map.get(id)
                 .map(|x| x.clone())
                 .unwrap_or_else(|| Box::new(self.clone())),
-            _ => Box::new(Type {
+            _ => Box::new(TypeProto {
                 unit: self.unit.clone(),
                 arguments: self.arguments.iter().map(|x| x.replacing_any(map)).collect()
             }),

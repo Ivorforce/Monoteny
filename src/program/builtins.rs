@@ -21,7 +21,7 @@ pub struct TenLangBuiltins {
     pub traits: TenLangBuiltinTraits,
     pub operators: TenLangBuiltinOperators,
     pub functions: TenLangBuiltinFunctions,
-    pub primitive_metatypes: HashMap<primitives::Type, Box<Type>>,
+    pub primitive_metatypes: HashMap<primitives::Type, Box<TypeProto>>,
     pub structs: TenLangBuiltinStructs,
     pub precedence_groups: TenLangBuiltinPrecedenceGroups,
 
@@ -105,8 +105,8 @@ pub struct NumberFunctions {
     pub negative: Rc<FunctionPointer>,
 }
 
-pub fn make_eq_functions(type_: &Box<Type>) -> EqFunctions {
-    let bool_type = Type::unit(TypeUnit::Primitive(primitives::Type::Bool));
+pub fn make_eq_functions(type_: &Box<TypeProto>) -> EqFunctions {
+    let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
 
     EqFunctions {
         equal_to: FunctionPointer::make_operator("==", "is_equal", 2, type_, &bool_type),
@@ -114,8 +114,8 @@ pub fn make_eq_functions(type_: &Box<Type>) -> EqFunctions {
     }
 }
 
-pub fn make_number_functions(type_: &Box<Type>) -> NumberFunctions {
-    let bool_type = Type::unit(TypeUnit::Primitive(primitives::Type::Bool));
+pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
+    let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
 
     NumberFunctions {
         add: FunctionPointer::make_operator("+", "add", 2, type_, type_),
@@ -138,9 +138,9 @@ pub fn make_number_functions(type_: &Box<Type>) -> NumberFunctions {
 pub fn create_builtins() -> Rc<TenLangBuiltins> {
     let mut constants: scopes::Level = scopes::Level::new();
 
-    let bool_type = Type::unit(TypeUnit::Primitive(primitives::Type::Bool));
+    let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
     let generic_id = Uuid::new_v4();
-    let generic_type = Type::unit(TypeUnit::Any(generic_id));
+    let generic_type = TypeProto::unit(TypeUnit::Any(generic_id));
 
     let add_struct = |constants: &mut scopes::Level, name: &str| -> Rc<Struct> {
         let name = String::from(name);
@@ -149,7 +149,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             id: Uuid::new_v4(),
             name: name.clone(),
         });
-        let s_type = Type::meta(Type::unit(TypeUnit::Struct(Rc::clone(&s))));
+        let s_type = TypeProto::meta(TypeProto::unit(TypeUnit::Struct(Rc::clone(&s))));
 
         constants.insert_singleton(
             scopes::Environment::Global,
@@ -166,7 +166,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
 
 
     let make_trait = |name: &str, generic_id: &Uuid, fns: Vec<&Rc<FunctionPointer>>, parents: Vec<Rc<Trait>>| -> Rc<Trait> {
-        let generic_type = Type::unit(TypeUnit::Any(*generic_id));
+        let generic_type = TypeProto::unit(TypeUnit::Any(*generic_id));
 
         let mut t = Trait {
             id: Uuid::new_v4(),
@@ -270,8 +270,8 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     };
 
     for primitive_type in primitives::Type::iter() {
-        let type_ = &Type::unit(TypeUnit::Primitive(primitive_type));
-        let metatype = Type::meta(type_.clone());
+        let type_ = &TypeProto::unit(TypeUnit::Primitive(primitive_type));
+        let metatype = TypeProto::meta(type_.clone());
 
         primitive_metatypes.insert(primitive_type, metatype.clone());
         constants.insert_singleton(

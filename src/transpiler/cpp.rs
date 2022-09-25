@@ -1,7 +1,7 @@
 use std::io::Write;
 use crate::program::computation_tree::*;
 use crate::program::{primitives, Program};
-use crate::program::types::{Type, TypeUnit};
+use crate::program::types::{TypeProto, TypeUnit};
 
 pub fn transpile_program(
     program: &Program,
@@ -49,7 +49,7 @@ pub fn transpile_primitive_type(type_def: &primitives::Type) -> String {
     })
 }
 
-pub fn transpile_type(type_def: &Type) -> String {
+pub fn transpile_type(type_def: &TypeProto) -> String {
     match &type_def.unit {
         TypeUnit::Primitive(n) => transpile_primitive_type(n),
         TypeUnit::Struct(t) => todo!(),
@@ -63,5 +63,6 @@ pub fn transpile_type(type_def: &Type) -> String {
         TypeUnit::Any(_) => format!("Any"),
         TypeUnit::MetaType => todo!(),
         TypeUnit::PrecedenceGroup(_) => todo!(),
+        TypeUnit::Void => todo!(),
     }
 }

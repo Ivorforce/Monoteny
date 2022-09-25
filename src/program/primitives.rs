@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use strum::EnumIter;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -77,6 +78,24 @@ impl Type {
             Type::Float32 => false,
             Type::Float64 => false,
             _ => true,
+        }
+    }
+
+    pub fn parse_value(&self, value: &String) -> Option<Value> {
+        match self {
+            Type::Bool => None,
+            Type::Int8 => i8::from_str(value.as_str()).ok().map(Value::Int8),
+            Type::Int16 => i16::from_str(value.as_str()).ok().map(Value::Int16),
+            Type::Int32 => i32::from_str(value.as_str()).ok().map(Value::Int32),
+            Type::Int64 => i64::from_str(value.as_str()).ok().map(Value::Int64),
+            Type::Int128 => i128::from_str(value.as_str()).ok().map(Value::Int128),
+            Type::UInt8 => u8::from_str(value.as_str()).ok().map(Value::UInt8),
+            Type::UInt16 => u16::from_str(value.as_str()).ok().map(Value::UInt16),
+            Type::UInt32 => u32::from_str(value.as_str()).ok().map(Value::UInt32),
+            Type::UInt64 => u64::from_str(value.as_str()).ok().map(Value::UInt64),
+            Type::UInt128 => u128::from_str(value.as_str()).ok().map(Value::UInt128),
+            Type::Float32 => f32::from_str(value.as_str()).ok().map(Value::Float32),
+            Type::Float64 => f64::from_str(value.as_str()).ok().map(Value::Float64),
         }
     }
 

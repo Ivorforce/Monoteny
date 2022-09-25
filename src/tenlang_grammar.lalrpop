@@ -28,12 +28,12 @@ match {
 
 // =============================== Primitive =====================================
 
-Int: i128 = {
-    _Int => i128::from_str(<>).unwrap()
+Int: String = {
+    _Int => String::from(<>)
 };
 
-Float: f64 = {
-    _Float => f64::from_str(<>).unwrap()
+Float: String = {
+    _Float => String::from(<>)
 };
 
 BoolLiteral: bool = {
