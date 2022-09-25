@@ -9,7 +9,9 @@ def main():
     """
     <Docstring TODO!>
     """
-    a = float64(5)
+    a = int32(5)
+    a = int32(2)
+    b = a
 
 
 if __name__ == '__main__':

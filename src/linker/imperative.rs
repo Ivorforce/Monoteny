@@ -181,6 +181,7 @@ impl <'a> ImperativeLinker<'a> {
                     }
 
                     let new_value: ExpressionID = self.link_expression(&new_value, &subscope)?;
+                    LinkError::map(self.expressions.type_forest.bind(new_value, variable.type_declaration.as_ref()))?;
 
                     statements.push(Box::new(
                         Statement::VariableAssignment(Rc::clone(&variable), new_value)
