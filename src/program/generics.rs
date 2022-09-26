@@ -44,6 +44,10 @@ impl TypeForest {
         self.bind_identity(generic, t)
     }
 
+    pub fn is_bound_to(&self, generic: &GenericAlias, t: &TypeProto) -> bool {
+        self.is_identity_bound_to(self.alias_to_identity.get(generic).unwrap(), t)
+    }
+
     pub fn resolve_type(&self, type_: &Box<TypeProto>) -> Result<Box<TypeProto>, TypeError> {
         match &type_.unit {
             TypeUnit::Generic(alias) => self.resolve_binding_alias(alias).map(|x| x.clone()),
@@ -137,6 +141,31 @@ impl TypeForest {
                 identity
             }
         }
+    }
+
+    fn is_identity_bound_to(&self, id: &GenericIdentity, t: &TypeProto) -> bool {
+        match self.identity_to_type.get(id) {
+            None => return false,
+            Some(bound) => {
+                if &t.unit != bound {
+                    return false;
+                }
+            }
+        }
+
+        let args = self.identity_to_arguments.get(id).unwrap();
+
+        if args.len() != t.arguments.len() {
+            return false;
+        }
+
+        for (bound_arg, arg) in zip_eq(args, t.arguments.iter()) {
+            if !self.is_identity_bound_to(bound_arg, arg) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     fn merge_identities(&mut self, lhs: GenericIdentity, rhs: GenericIdentity) -> Result<GenericIdentity, TypeError> {

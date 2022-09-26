@@ -5,6 +5,15 @@ from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint
 from typing import Any, Callable
 
 
+def test() -> float32:
+    """
+    <Docstring TODO!>
+
+    Returns: float32
+    """
+    return float32(5)
+
+
 def main():
     """
     <Docstring TODO!>

@@ -1,3 +1,7 @@
+fun test() -> Float32 :: {
+    return 5;
+}
+
 fun main() :: {
     var a = 5.2;
     a = 2;

@@ -159,21 +159,14 @@ impl <'a> ImperativeLinker<'a> {
                     let subscope = scope.subscope(&local_variables);
 
                     if let Some(expression) = expression {
-                        if self.function.machine_interface.return_type.is_none() {
+                        guard!(let Some(return_type) = self.function.machine_interface.return_type.clone() else {
                             panic!("Return statement offers a value when the function declares void.")
-                        }
+                        });
 
-                        let return_value: ExpressionID = self.link_expression(expression.as_ref(), &subscope)?;
+                        let result: ExpressionID = self.link_expression(expression.as_ref(), &subscope)?;
 
-                        todo!()
-                        // match &return_value.result_type {
-                        //     None => panic!("Return statement expression resolves to void. Please move the expression into a separate line."),
-                        //     Some(result_type) => {
-                        //         // TODO Do anything with minimal type?
-                        //         let _ = self.generics.merge(interface_return_type, result_type);
-                        //         statements.push(Box::new(Statement::Return(Some(return_value))));
-                        //     }
-                        // }
+                        LinkError::map(self.expressions.type_forest.bind(result, return_type.as_ref()))?;
+                        statements.push(Box::new(Statement::Return(Some(result))));
                     }
                     else {
                         if self.function.machine_interface.return_type.is_some() {
