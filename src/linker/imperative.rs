@@ -110,6 +110,23 @@ impl <'a> ImperativeLinker<'a> {
         Ok(id)
     }
 
+    pub fn link_primitive<I>(&mut self, values: I) -> Result<ExpressionID, LinkError> where I: Iterator<Item=primitives::Value> {
+        self.link_ambiguous_expression(
+            vec![],
+            values.into_iter()
+                .map(|v| {
+                    let type_proto = TypeProto::unit(TypeUnit::Primitive(v.get_type()));
+                    let f: Box<dyn Fn(&mut TypeForest, ExpressionID) -> Result<ExpressionOperation, LinkError>> =
+                        Box::new(move |forest: &mut TypeForest, id: GenericAlias| -> Result<ExpressionOperation, LinkError> {
+                            return LinkError::map(forest.bind(id, type_proto.as_ref()))
+                                .map(|_| ExpressionOperation::Primitive(v))
+                        });
+                    f
+                })
+                .collect()
+        )
+    }
+
     pub fn link_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Hierarchy) -> Result<Vec<Box<Statement>>, LinkError> {
         let mut local_variables = scopes::Level::new();
         let mut statements: Vec<Box<Statement>> = Vec::new();
@@ -196,29 +213,18 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_expression(&mut self, syntax: &abstract_syntax::Expression, scope: &scopes::Hierarchy) -> Result<ExpressionID, LinkError> {
         match syntax {
             abstract_syntax::Expression::Int(string) => {
-                let possible_values: Vec<(primitives::Type, primitives::Value)> = primitives::Type::iter()
-                    .filter(primitives::Type::is_number)
-                    .flat_map(|t| Some((t, t.parse_value(string)?)))
-                    .collect();
-
-                self.link_ambiguous_expression(
-                    vec![],
-                    possible_values.into_iter()
-                        .map(|(t, v)| {
-                            let type_proto = TypeProto::unit(TypeUnit::Primitive(t));
-                            let f: Box<dyn Fn(&mut TypeForest, ExpressionID) -> Result<ExpressionOperation, LinkError>> =
-                            Box::new(move |forest: &mut TypeForest, id: GenericAlias| -> Result<ExpressionOperation, LinkError> {
-                                return LinkError::map(forest.bind(id, type_proto.as_ref()))
-                                    .map(|_| ExpressionOperation::Primitive(v))
-                            });
-                            f
-                        })
-                        .collect()
+                self.link_primitive(
+                    primitives::Type::iter()
+                        .filter(primitives::Type::is_number)
+                        .flat_map(|t| Some(t.parse_value(string)?))
                 )
             },
-            abstract_syntax::Expression::Float(n) => {
-                todo!()
-                // self.link_ambiguous_expression(vec![], vec![|forest, id| { Ok(()) }])
+            abstract_syntax::Expression::Float(string) => {
+                self.link_primitive(
+                    primitives::Type::iter()
+                        .filter(primitives::Type::is_float)
+                        .flat_map(|t| Some(t.parse_value(string)?))
+                )
             },
             abstract_syntax::Expression::Bool(n) => {
                 let value = primitives::Value::Bool(n.clone());

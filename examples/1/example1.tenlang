@@ -1,5 +1,5 @@
 fun main() :: {
-    var a = 5;
+    var a = 5.2;
     a = 2;
-    var b: Int32 = a;
+    var b: Float32 = a;
 }

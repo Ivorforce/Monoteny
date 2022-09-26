@@ -9,8 +9,8 @@ def main():
     """
     <Docstring TODO!>
     """
-    a = int32(5)
-    a = int32(2)
+    a = float32(5.2)
+    a = float32(2)
     b = a
 
 
