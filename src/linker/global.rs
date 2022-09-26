@@ -69,7 +69,7 @@ pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes
             expressions: Box::new(ExpressionForest::new()),
             variable_names,
             conformance_delegations: &fun.conformance_delegations,
-            unfinished_expressions: vec![]
+            ambiguities: vec![]
         });
 
         // TODO Maybe we should just re-use the whole scope level instead of doing this manually

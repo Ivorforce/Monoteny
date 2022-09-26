@@ -1,14 +1,14 @@
-use std::arch::x86_64::_mm256_i32gather_pd;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use custom_error::custom_error;
-use itertools::zip_eq;
+use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
+use crate::linker::LinkError;
 use crate::program::allocation::Variable;
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface};
-use crate::program::generics::TypeForest;
+use crate::program::generics::{TypeForest};
 use crate::program::types::TypeProto;
 use crate::util::multimap::{extend_multimap, push_into_multimap};
 
@@ -22,10 +22,6 @@ pub struct Trait {
 
     pub parameters: Vec<Uuid>,
     pub abstract_functions: HashSet<Rc<FunctionPointer>>
-}
-
-custom_error!{pub TraitConformanceError
-    Error{msg: String} = "Trait Conformance Error: {msg}",
 }
 
 #[derive(Clone)]
@@ -74,7 +70,7 @@ impl TraitConformanceScope {
         push_into_multimap(&mut self.declarations, &declaration.trait_, Rc::clone(declaration));
     }
 
-    pub fn satisfy_requirements(&self, requirements: &HashSet<Rc<TraitConformanceRequirement>>, seed: &Uuid, mapping: &TypeForest) -> Result<Box<TraitBinding>, TraitConformanceError> {
+    pub fn satisfy_requirements(&self, requirements: &HashSet<Rc<TraitConformanceRequirement>>, seed: &Uuid, mapping: &TypeForest) -> Result<Box<TraitBinding>, LinkError> {
         if requirements.len() == 0 {
             return Ok(Box::new(TraitBinding {
                 resolution: HashMap::new(),
@@ -89,8 +85,8 @@ impl TraitConformanceScope {
 
         let requirement = requirements.iter().next().unwrap();
         let bound_requirement_arguments: Vec<Box<TypeProto>> = requirement.arguments.iter()
-            .map(|x| mapping.resolve_type(&x.with_any_as_generic(seed)).unwrap())
-            .collect();
+            .map(|x| mapping.resolve_type(&x.with_any_as_generic(seed)))
+            .try_collect()?;
 
         let mut candidates: Vec<Box<TraitBinding>> = vec![];
 
@@ -119,7 +115,7 @@ impl TraitConformanceScope {
             panic!("Trait conformance is ambiguous ({}x): {}", candidates.len(), requirement.trait_.name);
         }
 
-        Err(TraitConformanceError::Error { msg: String::from(format!("No candidates for trait conformance: {}", requirement.trait_.name)) })
+        Err(LinkError::LinkError { msg: String::from(format!("No candidates for trait conformance: {}", requirement.trait_.name)) })
     }
 }
 

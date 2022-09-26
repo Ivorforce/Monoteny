@@ -18,7 +18,7 @@ pub enum Value {
     Float64(f64),
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIter)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIter, Debug)]
 pub enum Type {
     Bool,
     Int8,

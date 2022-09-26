@@ -5,6 +5,7 @@ use custom_error::custom_error;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
+use crate::linker::LinkError;
 use crate::program::types::{TypeUnit, TypeProto};
 
 pub type GenericIdentity = Uuid;
@@ -17,10 +18,6 @@ pub struct TypeForest {
 
     alias_to_identity: HashMap<GenericAlias, GenericIdentity>,
     identity_to_alias: HashMap<GenericIdentity, HashSet<GenericAlias>>,
-}
-
-custom_error!{pub TypeError
-    MergeError{msg: String} = "Type Error: {msg}",
 }
 
 impl TypeForest {
@@ -39,7 +36,7 @@ impl TypeForest {
         self._register(alias);
     }
 
-    pub fn bind(&mut self, generic: GenericAlias, t: &TypeProto) -> Result<(), TypeError> {
+    pub fn bind(&mut self, generic: GenericAlias, t: &TypeProto) -> Result<(), LinkError> {
         let generic = self._register(generic);
         self.bind_identity(generic, t)
     }
@@ -48,7 +45,12 @@ impl TypeForest {
         self.is_identity_bound_to(self.alias_to_identity.get(generic).unwrap(), t)
     }
 
-    pub fn resolve_type(&self, type_: &Box<TypeProto>) -> Result<Box<TypeProto>, TypeError> {
+    pub fn get_unit(&self, generic: &GenericAlias) -> Option<&TypeUnit> {
+        let identity = self.alias_to_identity.get(generic).unwrap();
+        self.identity_to_type.get(identity)
+    }
+
+    pub fn resolve_type(&self, type_: &Box<TypeProto>) -> Result<Box<TypeProto>, LinkError> {
         match &type_.unit {
             TypeUnit::Generic(alias) => self.resolve_binding_alias(alias).map(|x| x.clone()),
             _ => Ok(Box::new(TypeProto {
@@ -58,13 +60,13 @@ impl TypeForest {
         }
     }
 
-    pub fn resolve_binding_alias(&self, alias: &GenericAlias) -> Result<Box<TypeProto>, TypeError> {
+    pub fn resolve_binding_alias(&self, alias: &GenericAlias) -> Result<Box<TypeProto>, LinkError> {
         guard!(let Some(identity) = self.alias_to_identity.get(alias) else {
-            return Err(TypeError::MergeError { msg: format!("Unknown generic: {}", alias) })
+            return Err(LinkError::LinkError { msg: format!("Unknown generic: {}", alias) })
         });
 
         guard!(let Some(binding) = self.identity_to_type.get(identity) else {
-            return Err(TypeError::MergeError { msg: format!("Unbound generic: {}", alias) })
+            return Err(LinkError::Ambiguous)
         });
 
         return Ok(Box::new(TypeProto {
@@ -75,7 +77,24 @@ impl TypeForest {
         }))
     }
 
-    pub fn merge_all(&mut self, types: &Vec<GenericAlias>) -> Result<GenericAlias, TypeError> {
+    pub fn prototype_binding_alias(&self, alias: &GenericAlias) -> Box<TypeProto> {
+        guard!(let Some(identity) = self.alias_to_identity.get(alias) else {
+            return TypeProto::unit(TypeUnit::Generic(*alias));
+        });
+
+        guard!(let Some(binding) = self.identity_to_type.get(identity) else {
+            return TypeProto::unit(TypeUnit::Generic(*alias));
+        });
+
+        return Box::new(TypeProto {
+            unit: binding.clone(),
+            arguments: self.identity_to_arguments.get(&identity).unwrap().iter()
+                .map(|x| self.prototype_binding_alias(x))
+                .collect()
+        })
+    }
+
+    pub fn merge_all(&mut self, types: &Vec<GenericAlias>) -> Result<GenericAlias, LinkError> {
         if types.is_empty() {
             // No elements, so we can be whatever we want to be!
             let id = Uuid::new_v4();
@@ -106,7 +125,7 @@ impl TypeForest {
         return new
     }
 
-    fn bind_identity(&mut self, identity: GenericIdentity, t: &TypeProto) -> Result<(), TypeError> {
+    fn bind_identity(&mut self, identity: GenericIdentity, t: &TypeProto) -> Result<(), LinkError> {
         // TODO This could be done faster by not creating a new ID, but for now this approach saves us boilerplate / duplicate code
         let new_id = self.insert_new_identity(t);
         self.merge_identities(identity, new_id)?;
@@ -161,13 +180,13 @@ impl TypeForest {
         return true;
     }
 
-    fn merge_identities(&mut self, lhs: GenericIdentity, rhs: GenericIdentity) -> Result<GenericIdentity, TypeError> {
+    fn merge_identities(&mut self, lhs: GenericIdentity, rhs: GenericIdentity) -> Result<GenericIdentity, LinkError> {
         // Merge types
         // TODO This might be faster if we first check whether it's better to merge into lhs or into rhs.
         match (self.identity_to_type.remove(&lhs), self.identity_to_type.remove(&rhs)) {
             (Some(lhs_type), Some(rhs_type)) => {
                 if lhs_type != rhs_type {
-                    return Err(TypeError::MergeError { msg: format!("Cannot merge types: {:?} and {:?}", lhs_type, rhs_type) })
+                    return Err(LinkError::LinkError { msg: format!("Cannot merge types: {:?} and {:?}", lhs_type, rhs_type) })
                 }
                 self.identity_to_type.insert(lhs.clone(), lhs_type);
             }

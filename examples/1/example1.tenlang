@@ -1,14 +1,19 @@
-fun test() -> Float32 :: {
-    return 5;
-}
+// alias: floor_div
+pattern {} /. {} :: MultiplicationPrecedence;
 
-fun test() -> Float64 :: {
-    return 2;
-}
+fun {lhs: $Float} /. {rhs: $Float} -> $Float :: lhs / rhs;
+
+fun square(_ a: $Number) -> $Number :: a * a;
+fun {self: $Number}.square() -> $Number :: square(self);
 
 fun main() :: {
-    var a = 5 + 2;
-    a = test();
-    var b: Float64 = a;
-    print(b);
+    print("Test: ");
+
+    let a: Float32 = 2.square() * 3;
+
+    var b: Float32 = square(5.1);
+    b = b.square() ** 2.2 /. 2.0;
+
+    print(a);
+    print(b < 2 || a > 2);
 }

@@ -10,7 +10,7 @@ use crate::program::types::TypeProto;
 
 use crate::program::builtins::TenLangBuiltins;
 use crate::program::functions::{FunctionPointer, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
-use crate::program::generics::{GenericAlias, TypeError, TypeForest};
+use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::primitives;
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
 

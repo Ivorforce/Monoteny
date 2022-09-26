@@ -8,12 +8,12 @@ use crate::linker;
 use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation, Statement};
 use crate::linker::global::link_type;
 use crate::linker::{LinkError, scopes};
-use crate::linker::ambiguous::{AmbiguousExpression, ExpressionCandidate};
+use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberPrimitive, LinkerAmbiguity};
 use crate::parser::abstract_syntax;
 use crate::program::allocation::{Mutability, Variable};
 use crate::program::builtins::TenLangBuiltins;
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
-use crate::program::generics::{GenericAlias, TypeError, TypeForest};
+use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
 use crate::program::primitives;
 use crate::program::traits::{TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
@@ -25,7 +25,7 @@ pub struct ImperativeLinker<'a> {
     pub builtins: &'a TenLangBuiltins,
 
     pub expressions: Box<ExpressionForest>,
-    pub unfinished_expressions: Vec<AmbiguousExpression>,
+    pub ambiguities: Vec<Box<dyn LinkerAmbiguity>>,
 
     pub conformance_delegations: &'a HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
     pub variable_names: HashMap<Rc<Variable>, String>,
@@ -43,21 +43,23 @@ impl <'a> ImperativeLinker<'a> {
         let statements: Vec<Box<Statement>> = self.link_top_scope(body, &subscope)?;
 
         let mut has_changed = true;
-        while !self.unfinished_expressions.is_empty() && has_changed {
+        while !self.ambiguities.is_empty() {
+            if !has_changed {
+                // TODO Output which parts are ambiguous, and how, by asking the objects
+                panic!("Failed resolving all ambiguities.")
+            }
+
             has_changed = false;
 
-            let callbacks: Vec<AmbiguousExpression> = self.unfinished_expressions.drain(..).collect();
-            for mut callback in callbacks {
-                if callback.reduce(&mut self.expressions) {
+            let callbacks: Vec<Box<dyn LinkerAmbiguity>> = self.ambiguities.drain(..).collect();
+            for mut ambiguity in callbacks {
+                if ambiguity.attempt_to_resolve(&mut self.expressions)? {
                     has_changed = true;
                 }
                 else {
-                    self.unfinished_expressions.push(callback);
+                    self.ambiguities.push(ambiguity);
                 }
             }
-        }
-        if !self.unfinished_expressions.is_empty() {
-            panic!("Failed resolving all generics.")
         }
 
         Ok(Rc::new(FunctionImplementation {
@@ -95,40 +97,30 @@ impl <'a> ImperativeLinker<'a> {
 
         self.expressions.operations.insert(id.clone(), operation);
 
-        LinkError::map(self.expressions.type_forest.bind(id, &return_type))
+        self.expressions.type_forest.bind(id, &return_type)
             .map(|_| id)
     }
 
-    pub fn link_ambiguous_expression<I>(&mut self, arguments: Vec<ExpressionID>, candidates: I) -> Result<ExpressionID, LinkError> where I: Iterator<Item=ExpressionCandidate> {
-        let id = self.expressions.register_new_expression(arguments);
-
-        let mut ambiguous = AmbiguousExpression {
-            expression_id: id,
-            candidates: candidates.collect()
-        };
-
-        match ambiguous.reduce(&mut self.expressions) {
-            true => {} // We're done, wasn't all that ambiguous after all!
-            false => self.unfinished_expressions.push(ambiguous)  // Need to resolve the rest later.
+    pub fn register_ambiguity(&mut self, mut ambiguity: Box<dyn LinkerAmbiguity>) -> Result<(), LinkError> {
+        match ambiguity.attempt_to_resolve(&mut self.expressions) {
+            Ok(true) => Ok(()),  // Done already!
+            Ok(false) => {
+                 self.ambiguities.push(ambiguity);
+                Ok(())  // Need to resolve later.
+            },
+            // We errored already!
+            Err(err) => Err(err)
         }
-
-        Ok(id)
     }
 
-    pub fn link_primitive<I>(&mut self, values: I) -> Result<ExpressionID, LinkError> where I: Iterator<Item=primitives::Value> {
-        self.link_ambiguous_expression(
-            vec![],
-            values.into_iter()
-                .map(|v| {
-                    let type_proto = TypeProto::unit(TypeUnit::Primitive(v.get_type()));
-                    let f: ExpressionCandidate =
-                        Box::new(move |forest: &mut TypeForest, id: GenericAlias| -> Result<ExpressionOperation, LinkError> {
-                            return LinkError::map(forest.bind(id, type_proto.as_ref()))
-                                .map(|_| ExpressionOperation::Primitive(v))
-                        });
-                    f
-                })
-        )
+    pub fn link_primitive<I>(&mut self, value: &String, candidates: I) -> Result<ExpressionID, LinkError> where I: Iterator<Item=primitives::Type> {
+        let expression_id = self.expressions.register_new_expression(vec![]);
+        self.register_ambiguity(Box::new(AmbiguousNumberPrimitive {
+            expression_id,
+            value: value.clone(),
+            candidates: candidates.collect()
+        }))?;
+        Ok(expression_id)
     }
 
     pub fn link_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Hierarchy) -> Result<Vec<Box<Statement>>, LinkError> {
@@ -145,7 +137,7 @@ impl <'a> ImperativeLinker<'a> {
 
                     if let Some(type_declaration) = type_declaration {
                         let type_declaration = link_type(&type_declaration, &subscope);
-                        LinkError::map(self.expressions.type_forest.bind(new_value, type_declaration.as_ref()))?;
+                        self.expressions.type_forest.bind(new_value, type_declaration.as_ref())?;
                     }
 
                     let variable = Rc::new(Variable {
@@ -170,7 +162,7 @@ impl <'a> ImperativeLinker<'a> {
 
                         let result: ExpressionID = self.link_expression(expression.as_ref(), &subscope)?;
 
-                        LinkError::map(self.expressions.type_forest.bind(result, &self.function.machine_interface.return_type.as_ref()))?;
+                        self.expressions.type_forest.bind(result, &self.function.machine_interface.return_type.as_ref())?;
                         statements.push(Box::new(Statement::Return(Some(result))));
                     }
                     else {
@@ -195,7 +187,7 @@ impl <'a> ImperativeLinker<'a> {
                     }
 
                     let new_value: ExpressionID = self.link_expression(&new_value, &subscope)?;
-                    LinkError::map(self.expressions.type_forest.bind(new_value, variable.type_declaration.as_ref()))?;
+                    self.expressions.type_forest.bind(new_value, variable.type_declaration.as_ref())?;
 
                     statements.push(Box::new(
                         Statement::VariableAssignment(Rc::clone(&variable), new_value)
@@ -211,16 +203,16 @@ impl <'a> ImperativeLinker<'a> {
         match syntax {
             abstract_syntax::Expression::Int(string) => {
                 self.link_primitive(
+                    string,
                     primitives::Type::iter()
                         .filter(primitives::Type::is_number)
-                        .flat_map(|t| Some(t.parse_value(string)?))
                 )
             },
             abstract_syntax::Expression::Float(string) => {
                 self.link_primitive(
+                    string,
                     primitives::Type::iter()
                         .filter(primitives::Type::is_float)
-                        .flat_map(|t| Some(t.parse_value(string)?))
                 )
             },
             abstract_syntax::Expression::Bool(n) => {
@@ -382,11 +374,7 @@ impl <'a> ImperativeLinker<'a> {
         let argument_keys: Vec<&ParameterKey> = argument_keys.iter().collect();
 
         let mut candidates_with_failed_signature = vec![];
-        let mut candidates: Vec<ExpressionCandidate> = vec![];
-
-        // Need to cache this because the candidates need to access it statically later.
-        let argument_expressions = Rc::new(argument_expressions);
-        let conformance = Rc::new(scope.trait_conformance_declarations.clone());
+        let mut candidates: Vec<Box<AmbiguousFunctionCandidate>> = vec![];
 
         for fun in functions.into_iter().map(Rc::clone) {
             let param_keys = fun.human_interface.parameter_names.iter().map(|x| &x.0).collect::<Vec<&ParameterKey>>();
@@ -395,45 +383,29 @@ impl <'a> ImperativeLinker<'a> {
                 continue;
             }
 
-            let param_types: Vec<Box<TypeProto>> = fun.human_interface.parameter_names.iter()
-                .map(|x| x.1.type_declaration.with_any_as_generic(&seed))
-                .collect();
-
-            // Movable reference copy.
-            let argument_expressions = Rc::clone(&argument_expressions);
-            let conformance = Rc::clone(&conformance);
-            let argument_targets: Rc<Vec<Rc<Variable>>> = Rc::new(
-                fun.human_interface.parameter_names.iter()
-                    .map(|x| Rc::clone(&x.1))
-                    .collect()
-            );
-            let fun = Rc::clone(&fun);
-
-            candidates.push(Box::new(move |types: &mut TypeForest, id: ExpressionID| {
-                for (arg, param) in zip_eq(
-                    argument_expressions.iter(),
-                    param_types.iter().map(|x| x.as_ref())
-                ) {
-                    LinkError::map(types.bind(arg.clone(), param))?;
-                }
-                let e = types.bind(id.clone(), &fun.machine_interface.return_type);
-                LinkError::map(e)?;
-
-                let binding = LinkError::map_trait_error(
-                    conformance
-                        .satisfy_requirements(&fun.machine_interface.requirements, &seed, &types)
-                )?;
-
-                Ok(ExpressionOperation::FunctionCall {
-                    function: Rc::clone(&fun),
-                    argument_targets: argument_targets.as_ref().clone(),
-                    binding
-                })
+            candidates.push(Box::new(AmbiguousFunctionCandidate {
+                param_types: fun.human_interface.parameter_names.iter()
+                    .map(|x| x.1.type_declaration.with_any_as_generic(&seed))
+                    .collect(),
+                return_type: fun.machine_interface.return_type.with_any_as_generic(&seed),
+                function: fun,
             }));
         }
 
         if candidates.len() >= 1 {
-            return self.link_ambiguous_expression(argument_expressions.as_ref().clone(), candidates.into_iter());
+            let expression_id = self.expressions.register_new_expression(argument_expressions.clone());
+
+            self.register_ambiguity(Box::new(AmbiguousFunctionCall {
+                expression_id,
+                function_name: fn_name.clone(),
+                seed,
+                arguments: argument_expressions,
+                trait_conformance_declarations: scope.trait_conformance_declarations.clone(),
+                candidates,
+                failed_candidates: vec![]
+            }))?;
+
+            return Ok(expression_id);
         }
 
         // TODO We should probably output the locations of candidates.
