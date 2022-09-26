@@ -99,12 +99,12 @@ impl <'a> ImperativeLinker<'a> {
             .map(|_| id)
     }
 
-    pub fn link_ambiguous_expression(&mut self, arguments: Vec<ExpressionID>, candidates: Vec<Box<dyn Fn(&mut TypeForest, ExpressionID) -> Result<ExpressionOperation, LinkError>>>) -> Result<ExpressionID, LinkError> {
+    pub fn link_ambiguous_expression<I>(&mut self, arguments: Vec<ExpressionID>, candidates: I) -> Result<ExpressionID, LinkError> where I: Iterator<Item=Box<dyn Fn(&mut TypeForest, ExpressionID) -> Result<ExpressionOperation, LinkError>>> {
         let id = self.expressions.register_new_expression(arguments);
 
         self.unfinished_expressions.push(AmbiguousExpression {
             expression_id: id,
-            candidates
+            candidates: candidates.collect()
         });
 
         Ok(id)
@@ -123,7 +123,6 @@ impl <'a> ImperativeLinker<'a> {
                         });
                     f
                 })
-                .collect()
         )
     }
 
