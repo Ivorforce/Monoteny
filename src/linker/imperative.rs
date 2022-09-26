@@ -166,7 +166,7 @@ impl <'a> ImperativeLinker<'a> {
 
                         let return_value: ExpressionID = self.link_expression(expression.as_ref(), &subscope)?;
 
-                        // TODO Check if void
+                        todo!()
                         // match &return_value.result_type {
                         //     None => panic!("Return statement expression resolves to void. Please move the expression into a separate line."),
                         //     Some(result_type) => {
