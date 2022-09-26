@@ -9,10 +9,10 @@ fun {self: $Number}.square() -> $Number :: square(self);
 fun main() :: {
     print("Test: ");
 
-    let a: Float32 = 2.square() * 3;
+    let a: Float32 = 2.2.square() * 3;
 
-    var b: Float32 = square(5.1);
-    b = b.square() ** 2.2 /. 2.0;
+    var b = square(5);
+    b = b.square() ** 2.2 /. a;
 
     print(a);
     print(b < 2 || a > 2);

@@ -47,9 +47,9 @@ def main():
     <Docstring TODO!>
     """
     print("Test: ")
-    a = (square_1(float32(2), Number=tl.declarations.Number_10)) * float32(3)
-    b = square_0(float32(5.1), Number=tl.declarations.Number_10)
-    b = floor_div((square_1(b, Number=tl.declarations.Number_10)) ** float32(2.2), float32(2), Float=tl.declarations.Float_0)
+    a = (square_1(float32(2.2), Number=tl.declarations.Number_10)) * float32(3)
+    b = square_0(float32(5), Number=tl.declarations.Number_10)
+    b = floor_div((square_1(b, Number=tl.declarations.Number_10)) ** float32(2.2), a, Float=tl.declarations.Float_0)
     print(a)
     print((b < float32(2)) | (a > float32(2)))
 
