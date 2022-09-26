@@ -84,7 +84,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
     - [ ] Tuples (`tuple(x, y, z)` -> `trait<A> { let x: A, y: A, z: A }`)
 - [ ] Non-linear linking (allow references to identifiers declared below)
 - [ ] Comments (with transpilation)
-- [ ] Reverse generic type checking (output types determined from inputs)
+- [x] Reverse generic type checking (output types determined from inputs)
 - [ ] Subscript function syntax
 - [ ] 'equivalence transformation' syntax: `((a + b) * c).any()` becomes `a + b .. * c .. .any()`
   - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`
