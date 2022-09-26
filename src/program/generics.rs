@@ -91,13 +91,6 @@ impl TypeForest {
         return Ok(reference)
     }
 
-    pub fn merge_pairs<'a, I>(&mut self, pairs: I) -> Result<Vec<GenericAlias>, TypeError> where I: Iterator<Item=(&'a GenericAlias, &'a GenericAlias)> {
-        pairs.map(|(lhs, rhs)| {
-            self.merge_identities(lhs.clone(), rhs.clone())?;
-            Ok(lhs.clone())
-        }).try_collect()
-    }
-
     //  ----- non-alias
 
     fn _register(&mut self, alias: GenericAlias) -> GenericIdentity {

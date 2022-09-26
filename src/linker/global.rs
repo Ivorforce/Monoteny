@@ -222,7 +222,7 @@ pub fn with_delegations<'a, I, F>(scope: &scopes::Hierarchy, conformance_delegat
 }
 
 pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scopes::Hierarchy, conformance_delegations: &HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>) -> Rc<FunctionPointer> {
-    let return_type = function.return_type.as_ref().map(|x| link_type(&x, scope));
+    let return_type = function.return_type.as_ref().map(|x| link_type(&x, scope)).unwrap_or_else(|| TypeProto::void());
 
     let mut parameters: HashSet<Rc<Variable>> = HashSet::new();
     let mut parameter_names: Vec<(ParameterKey, Rc<Variable>)> = vec![];
@@ -266,7 +266,7 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
 }
 
 pub fn link_operator_pointer(function: &abstract_syntax::Operator, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, conformance_delegations: &HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>) -> Rc<FunctionPointer> {
-    let return_type = function.return_type.as_ref().map(|x| link_type(&x, scope));
+    let return_type = function.return_type.as_ref().map(|x| link_type(&x, scope)).unwrap_or_else(|| TypeProto::void());
 
     let mut parameters: HashSet<Rc<Variable>> = HashSet::new();
     let mut parameter_names: Vec<(ParameterKey, Rc<Variable>)> = vec![];

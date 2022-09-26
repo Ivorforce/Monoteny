@@ -83,6 +83,10 @@ impl TypeProto {
         TypeProto::unit(TypeUnit::Any(Uuid::new_v4()))
     }
 
+    pub fn void() -> Box<TypeProto> {
+        TypeProto::unit(TypeUnit::Void)
+    }
+
     pub fn unit(unit: TypeUnit) -> Box<TypeProto> {
         Box::new(TypeProto { unit, arguments: vec![] })
     }

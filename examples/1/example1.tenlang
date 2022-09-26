@@ -2,8 +2,13 @@ fun test() -> Float32 :: {
     return 5;
 }
 
+fun test() -> Float64 :: {
+    return 2;
+}
+
 fun main() :: {
-    var a = 5.2;
-    a = 2;
-    var b: Float32 = a;
+    var a = 5 + 2;
+    a = test();
+    var b: Float64 = a;
+    print(b);
 }

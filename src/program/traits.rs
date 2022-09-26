@@ -160,7 +160,7 @@ impl Trait {
                         type_declaration: x.type_declaration.replacing_any(&replace_map),
                         mutability: x.mutability
                     })).collect(),
-                    return_type: abstract_fun.machine_interface.return_type.as_ref().map(|x| x.replacing_any(&replace_map)),
+                    return_type: abstract_fun.machine_interface.return_type.replacing_any(&replace_map),
                     // Note: abstract functions will never have requirements, because abstract functions are not allowed
                     // any requirements beyond what the trait requires.
                     requirements: HashSet::new(),

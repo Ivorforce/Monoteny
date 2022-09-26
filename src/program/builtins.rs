@@ -13,6 +13,7 @@ use crate::program::primitives;
 use crate::program;
 use crate::program::allocation::Variable;
 use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface, MachineFunctionInterface};
+use crate::program::primitives::Type;
 use crate::program::structs::Struct;
 
 pub mod precedence;
@@ -371,7 +372,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     constants.add_function(&not_op);
 
 
-    let print_function = FunctionPointer::make_global("print", "print", [generic_type.clone()].into_iter(), None);
+    let print_function = FunctionPointer::make_global("print", "print", [generic_type.clone()].into_iter(), TypeProto::void());
     constants.add_function(&print_function);
 
     Rc::new(TenLangBuiltins {

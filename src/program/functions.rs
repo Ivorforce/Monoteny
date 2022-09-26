@@ -47,7 +47,7 @@ pub struct HumanFunctionInterface {
 
 pub struct MachineFunctionInterface {
     pub parameters: HashSet<Rc<Variable>>,
-    pub return_type: Option<Box<TypeProto>>,
+    pub return_type: Box<TypeProto>,
     // Note: This set will almost certainly be larger than actually required, because
     //  it is automatically assembled. To avoid unnecessary arguments,
     //  use an implementation's (if known) hint for which are actually in use.
@@ -76,13 +76,13 @@ impl FunctionPointer {
             }),
             machine_interface:Rc::new(MachineFunctionInterface {
                 parameters: parameters.into_iter().collect(),
-                return_type: Some(return_type.clone()),
+                return_type: return_type.clone(),
                 requirements: HashSet::new(),
             })
         })
     }
 
-    pub fn make_global<'a, I>(name: &'a str, alphanumeric_name: &'a str, parameter_types: I, return_type: Option<Box<TypeProto>>) -> Rc<FunctionPointer> where I: Iterator<Item=Box<TypeProto>> {
+    pub fn make_global<'a, I>(name: &'a str, alphanumeric_name: &'a str, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionPointer> where I: Iterator<Item=Box<TypeProto>> {
         let parameters: Vec<Rc<Variable>> = parameter_types
             .map(|x| Variable::make_immutable(x.clone()))
             .collect();

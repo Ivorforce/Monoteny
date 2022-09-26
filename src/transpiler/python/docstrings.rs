@@ -18,9 +18,9 @@ pub fn dump(stream: &mut (dyn Write), function: &FunctionImplementation, context
         }
     }
 
-    if let Some(return_type) = &function.machine_interface.return_type {
+    if !function.machine_interface.return_type.unit.is_void() {
         write!(stream, "\n    Returns: ")?;
-        transpile_type(stream, return_type, context)?;
+        transpile_type(stream, &function.machine_interface.return_type, context)?;
         write!(stream, "\n")?;
     }
 

@@ -3,10 +3,12 @@ use crate::program::computation_tree::{ExpressionForest, ExpressionID, Expressio
 use crate::program::generics::TypeForest;
 use crate::program::types::TypeUnit;
 
+pub type ExpressionCandidate = Box<dyn Fn(&mut TypeForest, ExpressionID) -> Result<ExpressionOperation, LinkError>>;
+
 pub struct AmbiguousExpression {
     pub expression_id: ExpressionID,
 
-    pub candidates: Vec<Box<dyn Fn(&mut TypeForest, ExpressionID) -> Result<ExpressionOperation, LinkError>>>
+    pub candidates: Vec<ExpressionCandidate>
 }
 
 impl AmbiguousExpression {

@@ -14,9 +14,7 @@ pub fn transpile_program(
     write!(header_stream, "\n\n")?;
 
     for function in program.functions.iter() {
-        let return_type = function.machine_interface.return_type.as_ref()
-            .map(|x| transpile_type(&x))
-            .unwrap_or_else(|| String::from("void"));
+        let return_type = transpile_type(&function.machine_interface.return_type);
 
         write!(header_stream, "{} {}(", return_type, function.human_interface.alphanumeric_name)?;
 
