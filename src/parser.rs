@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::tenlang_grammar;
+use crate::monoteny_grammar;
 
 pub mod associativity;
 pub mod abstract_syntax;
@@ -8,10 +8,10 @@ pub mod scopes;
 
 use abstract_syntax::*;
 use crate::program::types::Pattern;
-use crate::program::builtins::TenLangBuiltins;
+use crate::program::builtins::Builtins;
 
 pub fn parse_program(content: &String, scope: &mut scopes::Level) -> Program {
-    let mut program: Program = tenlang_grammar::ProgramParser::new()
+    let mut program: Program = monoteny_grammar::ProgramParser::new()
         .parse(content.as_str())
         .unwrap();
 

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use itertools::zip_eq;
 use uuid::Uuid;
 use strum::IntoEnumIterator;
-use precedence::TenLangBuiltinPrecedenceGroups;
+use precedence::PrecedenceGroups;
 use crate::linker::scopes;
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::parser;
@@ -13,24 +13,23 @@ use crate::program::primitives;
 use crate::program;
 use crate::program::allocation::Variable;
 use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface, MachineFunctionInterface};
-use crate::program::primitives::Type;
 use crate::program::structs::Struct;
 
 pub mod precedence;
 
-pub struct TenLangBuiltins {
-    pub traits: TenLangBuiltinTraits,
-    pub operators: TenLangBuiltinOperators,
-    pub functions: TenLangBuiltinFunctions,
+pub struct Builtins {
+    pub traits: Traits,
+    pub operators: Operators,
+    pub functions: Functions,
     pub primitive_metatypes: HashMap<primitives::Type, Box<TypeProto>>,
-    pub structs: TenLangBuiltinStructs,
-    pub precedence_groups: TenLangBuiltinPrecedenceGroups,
+    pub structs: Structs,
+    pub precedence_groups: PrecedenceGroups,
 
     pub parser_constants: parser::scopes::Level,
     pub global_constants: scopes::Level,
 }
 
-pub struct TenLangBuiltinOperators {
+pub struct Operators {
     // logical
     pub and: Rc<FunctionPointer>,
     pub or: Rc<FunctionPointer>,
@@ -61,12 +60,12 @@ pub struct TenLangBuiltinOperators {
     pub exponentiate: HashSet<Rc<FunctionPointer>>,
 }
 
-pub struct TenLangBuiltinFunctions {
+pub struct Functions {
     pub print: Rc<FunctionPointer>,
 }
 
 #[allow(non_snake_case)]
-pub struct TenLangBuiltinTraits {
+pub struct Traits {
     pub all: HashSet<Rc<Trait>>,
 
     pub Eq: Rc<Trait>,
@@ -78,7 +77,7 @@ pub struct TenLangBuiltinTraits {
 }
 
 #[allow(non_snake_case)]
-pub struct TenLangBuiltinStructs {
+pub struct Structs {
     pub String: Rc<Struct>,
 }
 
@@ -136,7 +135,7 @@ pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
     }
 }
 
-pub fn create_builtins() -> Rc<TenLangBuiltins> {
+pub fn create_builtins() -> Rc<Builtins> {
     let mut constants: scopes::Level = scopes::Level::new();
 
     let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
@@ -255,7 +254,7 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     let int_trait = make_trait("Int", &generic_id, vec![], vec![Rc::clone(&number_trait)]);
     constants.add_trait(&int_trait);
 
-    let traits = TenLangBuiltinTraits {
+    let traits = Traits {
         all: [&eq_trait, &ord_trait, &number_trait, &float_trait, &int_trait].map(Rc::clone).into_iter().collect(),
         Eq: eq_trait,
         Ord: ord_trait,
@@ -375,9 +374,9 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
     let print_function = FunctionPointer::make_global("print", "print", [generic_type.clone()].into_iter(), TypeProto::void());
     constants.add_function(&print_function);
 
-    Rc::new(TenLangBuiltins {
+    Rc::new(Builtins {
         traits,
-        operators: TenLangBuiltinOperators {
+        operators: Operators {
             and: and_op,
             or: or__op,
 
@@ -400,10 +399,10 @@ pub fn create_builtins() -> Rc<TenLangBuiltins> {
             negative: neg_ops,
             not: not_op,
         },
-        functions: TenLangBuiltinFunctions {
+        functions: Functions {
             print: print_function,
         },
-        structs: TenLangBuiltinStructs {
+        structs: Structs {
             String: add_struct(&mut constants, "String")
         },
         precedence_groups,

@@ -2,7 +2,7 @@
 extern crate lalrpop_util;
 extern crate core;
 
-lalrpop_mod!(pub tenlang_grammar);
+lalrpop_mod!(pub monoteny_grammar);
 pub mod parser;
 pub mod linker;
 pub mod transpiler;
@@ -16,8 +16,8 @@ use std::path::PathBuf;
 use clap::{arg, Command};
 
 fn cli() -> Command<'static> {
-    Command::new("tenlang")
-        .about("A cli implementation for the tenlang language.")
+    Command::new("monoteny")
+        .about("A cli implementation for the monoteny language.")
         .subcommand_required(true)
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
@@ -65,7 +65,7 @@ fn main() {
                 }
             }
 
-            println!("All files are valid .tenlang!");
+            println!("All files are valid .monoteny!");
         },
         Some(("transpile", sub_matches)) => {
             let input_path = sub_matches.get_one::<PathBuf>("INPUT").unwrap();

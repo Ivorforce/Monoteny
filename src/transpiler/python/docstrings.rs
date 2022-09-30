@@ -1,6 +1,6 @@
 use std::io::Write;
 use crate::transpiler::python::{TranspilerContext, types};
-use crate::program::builtins::TenLangBuiltins;
+use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
 use crate::program::global::FunctionImplementation;
 use crate::program::types::{TypeProto, TypeUnit};

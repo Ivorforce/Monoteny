@@ -18,6 +18,6 @@ custom_error!{pub LinkError
 }
 
 
-pub fn link_program(syntax: abstract_syntax::Program, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> Result<Program, LinkError> {
+pub fn link_program(syntax: abstract_syntax::Program, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, builtins: &Builtins) -> Result<Program, LinkError> {
     link_file(syntax, parser_scope, scope, builtins)
 }

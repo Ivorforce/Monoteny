@@ -1,9 +1,9 @@
 use uuid::Uuid;
-use crate::program::builtins::TenLangBuiltins;
+use crate::program::builtins::Builtins;
 use crate::program::functions::FunctionPointerTarget;
 use crate::transpiler::namespaces;
 
-pub fn create(builtins: &TenLangBuiltins) -> namespaces::Level {
+pub fn create(builtins: &Builtins) -> namespaces::Level {
     let mut namespace = namespaces::Level::new();
 
     for keyword in [
@@ -51,7 +51,7 @@ pub fn create(builtins: &TenLangBuiltins) -> namespaces::Level {
 
     for trait_ in builtins.traits.all.iter() {
         // TODO Introduce a package ref system.
-        namespace.register_definition(trait_.id, &format!("tl.traits.{}", &trait_.name));
+        namespace.register_definition(trait_.id, &format!("mn.traits.{}", &trait_.name));
 
         let trait_namespace = namespace.add_sublevel();
         for fun in trait_.abstract_functions.iter() {
@@ -60,7 +60,7 @@ pub fn create(builtins: &TenLangBuiltins) -> namespaces::Level {
     }
 
     for declaration in builtins.global_constants.trait_conformance_declarations.declarations.values().flatten() {
-        namespace.register_definition(declaration.id, &format!("tl.declarations.{}", &declaration.trait_.name));
+        namespace.register_definition(declaration.id, &format!("mn.declarations.{}", &declaration.trait_.name));
     }
 
     namespace

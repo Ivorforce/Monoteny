@@ -1,14 +1,14 @@
-# TenLang
+# Monoteny
 
-Welcome to the mathemagical land of TenLang! 
+Welcome to the mathemagical land of Monoteny! 
 
-TenLang is an experimental language focusing on tensor math. It aims to streamline complex syntax, borrowing from modern trends in programming languages like Swift, Rust and Python.  
+Monoteny is an experimental language focusing on tensor math. It aims to streamline complex syntax, borrowing from modern trends in programming languages like Swift, Rust and Python.  
 
 ## Philosophy
 
 ### First-Class Multiple Dimension Monads
 
-In TenLang, Monads consist of dimensions referred to by a _dimension specifier_ and indexed by some _monadic type_. This would commonly be array shapes or optionals, but might also be a dictionary keyset or something else.
+In Monoteny, Monads consist of dimensions referred to by a _dimension specifier_ and indexed by some _monadic type_. This would commonly be array shapes or optionals, but might also be a dictionary keyset or something else.
 
 Every Monad is statically treated as its unit type. At compile time, operations on it are translated to appropriate mapping operations.
 
@@ -16,17 +16,17 @@ There are two exceptions: First, when two monad definitions collide, they are br
 
 ### Shape Safety and Generics
 
-TenLang aims to guarantee shape, lookup and generally array operations safety.
+Monoteny aims to guarantee shape, lookup and generally array operations safety.
 
 There is a reasonable reason no other language has yet attempted this: Shape resolving can be as hard as executing the program itself. It seems impossible to devise a system that could possibly cover every use-case. Without one, the language quickly falls apart.
 
 Luckily, we know how to solve hard problems in a readable and approachable way. It's programming.
 
-TenLang takes this to heart: Generic types are resolved with user code at compile time. The code is TenLang, so it is unnecessary to learn a separate language paradigm.
+Monoteny takes this to heart: Generic types are resolved with user code at compile time. The code is Monoteny, so it is unnecessary to learn a separate language paradigm.
 
-### Polymorphism
+### Subject Oriented Polymorphism
 
-Polymorphism in TenLang is offered using traits with abstract functions. When some trait conformance is required for a function, the function is polymorphically callable.
+Polymorphism in Monoteny is offered using traits with abstract functions. When some trait conformance is required for a function, the function is polymorphically callable.
 
 The implication depends on caller context. Specifically, it depends on whether the object has a deterministic polymorphism.
 
@@ -38,9 +38,9 @@ The implication depends on caller context. Specifically, it depends on whether t
 
 ### Transpilation Targets
 
-TenLang lacks many features required to build full apps. Luckily, many excellent ecosystems exist where it is possible to build such things. Therefore, instead, TenLang aims to focus on its most vital feature: Being a modern imperative math programming language.
+Monoteny lacks many features required to build full apps. Luckily, many excellent ecosystems exist where it is possible to build such things. Therefore, instead, Monoteny aims to focus on its most vital feature: Being a modern imperative math programming language.
 
-This will be possible by TenLang coming with several different transpilers. Hereby, any algorithms built in TenLang will be usable in _any_ of those ecosystems. The transpilation targets are:
+This will be possible by Monoteny coming with several different transpilers. Hereby, any algorithms built in Monoteny will be usable in _any_ of those ecosystems. The transpilation targets are:
 
 * [WIP] Python with NumPy
 * [Future] C++ with Eigen
@@ -50,7 +50,7 @@ This will be possible by TenLang coming with several different transpilers. Here
 Note: Transpilation of some features is quite difficult and cannot be achieved in human-readable fashion easily. For that reason, documentation keywords exist to specify how to export some things to specific languages. Everything not explicitly exported will not have readability as a high priority.
 
 
-### TenLang 0.1 (Toy Language Stage)
+### Monoteny 0.1 (Toy Language Stage)
 
 - [x] Project Skeleton
   - [x] Number, String, Array Primitives
@@ -64,7 +64,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [x] "Conjunctive Pairs" comparison syntax, ex.: a > b >= c == d
   - [x] User-Defined Unary / Binary Operators
 
-### TenLang 0.2 (Proof of Concept Stage)
+### Monoteny 0.2 (Proof of Concept Stage)
 
 - [x] Forward generic type checking
 - [x] Traits
@@ -103,7 +103,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] Iterators
   - [ ] Defaults (`a: $Float[Default]` for parameters to be omittable)
 
-### TenLang 1.0
+### Monoteny 1.0
 
 - [ ] Exceptions (as monads)
   - [ ] Early return syntax
@@ -120,7 +120,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] Higher Order Functions
     - [ ] Deep Function Currying
 
-### TenLang 2.0
+### Monoteny 2.0
 
 - [ ] Staggered Dimensions
   - [ ] Implicit Tensors
@@ -148,8 +148,8 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 - for / for-each loops
   - .map / .forEach calls do the same. Instead, there will be a strong callable integration allowing for return / break / continue statements inside an anonymous closure. 
 - Global (mutable) variables
-  - Global variables are usually bad practice. Instead, TenLang encourages context objects.
+  - Global variables are usually bad practice. Instead, Monoteny encourages context objects.
 - Multithreading
   - Very complex, and of limited use for (pure) mathematical applications.
 - Unsafe / Reflection
-  - Because TenLang is transpiled, this is not applicable to the language.
+  - Because Monoteny is transpiled, this is not applicable to the language.

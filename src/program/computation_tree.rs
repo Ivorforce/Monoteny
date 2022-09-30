@@ -8,7 +8,7 @@ use crate::parser::abstract_syntax::Function;
 use crate::program::allocation::{Mutability, Variable};
 use crate::program::types::TypeProto;
 
-use crate::program::builtins::TenLangBuiltins;
+use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionPointer, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::primitives;

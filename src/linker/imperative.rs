@@ -11,7 +11,7 @@ use crate::linker::{LinkError, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberPrimitive, LinkerAmbiguity};
 use crate::parser::abstract_syntax;
 use crate::program::allocation::{Mutability, Variable};
-use crate::program::builtins::TenLangBuiltins;
+use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
@@ -22,7 +22,7 @@ use crate::program::types::*;
 pub struct ImperativeLinker<'a> {
     pub function: Rc<FunctionPointer>,
 
-    pub builtins: &'a TenLangBuiltins,
+    pub builtins: &'a Builtins,
 
     pub expressions: Box<ExpressionForest>,
     pub ambiguities: Vec<Box<dyn LinkerAmbiguity>>,

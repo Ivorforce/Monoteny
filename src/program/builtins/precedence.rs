@@ -6,7 +6,7 @@ use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::types::Pattern;
 
 #[allow(non_snake_case)]
-pub struct TenLangBuiltinPrecedenceGroups {
+pub struct PrecedenceGroups {
     pub LeftUnaryPrecedence: Rc<PrecedenceGroup>,
     pub ExponentiationPrecedence: Rc<PrecedenceGroup>,
     pub MultiplicationPrecedence: Rc<PrecedenceGroup>,
@@ -16,7 +16,7 @@ pub struct TenLangBuiltinPrecedenceGroups {
     pub LogicalDisjunctionPrecedence: Rc<PrecedenceGroup>,
 }
 
-pub fn make_groups(parser_scope: &mut parser::scopes::Level) -> TenLangBuiltinPrecedenceGroups {
+pub fn make_groups(parser_scope: &mut parser::scopes::Level) -> PrecedenceGroups {
     let add_precedence_group = |scope: &mut parser::scopes::Level, name: &str, associativity: OperatorAssociativity, operators: Vec<(&str, &str)>| -> Rc<PrecedenceGroup> {
         let group = Rc::new(PrecedenceGroup::new(name, associativity));
         scope.precedence_groups.push((Rc::clone(&group), HashSet::new()));
@@ -32,7 +32,7 @@ pub fn make_groups(parser_scope: &mut parser::scopes::Level) -> TenLangBuiltinPr
         group
     };
 
-    TenLangBuiltinPrecedenceGroups {
+    PrecedenceGroups {
         LeftUnaryPrecedence: add_precedence_group(
             parser_scope, "LeftUnaryPrecedence", OperatorAssociativity::LeftUnary,
             vec![("+", "positive"), ("-", "negative"), ("!", "not")]

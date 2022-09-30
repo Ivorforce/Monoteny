@@ -25,7 +25,7 @@ struct GlobalLinker<'a> {
     traits: HashSet<Rc<Trait>>,
     global_variables: scopes::Level,
     parser_scope: &'a parser::scopes::Level,
-    builtins: &'a TenLangBuiltins,
+    builtins: &'a Builtins,
 }
 
 struct FunctionWithoutBody<'a> {
@@ -34,7 +34,7 @@ struct FunctionWithoutBody<'a> {
     conformance_delegations: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
 }
 
-pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, builtins: &TenLangBuiltins) -> Result<Program, LinkError> {
+pub fn link_file(syntax: abstract_syntax::Program, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, builtins: &Builtins) -> Result<Program, LinkError> {
     let mut global_linker = GlobalLinker {
         functions: Vec::new(),
         traits: HashSet::new(),

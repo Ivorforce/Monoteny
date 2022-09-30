@@ -9,7 +9,7 @@ use guard::guard;
 use itertools::zip_eq;
 use uuid::Uuid;
 
-use crate::program::builtins::TenLangBuiltins;
+use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, ParameterKey};
 use crate::program::{primitives, Program};
@@ -23,12 +23,12 @@ use crate::transpiler::namespaces;
 pub struct TranspilerContext<'a> {
     names: &'a HashMap<Uuid, String>,
     functions_by_id: &'a HashMap<Uuid, Rc<FunctionImplementation>>,
-    builtins: &'a TenLangBuiltins,
+    builtins: &'a Builtins,
     expressions: &'a ExpressionForest,
 }
 
-pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &TenLangBuiltins) -> Result<(), std::io::Error> {
-    writeln!(stream, "import tenlang as tl")?;
+pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &Builtins) -> Result<(), std::io::Error> {
+    writeln!(stream, "import monoteny as mn")?;
     writeln!(stream, "import numpy as np")?;
     writeln!(stream, "import operator as op")?;
     writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;

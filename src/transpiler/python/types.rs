@@ -1,5 +1,5 @@
 use std::io::Write;
-use crate::program::builtins::TenLangBuiltins;
+use crate::program::builtins::Builtins;
 use crate::program::primitives;
 use crate::program::structs::Struct;
 use crate::program::types::{TypeProto, TypeUnit};

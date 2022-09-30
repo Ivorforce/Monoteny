@@ -269,6 +269,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 
 [[package]]
+name = "monoteny"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "custom_error",
+ "guard",
+ "itertools",
+ "lalrpop",
+ "lalrpop-util",
+ "regex",
+ "replace_with",
+ "strum",
+ "uuid",
+]
+
+[[package]]
 name = "new_debug_unreachable"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -475,22 +491,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "tenlang"
-version = "0.1.0"
-dependencies = [
- "clap",
- "custom_error",
- "guard",
- "itertools",
- "lalrpop",
- "lalrpop-util",
- "regex",
- "replace_with",
- "strum",
- "uuid",
 ]
 
 [[package]]
