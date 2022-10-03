@@ -91,6 +91,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 - [ ] Var-Like 0 parameter function syntax (`let c = a.b`; `a.b = c`;)
 - [ ] Expression Scopes (`let a = { ... yield b; }`)
 - [ ] If / Else, if let, Guard, Guard let
+- [ ] Type Alias, aka String = Character[Int...] (but no coercion Character[Int...] -> String)
 - [ ] Enums / Enum type inheritance
 - [ ] Monads
   - [ ] Tuple Dimension Index
