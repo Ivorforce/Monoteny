@@ -1,10 +1,10 @@
 // Trait that inherits from float but adds a comment string.
-trait FloatWithComment if Self: Float {
+trait FloatWithComment if Self is Float {
     var comment: String;
 }
 
 // $$Number means it's a type that inherits from a $Number, where $Number is a type that inherits from Number.
-if Self: $$Number[$Ordered] {
+if Self is $$Number[$Ordered] {
     mut fun .sort(ascending: Bool[Default]) :: {
         let ascending = ascending@.or(true);
 

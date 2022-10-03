@@ -1,5 +1,5 @@
-trait Floatable if #A, #B {
-    abstract fun either_is_float(a: A, b: B) -> Bool;
+trait Floatable {
+    abstract fun either_is_float(a: #A, b: #B) -> Bool;
 }
 
 declare either_is_float<A: #A, B: Float> {
