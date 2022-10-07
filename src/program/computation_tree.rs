@@ -5,7 +5,7 @@ use std::rc::Rc;
 use guard::guard;
 use uuid::Uuid;
 use crate::parser::abstract_syntax::Function;
-use crate::program::allocation::{Mutability, Variable};
+use crate::program::allocation::{Mutability, Reference};
 use crate::program::types::TypeProto;
 
 use crate::program::builtins::Builtins;
@@ -17,17 +17,17 @@ use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, T
 pub type ExpressionID = GenericAlias;
 
 pub enum Statement {
-    VariableAssignment(Rc<Variable>, ExpressionID),
+    VariableAssignment(Rc<Reference>, ExpressionID),
     Expression(ExpressionID),
     Return(Option<ExpressionID>),
 }
 
 pub enum ExpressionOperation {
     Primitive(primitives::Value),
-    FunctionCall { function: Rc<FunctionPointer>, argument_targets: Vec<Rc<Variable>>, binding: Box<TraitBinding> },
+    FunctionCall { function: Rc<FunctionPointer>, argument_targets: Vec<Rc<Reference>>, binding: Box<TraitBinding> },
     PairwiseOperations { functions: Vec<Rc<HumanFunctionInterface>> },
     MemberLookup(String),
-    VariableLookup(Rc<Variable>),
+    VariableLookup(Rc<Reference>),
     StringLiteral(String),
     ArrayLiteral,
 }

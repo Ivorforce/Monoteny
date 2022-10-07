@@ -13,7 +13,7 @@ use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, ParameterKey};
 use crate::program::{primitives, Program};
-use crate::program::allocation::Variable;
+use crate::program::allocation::Reference;
 use crate::program::global::{FunctionImplementation, GlobalStatement};
 use crate::program::traits::TraitConformanceDeclaration;
 use crate::program::types::{TypeProto, TypeUnit};

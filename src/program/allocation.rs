@@ -10,29 +10,29 @@ pub enum Mutability {
 }
 
 #[derive(Clone)]
-pub struct Variable {
+pub struct Reference {
     pub id: Uuid,
     pub type_declaration: Box<TypeProto>,
     pub mutability: Mutability
 }
 
-impl PartialEq for Variable {
+impl PartialEq for Reference {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl Eq for Variable {}
+impl Eq for Reference {}
 
-impl Hash for Variable {
+impl Hash for Reference {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-impl Variable {
-    pub fn make_immutable(type_declaration: Box<TypeProto>) -> Rc<Variable> {
-        Rc::new(Variable {
+impl Reference {
+    pub fn make_immutable(type_declaration: Box<TypeProto>) -> Rc<Reference> {
+        Rc::new(Reference {
             id: Uuid::new_v4(),
             type_declaration,
             mutability: Mutability::Immutable

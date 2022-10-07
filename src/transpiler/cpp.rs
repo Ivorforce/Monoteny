@@ -56,7 +56,7 @@ pub fn transpile_type(type_def: &TypeProto) -> String {
             // TODO Shape
             format!("Tensor<{}, 1>", transpile_type(&type_def.arguments[0]))
         }
-        TypeUnit::Function(_) => todo!(),
+        TypeUnit::FunctionOverload(_) => todo!(),
         TypeUnit::Generic(_) => todo!(),
         TypeUnit::Any(_) => format!("Any"),
         TypeUnit::MetaType => todo!(),

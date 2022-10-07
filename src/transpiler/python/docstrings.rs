@@ -38,7 +38,7 @@ pub fn transpile_type(stream: &mut (dyn Write), type_def: &TypeProto, context: &
             transpile_type(stream, &type_def.arguments[0], context)?;
             write!(stream, "[?]")?;
         }
-        TypeUnit::Function(_) => todo!(),
+        TypeUnit::FunctionOverload(_) => todo!(),
         TypeUnit::Generic(_) => todo!(),
         TypeUnit::Any(_) => write!(stream, "Any")?,  // TODO Use generics instead
         TypeUnit::MetaType => todo!(),

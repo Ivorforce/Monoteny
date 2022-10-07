@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use itertools::zip_eq;
 use uuid::Uuid;
-use crate::program::allocation::{Mutability, Variable};
+use crate::program::allocation::{Mutability, Reference};
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::TypeProto;
 
@@ -39,14 +39,14 @@ pub struct HumanFunctionInterface {
     pub name: String,
     pub alphanumeric_name: String,
 
-    pub parameter_names: Vec<(ParameterKey, Rc<Variable>)>,
+    pub parameter_names: Vec<(ParameterKey, Rc<Reference>)>,
     pub parameter_names_internal: Vec<String>,
 
     pub form: FunctionForm,
 }
 
 pub struct MachineFunctionInterface {
-    pub parameters: HashSet<Rc<Variable>>,
+    pub parameters: HashSet<Rc<Reference>>,
     pub return_type: Box<TypeProto>,
     // Note: This set will almost certainly be larger than actually required, because
     //  it is automatically assembled. To avoid unnecessary arguments,
@@ -57,7 +57,7 @@ pub struct MachineFunctionInterface {
 impl FunctionPointer {
     pub fn make_operator<'a>(name: &'a str, alphanumeric_name: &'a str, count: usize, parameter_type: &Box<TypeProto>, return_type: &Box<TypeProto>) -> Rc<FunctionPointer> {
         let parameter_names = (0..count).map(|_| ParameterKey::Positional);
-        let parameters: Vec<Rc<Variable>> = (0..count).map(|x| Rc::new(Variable {
+        let parameters: Vec<Rc<Reference>> = (0..count).map(|x| Rc::new(Reference {
             id: Uuid::new_v4(),
             type_declaration: parameter_type.clone(),
             mutability: Mutability::Immutable
@@ -83,8 +83,8 @@ impl FunctionPointer {
     }
 
     pub fn make_global<'a, I>(name: &'a str, alphanumeric_name: &'a str, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionPointer> where I: Iterator<Item=Box<TypeProto>> {
-        let parameters: Vec<Rc<Variable>> = parameter_types
-            .map(|x| Variable::make_immutable(x.clone()))
+        let parameters: Vec<Rc<Reference>> = parameter_types
+            .map(|x| Reference::make_immutable(x.clone()))
             .collect();
         let parameter_names = (0..parameters.len()).map(|_| ParameterKey::Positional);
 

@@ -30,7 +30,7 @@ pub enum TypeUnit {
     Primitive(primitives::Type),
     Struct(Rc<Struct>),
     Trait(Rc<Trait>),
-    Function(Rc<FunctionPointer>),
+    FunctionOverload(HashSet<Rc<FunctionPointer>>),  // Reference to a multiplicity of functions, usually resolved when attempting to call
     PrecedenceGroup(Rc<PrecedenceGroup>),
 }
 
@@ -68,7 +68,7 @@ impl Debug for TypeUnit {
             Struct(s) => write!(fmt, "{:?}", s.name),
             Trait(t) => write!(fmt, "{:?}", t.name),
             Monad => write!(fmt, "Monad"),
-            Function(f) => write!(fmt, "(?) -> ({:?})", f.machine_interface.return_type),
+            FunctionOverload(f) => write!(fmt, "FunctionOverload"),
             Generic(g) => write!(fmt, "Generic<{}>", g),
             Any(g) => write!(fmt, "Any<{}>", g),
             MetaType => write!(fmt, "MetaType"),

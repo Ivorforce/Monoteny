@@ -11,7 +11,7 @@ use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::types::*;
 use crate::program::primitives;
 use crate::program;
-use crate::program::allocation::Variable;
+use crate::program::allocation::Reference;
 use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::structs::Struct;
 
@@ -153,7 +153,7 @@ pub fn create_builtins() -> Rc<Builtins> {
 
         constants.insert_singleton(
             scopes::Environment::Global,
-            Variable::make_immutable(s_type),
+            Reference::make_immutable(s_type),
             &name
         );
 
@@ -276,7 +276,7 @@ pub fn create_builtins() -> Rc<Builtins> {
         primitive_metatypes.insert(primitive_type, metatype.clone());
         constants.insert_singleton(
             scopes::Environment::Global,
-            Variable::make_immutable(metatype.clone()),
+            Reference::make_immutable(metatype.clone()),
             &primitive_type.identifier_string()
         );
 

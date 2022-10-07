@@ -4,13 +4,16 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::program::allocation::{Mutability, Variable};
+use crate::program::allocation::{Mutability, Reference};
 use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInterface, ParameterKey};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::generics::TypeForest;
 use crate::program::types::{TypeProto, TypeUnit};
 
-type VariablePool = HashMap<String, HashSet<Rc<Variable>>>;
+// Note: While a single pool cannot own overloaded variables, multiple same-level pools (-> from imports) can.
+// When we have imports, this should be ignored until referenced, to avoid unnecessary import complications.
+// For these cases, we could store an AMBIGUOUS value inside our pool, crashing when accessed?
+type VariablePool = HashMap<String, Rc<Reference>>;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum Environment {
@@ -60,22 +63,31 @@ impl Level {
             _ => Environment::Global
         };
 
-        let variable = Variable::make_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(fun))));
-
         let mut variables = self.variables_mut(environment);
 
-        if let Some(existing) = variables.get_mut(&fun.human_interface.name) {
-            let existing_var = existing.iter().next().unwrap();
+        // Remove the current FunctionOverload reference and replace with a reference containing also our new overload.
+        // This may seem weird at first but it kinda makes sense - if someone queries the scope, gets a reference,
+        // and then the scope is modified, the previous caller still expects their reference to not change.
+        if let Some(existing) = variables.remove(&fun.human_interface.name) {
+            if let TypeUnit::FunctionOverload(functions) = &existing.type_declaration.unit {
+                let functions = functions.iter().chain([fun]).map(Rc::clone).collect();
 
-            if let TypeUnit::Function(_) = existing_var.type_declaration.as_ref().unit {
-                existing.insert(variable);
+                let variable = Reference::make_immutable(
+                    TypeProto::unit(TypeUnit::FunctionOverload(functions))
+                );
+
+                variables.insert(fun.human_interface.name.clone(), variable);
             }
             else {
                 panic!("Cannot overload with function '{}' if a variable exists in the same scope under the same name.", &fun.human_interface.name);
             }
         }
         else {
-            variables.insert(fun.human_interface.name.clone(), HashSet::from([variable]));
+            let variable = Reference::make_immutable(
+                TypeProto::unit(TypeUnit::FunctionOverload(HashSet::from([Rc::clone(fun)])))
+            );
+
+            variables.insert(fun.human_interface.name.clone(), variable);
         }
     }
 
@@ -83,7 +95,7 @@ impl Level {
         let name = t.name.clone();
         self.insert_singleton(
             Environment::Global,
-            Variable::make_immutable(TypeProto::unit(TypeUnit::Trait(Rc::clone(t)))),
+            Reference::make_immutable(TypeProto::unit(TypeUnit::Trait(Rc::clone(t)))),
             &name
         );
     }
@@ -98,18 +110,18 @@ impl Level {
         }
     }
 
-    pub fn insert_singleton(&mut self, environment: Environment, variable: Rc<Variable>, name: &String) {
+    pub fn insert_singleton(&mut self, environment: Environment, variable: Rc<Reference>, name: &String) {
         let mut variables = self.variables_mut(environment);
 
-        if let Some(_) = variables.insert(name.clone(), HashSet::from([variable])) {
+        if let Some(_) = variables.insert(name.clone(), variable) {
             panic!("Multiple variables of the same name: {}", name);
         }
     }
 
-    pub fn push_variable(&mut self, environment: Environment, variable: Rc<Variable>, name: &String) {
+    pub fn push_variable(&mut self, environment: Environment, variable: Rc<Reference>, name: &String) {
         let mut variables = self.variables_mut(environment);
 
-        variables.insert(name.clone(), HashSet::from([variable]));
+        variables.insert(name.clone(), variable);
     }
 
     pub fn contains(&mut self, environment: Environment, name: &String) -> bool {
@@ -135,17 +147,15 @@ impl <'a> Hierarchy<'a> {
         }
     }
 
-    pub fn resolve_functions(&self, environment: Environment, variable_name: &String) -> Vec<&'a Rc<FunctionPointer>> {
-        self.resolve(environment, variable_name).iter().map(|x|
-            match &x.type_declaration.unit {
-                TypeUnit::Function(function) => function,
-                _ => panic!("{} is not a function.", variable_name)
-            }
-        ).collect()
+    pub fn resolve_functions(&self, environment: Environment, variable_name: &String) -> &'a HashSet<Rc<FunctionPointer>> {
+        match &self.resolve(environment, variable_name).type_declaration.unit {
+            TypeUnit::FunctionOverload(functions) => functions,
+            _ => panic!("{} is not a function.", variable_name)
+        }
     }
 
     pub fn resolve_metatype(&self, environment: Environment, variable_name: &String) -> &'a Box<TypeProto> {
-        let type_declaration = &self.resolve_unambiguous(environment, variable_name).type_declaration;
+        let type_declaration = &self.resolve(environment, variable_name).type_declaration;
 
         match &type_declaration.unit {
             TypeUnit::MetaType => type_declaration.arguments.get(0).unwrap(),
@@ -154,7 +164,7 @@ impl <'a> Hierarchy<'a> {
     }
 
     pub fn resolve_trait(&self, environment: Environment, variable_name: &String) -> &'a Rc<Trait> {
-        let type_declaration = &self.resolve_unambiguous(environment, variable_name).type_declaration;
+        let type_declaration = &self.resolve(environment, variable_name).type_declaration;
 
         match &type_declaration.unit {
             TypeUnit::Trait(t) => t,
@@ -162,18 +172,7 @@ impl <'a> Hierarchy<'a> {
         }
     }
 
-    pub fn resolve_unambiguous(&self, environment: Environment, variable_name: &String) -> &'a Rc<Variable> {
-        let matches = self.resolve(environment, variable_name);
-
-        if matches.len() == 1 {
-            matches.iter().next().unwrap()
-        }
-        else {
-            panic!("Variable ambiguous: {}", variable_name);
-        }
-    }
-
-    pub fn resolve(&self, environment: Environment, variable_name: &String) -> &'a HashSet<Rc<Variable>> {
+    pub fn resolve(&self, environment: Environment, variable_name: &String) -> &'a Rc<Reference> {
         for scope in self.levels.iter() {
             if let Some(matches) = scope.variables(environment).get(variable_name) {
                 return matches

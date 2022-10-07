@@ -11,7 +11,7 @@ use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{LinkError, scopes};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::{primitives, Program};
-use crate::program::allocation::Variable;
+use crate::program::allocation::Reference;
 use crate::program::builtins::*;
 use crate::program::functions::{FunctionForm, FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
 use crate::program::generics::TypeForest;
@@ -161,11 +161,11 @@ pub fn with_anonymous_generics<'a, F>(type_names: &'a Vec<&'a String>, scope: &s
 
     for type_name in type_names {
         if type_name.starts_with("#") && !level.contains(scopes::Environment::Global, type_name) {
-            level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(TypeProto::meta(TypeProto::make_any())), type_name);
+            level.insert_singleton(scopes::Environment::Global, Reference::make_immutable(TypeProto::meta(TypeProto::make_any())), type_name);
             needs_scope = true;
         }
         else if type_name.starts_with("$") && !level.contains(scopes::Environment::Global, type_name) {
-            level.insert_singleton(scopes::Environment::Global, Variable::make_immutable(TypeProto::meta(TypeProto::make_any())), type_name);
+            level.insert_singleton(scopes::Environment::Global, Reference::make_immutable(TypeProto::meta(TypeProto::make_any())), type_name);
             needs_scope = true;
 
             let trait_name = String::from(&type_name[1..]);
@@ -224,12 +224,12 @@ pub fn with_delegations<'a, I, F>(scope: &scopes::Hierarchy, conformance_delegat
 pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scopes::Hierarchy, conformance_delegations: &HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>) -> Rc<FunctionPointer> {
     let return_type = function.return_type.as_ref().map(|x| link_type(&x, scope)).unwrap_or_else(|| TypeProto::void());
 
-    let mut parameters: HashSet<Rc<Variable>> = HashSet::new();
-    let mut parameter_names: Vec<(ParameterKey, Rc<Variable>)> = vec![];
+    let mut parameters: HashSet<Rc<Reference>> = HashSet::new();
+    let mut parameter_names: Vec<(ParameterKey, Rc<Reference>)> = vec![];
     let mut parameter_names_internal: Vec<String> = vec![];
 
     if let Some(parameter) = &function.target {
-        let variable = Variable::make_immutable(link_type(&parameter.param_type, scope));
+        let variable = Reference::make_immutable(link_type(&parameter.param_type, scope));
 
         parameters.insert(Rc::clone(&variable));
         parameter_names.push((ParameterKey::Positional, variable));
@@ -237,7 +237,7 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
     }
 
     for parameter in function.parameters.iter() {
-        let variable = Variable::make_immutable(link_type(&parameter.param_type, scope));
+        let variable = Reference::make_immutable(link_type(&parameter.param_type, scope));
 
         parameters.insert(Rc::clone(&variable));
         parameter_names.push((parameter.key.clone(), variable));
@@ -268,12 +268,12 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
 pub fn link_operator_pointer(function: &abstract_syntax::Operator, parser_scope: &parser::scopes::Level, scope: &scopes::Hierarchy, conformance_delegations: &HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>) -> Rc<FunctionPointer> {
     let return_type = function.return_type.as_ref().map(|x| link_type(&x, scope)).unwrap_or_else(|| TypeProto::void());
 
-    let mut parameters: HashSet<Rc<Variable>> = HashSet::new();
-    let mut parameter_names: Vec<(ParameterKey, Rc<Variable>)> = vec![];
+    let mut parameters: HashSet<Rc<Reference>> = HashSet::new();
+    let mut parameter_names: Vec<(ParameterKey, Rc<Reference>)> = vec![];
     let mut parameter_names_internal: Vec<String> = vec![];
 
     for parameter in function.lhs.iter().chain([&function.rhs]) {
-        let variable = Variable::make_immutable(link_type(&parameter.param_type, scope));
+        let variable = Reference::make_immutable(link_type(&parameter.param_type, scope));
 
         parameters.insert(Rc::clone(&variable));
         parameter_names.push((ParameterKey::Positional, variable));

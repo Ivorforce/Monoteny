@@ -10,7 +10,7 @@ use crate::linker::global::link_type;
 use crate::linker::{LinkError, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberPrimitive, LinkerAmbiguity};
 use crate::parser::abstract_syntax;
-use crate::program::allocation::{Mutability, Variable};
+use crate::program::allocation::{Mutability, Reference};
 use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
@@ -28,7 +28,7 @@ pub struct ImperativeLinker<'a> {
     pub ambiguities: Vec<Box<dyn LinkerAmbiguity>>,
 
     pub conformance_delegations: &'a HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
-    pub variable_names: HashMap<Rc<Variable>, String>,
+    pub variable_names: HashMap<Rc<Reference>, String>,
 }
 
 impl <'a> ImperativeLinker<'a> {
@@ -140,7 +140,7 @@ impl <'a> ImperativeLinker<'a> {
                         self.expressions.type_forest.bind(new_value, type_declaration.as_ref())?;
                     }
 
-                    let variable = Rc::new(Variable {
+                    let variable = Rc::new(Reference {
                         id: Uuid::new_v4(),
                         type_declaration: TypeProto::unit(TypeUnit::Generic(new_value)),
                         mutability: mutability.clone(),
@@ -180,7 +180,7 @@ impl <'a> ImperativeLinker<'a> {
                 }
                 abstract_syntax::Statement::VariableAssignment { variable_name, new_value } => {
                     let subscope = scope.subscope(&local_variables);
-                    let variable = subscope.resolve_unambiguous(scopes::Environment::Global, variable_name);
+                    let variable = subscope.resolve(scopes::Environment::Global, variable_name);
 
                     if variable.mutability == Mutability::Immutable {
                         panic!("Cannot assign to immutable variable '{}'.", variable_name);
@@ -283,7 +283,7 @@ impl <'a> ImperativeLinker<'a> {
                 self.link_unary_function(operator, argument, scope)
             },
             abstract_syntax::Expression::VariableLookup(identifier) => {
-                let variable = scope.resolve_unambiguous(scopes::Environment::Global, identifier);
+                let variable = scope.resolve(scopes::Environment::Global, identifier);
 
                 self.link_unambiguous_expression(
                     vec![],
@@ -307,7 +307,9 @@ impl <'a> ImperativeLinker<'a> {
                             .map(|arg| self.link_expression(&arg.value, scope))
                             .try_collect()?;
 
-                        self.link_function_call(function_name, scopes::Environment::Global, argument_keys, argument_expressions, scope)
+                        let functions = scope.resolve_functions(scopes::Environment::Global, function_name);
+
+                        self.link_function_call(functions, function_name, argument_keys, argument_expressions, scope)
                     }
                     _ => {
                         match callee.as_ref() {
@@ -323,7 +325,9 @@ impl <'a> ImperativeLinker<'a> {
                                     .chain(arguments.iter().map(|arg| self.link_expression(&arg.value, scope)))
                                     .try_collect()?;
 
-                                self.link_function_call(member_name, scopes::Environment::Member, argument_keys, argument_expressions, scope)
+                                let functions = scope.resolve_functions(scopes::Environment::Member, member_name);
+
+                                self.link_function_call(functions, member_name, argument_keys, argument_expressions, scope)
                             },
                             _ => {
                                 // Function call on some object
@@ -358,25 +362,39 @@ impl <'a> ImperativeLinker<'a> {
     }
 
     pub fn link_binary_function<'b>(&mut self, lhs: ExpressionID, operator: &'b String, rhs: ExpressionID, scope: &'b scopes::Hierarchy) -> Result<ExpressionID, LinkError> {
-        self.link_function_call(operator, scopes::Environment::Global, vec![ParameterKey::Positional, ParameterKey::Positional], vec![lhs, rhs], scope)
+        let functions = scope.resolve_functions(scopes::Environment::Global, operator);
+
+        self.link_function_call(
+            functions,
+            operator,
+            vec![ParameterKey::Positional, ParameterKey::Positional],
+            vec![lhs, rhs],
+            scope
+        )
     }
 
-    pub fn link_unary_function<'b>(&mut self, operator: &'b String, value: ExpressionID, scope: &'b scopes::Hierarchy) -> Result<ExpressionID, LinkError> {
-        self.link_function_call(operator, scopes::Environment::Global, vec![ParameterKey::Positional], vec![value], scope)
+    pub fn link_unary_function<'b>(&mut self, operator: &'b String, argument: ExpressionID, scope: &'b scopes::Hierarchy) -> Result<ExpressionID, LinkError> {
+        let functions = scope.resolve_functions(scopes::Environment::Global, operator);
+
+        self.link_function_call(
+            functions,
+            operator,
+            vec![ParameterKey::Positional],
+            vec![argument],
+            scope
+        )
     }
 
-    pub fn link_function_call(&mut self, fn_name: &String, environment: scopes::Environment, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Hierarchy) -> Result<ExpressionID, LinkError> {
+    pub fn link_function_call(&mut self, functions: &HashSet<Rc<FunctionPointer>>, fn_name: &String, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Hierarchy) -> Result<ExpressionID, LinkError> {
         // TODO Check if any arguments are void before anything else
         let seed = Uuid::new_v4();
-
-        let functions = scope.resolve_functions(environment, fn_name);
 
         let argument_keys: Vec<&ParameterKey> = argument_keys.iter().collect();
 
         let mut candidates_with_failed_signature = vec![];
         let mut candidates: Vec<Box<AmbiguousFunctionCandidate>> = vec![];
 
-        for fun in functions.into_iter().map(Rc::clone) {
+        for fun in functions.iter().map(Rc::clone) {
             let param_keys = fun.human_interface.parameter_names.iter().map(|x| &x.0).collect::<Vec<&ParameterKey>>();
             if param_keys != argument_keys {
                 candidates_with_failed_signature.push(fun);
