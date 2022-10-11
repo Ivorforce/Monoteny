@@ -53,7 +53,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 ### Monoteny 0.1 (Toy Language Stage)
 
 - [x] Project Skeleton
-  - [x] Number, String, Array Primitives
+  - [x] Number, String, Array Literals
 - [x] Functions
   - [x] Int-keyed parameters
   - [x] Single expression function definition syntax
@@ -102,6 +102,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] Varargs: Int keying with infinite parameters (syntax: `a...: Type[0...]` for `print(a, b)` and `a...: Type[String]` for `print(a: a, b: b)`)
   - [ ] Optionals
   - [ ] Sets
+  - [ ] Dict Literals
   - [ ] Iterators
   - [ ] Defaults (`a: $Float[Default]` for parameters to be omittable)
 
