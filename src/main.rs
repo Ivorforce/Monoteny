@@ -14,6 +14,7 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use clap::{arg, Command};
+use crate::linker::LinkError;
 
 fn cli() -> Command<'static> {
     Command::new("monoteny")
@@ -38,7 +39,7 @@ fn cli() -> Command<'static> {
         )
 }
 
-fn main() {
+fn main() -> Result<(), LinkError> {
     let matches = cli().get_matches();
     match matches.subcommand() {
         Some(("check", sub_matches)) => {
@@ -64,7 +65,7 @@ fn main() {
                     println!("{:?}", &syntax_tree);
                 }
 
-                let _ = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins).unwrap();
+                let _ = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;
             }
 
             println!("All files are valid .monoteny!");
@@ -87,7 +88,7 @@ fn main() {
             let syntax_tree = parser::parse_program(&content);
 
             let builtin_variable_scope = &builtins.global_constants;
-            let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins).unwrap();
+            let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;
 
             for output_extension in output_extensions {
                 match output_extension {
@@ -125,4 +126,6 @@ fn main() {
         },
         _ => unreachable!(),
     }
+
+    Ok(())
 }
