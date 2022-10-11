@@ -326,6 +326,11 @@ impl <'a> ImperativeLinker<'a> {
         )
     }
 
+    pub fn link_conjunctive_pairs(&mut self, arguments: Vec<ExpressionID>, operations: Vec<Rc<FunctionOverload>>) -> Result<ExpressionID, LinkError> {
+        todo!()
+    }
+
+
     pub fn link_function_call(&mut self, functions: &HashSet<Rc<FunctionPointer>>, fn_name: &String, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
         // TODO Check if any arguments are void before anything else
         let seed = Uuid::new_v4();

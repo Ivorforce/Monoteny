@@ -163,7 +163,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
 
     // Resolve binary operators. At this point, we have only expressions interspersed with operators.
 
-    let mut join_binary_at = |arguments: &mut Vec<ExpressionID>, operators: &mut Vec<Rc<FunctionOverload>>, i: usize| -> Result<(), LinkError> {
+    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<ExpressionID>, operators: &mut Vec<Rc<FunctionOverload>>, i: usize| -> Result<(), LinkError> {
         let lhs = arguments.remove(i);
         let rhs = arguments.remove(i);
         let operator = operators.remove(i);
@@ -189,7 +189,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                 let mut i = 0;
                 while i < operators.len() {
                     if group_operators.contains(&operators[i].name) {
-                        join_binary_at(&mut arguments, &mut operators, i)?;
+                        join_binary_at(linker, &mut arguments, &mut operators, i)?;
                     }
                     else {
                         i += 1;  // Skip
@@ -202,7 +202,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                 while i > 0 {
                     i -= 1;
                     if group_operators.contains(&operators[i].name) {
-                        join_binary_at(&mut arguments, &mut operators, i)?;
+                        join_binary_at(linker, &mut arguments, &mut operators, i)?;
                     }
                 }
             }
@@ -215,7 +215,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                             panic!("Cannot parse two neighboring {} operators because no associativity is defined.", &operators[i].name);
                         }
 
-                        join_binary_at(&mut arguments, &mut operators, i)?;
+                        join_binary_at(linker, &mut arguments, &mut operators, i)?;
                     }
 
                     i += 1;
@@ -233,7 +233,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
 
                     if i + 1 >= operators.len() || !group_operators.contains(&operators[i + 1].name) {
                         // Just one operation; let's use a binary operator.
-                        join_binary_at(&mut arguments, &mut operators, i)?;
+                        join_binary_at(linker, &mut arguments, &mut operators, i)?;
                         continue;
                     }
 
@@ -254,14 +254,10 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                     }
 
                     // Let's wrap this up.
-                    todo!("Conjunctive Pairs")
-                    // arguments.insert(
-                    //     i,
-                    //     Box::new(Expression::ConjunctivePairOperators {
-                    //         arguments: group_arguments,
-                    //         operators: group_operators
-                    //     }
-                    //     ));
+                    arguments.insert(i, linker.link_conjunctive_pairs(
+                        group_arguments,
+                        group_operators
+                    )?);
                 }
             }
             // Unary operators are already resolved at this stage.
