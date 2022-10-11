@@ -62,7 +62,6 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 - [x] Binary operators: + - * / || && > < >= <= == != % **
   - [x] Unary operators: + - !
   - [x] "Conjunctive Pairs" comparison syntax, ex.: a > b >= c == d
-  - [x] User-Defined Unary / Binary Operators
 
 ### Monoteny 0.2 (Proof of Concept Stage)
 
@@ -76,7 +75,9 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
       - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
     - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
     - [ ] Properties conforming to property-like functions (automatically?)
+      - [ ] Dynamic properties implemented as functions
     - [ ] Tuples (`tuple(x, y, z)` -> `trait<A> { let x: A, y: A, z: A }`)
+    - [ ] Deconstruction assignment
 - [ ] Non-linear linking (allow references to identifiers declared below)
 - [ ] Comments (with transpilation)
 - [x] Generics
@@ -86,12 +87,13 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
     - [x] ... with implicit trait conformance requirements (`$Number` -> `if $Number: Number {}`)
     - [ ] ... recursive (`$$Number: $Number`)
     - [x] ... in imperative code (coercing types)
-- [ ] Deconstructor Functions (e.g. `fun a[data: A] :: ...` or `fun {left: A} + (a: A, b: B) :: ...`) 
+- [x] Custom patterns with keywords (unary / binary operators)
+  - [ ] Custom precedence steps (with associativity) 
+  - [ ] Deconstruction for patterns (e.g. `fun a[data: A] :: ...` or `fun {left: A} + (a: A, b: B) :: ...`) 
 - [ ] 'equivalence transformation' syntax: `((a + b) * c).any()` becomes `a + b .. * c .. .any()`
   - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`
-- [ ] Var-Like 0 parameter function syntax (`let c = a.b`; `a.b = c`;)
 - [ ] Expression Scopes (`let a = { ... yield b; };`)
-- [ ] If / Else, if let, Guard, Guard let
+- [ ] If / Else, if let
 - [ ] Type Alias, aka `String = Character[Int...]` (defining functions on alias doesn't define them for the equal type)
   - [ ] Enums / Enum type inheritance (achieved through type alias)
 - [ ] Monads
