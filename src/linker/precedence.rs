@@ -136,7 +136,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
         return Err(LinkError::LinkError { msg: String::from("Expression missing the final argument.") })
     }
 
-    // Reduce all unary operators, and then add argument and operator to list
+    // Reduce all unary operators, and build interspersed arguments / operators list.
     while !tokens.is_empty() {
         guard!(let Token::Operator(operator) = tokens.remove(tokens.len() - 1) else {
             return Err(LinkError::LinkError { msg: String::from("Expecting an operator but got an expression.") })
@@ -153,6 +153,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
             }
         }
 
+        // Unary operator, because left of operator is an operator!
         let argument = arguments.remove(0);
         arguments.insert(0, linker.link_unary_function(&operator, argument, scope)?);
     }
@@ -173,14 +174,6 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
             linker.link_binary_function(lhs, &operator, rhs, scope)?
         ))
     };
-
-    // This algorithm works because of 2 assumptions:
-    // 1) Operator names are strictly disjunct to other expressions
-    // 2) Operators can only be left-unary or binary (with any associativity).
-    // We can infer that in a series of tokens with two neighboring operators,
-    // all operators that are not on the very left are unary, while the rest are binary.
-    // After this simple rule, we can interpret the rest as "(Id) (Op Id)+". Re-Parsing this
-    // simply means collapsing the highest precedence operators first.
 
     for (group, group_operators) in &scope.precedence_groups {
         match group.associativity {
