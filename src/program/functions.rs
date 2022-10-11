@@ -4,6 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use itertools::zip_eq;
 use uuid::Uuid;
+use crate::parser::abstract_syntax::PatternForm;
 use crate::program::allocation::{Mutability, Reference};
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::TypeProto;
@@ -12,7 +13,7 @@ use crate::program::types::TypeProto;
 pub enum FunctionForm {
     Global,
     Member,
-    Operator,
+    Pattern(PatternForm),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -33,6 +34,14 @@ pub struct FunctionPointer {
 
     pub human_interface: Rc<HumanFunctionInterface>,
     pub machine_interface: Rc<MachineFunctionInterface>,
+}
+
+/// Reference to a multiplicity of functions, usually resolved when attempting to call
+#[derive(Clone, PartialEq, Eq)]
+pub struct FunctionOverload {
+    pub pointers: HashSet<Rc<FunctionPointer>>,
+    pub name: String,
+    pub is_operator: bool,
 }
 
 pub struct HumanFunctionInterface {
@@ -72,7 +81,7 @@ impl FunctionPointer {
                 alphanumeric_name: String::from(alphanumeric_name),
                 parameter_names: zip_eq(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
                 parameter_names_internal: vec![],  // TODO Internal names shouldn't need to be specified for builtins?
-                form: FunctionForm::Operator,
+                form: FunctionForm::Pattern(if count == 1 { PatternForm::Unary } else { PatternForm::Unary }),
             }),
             machine_interface:Rc::new(MachineFunctionInterface {
                 parameters: parameters.into_iter().collect(),
@@ -108,6 +117,28 @@ impl FunctionPointer {
     }
 }
 
+impl FunctionOverload {
+    pub fn from(function: &Rc<FunctionPointer>) -> Rc<FunctionOverload> {
+        Rc::new(FunctionOverload {
+            pointers: HashSet::from([Rc::clone(function)]),
+            name: function.human_interface.name.clone(),
+            is_operator: function.human_interface.form.is_operator(),
+        })
+    }
+
+    pub fn adding_function(&self, function: &Rc<FunctionPointer>) -> Rc<FunctionOverload> {
+        if function.human_interface.form.is_operator() != self.is_operator {
+            panic!("Function has incompatible form.")
+        }
+
+        Rc::new(FunctionOverload {
+            pointers: self.pointers.iter().chain([function]).map(Rc::clone).collect(),
+            name: self.name.clone(),
+            is_operator: self.is_operator
+        })
+    }
+}
+
 impl PartialEq for FunctionPointer {
     fn eq(&self, other: &Self) -> bool {
         self.pointer_id == other.pointer_id
@@ -133,7 +164,10 @@ impl Debug for HumanFunctionInterface {
                 head += 1;
             },
             // TODO Unary operators?
-            FunctionForm::Operator => {}
+            FunctionForm::Pattern(form) => {
+
+                return Ok(())
+            }
         }
 
         write!(fmt, "{}(", self.name)?;
@@ -162,5 +196,14 @@ impl Debug for ParameterKey {
 impl ParameterKey {
     pub fn from_string(s: String) -> ParameterKey {
         if s == "_" { ParameterKey::Positional } else { ParameterKey::Name(s) }
+    }
+}
+
+impl FunctionForm {
+    pub fn is_operator(&self) -> bool {
+        match self {
+            FunctionForm::Pattern(_) => true,
+            _ => false
+        }
     }
 }

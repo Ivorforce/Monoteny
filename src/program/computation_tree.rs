@@ -26,10 +26,10 @@ pub enum ExpressionOperation {
     Primitive(primitives::Value),
     FunctionCall { function: Rc<FunctionPointer>, argument_targets: Vec<Rc<Reference>>, binding: Box<TraitBinding> },
     PairwiseOperations { functions: Vec<Rc<HumanFunctionInterface>> },
-    MemberLookup(String),
     VariableLookup(Rc<Reference>),
-    StringLiteral(String),
+    StructLiteral(Vec<String>),
     ArrayLiteral,
+    StringLiteral(String),
 }
 
 pub struct ExpressionForest {

@@ -16,4 +16,5 @@ lalrpop-util = { version = "^0.19.8", features = ["lexer"] }
 regex = "1"
 replace_with = "0.1.7"
 strum = { version = "0.24.1", features = ["derive"] }
+try_map = "0.3.1"
 uuid = { version = "1.1.2", features = ["v4"] }

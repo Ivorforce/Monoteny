@@ -10,16 +10,10 @@ pub struct Program {
     pub global_statements: Vec<Box<GlobalStatement>>
 }
 
-pub struct GlobalScope {
-    pub requirements: Option<Vec<Box<TraitDeclaration>>>,
-    pub statements: Vec<Box<GlobalStatement>>
-}
-
 pub enum GlobalStatement {
     FunctionDeclaration(Box<Function>),
     Operator(Box<Operator>),
     Pattern(Box<PatternDeclaration>),
-    Scope(Box<GlobalScope>),
 }
 
 pub struct Function {
@@ -28,13 +22,13 @@ pub struct Function {
     pub parameters: Vec<Box<KeyedParameter>>,
 
     pub body: Vec<Box<Statement>>,
-    pub return_type: Option<Box<TypeDeclaration>>,
+    pub return_type: Option<Expression>,
 }
 
 pub struct KeyedParameter {
     pub key: ParameterKey,
     pub internal_name: String,
-    pub param_type: Box<TypeDeclaration>,
+    pub param_type: Expression,
 }
 
 pub struct Operator {
@@ -43,12 +37,12 @@ pub struct Operator {
     pub rhs: Box<ContextualParameter>,
 
     pub body: Vec<Box<Statement>>,
-    pub return_type: Option<Box<TypeDeclaration>>,
+    pub return_type: Option<Expression>,
 }
 
 pub struct ContextualParameter {
     pub internal_name: String,
-    pub param_type: Box<TypeDeclaration>,
+    pub param_type: Expression,
 }
 
 pub enum MemberStatement {
@@ -64,60 +58,44 @@ pub struct PatternDeclaration {
     pub alias: String,
 }
 
-pub struct TraitDeclaration {
-    pub unit: String,
-    pub elements: Vec<Box<SpecializedType>>
-}
-
-pub struct SpecializedType {
-    pub unit: String,
-    pub elements: Option<Vec<Box<SpecializedType>>>
-}
-
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum PatternForm {
     Unary, Binary
 }
 
-// =============================== Type =====================================
-
-pub enum TypeDeclaration {
-    Identifier(String),
-    Monad { unit: Box<TypeDeclaration>, shape: Vec<Box<Expression>> }
-}
-
 // =============================== Code =====================================
+
+pub type Expression = Vec<Box<Term>>;
 
 pub enum Statement {
     VariableDeclaration {
         mutability: Mutability,
         identifier: String,
-        type_declaration: Option<Box<TypeDeclaration>>,
-        expression: Box<Expression>
+        type_declaration: Option<Expression>,
+        expression: Expression
     },
-    VariableAssignment { variable_name: String, new_value: Box<Expression> },
-    Expression(Box<Expression>),
-    Return(Option<Box<Expression>>),
+    VariableAssignment { variable_name: String, new_value: Expression },
+    Expression(Expression),
+    Return(Option<Expression>),
 }
 
-pub enum Expression {
-    Int(String),
-    Float(String),
-    Bool(bool),
-    BinaryOperator { lhs: Box<Expression>, operator: String, rhs: Box<Expression> },
-    UnaryOperator { operator: String, argument: Box<Expression> },
-    ConjunctivePairOperators { arguments: Vec<Box<Expression>>, operators: Vec<String> },
-    UnsortedBinaryOperators { arguments: Vec<Box<Expression>>, operators: Vec<String> },
-    FunctionCall { call_type: FunctionCallType, callee: Box<Expression>, arguments: Vec<Box<PassedArgument>> },
-    MemberLookup { target: Box<Expression>, member_name: String },
-    VariableLookup(String),
-    ArrayLiteral(Vec<Box<Expression>>),
+pub enum Term {
+    Identifier(String),
+    Number(String),
+    MemberAccess { target: Box<Term>, member_name: String },
+    Struct(Vec<StructArgument>),
+    Array(Vec<ArrayArgument>),
     StringLiteral(String),
 }
 
-pub struct PassedArgument {
+pub struct StructArgument {
     pub key: ParameterKey,
-    pub value: Box<Expression>,
+    pub value: Expression,
+}
+
+pub struct ArrayArgument {
+    pub key: Option<Expression>,
+    pub value: Expression,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -128,38 +106,12 @@ pub enum FunctionCallType {
 
 // =============================== String =====================================
 
-fn is_simple(expression: &Expression) -> bool {
-    match expression {
-        Expression::Int(_) => true,
-        Expression::Float(_) => true,
-        Expression::Bool(_) => true,
-        Expression::BinaryOperator { .. } => false,
-        Expression::UnsortedBinaryOperators { .. } => false,
-        Expression::ConjunctivePairOperators { .. } => false,
-        Expression::UnaryOperator { .. } => true,
-        Expression::FunctionCall { .. } => true,
-        Expression::MemberLookup { .. } => true,
-        Expression::VariableLookup(_) => true,
-        Expression::ArrayLiteral(_) => true,
-        Expression::StringLiteral(_) => true,
-    }
-}
-
 impl Mutability {
     fn variable_declaration_keyword(&self) -> &str {
         match *self {
             Mutable => "var",
             Immutable => "let",
         }
-    }
-}
-
-fn write_maybe_parenthesized_expression(fmt: &mut Formatter, expression: &Expression) -> Result<(), Error> {
-    if is_simple(expression) {
-        write!(fmt, "{:?}", expression)
-    }
-    else {
-        write!(fmt, "({:?})", expression)
     }
 }
 
@@ -179,16 +131,6 @@ impl Debug for GlobalStatement {
             FunctionDeclaration(function) => write!(fmt, "{:?}", function),
             Pattern(pattern) => write!(fmt, "{:?}", pattern),
             Operator(operator) => write!(fmt, "{:?}", operator),
-            Scope(scope) => {
-                if let Some(requirements) = &scope.requirements {
-                    write!(fmt, "if ")?;
-                    for item in requirements.iter() { write!(fmt, "{:?}, ", item)? };
-                }
-                write!(fmt, "{{")?;
-                for item in scope.statements.iter() { write!(fmt, "{:?}\n\n", item)? };
-                write!(fmt, "}}")?;
-                return Ok(())
-            }
         }
     }
 }
@@ -231,21 +173,6 @@ impl Debug for Operator {
     }
 }
 
-impl Debug for TypeDeclaration {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::TypeDeclaration::*;
-        match self {
-            Identifier(name) => write!(fmt, "{}", name),
-            Monad { unit, shape } => {
-                write!(fmt, "{:?}[", unit)?;
-                for item in shape { write!(fmt, "{:?},", item)? };
-                write!(fmt, "]")?;
-                return Ok(())
-            }
-        }
-    }
-}
-
 impl Debug for PatternDeclaration {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "// alias: {}\n", &self.alias)?;
@@ -274,52 +201,37 @@ impl Debug for Statement {
     }
 }
 
-impl Debug for Expression {
+impl Debug for Term {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::Expression::*;
+        use self::Term::*;
         match self {
-            Int(n) => write!(fmt, "{:?}", n),
-            Float(n) => write!(fmt, "{:?}", n),
-            BinaryOperator { lhs, operator, rhs } => {
-                write_maybe_parenthesized_expression(fmt, lhs.as_ref())?;
-                write!(fmt, " {:?} ", operator)?;
-                write_maybe_parenthesized_expression(fmt, rhs.as_ref())?;
-                return Ok(())
-            },
-            UnaryOperator { operator, argument } => write!(fmt, "{:?}{:?}", operator, argument),
-            UnsortedBinaryOperators { .. } => {
-                panic!("Cannot debug at this stage; please run parser fully before printing.")
-            }
-            ConjunctivePairOperators { arguments, operators } => {
-                for (argument, operator) in zip_eq(arguments, operators) {
-                    write_maybe_parenthesized_expression(fmt, argument.as_ref())?;
-                    write!(fmt, " {:?} ", operator)?;
-                }
-                write_maybe_parenthesized_expression(fmt, arguments.last().unwrap().as_ref())?;
-                return Ok(())
-            },
-            FunctionCall { call_type, callee, arguments } => {
-                let brackets = call_type.bracket_str();
-                write!(fmt, "{:?}{}", callee, brackets.chars().nth(0).unwrap())?;
+            Identifier(s) => write!(fmt, "{}", s),
+            Number(s) => write!(fmt, "{}", s),
+            StringLiteral(string) => write!(fmt, "{:?}", string),
+            MemberAccess { target, member_name } =>  write!(fmt, "{:?}.{}", target, member_name),
+            Struct(arguments) => {
+                write!(fmt, "(")?;
                 write_comma_separated_list(fmt, arguments)?;
-                write!(fmt, "{}", brackets.chars().nth(1).unwrap())?;
+                write!(fmt, ")")?;
                 return Ok(())
             },
-            VariableLookup(id) => write!(fmt, "{}", id),
-            MemberLookup { target, member_name } => write!(fmt, "{:?}.{}", target, member_name),
-            ArrayLiteral(items) => {
+            Array(arguments) => {
                 write!(fmt, "[")?;
-                write_comma_separated_list(fmt, items)?;
+                write_comma_separated_list(fmt, arguments)?;
                 write!(fmt, "]")?;
                 return Ok(())
             },
-            StringLiteral(string) => write!(fmt, "{:?}", string),
-            Bool(value) => write!(fmt, "{}", value),
         }
     }
 }
 
-impl Debug for PassedArgument {
+impl Debug for StructArgument {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "{:?}: {:?}", self.key, self.value)
+    }
+}
+
+impl Debug for ArrayArgument {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "{:?}: {:?}", self.key, self.value)
     }
@@ -337,27 +249,6 @@ impl Debug for ContextualParameter {
     }
 }
 
-impl Debug for TraitDeclaration {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{:?}<", self.unit)?;
-        write_comma_separated_list(fmt, &self.elements)?;
-        write!(fmt, ">")?;
-        return Ok(())
-    }
-}
-
-impl Debug for SpecializedType {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{:?}", self.unit)?;
-        if let Some(arguments) = &self.elements {
-            write!(fmt, "<")?;
-            write_comma_separated_list(fmt, arguments)?;
-            write!(fmt, ">")?;
-        }
-        return Ok(())
-    }
-}
-
 impl FunctionCallType {
     fn bracket_str(&self) -> &str {
         use self::FunctionCallType::*;
@@ -365,41 +256,5 @@ impl FunctionCallType {
             Call => "()",
             Subscript => "[]",
         };
-    }
-}
-
-impl TypeDeclaration {
-    pub fn add_type_names<'a>(&'a self, items: &mut Vec<&'a String>) {
-        match self {
-            TypeDeclaration::Identifier(s) => items.push(s),
-            TypeDeclaration::Monad { unit, shape } => {
-                unit.add_type_names(items);
-                // TODO Shape
-            }
-        }
-    }
-}
-
-impl Function {
-    pub fn gather_type_names<'a>(&'a self) -> Vec<&'a String> {
-        let mut type_names = Vec::new();
-
-        self.return_type.iter().for_each(|x| x.add_type_names(&mut type_names));
-        self.parameters.iter().for_each(|x| x.param_type.add_type_names(&mut type_names));
-        self.target.iter().for_each(|x| x.param_type.add_type_names(&mut type_names));
-
-        type_names
-    }
-}
-
-impl Operator {
-    pub fn gather_type_names<'a>(&'a self) -> Vec<&'a String> {
-        let mut type_names = Vec::new();
-
-        self.return_type.iter().for_each(|x| x.add_type_names(&mut type_names));
-        self.lhs.iter().for_each(|x| x.param_type.add_type_names(&mut type_names));
-        self.rhs.param_type.add_type_names(&mut type_names);
-
-        type_names
     }
 }

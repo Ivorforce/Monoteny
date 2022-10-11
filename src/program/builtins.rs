@@ -7,7 +7,7 @@ use precedence::PrecedenceGroups;
 use crate::linker::scopes;
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::parser;
-use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
+use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::types::*;
 use crate::program::primitives;
 use crate::program;
@@ -25,8 +25,7 @@ pub struct Builtins {
     pub structs: Structs,
     pub precedence_groups: PrecedenceGroups,
 
-    pub parser_constants: parser::scopes::Level,
-    pub global_constants: scopes::Level,
+    pub global_constants: scopes::Scope<'static>,
 }
 
 pub struct Operators {
@@ -136,13 +135,13 @@ pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
 }
 
 pub fn create_builtins() -> Rc<Builtins> {
-    let mut constants: scopes::Level = scopes::Level::new();
+    let mut constants: scopes::Scope = scopes::Scope::new();
 
     let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
     let generic_id = Uuid::new_v4();
     let generic_type = TypeProto::unit(TypeUnit::Any(generic_id));
 
-    let add_struct = |constants: &mut scopes::Level, name: &str| -> Rc<Struct> {
+    let add_struct = |constants: &mut scopes::Scope, name: &str| -> Rc<Struct> {
         let name = String::from(name);
 
         let s = Rc::new(Struct {
@@ -161,8 +160,7 @@ pub fn create_builtins() -> Rc<Builtins> {
     };
 
 
-    let mut parser_scope = parser::scopes::Level::new();
-    let precedence_groups = precedence::make_groups(&mut parser_scope);
+    let precedence_groups = precedence::make_groups(&mut constants);
 
 
     let make_trait = |name: &str, generic_id: &Uuid, fns: Vec<&Rc<FunctionPointer>>, parents: Vec<Rc<Trait>>| -> Rc<Trait> {
@@ -223,7 +221,7 @@ pub fn create_builtins() -> Rc<Builtins> {
         &abstract_eq_functions.equal_to,
         &abstract_eq_functions.not_equal_to,
     ], vec![]);
-    constants.add_trait(&eq_trait);
+    constants.insert_trait(&eq_trait);
 
     let abstract_number_functions = make_number_functions(&generic_type);
 
@@ -233,7 +231,7 @@ pub fn create_builtins() -> Rc<Builtins> {
         &abstract_number_functions.lesser_than,
         &abstract_number_functions.lesser_than_or_equal_to,
     ], vec![Rc::clone(&eq_trait)]);
-    constants.add_trait(&ord_trait);
+    constants.insert_trait(&ord_trait);
 
     let number_trait = make_trait("Number", &generic_id, vec![
         &abstract_number_functions.add,
@@ -246,13 +244,13 @@ pub fn create_builtins() -> Rc<Builtins> {
 
         &abstract_number_functions.modulo,
     ], vec![Rc::clone(&ord_trait)]);
-    constants.add_trait(&number_trait);
+    constants.insert_trait(&number_trait);
 
     let float_trait = make_trait("Float", &generic_id, vec![], vec![Rc::clone(&number_trait)]);
-    constants.add_trait(&float_trait);
+    constants.insert_trait(&float_trait);
 
     let int_trait = make_trait("Int", &generic_id, vec![], vec![Rc::clone(&number_trait)]);
-    constants.add_trait(&int_trait);
+    constants.insert_trait(&int_trait);
 
     let traits = Traits {
         all: [&eq_trait, &ord_trait, &number_trait, &float_trait, &int_trait].map(Rc::clone).into_iter().collect(),
@@ -264,9 +262,9 @@ pub fn create_builtins() -> Rc<Builtins> {
     };
 
 
-    let mut add_function = |function: &Rc<FunctionPointer>, category: &mut HashSet<Rc<FunctionPointer>>, constants: &mut scopes::Level| {
+    let mut add_function = |function: &Rc<FunctionPointer>, category: &mut HashSet<Rc<FunctionPointer>>, constants: &mut scopes::Scope| {
         category.insert(Rc::clone(&function));
-        constants.add_function(&function);
+        constants.overload_function(&function);
     };
 
     for primitive_type in primitives::Type::iter() {
@@ -346,7 +344,7 @@ pub fn create_builtins() -> Rc<Builtins> {
 
         if primitive_type.is_float() {
             let exp_op = FunctionPointer::make_operator("**", "exponentiate", 2, type_, type_);
-            constants.add_function(&exp_op);
+            constants.overload_function(&exp_op);
             exp_ops.insert(Rc::clone(&exp_op));
 
             constants.trait_conformance_declarations.add(
@@ -362,17 +360,17 @@ pub fn create_builtins() -> Rc<Builtins> {
     }
 
     let and_op = FunctionPointer::make_operator("&&", "and", 2, &bool_type, &bool_type);
-    constants.add_function(&and_op);
+    constants.overload_function(&and_op);
 
     let or__op = FunctionPointer::make_operator("||", "or", 2, &bool_type, &bool_type);
-    constants.add_function(&or__op);
+    constants.overload_function(&or__op);
 
     let not_op = FunctionPointer::make_operator("!", "not", 1, &bool_type, &bool_type);
-    constants.add_function(&not_op);
+    constants.overload_function(&not_op);
 
 
     let print_function = FunctionPointer::make_global("print", "print", [generic_type.clone()].into_iter(), TypeProto::void());
-    constants.add_function(&print_function);
+    constants.overload_function(&print_function);
 
     Rc::new(Builtins {
         traits,
@@ -407,7 +405,6 @@ pub fn create_builtins() -> Rc<Builtins> {
         },
         precedence_groups,
         primitive_metatypes,
-        parser_constants: parser_scope,
         global_constants: constants,
     })
 }

@@ -49,20 +49,22 @@ fn main() {
                 .collect::<Vec<_>>();
             let should_output_tree = sub_matches.is_present("TREE");
 
+            let builtins = program::builtins::create_builtins();
+            let builtin_variable_scope = &builtins.global_constants;
+
             for path in paths {
                 println!("Checking {:?}...", path);
 
                 let content = std::fs::read_to_string(&path)
                     .expect("could not read file");
 
-                let builtins = program::builtins::create_builtins();
-
-                let mut global_parser_scope = builtins.parser_constants.sublevel();
-                let syntax_tree = parser::parse_program(&content, &mut global_parser_scope);
+                let syntax_tree = parser::parse_program(&content);
 
                 if should_output_tree {
-                    println!("{:?}", syntax_tree);
+                    println!("{:?}", &syntax_tree);
                 }
+
+                let _ = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins).unwrap();
             }
 
             println!("All files are valid .monoteny!");
@@ -82,11 +84,10 @@ fn main() {
 
             let builtins = program::builtins::create_builtins();
 
-            let mut global_parser_scope = builtins.parser_constants.sublevel();
-            let syntax_tree = parser::parse_program(&content, &mut global_parser_scope);
+            let syntax_tree = parser::parse_program(&content);
 
-            let builtin_variable_scope = builtins.global_constants.as_global_scope();
-            let computation_tree = linker::link_program(syntax_tree, &global_parser_scope, &builtin_variable_scope, &builtins).unwrap();
+            let builtin_variable_scope = &builtins.global_constants;
+            let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins).unwrap();
 
             for output_extension in output_extensions {
                 match output_extension {

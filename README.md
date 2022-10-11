@@ -66,33 +66,34 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 
 ### Monoteny 0.2 (Proof of Concept Stage)
 
-- [x] Forward generic type checking
 - [x] Traits
   - [x] Requirements (`if Number<A> {}`)
-  - [x] Anonymous generics (`#A`)
-    - [x] ... with implicit conformance requirements (`$Number` -> `if $Number: Number {}`)
-    - [ ] ... recursive (`$$Number: $Number`)
-    - [ ] ... in imperative code (coercing types)
   - [x] Inheritance (`if Number<#A> { trait OtherTrait<#A> }`)
   - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
   - [ ] Abstract Functions, Conformance Declarations
-  - [ ] Stored Properties (1-argument traits only)
-    - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only on single-argument, non abstract
+  - [ ] Stored Properties (for traits with associated Self)
+    - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract
       - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
     - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
     - [ ] Properties conforming to property-like functions (automatically?)
     - [ ] Tuples (`tuple(x, y, z)` -> `trait<A> { let x: A, y: A, z: A }`)
 - [ ] Non-linear linking (allow references to identifiers declared below)
 - [ ] Comments (with transpilation)
-- [x] Reverse generic type checking (output types determined from inputs)
-- [ ] Subscript function syntax
+- [x] Generics
+  - [x] Reverse generic type checking (output types determined from inputs)
+  - [ ] Generic constants (`let pi = 3.1415926`, inferred type: `$Float`)
+  - [x] Anonymous generics (`#A`)
+    - [x] ... with implicit trait conformance requirements (`$Number` -> `if $Number: Number {}`)
+    - [ ] ... recursive (`$$Number: $Number`)
+    - [x] ... in imperative code (coercing types)
+- [ ] Deconstructor Functions (e.g. `fun a[data: A] :: ...` or `fun {left: A} + (a: A, b: B) :: ...`) 
 - [ ] 'equivalence transformation' syntax: `((a + b) * c).any()` becomes `a + b .. * c .. .any()`
   - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`
 - [ ] Var-Like 0 parameter function syntax (`let c = a.b`; `a.b = c`;)
-- [ ] Expression Scopes (`let a = { ... yield b; }`)
+- [ ] Expression Scopes (`let a = { ... yield b; };`)
 - [ ] If / Else, if let, Guard, Guard let
-- [ ] Type Alias, aka String = Character[Int...] (but no coercion Character[Int...] -> String)
-- [ ] Enums / Enum type inheritance
+- [ ] Type Alias, aka `String = Character[Int...]` (defining functions on alias doesn't define them for the equal type)
+  - [ ] Enums / Enum type inheritance (achieved through type alias)
 - [ ] Monads
   - [ ] Tuple Dimension Index
   - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
@@ -113,6 +114,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 - [ ] Local functions and declarations
   - [ ] Anonymous functions
 - [ ] String Comprehension
+- [ ] Imports and Namespaces
 - [ ] Non-Varargs subscripts and subscript overloads
 - [ ] Indeterministic polymorphism
   - [ ] Virtual function tables

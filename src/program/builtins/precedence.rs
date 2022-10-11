@@ -2,7 +2,9 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use uuid::Uuid;
 use crate::parser;
-use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
+use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
+use crate::linker::scopes;
+use crate::parser::abstract_syntax::PatternForm;
 use crate::program::types::Pattern;
 
 #[allow(non_snake_case)]
@@ -16,41 +18,45 @@ pub struct PrecedenceGroups {
     pub LogicalDisjunctionPrecedence: Rc<PrecedenceGroup>,
 }
 
-pub fn make_groups(parser_scope: &mut parser::scopes::Level) -> PrecedenceGroups {
-    let add_precedence_group = |scope: &mut parser::scopes::Level, name: &str, associativity: OperatorAssociativity, operators: Vec<(&str, &str)>| -> Rc<PrecedenceGroup> {
-        let group = Rc::new(PrecedenceGroup::new(name, associativity));
+pub fn make_groups(scope: &mut scopes::Scope) -> PrecedenceGroups {
+    let add_precedence_group = |scope: &mut scopes::Scope, name: &str, associativity: OperatorAssociativity, operators: Vec<(&str, &str)>| -> Rc<PrecedenceGroup> {
+        let group = Rc::new(PrecedenceGroup::new(
+            name,
+            associativity,
+            if associativity == OperatorAssociativity::LeftUnary { PatternForm::Unary } else { PatternForm::Binary }
+        ));
         scope.precedence_groups.push((Rc::clone(&group), HashSet::new()));
 
         for (operator, alias) in operators {
-            scope.add_pattern(Pattern {
+            scope.add_pattern(Rc::new(Pattern {
                 id: Uuid::new_v4(),
                 operator: String::from(operator),
                 alias: String::from(alias),
                 precedence_group: Rc::clone(&group),
-            });
+            }));
         }
         group
     };
 
     PrecedenceGroups {
         LeftUnaryPrecedence: add_precedence_group(
-            parser_scope, "LeftUnaryPrecedence", OperatorAssociativity::LeftUnary,
+            scope, "LeftUnaryPrecedence", OperatorAssociativity::LeftUnary,
             vec![("+", "positive"), ("-", "negative"), ("!", "not")]
         ),
         ExponentiationPrecedence: add_precedence_group(
-            parser_scope, "ExponentiationPrecedence", OperatorAssociativity::Right,
+            scope, "ExponentiationPrecedence", OperatorAssociativity::Right,
             vec![("**", "exponentiate")]
         ),
         MultiplicationPrecedence: add_precedence_group(
-            parser_scope, "MultiplicationPrecedence", OperatorAssociativity::Left,
+            scope, "MultiplicationPrecedence", OperatorAssociativity::Left,
             vec![("*", "multiply"), ("/", "divide"), ("%", "modulo")]
         ),
         AdditionPrecedence: add_precedence_group(
-            parser_scope, "AdditionPrecedence", OperatorAssociativity::Left,
+            scope, "AdditionPrecedence", OperatorAssociativity::Left,
             vec![("+", "add"), ("-", "subtract")]
         ),
         ComparisonPrecedence: add_precedence_group(
-            parser_scope, "ComparisonPrecedence", OperatorAssociativity::ConjunctivePairs,
+            scope, "ComparisonPrecedence", OperatorAssociativity::ConjunctivePairs,
             vec![
                 ("==", "is_equal"), ("!=", "is_not_equal"),
                 (">", "is_greater"), (">=", "is_greater_or_equal"),
@@ -58,11 +64,11 @@ pub fn make_groups(parser_scope: &mut parser::scopes::Level) -> PrecedenceGroups
             ]
         ),
         LogicalConjunctionPrecedence: add_precedence_group(
-            parser_scope, "LogicalConjunctionPrecedence", OperatorAssociativity::Left,
+            scope, "LogicalConjunctionPrecedence", OperatorAssociativity::Left,
             vec![("&&", "and")]
         ),
         LogicalDisjunctionPrecedence: add_precedence_group(
-            parser_scope, "LogicalDisjunctionPrecedence", OperatorAssociativity::Left,
+            scope, "LogicalDisjunctionPrecedence", OperatorAssociativity::Left,
             vec![("||", "or")]
         ),
     }

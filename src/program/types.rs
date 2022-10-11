@@ -6,8 +6,8 @@ use std::collections::{HashMap, HashSet};
 use std::ops::BitXor;
 use guard::guard;
 use crate::program::traits::{Trait, TraitConformanceRequirement};
-use crate::parser::associativity::{OperatorAssociativity, PrecedenceGroup};
-use crate::program::functions::{FunctionPointer, HumanFunctionInterface};
+use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
+use crate::program::functions::{FunctionOverload, FunctionPointer, HumanFunctionInterface, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 
 use crate::program::primitives;
@@ -29,8 +29,9 @@ pub enum TypeUnit {
     Monad,
     Primitive(primitives::Type),
     Struct(Rc<Struct>),
+    AnonymousStruct(Vec<ParameterKey>),
     Trait(Rc<Trait>),
-    FunctionOverload(HashSet<Rc<FunctionPointer>>),  // Reference to a multiplicity of functions, usually resolved when attempting to call
+    FunctionOverload(Rc<FunctionOverload>),
     PrecedenceGroup(Rc<PrecedenceGroup>),
 }
 
@@ -74,6 +75,11 @@ impl Debug for TypeUnit {
             MetaType => write!(fmt, "MetaType"),
             PrecedenceGroup(p) => write!(fmt, "{:?}", p.name),
             Void => write!(fmt, "Void"),
+            AnonymousStruct(names) => {
+                write!(fmt, "(")?;
+                write_comma_separated_list(fmt, names)?;
+                write!(fmt, ")")
+            }
         }
     }
 }

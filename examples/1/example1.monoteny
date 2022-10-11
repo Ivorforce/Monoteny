@@ -1,7 +1,7 @@
 // alias: floor_div
-pattern {} /. {} :: MultiplicationPrecedence;
+pattern(MultiplicationPrecedence) :: {} /_ {};
 
-fun {lhs: $Float} /. {rhs: $Float} -> $Float :: lhs / rhs;
+fun {lhs: $Float} /_ {rhs: $Float} -> $Float :: lhs / rhs;
 
 fun square(_ a: $Number) -> $Number :: a * a;
 fun {self: $Number}.square() -> $Number :: square(self);
@@ -12,8 +12,7 @@ fun main() :: {
     let a: Float32 = 2.2.square() * 3;
 
     var b = square(5);
-    b = b.square() ** 2.2 /. a;
+    b = b.square() ** -2.2 /_ a;
 
-    print(a);
     print(b < 2 || a > 2);
 }

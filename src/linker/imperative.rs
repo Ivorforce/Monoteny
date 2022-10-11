@@ -4,19 +4,21 @@ use uuid::Uuid;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use strum::IntoEnumIterator;
+use try_map::{FallibleMapExt, FlipResultExt};
 use crate::linker;
 use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation, Statement};
-use crate::linker::global::link_type;
-use crate::linker::{LinkError, scopes};
+use crate::linker::{LinkError, precedence, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberPrimitive, LinkerAmbiguity};
+use crate::linker::precedence::{link_patterns};
+use crate::linker::r#type::TypeFactory;
 use crate::parser::abstract_syntax;
 use crate::program::allocation::{Mutability, Reference};
 use crate::program::builtins::Builtins;
-use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
+use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
 use crate::program::primitives;
-use crate::program::traits::{TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
+use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
@@ -27,20 +29,26 @@ pub struct ImperativeLinker<'a> {
     pub expressions: Box<ExpressionForest>,
     pub ambiguities: Vec<Box<dyn LinkerAmbiguity>>,
 
-    pub conformance_delegations: &'a HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
     pub variable_names: HashMap<Rc<Reference>, String>,
 }
 
 impl <'a> ImperativeLinker<'a> {
-    pub fn link_function_body(mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Hierarchy) -> Result<Rc<FunctionImplementation>, LinkError> {
-        let mut parameter_variables = scopes::Level::new();
-
-        for (internal_name, (_, variable)) in zip_eq(self.function.human_interface.parameter_names_internal.iter(), self.function.human_interface.parameter_names.iter()) {
-            parameter_variables.insert_singleton(scopes::Environment::Global, variable.clone(), internal_name);
+    pub fn link_function_body(mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Rc<FunctionImplementation>, LinkError> {
+        let mut conformance_delegations = HashMap::new();
+        let mut scope = scope.subscope();
+        for requirement in self.function.machine_interface.requirements.iter() {
+            let declaration = Trait::assume_granted(&requirement.trait_, requirement.arguments.clone());
+            scope.add_trait_conformance(&declaration);
+            conformance_delegations.insert(Rc::clone(requirement), declaration);
         }
 
-        let subscope = scope.subscope(&parameter_variables);
-        let statements: Vec<Box<Statement>> = self.link_top_scope(body, &subscope)?;
+        // TODO Register generics as variables so they can be referenced in the function
+
+        for (internal_name, (_, variable)) in zip_eq(self.function.human_interface.parameter_names_internal.iter(), self.function.human_interface.parameter_names.iter()) {
+            scope.insert_singleton(scopes::Environment::Global, variable.clone(), internal_name);
+        }
+
+        let statements: Vec<Box<Statement>> = self.link_top_scope(body, &scope)?;
 
         let mut has_changed = true;
         while !self.ambiguities.is_empty() {
@@ -73,11 +81,11 @@ impl <'a> ImperativeLinker<'a> {
             statements,
             expression_forest: self.expressions,
             variable_names: self.variable_names.clone(),
-            conformance_delegations: self.conformance_delegations.clone()
+            conformance_delegations
         }))
     }
 
-    pub fn link_top_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Hierarchy) -> Result<Vec<Box<Statement>>, LinkError> {
+    pub fn link_top_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
         if self.function.machine_interface.return_type.unit.is_void() {
             if let [statement] = &body[..] {
                 if let abstract_syntax::Statement::Expression(expression ) = statement.as_ref() {
@@ -123,8 +131,8 @@ impl <'a> ImperativeLinker<'a> {
         Ok(expression_id)
     }
 
-    pub fn link_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Hierarchy) -> Result<Vec<Box<Statement>>, LinkError> {
-        let mut local_variables = scopes::Level::new();
+    pub fn link_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
+        let mut scope = scope.subscope();
         let mut statements: Vec<Box<Statement>> = Vec::new();
 
         for statement in body.iter() {
@@ -132,11 +140,25 @@ impl <'a> ImperativeLinker<'a> {
                 abstract_syntax::Statement::VariableDeclaration {
                     mutability, identifier, type_declaration, expression
                 } => {
-                    let subscope = scope.subscope(&local_variables);
-                    let new_value: ExpressionID = self.link_expression(&expression, &subscope)?;
+                    let new_value: ExpressionID = self.link_expression(&expression, &scope)?;
 
                     if let Some(type_declaration) = type_declaration {
-                        let type_declaration = link_type(&type_declaration, &subscope);
+                        let mut type_factory = TypeFactory::new(&scope);
+
+                        let type_declaration = type_factory.link_type(&type_declaration)?;
+
+                        for requirement in type_factory.requirements {
+                            todo!("Implicit imperative requirements are not implemented yet")
+                        }
+
+                        for (name, generic) in type_factory.generics.into_iter() {
+                            scope.insert_singleton(
+                                scopes::Environment::Global,
+                                Reference::make_immutable(TypeProto::unit(generic.clone())),
+                                &name
+                            );
+                        }
+
                         self.expressions.type_forest.bind(new_value, type_declaration.as_ref())?;
                     }
 
@@ -150,17 +172,15 @@ impl <'a> ImperativeLinker<'a> {
                         Statement::VariableAssignment(Rc::clone(&variable), new_value)
                     ));
                     self.variable_names.insert(Rc::clone(&variable), identifier.clone());
-                    local_variables.push_variable(scopes::Environment::Global, variable, identifier);
+                    scope.override_variable(scopes::Environment::Global, variable, identifier);
                 },
                 abstract_syntax::Statement::Return(expression) => {
-                    let subscope = scope.subscope(&local_variables);
-
                     if let Some(expression) = expression {
                         if self.function.machine_interface.return_type.unit.is_void() {
                             panic!("Return statement offers a value when the function declares void.")
                         }
 
-                        let result: ExpressionID = self.link_expression(expression.as_ref(), &subscope)?;
+                        let result: ExpressionID = self.link_expression(expression.as_ref(), &scope)?;
 
                         self.expressions.type_forest.bind(result, &self.function.machine_interface.return_type.as_ref())?;
                         statements.push(Box::new(Statement::Return(Some(result))));
@@ -174,19 +194,17 @@ impl <'a> ImperativeLinker<'a> {
                     }
                 },
                 abstract_syntax::Statement::Expression(expression) => {
-                    let subscope = scope.subscope(&local_variables);
-                    let expression: ExpressionID = self.link_expression(&expression, &subscope)?;
+                    let expression: ExpressionID = self.link_expression(&expression, &scope)?;
                     statements.push(Box::new(Statement::Expression(expression)));
                 }
                 abstract_syntax::Statement::VariableAssignment { variable_name, new_value } => {
-                    let subscope = scope.subscope(&local_variables);
-                    let variable = subscope.resolve(scopes::Environment::Global, variable_name);
+                    let variable = scope.resolve(scopes::Environment::Global, variable_name)?;
 
                     if variable.mutability == Mutability::Immutable {
                         panic!("Cannot assign to immutable variable '{}'.", variable_name);
                     }
 
-                    let new_value: ExpressionID = self.link_expression(&new_value, &subscope)?;
+                    let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
                     self.expressions.type_forest.bind(new_value, variable.type_declaration.as_ref())?;
 
                     statements.push(Box::new(
@@ -199,193 +217,116 @@ impl <'a> ImperativeLinker<'a> {
         Ok(statements)
     }
 
-    pub fn link_expression(&mut self, syntax: &abstract_syntax::Expression, scope: &scopes::Hierarchy) -> Result<ExpressionID, LinkError> {
-        match syntax {
-            abstract_syntax::Expression::Int(string) => {
-                self.link_primitive(
-                    string,
-                    primitives::Type::iter()
-                        .filter(primitives::Type::is_number)
-                )
-            },
-            abstract_syntax::Expression::Float(string) => {
-                self.link_primitive(
-                    string,
-                    primitives::Type::iter()
-                        .filter(primitives::Type::is_float)
-                )
-            },
-            abstract_syntax::Expression::Bool(n) => {
-                let value = primitives::Value::Bool(n.clone());
+    pub fn link_expression(&mut self, syntax: &abstract_syntax::Expression, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
+        let arguments: Vec<precedence::Token> = syntax.iter().map(|a| {
+            self.link_term(a, scope)
+        }).try_collect()?;
 
-                self.link_unambiguous_expression(
-                    vec![],
-                    &TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool)),
-                    ExpressionOperation::Primitive(value)
-                )
-            },
-            abstract_syntax::Expression::StringLiteral(string) => {
-                self.link_unambiguous_expression(
-                    vec![],
-                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.structs.String))),
-                    ExpressionOperation::StringLiteral(string.clone())
-                )
-            },
-            abstract_syntax::Expression::ArrayLiteral(raw_elements) => {
-                let elements: Vec<ExpressionID>= raw_elements.iter()
-                    .map(|x| self.link_expression(x, scope))
-                    .try_collect()?;
+        link_patterns(arguments, scope, self)
+    }
 
-                // TODO Wrap error if it occurs
-                let supertype = self.expressions.type_forest.merge_all(&elements).unwrap().clone();
+    pub fn link_term(&mut self, syntax: &abstract_syntax::Term, scope: &scopes::Scope) -> Result<precedence::Token, LinkError> {
+        Ok(match syntax {
+            abstract_syntax::Term::Identifier(s) => {
+                if s == "true" || s == "false" {
+                    // TODO Once we have constants, register these as constants instead.
+                    //  Yes, that makes them shadowable. Sue me.
+                    let value = primitives::Value::Bool(s == "true");
 
-                self.link_unambiguous_expression(
-                    vec![],
-                    &TypeProto::monad(TypeProto::unit(TypeUnit::Generic(supertype))),
-                    ExpressionOperation::ArrayLiteral
-                )
-            },
-            abstract_syntax::Expression::BinaryOperator { lhs, operator, rhs } => {
-                let lhs = self.link_expression(lhs, scope)?;
-                let rhs = self.link_expression(rhs, scope)?;
-                self.link_binary_function(lhs, operator, rhs, scope)
-            },
-            abstract_syntax::Expression::ConjunctivePairOperators { arguments, operators } => {
-                todo!()
-                // let arguments: Vec<Box<Expression>> = arguments.into_iter()
-                //     .map(|x| self.link_expression(x, scope))
-                //     .collect();
-                //
-                // let functions: Vec<Rc<FunctionInterface>> = zip_eq(arguments.windows(2), operators.into_iter())
-                //     .map(|(args, operator)| {
-                //         let (lhs, rhs) = (&args[0], &args[1]);
-                //         self.link_binary_function(lhs, operator, rhs, scope).clone()
-                //     })
-                //     .collect();
-                //
-                // if arguments.len() != functions.len() + 1 || arguments.len() < 2 {
-                //     panic!("Internal Error for PairAssociativeBinaryOperators: (args.len(): {}, functions.len(): {})", arguments.len(), functions.len());
-                // }
-                // else {
-                //     if functions.len() == 1 {
-                //         println!("Warning: Attempting making a pair-associative operator from just 1 pair. This should not happen.");
-                //     }
-                //
-                //     Box::new(Expression {
-                //         // TODO This is not true; we have to see what (a > b) && (b > c) actually outputs
-                //         result_type: Some(Type::unit(TypeUnit::Primitive(primitives::Type::Bool))),
-                //         operation: Box::new(ExpressionOperation::PairwiseOperations { arguments, functions })
-                //     })
-                // }
-            }
-            abstract_syntax::Expression::UnaryOperator { operator, argument} => {
-                let argument = self.link_expression(argument, scope)?;
-                self.link_unary_function(operator, argument, scope)
-            },
-            abstract_syntax::Expression::VariableLookup(identifier) => {
-                let variable = scope.resolve(scopes::Environment::Global, identifier);
-
-                self.link_unambiguous_expression(
-                    vec![],
-                    &variable.type_declaration,
-                    ExpressionOperation::VariableLookup(variable.clone())
-                )
-            },
-            abstract_syntax::Expression::FunctionCall { call_type, callee, arguments } => {
-                if call_type == &abstract_syntax::FunctionCallType::Subscript {
-                    panic!("Subscript not supported yet");
+                    precedence::Token::Expression(self.link_unambiguous_expression(
+                        vec![],
+                        &TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool)),
+                        ExpressionOperation::Primitive(value)
+                    )?)
                 }
+                else {
+                    let variable = scope.resolve(scopes::Environment::Global, s)?;
 
-                return match callee.as_ref() {
-                    abstract_syntax::Expression::VariableLookup(function_name) => {
-                        // Static Call
-                        let argument_keys: Vec<ParameterKey> = arguments.iter()
-                            .map(|arg| arg.key.clone())
-                            .collect();
-
-                        let argument_expressions: Vec<ExpressionID> = arguments.iter()
-                            .map(|arg| self.link_expression(&arg.value, scope))
-                            .try_collect()?;
-
-                        let functions = scope.resolve_functions(scopes::Environment::Global, function_name);
-
-                        self.link_function_call(functions, function_name, argument_keys, argument_expressions, scope)
-                    }
-                    _ => {
-                        match callee.as_ref() {
-                            abstract_syntax::Expression::MemberLookup { target, member_name } => {
-                                let target = self.link_expression(target, scope);
-
-                                // Member Function
-                                let argument_keys: Vec<ParameterKey> = Some(ParameterKey::Positional).into_iter()
-                                    .chain(arguments.iter().map(|arg| arg.key.clone()))
-                                    .collect();
-
-                                let argument_expressions: Vec<ExpressionID> = Some(target).into_iter()
-                                    .chain(arguments.iter().map(|arg| self.link_expression(&arg.value, scope)))
-                                    .try_collect()?;
-
-                                let functions = scope.resolve_functions(scopes::Environment::Member, member_name);
-
-                                self.link_function_call(functions, member_name, argument_keys, argument_expressions, scope)
-                            },
-                            _ => {
-                                // Function call on some object
-                                todo!()
-                                // let target = self.link_expression(callee, scope);
-                                //
-                                // let arguments: Vec<Box<PassedArgument>> = self.link_passed_arguments(arguments.iter(), scope, 0);
-                                //
-                                // let function = match &target.result_type {
-                                //     Some(result_type) => {
-                                //         match &result_type.unit {
-                                //             TypeUnit::Function(function) => function,
-                                //             _ => panic!("Expression does not resolve to a function."),
-                                //         }
-                                //     }
-                                //     _ => panic!("Expression does not return anything."),
-                                // };
-                                //
-                                // link_static_function_call(function, arguments)
+                    if let TypeUnit::FunctionOverload(overload) = &variable.type_declaration.unit {
+                        match overload.is_operator {
+                            false => {
+                                precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
+                            }
+                            true => {
+                                precedence::Token::Operator(Rc::clone(overload))
                             }
                         }
                     }
+                    else {
+                        precedence::Token::Expression(self.link_unambiguous_expression(
+                            vec![],
+                            &variable.type_declaration,
+                            ExpressionOperation::VariableLookup(variable.clone())
+                        )?)
+                    }
                 }
             }
-            abstract_syntax::Expression::MemberLookup { target, member_name } => {
-                todo!()
+            abstract_syntax::Term::Number(string) => {
+                precedence::Token::Expression(self.link_primitive(
+                    string,
+                    primitives::Type::iter()
+                        .filter(primitives::Type::is_number)
+                )?)
             }
-            abstract_syntax::Expression::UnsortedBinaryOperators { .. } => {
-                panic!("Internal Error: Unsorted binary operators should not occur at this stage.")
+            abstract_syntax::Term::MemberAccess { target, member_name } => {
+                let target = self.link_term(target, scope)?;
+
+                guard!(let precedence::Token::Expression(target) = target else {
+                    return Err(LinkError::LinkError { msg: format!("Dot notation is not supported in this context.") })
+                });
+
+                let variable = scope.resolve(scopes::Environment::Global, member_name)?;
+
+                if let TypeUnit::FunctionOverload(overload) = &variable.type_declaration.unit {
+                    precedence::Token::FunctionReference { overload: Rc::clone(overload), target: Some(target) }
+                }
+                else {
+                    todo!("Member access is not supported yet!")
+                }
             }
-        }
+            abstract_syntax::Term::Struct(s) => {
+                precedence::Token::AnonymousStruct {
+                    keys: s.iter().map(|x| x.key.clone()).collect(),
+                    values: s.iter().map(|x| self.link_expression(&x.value, scope)).try_collect()?,
+                }
+            }
+            abstract_syntax::Term::Array(a) => {
+                precedence::Token::AnonymousArray {
+                    keys: a.iter().map(|x| x.key.as_ref().try_map(|x| self.link_expression(x, scope))).try_collect()?,
+                    values: a.iter().map(|x| self.link_expression(&x.value, scope)).try_collect()?,
+                }
+            }
+            abstract_syntax::Term::StringLiteral(string) => {
+                precedence::Token::Expression(self.link_unambiguous_expression(
+                    vec![],
+                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.structs.String))),
+                    ExpressionOperation::StringLiteral(string.clone())
+                )?)
+            }
+        })
     }
 
-    pub fn link_binary_function<'b>(&mut self, lhs: ExpressionID, operator: &'b String, rhs: ExpressionID, scope: &'b scopes::Hierarchy) -> Result<ExpressionID, LinkError> {
-        let functions = scope.resolve_functions(scopes::Environment::Global, operator);
-
+    pub fn link_binary_function<'b>(&mut self, lhs: ExpressionID, overload: &FunctionOverload, rhs: ExpressionID, scope: &'b scopes::Scope) -> Result<ExpressionID, LinkError> {
         self.link_function_call(
-            functions,
-            operator,
+            &overload.pointers,
+            &overload.name,
             vec![ParameterKey::Positional, ParameterKey::Positional],
             vec![lhs, rhs],
             scope
         )
     }
 
-    pub fn link_unary_function<'b>(&mut self, operator: &'b String, argument: ExpressionID, scope: &'b scopes::Hierarchy) -> Result<ExpressionID, LinkError> {
-        let functions = scope.resolve_functions(scopes::Environment::Global, operator);
-
+    pub fn link_unary_function<'b>(&mut self, overload: &FunctionOverload, argument: ExpressionID, scope: &'b scopes::Scope) -> Result<ExpressionID, LinkError> {
         self.link_function_call(
-            functions,
-            operator,
+            &overload.pointers,
+            &overload.name,
             vec![ParameterKey::Positional],
             vec![argument],
             scope
         )
     }
 
-    pub fn link_function_call(&mut self, functions: &HashSet<Rc<FunctionPointer>>, fn_name: &String, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Hierarchy) -> Result<ExpressionID, LinkError> {
+    pub fn link_function_call(&mut self, functions: &HashSet<Rc<FunctionPointer>>, fn_name: &String, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
         // TODO Check if any arguments are void before anything else
         let seed = Uuid::new_v4();
 

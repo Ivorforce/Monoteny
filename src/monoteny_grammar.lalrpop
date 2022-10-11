@@ -9,10 +9,10 @@ grammar;
 // =============================== Lexer Precedence =====================================
 
 match {
-    r"[0-9]+" => _Int,
-    r"[0-9]+\.[0-9]+" => _Float,
+    // so i heard u like regex
     r"([$#])?[a-zA-Z_]\w*" => _Identifier,
-    r"[!+\-*/&%=><|.^?]+" => _OperatorIdentifier,
+    r"[!+\-*/&%=><|.^?][!+\-*/&%=><|.^?_]*" => _OperatorIdentifier,
+    r"[0-9]+(\.[0-9]*)?" => _Number,
     "true", "false",
     "return",
     ".",
@@ -28,27 +28,23 @@ match {
 
 // =============================== Primitive =====================================
 
-Int: String = {
-    _Int => String::from(<>)
-};
-
-Float: String = {
-    _Float => String::from(<>)
-};
-
-BoolLiteral: bool = {
-    "true" => true,
-    "false" => false,
-};
-
 Identifier: String = {
-    _Identifier => format!("{}", <>)
+    _Identifier => format!("{}", <>),
 };
 
 OperatorIdentifier: String = {
     _OperatorIdentifier => format!("{}", <>),
-    "<" => String::from("<"),
     ">" => String::from(">"),
+    "<" => String::from("<"),
+};
+
+AnyIdentifier: String = {
+    Identifier,
+    OperatorIdentifier,
+};
+
+Number: String = {
+    _Number => format!("{}", <>)
 };
 
 // =============================== Global =====================================
@@ -62,32 +58,19 @@ pub GlobalStatement: Box<GlobalStatement> = {
     Function => Box::new(GlobalStatement::FunctionDeclaration(<>)),
     Pattern => Box::new(GlobalStatement::Pattern(<>)),
     OperatorFunction => Box::new(GlobalStatement::Operator(<>)),
-    GlobalScope => Box::new(GlobalStatement::Scope(<>)),
 };
 
 Pattern: Box<PatternDeclaration> = {
-    "// alias:" <alias: Identifier> "pattern" "{" "}" <operator: OperatorIdentifier> "{" "}" "::" <precedence: Identifier> ";" => Box::new(PatternDeclaration { form: PatternForm::Binary, <> }),
-    "// alias:" <alias: Identifier> "pattern" "{" "}" <operator: OperatorIdentifier> "::" <precedence: Identifier> ";" => Box::new(PatternDeclaration { form: PatternForm::Unary, <> }),
+    "// alias:" <alias: Identifier> "pattern" "(" <precedence: Identifier> ")" "::" "{" "}" <operator: AnyIdentifier> "{" "}" ";" => Box::new(PatternDeclaration { form: PatternForm::Binary, <> }),
+    "// alias:" <alias: Identifier> "pattern" "(" <precedence: Identifier> ")" "::" "{" "}" <operator: AnyIdentifier> ";" => Box::new(PatternDeclaration { form: PatternForm::Unary, <> }),
 }
 
 Function: Box<Function> = {
-    "fun" <target: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <TypeDeclaration>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
+    "fun" <target: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
 }
 
 OperatorFunction: Box<Operator> = {
-    "fun" <lhs: ContextualParameter?> <operator: OperatorIdentifier> <rhs: ContextualParameter> <return_type: ("->" <TypeDeclaration>)?> "::" <body: FunctionBody> => Box::new(Operator { <> }),
-}
-
-GlobalScope: Box<GlobalScope> = {
-    <requirements: ("if" <TraitDeclaration+>)?> "{" <statements: GlobalStatement*> "}" => Box::new(GlobalScope { <> }),
-}
-
-TraitDeclaration: Box<TraitDeclaration> = {
-    <unit: Identifier> "<" <elements: OptionalFinalSeparatorList<SpecializedType, ",">> ">" => Box::new(TraitDeclaration { <> }),
-}
-
-SpecializedType: Box<SpecializedType> = {
-    <unit: Identifier> <elements: ("<" <OptionalFinalSeparatorList<SpecializedType, ",">> ">")?> => Box::new(SpecializedType { <> }),
+    "fun" <lhs: ContextualParameter?> <operator: AnyIdentifier> <rhs: ContextualParameter> <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(Operator { <> }),
 }
 
 FunctionBody: Vec<Box<Statement>> = {
@@ -96,26 +79,18 @@ FunctionBody: Vec<Box<Statement>> = {
 }
 
 KeyedParameter: Box<KeyedParameter> = {
-    <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
+    <internal_name: Identifier> ":" <param_type: Expression> => Box::new(KeyedParameter {
         key: ParameterKey::Name(internal_name.clone()), internal_name, param_type
     }),
-    <key: Identifier> <internal_name: Identifier> ":" <param_type: TypeDeclaration> => Box::new(KeyedParameter {
+    <key: Identifier> <internal_name: Identifier> ":" <param_type: Expression> => Box::new(KeyedParameter {
         key: ParameterKey::from_string(key), internal_name, param_type
     }),
 }
 
 ContextualParameter: Box<ContextualParameter> = {
-    "{" <internal_name: Identifier> ":" <param_type: TypeDeclaration> "}" => Box::new(ContextualParameter {
+    "{" <internal_name: Identifier> ":" <param_type: Expression> "}" => Box::new(ContextualParameter {
         internal_name, param_type
     }),
-}
-
-// =============================== Type =====================================
-
-
-TypeDeclaration: Box<TypeDeclaration> = {
-    Identifier => Box::new(TypeDeclaration::Identifier(<>)),
-    <unit: TypeDeclaration> "[" <shape: OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(TypeDeclaration::Monad { <> })
 }
 
 
@@ -123,7 +98,7 @@ TypeDeclaration: Box<TypeDeclaration> = {
 
 
 pub Statement: Box<Statement> = {
-    <mutability: VariableDeclarationMutability> <identifier: Identifier> ":" <type_declaration: TypeDeclaration> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: Some(type_declaration), expression }),
+    <mutability: VariableDeclarationMutability> <identifier: Identifier> ":" <type_declaration: Expression> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: Some(type_declaration), expression }),
     <mutability: VariableDeclarationMutability> <identifier: Identifier> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: None, expression }),
     <variable_name: Identifier> "=" <new_value: Expression> => Box::new(Statement::VariableAssignment { variable_name, new_value }),
     "return" <Expression> => Box::new(Statement::Return(Some(<>))),
@@ -138,67 +113,34 @@ VariableDeclarationMutability: Mutability = {
 
 // =============================== Expression =====================================
 
-Expression: Box<Expression> = OperatorPrecedenceGroup;
-OperatorPrecedenceGroup = UnsortedBinaryOperators<OperatorIdentifier, UnaryOperatatorPrecedenceGroup>;
-UnaryOperatatorPrecedenceGroup = LeftUnaryOperator<OperatorIdentifier, FunctionCallPrecedenceGroup>;
-FunctionCallPrecedenceGroup = FunctionCallExpression<Term>;
+Expression: Expression = {
+    Term+
+};
 
-Term: Box<Expression> = {
-    Int => Box::new(Expression::Int(<>)),
-    Float => Box::new(Expression::Float(<>)),
-    BoolLiteral => Box::new(Expression::Bool(<>)),
-    Identifier => Box::new(Expression::VariableLookup(<>)),
-    "[" <OptionalFinalSeparatorList<Expression, ",">> "]" => Box::new(Expression::ArrayLiteral(<>)),
-    "(" <Expression> ")",
+Term: Box<Term> = {
+    AnyIdentifier => Box::new(Term::Identifier(<>)),
+    Number => Box::new(Term::Number(<>)),
+    "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Box::new(Term::Array(<>)),
+    "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Box::new(Term::Struct(<>)),
+    <target: Term> "." <member_name: Identifier> => Box::new(Term::MemberAccess { <> }),
     r"\x22[^\x22]*\x22" => {
         let s = <>;
-        Box::new(Expression::StringLiteral(String::from(&s[1..(s.len() - 1)])))
+        Box::new(Term::StringLiteral(String::from(&s[1..(s.len() - 1)])))
     },
 };
 
-PassedArgument: Box<PassedArgument> = {
-    <name: Identifier> ":" <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Name(name), value }),
-    <value: Expression> => Box::new(PassedArgument { key: ParameterKey::Positional, value })
+StructArgument: StructArgument = {
+    <key: Identifier> ":" <value: Expression> => StructArgument { key: ParameterKey::Name(key), value },
+    <value: Expression> => StructArgument { key: ParameterKey::Positional, value }
 }
 
-FunctionCallExpression<NextOperatorLevel>: Box<Expression> = {
-    <callee: FunctionCallExpression<NextOperatorLevel>> "(" <arguments: OptionalFinalSeparatorList<PassedArgument, ",">> ")" => Box::new(Expression::FunctionCall { call_type: FunctionCallType::Call, <> }),
-    <callee: FunctionCallExpression<NextOperatorLevel>> "[" <arguments: OptionalFinalSeparatorList<PassedArgument, ",">> "]" => Box::new(Expression::FunctionCall { call_type: FunctionCallType::Subscript, <> }),
-    <target: FunctionCallExpression<NextOperatorLevel>> "." <member_name: Identifier> => Box::new(Expression::MemberLookup { <> }),
-    NextOperatorLevel
+ArrayArgument: ArrayArgument = {
+    <key: Expression> ":" <value: Expression> => ArrayArgument { key: Some(key), value },
+    <value: Expression> => ArrayArgument { key: None, value }
 }
-
 
 // =============================== Util =====================================
 
 OptionalFinalSeparatorList<Element, Separator>: Vec<Element> = {
     <v0: (<Element> Separator)*> <e1: Element?> => v0.into_iter().chain(e1).collect()
-};
-
-UnsortedBinaryOperators<Separator, NextOperatorLevel>: Box<Expression> = {
-    <e1: NextOperatorLevel> <v0: (<Separator> <NextOperatorLevel>)+> => {
-        let mut arguments = vec![e1];
-        let mut operators = vec![];
-        for (operator, argument) in v0.into_iter() {
-            operators.push(operator);
-            arguments.push(argument);
-        }
-        Box::new(Expression::UnsortedBinaryOperators { arguments, operators})
-    },
-    NextOperatorLevel
-};
-
-LeftAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
-    <lhs: LeftAssociativeBinaryOperator<Operator, NextOperatorLevel>> <operator: Operator> <rhs: NextOperatorLevel> => Box::new(Expression::BinaryOperator { lhs, operator, rhs }),
-    NextOperatorLevel
-};
-
-RightAssociativeBinaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
-    <lhs: NextOperatorLevel> <operator: Operator> <rhs: RightAssociativeBinaryOperator<Operator, NextOperatorLevel>> => Box::new(Expression::BinaryOperator { lhs, operator, rhs }),
-    NextOperatorLevel
-};
-
-LeftUnaryOperator<Operator, NextOperatorLevel>: Box<Expression> = {
-    <operator: Operator> <argument: LeftUnaryOperator<Operator, NextOperatorLevel>>  => Box::new(Expression::UnaryOperator { operator, argument }),
-    NextOperatorLevel
 };
