@@ -364,10 +364,10 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
     // TODO And and Or exist but work only for boolean arguments, not tensors.
     //  We could make use of them if the arguments are booleans and the result is too.
     if function.as_ref() == context.builtins.primitives.and.as_ref() {
-        return transpile_binary_operator("&");
+        return transpile_binary_operator("and");
     }
     else if function.as_ref() == context.builtins.primitives.or.as_ref() {
-        return transpile_binary_operator("|");
+        return transpile_binary_operator("or");
     }
 
     else if context.builtins.primitives.equal_to.contains(function) {

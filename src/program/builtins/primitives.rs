@@ -188,13 +188,13 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         constants.trait_conformance_declarations.add(&float_conformance);
     }
 
-    let and_op = FunctionPointer::make_operator("&&", "and", 2, &bool_type, &bool_type);
+    let and_op = FunctionPointer::make_operator("and", "and", 2, &bool_type, &bool_type);
     constants.overload_function(&and_op);
 
-    let or__op = FunctionPointer::make_operator("||", "or", 2, &bool_type, &bool_type);
+    let or__op = FunctionPointer::make_operator("or", "or", 2, &bool_type, &bool_type);
     constants.overload_function(&or__op);
 
-    let not_op = FunctionPointer::make_operator("!", "not", 1, &bool_type, &bool_type);
+    let not_op = FunctionPointer::make_operator("not", "not", 1, &bool_type, &bool_type);
     constants.overload_function(&not_op);
 
 

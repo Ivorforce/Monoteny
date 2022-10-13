@@ -88,7 +88,13 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                         return Err(LinkError::LinkError { msg: String::from("Object calls are not yet supported.") })
                     }
                     _ => {
-                        return Err(LinkError::LinkError { msg: String ::from("Anonymous struct literals are not yet supported.") })
+                        if values.len() == 1 && keys.iter().next().unwrap() == &ParameterKey::Positional {
+                            tokens[i] = Token::Expression(*values.iter().next().unwrap());
+                        }
+                        else {
+                            return Err(LinkError::LinkError { msg: String ::from("Anonymous struct literals are not yet supported.") })
+
+                        }
                     }
                 }
             }

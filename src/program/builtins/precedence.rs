@@ -65,11 +65,11 @@ pub fn make_groups(scope: &mut scopes::Scope) -> PrecedenceGroups {
         ),
         LogicalConjunctionPrecedence: add_precedence_group(
             scope, "LogicalConjunctionPrecedence", OperatorAssociativity::Left,
-            vec![("&&", "and")]
+            vec![("and", "and")]
         ),
         LogicalDisjunctionPrecedence: add_precedence_group(
             scope, "LogicalDisjunctionPrecedence", OperatorAssociativity::Left,
-            vec![("||", "or")]
+            vec![("or", "or")]
         ),
     }
 }
