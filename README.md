@@ -84,9 +84,9 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [x] Reverse generic type checking (output types determined from inputs)
   - [ ] Generic constants (`let pi = 3.1415926`, inferred type: `$Float`)
   - [x] Anonymous generics (`#A`)
+    - [x] ... in imperative code
     - [x] ... with implicit trait conformance requirements (`$Number` -> `if $Number: Number {}`)
     - [ ] ... recursive (`$$Number: $Number`)
-    - [x] ... in imperative code (coercing types)
 - [x] Custom patterns with keywords (unary / binary operators)
   - [ ] Custom precedence steps (with associativity) 
   - [ ] Deconstruction for patterns (e.g. `fun a[data: A] :: ...` or `fun {left: A} + (a: A, b: B) :: ...`) 
@@ -114,6 +114,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] Early return syntax
 - [ ] IntX, FloatX (big int & float, which are structs)
 - [ ] IntNative, FloatNative (platform-optimized int and float)
+- [ ] Imports
 - [ ] Local functions and declarations
   - [ ] Anonymous functions
 - [ ] String Comprehension
