@@ -163,21 +163,24 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         );
         constants.trait_conformance_declarations.add(&number_conformance);
 
-        if primitive_type.is_float() {
-            let exp_op = FunctionPointer::make_operator("**", "exponentiate", 2, type_, type_);
-            constants.overload_function(&exp_op);
-            exp_ops.insert(Rc::clone(&exp_op));
-
-            constants.trait_conformance_declarations.add(
-                &make_conformance_declaration(&traits.Float, &number_conformance, vec![])
-            );
-        }
-
         if primitive_type.is_int() {
             constants.trait_conformance_declarations.add(
                 &make_conformance_declaration(&traits.Int, &number_conformance, vec![])
             );
         }
+
+        if !(primitive_type.is_float()) {
+            continue;
+        }
+
+        let float_functions = traits::make_float_functions(&type_);
+        add_function(&float_functions.exponentiate, &mut exp_ops, &mut constants);
+
+        let float_conformance = make_conformance_declaration(&traits.Float, &number_conformance, vec![
+            (&traits.Float_functions.exponentiate, &float_functions.exponentiate),
+        ]);
+
+        constants.trait_conformance_declarations.add(&float_conformance);
     }
 
     let and_op = FunctionPointer::make_operator("&&", "and", 2, &bool_type, &bool_type);

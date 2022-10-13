@@ -13,12 +13,15 @@ pub struct Traits {
 
     pub Eq: Rc<Trait>,
     pub Eq_functions: EqFunctions,
+
     pub Ord: Rc<Trait>,
 
     pub Number: Rc<Trait>,
     pub Number_functions: NumberFunctions,
 
     pub Float: Rc<Trait>,
+    pub Float_functions: FloatFunctions,
+
     pub Int: Rc<Trait>,
 }
 
@@ -44,6 +47,10 @@ pub struct NumberFunctions {
 
     pub positive: Rc<FunctionPointer>,
     pub negative: Rc<FunctionPointer>,
+}
+
+pub struct FloatFunctions {
+    pub exponentiate: Rc<FunctionPointer>,
 }
 
 pub fn make_eq_functions(type_: &Box<TypeProto>) -> EqFunctions {
@@ -76,6 +83,12 @@ pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
     }
 }
 
+pub fn make_float_functions(type_: &Box<TypeProto>) -> FloatFunctions {
+    FloatFunctions {
+        exponentiate: FunctionPointer::make_operator("**", "exponentiate", 2, type_, type_),
+    }
+}
+
 pub fn make(constants: &mut Scope) -> Traits {
     let generic_id = Uuid::new_v4();
     let generic_type = TypeProto::unit(TypeUnit::Any(generic_id));
@@ -98,35 +111,39 @@ pub fn make(constants: &mut Scope) -> Traits {
         return Rc::new(t)
     };
 
-    let abstract_eq_functions = make_eq_functions(&generic_type);
+    let eq_functions = make_eq_functions(&generic_type);
     let eq_trait = make_trait("Eq", &generic_id, vec![
-        &abstract_eq_functions.equal_to,
-        &abstract_eq_functions.not_equal_to,
+        &eq_functions.equal_to,
+        &eq_functions.not_equal_to,
     ], vec![]);
     constants.insert_trait(&eq_trait);
 
-    let abstract_number_functions = make_number_functions(&generic_type);
+    let number_functions = make_number_functions(&generic_type);
 
     let ord_trait = make_trait("Ord", &generic_id, vec![
-        &abstract_number_functions.greater_than,
-        &abstract_number_functions.greater_than_or_equal_to,
-        &abstract_number_functions.lesser_than,
-        &abstract_number_functions.lesser_than_or_equal_to,
+        &number_functions.greater_than,
+        &number_functions.greater_than_or_equal_to,
+        &number_functions.lesser_than,
+        &number_functions.lesser_than_or_equal_to,
     ], vec![Rc::clone(&eq_trait)]);
     constants.insert_trait(&ord_trait);
 
     let number_trait = make_trait("Number", &generic_id, vec![
-        &abstract_number_functions.add,
-        &abstract_number_functions.subtract,
-        &abstract_number_functions.multiply,
-        &abstract_number_functions.divide,
-        &abstract_number_functions.positive,
-        &abstract_number_functions.negative,
-        &abstract_number_functions.modulo,
+        &number_functions.add,
+        &number_functions.subtract,
+        &number_functions.multiply,
+        &number_functions.divide,
+        &number_functions.positive,
+        &number_functions.negative,
+        &number_functions.modulo,
     ], vec![Rc::clone(&ord_trait)]);
     constants.insert_trait(&number_trait);
 
-    let float_trait = make_trait("Float", &generic_id, vec![], vec![Rc::clone(&number_trait)]);
+    let float_functions = make_float_functions(&generic_type);
+
+    let float_trait = make_trait("Float", &generic_id, vec![
+        &float_functions.exponentiate,
+    ], vec![Rc::clone(&number_trait)]);
     constants.insert_trait(&float_trait);
 
     let int_trait = make_trait("Int", &generic_id, vec![], vec![Rc::clone(&number_trait)]);
@@ -134,12 +151,18 @@ pub fn make(constants: &mut Scope) -> Traits {
 
     let traits = Traits {
         all: [&eq_trait, &ord_trait, &number_trait, &float_trait, &int_trait].map(Rc::clone).into_iter().collect(),
+
         Eq: eq_trait,
-        Eq_functions: abstract_eq_functions,
+        Eq_functions: eq_functions,
+
         Ord: ord_trait,
-        Number_functions: abstract_number_functions,
+
         Number: number_trait,
+        Number_functions: number_functions,
+
         Float: float_trait,
+        Float_functions: float_functions,
+
         Int: int_trait,
     };
     traits
