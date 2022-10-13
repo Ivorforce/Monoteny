@@ -36,11 +36,11 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
     // The operators can normally be referenced as operators (which the transpiler does do).
     // However, if a reference is required, we need to resort to another strategy.
     for (name, functions) in [
-        ("op.add", &builtins.operators.add),
-        ("op.sub", &builtins.operators.subtract),
-        ("op.mul", &builtins.operators.multiply),
+        ("op.add", &builtins.primitives.add),
+        ("op.sub", &builtins.primitives.subtract),
+        ("op.mul", &builtins.primitives.multiply),
         // TODO This is not true for int types, there it has to be floordiv
-        ("op.truediv", &builtins.operators.divide),
+        ("op.truediv", &builtins.primitives.divide),
     ]{
         for fun in functions {
             namespace.insert_keyword(fun.pointer_id, &String::from(name));

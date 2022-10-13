@@ -331,13 +331,13 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<Func
         Ok(true)
     };
 
-    if context.builtins.operators.positive.contains(function) {
+    if context.builtins.primitives.positive.contains(function) {
         return transpile_unary_operator("+");
     }
-    else if context.builtins.operators.negative.contains(function) {
+    else if context.builtins.primitives.negative.contains(function) {
         return transpile_unary_operator("-");
     }
-    else if function.as_ref() == context.builtins.operators.not.as_ref() {
+    else if function.as_ref() == context.builtins.primitives.not.as_ref() {
         return transpile_unary_operator("not ");
     }
 
@@ -362,49 +362,49 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
 
     // TODO And and Or exist but work only for boolean arguments, not tensors.
     //  We could make use of them if the arguments are booleans and the result is too.
-    if function.as_ref() == context.builtins.operators.and.as_ref() {
+    if function.as_ref() == context.builtins.primitives.and.as_ref() {
         return transpile_binary_operator("&");
     }
-    else if function.as_ref() == context.builtins.operators.or.as_ref() {
+    else if function.as_ref() == context.builtins.primitives.or.as_ref() {
         return transpile_binary_operator("|");
     }
 
-    else if context.builtins.operators.equal_to.contains(function) {
+    else if context.builtins.primitives.equal_to.contains(function) {
         return transpile_binary_operator("==");
     }
-    else if context.builtins.operators.not_equal_to.contains(function) {
+    else if context.builtins.primitives.not_equal_to.contains(function) {
         return transpile_binary_operator("!=");
     }
 
-    else if context.builtins.operators.greater_than.contains(function) {
+    else if context.builtins.primitives.greater_than.contains(function) {
         return transpile_binary_operator(">");
     }
-    else if context.builtins.operators.greater_than_or_equal_to.contains(function) {
+    else if context.builtins.primitives.greater_than_or_equal_to.contains(function) {
         return transpile_binary_operator(">=");
     }
-    else if context.builtins.operators.lesser_than.contains(function) {
+    else if context.builtins.primitives.lesser_than.contains(function) {
         return transpile_binary_operator("<");
     }
-    else if context.builtins.operators.lesser_than_or_equal_to.contains(function) {
+    else if context.builtins.primitives.lesser_than_or_equal_to.contains(function) {
         return transpile_binary_operator("<=");
     }
 
-    else if context.builtins.operators.add.contains(function) {
+    else if context.builtins.primitives.add.contains(function) {
         return transpile_binary_operator("+");
     }
-    else if context.builtins.operators.subtract.contains(function) {
+    else if context.builtins.primitives.subtract.contains(function) {
         return transpile_binary_operator("-");
     }
-    else if context.builtins.operators.multiply.contains(function) {
+    else if context.builtins.primitives.multiply.contains(function) {
         return transpile_binary_operator("*");
     }
-    else if context.builtins.operators.divide.contains(function) {
+    else if context.builtins.primitives.divide.contains(function) {
         return transpile_binary_operator("/");
     }
-    else if context.builtins.operators.exponentiate.contains(function) {
+    else if context.builtins.primitives.exponentiate.contains(function) {
         return transpile_binary_operator("**");
     }
-    else if context.builtins.operators.modulo.contains(function) {
+    else if context.builtins.primitives.modulo.contains(function) {
         return transpile_binary_operator("%");
     }
 
