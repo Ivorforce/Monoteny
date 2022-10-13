@@ -43,7 +43,8 @@ pub struct Primitives {
     pub modulo: HashSet<Rc<FunctionPointer>>,
 
     // float
-    pub exponentiate: HashSet<Rc<FunctionPointer>>,
+    pub exponent: HashSet<Rc<FunctionPointer>>,
+    pub logarithm: HashSet<Rc<FunctionPointer>>,
 }
 
 
@@ -79,8 +80,10 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
     let mut mul_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
     let mut div_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
 
-    let mut exp_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
     let mut mod_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+
+    let mut exp_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut log_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
 
     let mut gr__ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
     let mut geq_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
@@ -174,10 +177,12 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         }
 
         let float_functions = traits::make_float_functions(&type_);
-        add_function(&float_functions.exponentiate, &mut exp_ops, &mut constants);
+        add_function(&float_functions.exponent, &mut exp_ops, &mut constants);
+        add_function(&float_functions.logarithm, &mut log_ops, &mut constants);
 
         let float_conformance = make_conformance_declaration(&traits.Float, &number_conformance, vec![
-            (&traits.Float_functions.exponentiate, &float_functions.exponentiate),
+            (&traits.Float_functions.exponent, &float_functions.exponent),
+            (&traits.Float_functions.logarithm, &float_functions.logarithm),
         ]);
 
         constants.trait_conformance_declarations.add(&float_conformance);
@@ -211,8 +216,10 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         subtract: sub_ops,
         multiply: mul_ops,
         divide: div_ops,
-        exponentiate: exp_ops,
         modulo: mod_ops,
+
+        exponent: exp_ops,
+        logarithm: log_ops,
 
         positive: pos_ops,
         negative: neg_ops,

@@ -30,6 +30,15 @@ pub struct EqFunctions {
     pub not_equal_to: Rc<FunctionPointer>,
 }
 
+pub fn make_eq_functions(type_: &Box<TypeProto>) -> EqFunctions {
+    let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
+
+    EqFunctions {
+        equal_to: FunctionPointer::make_operator("==", "is_equal", 2, type_, &bool_type),
+        not_equal_to: FunctionPointer::make_operator("!=", "is_not_equal", 2, type_, &bool_type),
+    }
+}
+
 pub struct NumberFunctions {
     // Ord
     pub greater_than: Rc<FunctionPointer>,
@@ -47,19 +56,6 @@ pub struct NumberFunctions {
 
     pub positive: Rc<FunctionPointer>,
     pub negative: Rc<FunctionPointer>,
-}
-
-pub struct FloatFunctions {
-    pub exponentiate: Rc<FunctionPointer>,
-}
-
-pub fn make_eq_functions(type_: &Box<TypeProto>) -> EqFunctions {
-    let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
-
-    EqFunctions {
-        equal_to: FunctionPointer::make_operator("==", "is_equal", 2, type_, &bool_type),
-        not_equal_to: FunctionPointer::make_operator("!=", "is_not_equal", 2, type_, &bool_type),
-    }
 }
 
 pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
@@ -83,9 +79,15 @@ pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
     }
 }
 
+pub struct FloatFunctions {
+    pub exponent: Rc<FunctionPointer>,
+    pub logarithm: Rc<FunctionPointer>,
+}
+
 pub fn make_float_functions(type_: &Box<TypeProto>) -> FloatFunctions {
     FloatFunctions {
-        exponentiate: FunctionPointer::make_operator("**", "exponentiate", 2, type_, type_),
+        exponent: FunctionPointer::make_operator("**", "exponent", 2, type_, type_),
+        logarithm: FunctionPointer::make_operator("//", "logarithm", 2, type_, type_),
     }
 }
 
@@ -142,7 +144,7 @@ pub fn make(constants: &mut Scope) -> Traits {
     let float_functions = make_float_functions(&generic_type);
 
     let float_trait = make_trait("Float", &generic_id, vec![
-        &float_functions.exponentiate,
+        &float_functions.exponent,
     ], vec![Rc::clone(&number_trait)]);
     constants.insert_trait(&float_trait);
 

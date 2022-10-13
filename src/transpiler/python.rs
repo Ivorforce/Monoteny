@@ -30,6 +30,7 @@ pub struct TranspilerContext<'a> {
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &Builtins) -> Result<(), std::io::Error> {
     writeln!(stream, "import monoteny as mn")?;
     writeln!(stream, "import numpy as np")?;
+    writeln!(stream, "import math")?;
     writeln!(stream, "import operator as op")?;
     writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
     writeln!(stream, "from typing import Any, Callable")?;
@@ -401,7 +402,7 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
     else if context.builtins.primitives.divide.contains(function) {
         return transpile_binary_operator("/");
     }
-    else if context.builtins.primitives.exponentiate.contains(function) {
+    else if context.builtins.primitives.exponent.contains(function) {
         return transpile_binary_operator("**");
     }
     else if context.builtins.primitives.modulo.contains(function) {

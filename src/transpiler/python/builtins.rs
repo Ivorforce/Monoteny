@@ -41,6 +41,7 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
         ("op.mul", &builtins.primitives.multiply),
         // TODO This is not true for int types, there it has to be floordiv
         ("op.truediv", &builtins.primitives.divide),
+        ("math.log", &builtins.primitives.logarithm),
     ]{
         for fun in functions {
             namespace.insert_keyword(fun.pointer_id, &String::from(name));

@@ -61,8 +61,8 @@ pub GlobalStatement: Box<GlobalStatement> = {
 };
 
 Pattern: Box<PatternDeclaration> = {
-    "// alias:" <alias: Identifier> "pattern" "(" <precedence: Identifier> ")" "::" "{" "}" <operator: AnyIdentifier> "{" "}" ";" => Box::new(PatternDeclaration { form: PatternForm::Binary, <> }),
-    "// alias:" <alias: Identifier> "pattern" "(" <precedence: Identifier> ")" "::" "{" "}" <operator: AnyIdentifier> ";" => Box::new(PatternDeclaration { form: PatternForm::Unary, <> }),
+    "-- alias:" <alias: Identifier> "pattern" "(" <precedence: Identifier> ")" "::" "{" "}" <operator: AnyIdentifier> "{" "}" ";" => Box::new(PatternDeclaration { form: PatternForm::Binary, <> }),
+    "-- alias:" <alias: Identifier> "pattern" "(" <precedence: Identifier> ")" "::" "{" "}" <operator: AnyIdentifier> ";" => Box::new(PatternDeclaration { form: PatternForm::Unary, <> }),
 }
 
 Function: Box<Function> = {
