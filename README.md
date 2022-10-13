@@ -80,6 +80,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
     - [ ] Deconstruction assignment
 - [ ] Non-linear linking (allow references to identifiers declared below)
 - [ ] Comments (with transpilation)
+- [ ] Right-Unary Operators
 - [x] Generics
   - [x] Reverse generic type checking (output types determined from inputs)
   - [ ] Generic constants (`let pi = 3.1415926`, inferred type: `$Float`)
