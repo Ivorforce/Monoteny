@@ -299,7 +299,7 @@ impl <'a> ImperativeLinker<'a> {
             abstract_syntax::Term::StringLiteral(string) => {
                 precedence::Token::Expression(self.link_unambiguous_expression(
                     vec![],
-                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.structs.String))),
+                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.strings.String))),
                     ExpressionOperation::StringLiteral(string.clone())
                 )?)
             }

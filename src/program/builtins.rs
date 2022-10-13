@@ -17,13 +17,14 @@ use crate::program::structs::Struct;
 
 pub mod precedence;
 pub mod debug;
+pub mod strings;
 
 pub struct Builtins {
     pub traits: Traits,
     pub operators: Operators,
-    pub functions: debug::Functions,
+    pub debug: debug::Functions,
     pub primitive_metatypes: HashMap<primitives::Type, Box<TypeProto>>,
-    pub structs: Structs,
+    pub strings: strings::Strings,
     pub precedence_groups: PrecedenceGroups,
 
     pub global_constants: scopes::Scope<'static>,
@@ -70,11 +71,6 @@ pub struct Traits {
     pub Number: Rc<Trait>,
     pub Float: Rc<Trait>,
     pub Int: Rc<Trait>,
-}
-
-#[allow(non_snake_case)]
-pub struct Structs {
-    pub String: Rc<Struct>,
 }
 
 pub struct EqFunctions {
@@ -137,24 +133,6 @@ pub fn create_builtins() -> Rc<Builtins> {
     let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
     let generic_id = Uuid::new_v4();
     let generic_type = TypeProto::unit(TypeUnit::Any(generic_id));
-
-    let add_struct = |constants: &mut scopes::Scope, name: &str| -> Rc<Struct> {
-        let name = String::from(name);
-
-        let s = Rc::new(Struct {
-            id: Uuid::new_v4(),
-            name: name.clone(),
-        });
-        let s_type = TypeProto::meta(TypeProto::unit(TypeUnit::Struct(Rc::clone(&s))));
-
-        constants.insert_singleton(
-            scopes::Environment::Global,
-            Reference::make_immutable(s_type),
-            &name
-        );
-
-        s
-    };
 
 
     let precedence_groups = precedence::make_groups(&mut constants);
@@ -391,10 +369,8 @@ pub fn create_builtins() -> Rc<Builtins> {
             negative: neg_ops,
             not: not_op,
         },
-        functions: debug::make_functions(&mut constants),
-        structs: Structs {
-            String: add_struct(&mut constants, "String")
-        },
+        debug: debug::make_functions(&mut constants),
+        strings: strings::make(&mut constants),
         precedence_groups,
         primitive_metatypes,
         global_constants: constants,

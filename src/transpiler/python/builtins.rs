@@ -47,7 +47,7 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
         }
     }
 
-    namespace.insert_keyword(builtins.functions.print.pointer_id, &String::from("print"));
+    namespace.insert_keyword(builtins.debug.print.pointer_id, &String::from("print"));
 
     for trait_ in builtins.traits.all.iter() {
         // TODO Introduce a package ref system.

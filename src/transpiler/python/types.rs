@@ -42,7 +42,7 @@ pub fn transpile_primitive_value(stream: &mut (dyn Write), value: &primitives::V
 }
 
 pub fn transpile_struct(stream: &mut (dyn Write), s: &Struct, context: &TranspilerContext) -> Result<(), std::io::Error> {
-    if s == context.builtins.structs.String.as_ref() {
+    if s == context.builtins.strings.String.as_ref() {
         write!(stream, "str")
     }
     else {
