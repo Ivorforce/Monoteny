@@ -16,11 +16,12 @@ use crate::program::functions::{FunctionForm, FunctionPointer, HumanFunctionInte
 use crate::program::structs::Struct;
 
 pub mod precedence;
+pub mod debug;
 
 pub struct Builtins {
     pub traits: Traits,
     pub operators: Operators,
-    pub functions: Functions,
+    pub functions: debug::Functions,
     pub primitive_metatypes: HashMap<primitives::Type, Box<TypeProto>>,
     pub structs: Structs,
     pub precedence_groups: PrecedenceGroups,
@@ -57,10 +58,6 @@ pub struct Operators {
 
     // float
     pub exponentiate: HashSet<Rc<FunctionPointer>>,
-}
-
-pub struct Functions {
-    pub print: Rc<FunctionPointer>,
 }
 
 #[allow(non_snake_case)]
@@ -369,9 +366,6 @@ pub fn create_builtins() -> Rc<Builtins> {
     constants.overload_function(&not_op);
 
 
-    let print_function = FunctionPointer::make_global("print", "print", [generic_type.clone()].into_iter(), TypeProto::void());
-    constants.overload_function(&print_function);
-
     Rc::new(Builtins {
         traits,
         operators: Operators {
@@ -397,9 +391,7 @@ pub fn create_builtins() -> Rc<Builtins> {
             negative: neg_ops,
             not: not_op,
         },
-        functions: Functions {
-            print: print_function,
-        },
+        functions: debug::make_functions(&mut constants),
         structs: Structs {
             String: add_struct(&mut constants, "String")
         },
