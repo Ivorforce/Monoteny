@@ -17,7 +17,6 @@ match {
     ".", "'",
     "(", ")", "{", "}", "[",  "]", "..",
     ";", ",", ":", "::", "->",
-    "<", ">",
     "=",
     "let", "var", "upd",
     "fun", "pattern",
@@ -33,8 +32,6 @@ Identifier: String = {
 
 OperatorIdentifier: String = {
     _OperatorIdentifier => format!("{}", <>),
-    ">" => String::from(">"),
-    "<" => String::from("<"),
 };
 
 AnyIdentifier: String = {
