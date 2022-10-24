@@ -1,11 +1,11 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
 use crate::parser;
 use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
 use crate::linker::scopes;
-use crate::parser::abstract_syntax::PatternForm;
-use crate::program::types::Pattern;
+use crate::program::functions::ParameterKey;
+use crate::program::types::{Pattern, PatternPart};
 
 #[allow(non_snake_case)]
 pub struct PrecedenceGroups {
@@ -19,21 +19,33 @@ pub struct PrecedenceGroups {
 }
 
 pub fn make_groups(scope: &mut scopes::Scope) -> PrecedenceGroups {
-    let add_precedence_group = |scope: &mut scopes::Scope, name: &str, associativity: OperatorAssociativity, operators: Vec<(&str, &str)>| -> Rc<PrecedenceGroup> {
+    let add_precedence_group = |scope: &mut scopes::Scope, name: &str, associativity: OperatorAssociativity, functions: Vec<(&str, &str)>| -> Rc<PrecedenceGroup> {
         let group = Rc::new(PrecedenceGroup::new(
             name,
             associativity,
-            if associativity == OperatorAssociativity::LeftUnary { PatternForm::Unary } else { PatternForm::Binary }
         ));
-        scope.precedence_groups.push((Rc::clone(&group), HashSet::new()));
+        scope.precedence_groups.push((Rc::clone(&group), HashMap::new()));
 
-        for (operator, alias) in operators {
+        for (operator, alias) in functions {
+            let operator = String::from(operator);
+
             scope.add_pattern(Rc::new(Pattern {
                 id: Uuid::new_v4(),
-                operator: String::from(operator),
                 alias: String::from(alias),
                 precedence_group: Rc::clone(&group),
-            }));
+                parts: if associativity == OperatorAssociativity::LeftUnary {
+                    vec![
+                        Box::new(PatternPart::Keyword(operator)),
+                        Box::new(PatternPart::Parameter { key: ParameterKey::Positional, internal_name: String::from("arg") }),
+                    ]
+                } else {
+                    vec![
+                        Box::new(PatternPart::Parameter { key: ParameterKey::Positional, internal_name: String::from("lhs") }),
+                        Box::new(PatternPart::Keyword(operator)),
+                        Box::new(PatternPart::Parameter { key: ParameterKey::Positional, internal_name: String::from("rhs") }),
+                    ]
+                },
+            })).unwrap();
         }
         group
     };
@@ -41,7 +53,7 @@ pub fn make_groups(scope: &mut scopes::Scope) -> PrecedenceGroups {
     PrecedenceGroups {
         LeftUnaryPrecedence: add_precedence_group(
             scope, "LeftUnaryPrecedence", OperatorAssociativity::LeftUnary,
-            vec![("+", "positive"), ("-", "negative"), ("!", "not")]
+            vec![("+", "positive"), ("-", "negative"), ("not", "not_f")]
         ),
         ExponentiationPrecedence: add_precedence_group(
             scope, "ExponentiationPrecedence", OperatorAssociativity::Right,
@@ -65,11 +77,11 @@ pub fn make_groups(scope: &mut scopes::Scope) -> PrecedenceGroups {
         ),
         LogicalConjunctionPrecedence: add_precedence_group(
             scope, "LogicalConjunctionPrecedence", OperatorAssociativity::Left,
-            vec![("and", "and")]
+            vec![("and", "and_f")]  // TODO Alias differently?
         ),
         LogicalDisjunctionPrecedence: add_precedence_group(
             scope, "LogicalDisjunctionPrecedence", OperatorAssociativity::Left,
-            vec![("or", "or")]
+            vec![("or", "or_f")]
         ),
     }
 }

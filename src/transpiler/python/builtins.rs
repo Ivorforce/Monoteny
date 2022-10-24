@@ -56,7 +56,7 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
 
         let trait_namespace = namespace.add_sublevel();
         for fun in trait_.abstract_functions.iter() {
-            trait_namespace.register_definition(fun.pointer_id, &fun.human_interface.alphanumeric_name);
+            trait_namespace.register_definition(fun.pointer_id, &fun.human_interface.name);
         }
     }
 

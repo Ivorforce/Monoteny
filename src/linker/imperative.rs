@@ -243,14 +243,10 @@ impl <'a> ImperativeLinker<'a> {
                     let variable = scope.resolve(scopes::Environment::Global, s)?;
 
                     if let TypeUnit::FunctionOverload(overload) = &variable.type_declaration.unit {
-                        match overload.is_operator {
-                            false => {
-                                precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
-                            }
-                            true => {
-                                precedence::Token::Operator(Rc::clone(overload))
-                            }
-                        }
+                        precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
+                    }
+                    else if let TypeUnit::Keyword(keyword) = &variable.type_declaration.unit {
+                        precedence::Token::Keyword(keyword.clone())
                     }
                     else {
                         precedence::Token::Expression(self.link_unambiguous_expression(
@@ -303,27 +299,10 @@ impl <'a> ImperativeLinker<'a> {
                     ExpressionOperation::StringLiteral(string.clone())
                 )?)
             }
+            abstract_syntax::Term::TypeHint { object, type_ } => {
+                todo!()
+            }
         })
-    }
-
-    pub fn link_binary_function<'b>(&mut self, lhs: ExpressionID, overload: &FunctionOverload, rhs: ExpressionID, scope: &'b scopes::Scope) -> Result<ExpressionID, LinkError> {
-        self.link_function_call(
-            &overload.pointers,
-            &overload.name,
-            vec![ParameterKey::Positional, ParameterKey::Positional],
-            vec![lhs, rhs],
-            scope
-        )
-    }
-
-    pub fn link_unary_function<'b>(&mut self, overload: &FunctionOverload, argument: ExpressionID, scope: &'b scopes::Scope) -> Result<ExpressionID, LinkError> {
-        self.link_function_call(
-            &overload.pointers,
-            &overload.name,
-            vec![ParameterKey::Positional],
-            vec![argument],
-            scope
-        )
     }
 
     pub fn link_conjunctive_pairs(&mut self, arguments: Vec<ExpressionID>, operations: Vec<Rc<FunctionOverload>>) -> Result<ExpressionID, LinkError> {

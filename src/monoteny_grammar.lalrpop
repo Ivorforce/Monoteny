@@ -15,12 +15,12 @@ match {
     r"[0-9]+(\.[0-9]*)?" => _Number,
     "true", "false",
     "return",
-    ".",
+    ".", "'",
     "(", ")", "{", "}", "[",  "]", "..",
     ";", ",", ":", "::", "->",
     "<", ">",
     "=",
-    "let", "var",
+    "let", "var", "upd",
     "fun", "pattern",
     "if",
     _
@@ -61,16 +61,30 @@ pub GlobalStatement: Box<GlobalStatement> = {
 };
 
 Pattern: Box<PatternDeclaration> = {
-    "-- alias:" <alias: Identifier> "pattern" "(" <precedence: Identifier> ")" "::" "{" "}" <operator: AnyIdentifier> "{" "}" ";" => Box::new(PatternDeclaration { form: PatternForm::Binary, <> }),
-    "-- alias:" <alias: Identifier> "pattern" "(" <precedence: Identifier> ")" "::" "{" "}" <operator: AnyIdentifier> ";" => Box::new(PatternDeclaration { form: PatternForm::Unary, <> }),
+    "pattern" <alias: Identifier> "(" <precedence: Identifier> ")" "::" <parts: PatternPart+> ";" => Box::new(PatternDeclaration { <> }),
+}
+
+PatternPart: Box<PatternPart> = {
+    AnyIdentifier => Box::new(PatternPart::Keyword(<>)),
+    "{" <key: AnyIdentifier> ":" <internal_name: AnyIdentifier> "}" => Box::new(PatternPart::Parameter { key: ParameterKey::from_string(key), internal_name }),
+    "{" <key: AnyIdentifier> "}" => Box::new(PatternPart::Parameter { key: ParameterKey::from_string(key.clone()), internal_name: key }),
 }
 
 Function: Box<Function> = {
-    "fun" <target: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
+    "fun" <target_type: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
 }
 
-OperatorFunction: Box<Operator> = {
-    "fun" <lhs: ContextualParameter?> <operator: AnyIdentifier> <rhs: ContextualParameter> <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(Operator { <> }),
+OperatorFunction: Box<OperatorFunction> = {
+    "fun" <parts: OperatorArgument+> <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(OperatorFunction { <> }),
+}
+
+OperatorArgument: Box<OperatorArgument> = {
+    AnyIdentifier => Box::new(OperatorArgument::Keyword(<>)),
+    ContextualParameter => Box::new(OperatorArgument::Parameter(<>)),
+}
+
+ContextualParameter: Box<Expression> = {
+    "{" <param_type: Expression> "}" => Box::new(param_type),
 }
 
 FunctionBody: Vec<Box<Statement>> = {
@@ -79,17 +93,11 @@ FunctionBody: Vec<Box<Statement>> = {
 }
 
 KeyedParameter: Box<KeyedParameter> = {
-    <internal_name: Identifier> ":" <param_type: Expression> => Box::new(KeyedParameter {
+    <internal_name: Identifier> "'" <param_type: Expression> => Box::new(KeyedParameter {
         key: ParameterKey::Name(internal_name.clone()), internal_name, param_type
     }),
-    <key: Identifier> <internal_name: Identifier> ":" <param_type: Expression> => Box::new(KeyedParameter {
+    <key: Identifier> ":" <internal_name: Identifier> "'" <param_type: Expression> => Box::new(KeyedParameter {
         key: ParameterKey::from_string(key), internal_name, param_type
-    }),
-}
-
-ContextualParameter: Box<ContextualParameter> = {
-    "{" <internal_name: Identifier> ":" <param_type: Expression> "}" => Box::new(ContextualParameter {
-        internal_name, param_type
     }),
 }
 
@@ -98,9 +106,9 @@ ContextualParameter: Box<ContextualParameter> = {
 
 
 pub Statement: Box<Statement> = {
-    <mutability: VariableDeclarationMutability> <identifier: Identifier> ":" <type_declaration: Expression> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: Some(type_declaration), expression }),
+    <mutability: VariableDeclarationMutability> <identifier: Identifier> "'" <type_declaration: Expression> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: Some(type_declaration), expression }),
     <mutability: VariableDeclarationMutability> <identifier: Identifier> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: None, expression }),
-    <variable_name: Identifier> "=" <new_value: Expression> => Box::new(Statement::VariableAssignment { variable_name, new_value }),
+    "upd" <variable_name: Identifier> "=" <new_value: Expression> => Box::new(Statement::VariableAssignment { variable_name, new_value }),
     "return" <Expression> => Box::new(Statement::Return(Some(<>))),
     "return" => Box::new(Statement::Return(None)),
     Expression => Box::new(Statement::Expression(<>)),
@@ -114,8 +122,13 @@ VariableDeclarationMutability: Mutability = {
 // =============================== Expression =====================================
 
 Expression: Expression = {
-    Term+
+    TypedTerm+
 };
+
+TypedTerm: Box<Term> = {
+    <object: Term> "'" <type_: TypedTerm> => Box::new(Term::TypeHint { <> }),
+    Term
+}
 
 Term: Box<Term> = {
     AnyIdentifier => Box::new(Term::Identifier(<>)),

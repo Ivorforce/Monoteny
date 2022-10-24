@@ -16,7 +16,7 @@ pub fn transpile_program(
     for function in program.functions.iter() {
         let return_type = transpile_type(&function.machine_interface.return_type);
 
-        write!(header_stream, "{} {}(", return_type, function.human_interface.alphanumeric_name)?;
+        write!(header_stream, "{} {}(", return_type, function.human_interface.name)?;
 
         for (key, variable) in function.human_interface.parameter_names.iter() {
             // External names do not exist in C. Let's just use the internal name.
@@ -63,5 +63,6 @@ pub fn transpile_type(type_def: &TypeProto) -> String {
         TypeUnit::PrecedenceGroup(_) => todo!(),
         TypeUnit::Void => todo!(),
         TypeUnit::AnonymousStruct(_) => todo!(),
+        TypeUnit::Keyword(_) => todo!(),
     }
 }

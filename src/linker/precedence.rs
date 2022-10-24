@@ -6,6 +6,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{scopes, LinkError};
+use crate::linker::scopes::Environment;
 use crate::parser::abstract_syntax::*;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionOverload, FunctionPointer, ParameterKey};
@@ -26,7 +27,6 @@ pub struct PrecedenceGroup {
     pub id: Uuid,
     pub name: String,
     pub associativity: OperatorAssociativity,
-    pub form: PatternForm,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -36,12 +36,11 @@ pub struct OperatorPattern {
 }
 
 impl PrecedenceGroup {
-    pub fn new(name: &str, associativity: OperatorAssociativity, form: PatternForm) -> PrecedenceGroup {
+    pub fn new(name: &str, associativity: OperatorAssociativity) -> PrecedenceGroup {
         PrecedenceGroup {
             id: Uuid::new_v4(),
             name: String::from(name),
             associativity,
-            form
         }
     }
 }
@@ -60,7 +59,7 @@ impl Hash for PrecedenceGroup {
 
 #[derive(Clone)]
 pub enum Token {
-    Operator(Rc<FunctionOverload>),
+    Keyword(String),
     Expression(ExpressionID),
     AnonymousStruct { keys: Vec<ParameterKey>, values: Vec<ExpressionID> },
     AnonymousArray { keys: Vec<Option<ExpressionID>>, values: Vec<ExpressionID> },
@@ -133,7 +132,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
     }
 
     let mut arguments: Vec<ExpressionID> = vec![];
-    let mut operators: Vec<Rc<FunctionOverload>> = vec![];
+    let mut keywords: Vec<String> = vec![];
 
     if let Token::Expression(expression) = tokens.remove(tokens.len() - 1) {
         arguments.push(expression);
@@ -143,8 +142,9 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
     }
 
     // Reduce all unary operators, and build interspersed arguments / operators list.
+    let left_unary_operators = &scope.precedence_groups[0].1;
     while !tokens.is_empty() {
-        guard!(let Token::Operator(operator) = tokens.remove(tokens.len() - 1) else {
+        guard!(let Token::Keyword(keyword) = tokens.remove(tokens.len() - 1) else {
             return Err(LinkError::LinkError { msg: String::from("Expecting an operator but got an expression.") })
         });
 
@@ -152,32 +152,36 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
             if let Token::Expression(expression) = &tokens[tokens.len() - 1] {
                 // Binary Operator, because left of operator is an expression!
                 arguments.insert(0, expression.clone());
-                operators.insert(0, operator);
+                keywords.insert(0, keyword);
                 tokens.remove(tokens.len() - 1);
 
                 continue
             }
         }
 
+        let overload = scope.resolve_function_overload(Environment::Global, &left_unary_operators[&keyword])?;
+
         // Unary operator, because left of operator is an operator!
         let argument = arguments.remove(0);
-        arguments.insert(0, linker.link_unary_function(&operator, argument, scope)?);
+        arguments.insert(0, linker.link_function_call(&overload.pointers, &overload.name, vec![ParameterKey::Positional], vec![argument], scope)?);
     }
 
     if arguments.len() == 1 {
+        // Just one argument, we can shortcut!
         return Ok(arguments.remove(0))
     }
 
     // Resolve binary operators. At this point, we have only expressions interspersed with operators.
 
-    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<ExpressionID>, operators: &mut Vec<Rc<FunctionOverload>>, i: usize| -> Result<(), LinkError> {
+    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<ExpressionID>, alias: &String, i: usize| -> Result<(), LinkError> {
         let lhs = arguments.remove(i);
         let rhs = arguments.remove(i);
-        let operator = operators.remove(i);
+        let operator = scope.resolve(Environment::Global, &alias)?;
+        let overload = scope.resolve_function_overload(Environment::Global, alias)?;
 
         Ok(arguments.insert(
             i,
-            linker.link_binary_function(lhs, &operator, rhs, scope)?
+            linker.link_function_call(&overload.pointers, &overload.name, vec![ParameterKey::Positional, ParameterKey::Positional], vec![lhs, rhs], scope)?
         ))
     };
 
@@ -186,9 +190,10 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
             OperatorAssociativity::Left => {
                 // Iterate left to right
                 let mut i = 0;
-                while i < operators.len() {
-                    if group_operators.contains(&operators[i].name) {
-                        join_binary_at(linker, &mut arguments, &mut operators, i)?;
+                while i < keywords.len() {
+                    if let Some(alias) = group_operators.get(&keywords[i]) {
+                        keywords.remove(i);
+                        join_binary_at(linker, &mut arguments, alias, i)?;
                     }
                     else {
                         i += 1;  // Skip
@@ -197,24 +202,26 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
             }
             OperatorAssociativity::Right => {
                 // Iterate right to left
-                let mut i = operators.len();
+                let mut i = keywords.len();
                 while i > 0 {
                     i -= 1;
-                    if group_operators.contains(&operators[i].name) {
-                        join_binary_at(linker, &mut arguments, &mut operators, i)?;
+                    if let Some(alias) = group_operators.get(&keywords[i]) {
+                        keywords.remove(i);
+                        join_binary_at(linker, &mut arguments, alias, i)?;
                     }
                 }
             }
             OperatorAssociativity::None => {
                 // Iteration direction doesn't matter here.
                 let mut i = 0;
-                while i < operators.len() {
-                    if group_operators.contains(&operators[i].name) {
-                        if i + 1 < group_operators.len() && group_operators.contains(&operators[i + 1].name) {
-                            panic!("Cannot parse two neighboring {} operators because no associativity is defined.", &operators[i].name);
+                while i < keywords.len() {
+                    if let Some(alias) = group_operators.get(&keywords[i]) {
+                        if i + 1 < group_operators.len() && group_operators.contains_key(&keywords[i + 1]) {
+                            panic!("Cannot parse two neighboring {} operators because no associativity is defined.", &keywords[i]);
                         }
 
-                        join_binary_at(linker, &mut arguments, &mut operators, i)?;
+                        keywords.remove(i);
+                        join_binary_at(linker, &mut arguments, alias, i)?;
                     }
 
                     i += 1;
@@ -223,16 +230,16 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
             OperatorAssociativity::ConjunctivePairs => {
                 // Iteration direction doesn't matter here.
                 let mut i = 0;
-                while i < operators.len() {
-                    if !group_operators.contains(&operators[i].name) {
+                while i < keywords.len() {
+                    if !group_operators.contains_key(&keywords[i]) {
                         // Skip
                         i += 1;
                         continue;
                     }
 
-                    if i + 1 >= operators.len() || !group_operators.contains(&operators[i + 1].name) {
+                    if i + 1 >= keywords.len() || !group_operators.contains_key(&keywords[i + 1]) {
                         // Just one operation; let's use a binary operator.
-                        join_binary_at(linker, &mut arguments, &mut operators, i)?;
+                        join_binary_at(linker, &mut arguments, &group_operators[&keywords.remove(i)], i)?;
                         continue;
                     }
 
@@ -243,19 +250,19 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                         arguments.remove(i), arguments.remove(i), arguments.remove(i)
                     ];
                     let mut group_operators = vec![
-                        operators.remove(i), operators.remove(i)
+                        keywords.remove(i), keywords.remove(i)
                     ];
 
-                    while i < operators.len() && group_operators.contains(&operators[i]) {
+                    while i < keywords.len() && group_operators.contains(&keywords[i]) {
                         // Found one more! Yay!
                         group_arguments.push(arguments.remove(i));
-                        group_operators.push(operators.remove(i));
+                        group_operators.push(keywords.remove(i));
                     }
 
                     // Let's wrap this up.
                     arguments.insert(i, linker.link_conjunctive_pairs(
                         group_arguments,
-                        group_operators
+                        todo!("Resolve group_operators to overloads")
                     )?);
                 }
             }
@@ -263,14 +270,14 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
             OperatorAssociativity::LeftUnary => {}
         }
 
-        if operators.len() == 0 {
+        if keywords.len() == 0 {
             // We can return early
             return Ok(arguments.into_iter().next().unwrap())
         }
     }
 
-    if operators.len() > 0 {
-        panic!("Unrecognized binary operator pattern(s); did you forget an import? Offending Operators: {:?}", &operators.iter().map(|x| &x.name).collect_vec());
+    if keywords.len() > 0 {
+        panic!("Unrecognized binary operator pattern(s); did you forget an import? Offending Operators: {:?}", &keywords);
     }
 
     Ok(arguments.into_iter().next().unwrap())

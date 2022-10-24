@@ -4,16 +4,14 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use itertools::zip_eq;
 use uuid::Uuid;
-use crate::parser::abstract_syntax::PatternForm;
 use crate::program::allocation::{Mutability, Reference};
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
-use crate::program::types::TypeProto;
+use crate::program::types::{TypeProto};
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum FunctionForm {
     Global,
     Member,
-    Pattern(PatternForm),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -41,12 +39,10 @@ pub struct FunctionPointer {
 pub struct FunctionOverload {
     pub pointers: HashSet<Rc<FunctionPointer>>,
     pub name: String,
-    pub is_operator: bool,
 }
 
 pub struct HumanFunctionInterface {
     pub name: String,
-    pub alphanumeric_name: String,
 
     pub parameter_names: Vec<(ParameterKey, Rc<Reference>)>,
     pub parameter_names_internal: Vec<String>,
@@ -64,7 +60,7 @@ pub struct MachineFunctionInterface {
 }
 
 impl FunctionPointer {
-    pub fn make_operator<'a>(name: &'a str, alphanumeric_name: &'a str, count: usize, parameter_type: &Box<TypeProto>, return_type: &Box<TypeProto>) -> Rc<FunctionPointer> {
+    pub fn make_operator<'a>(alphanumeric_name: &'a str, count: usize, parameter_type: &Box<TypeProto>, return_type: &Box<TypeProto>) -> Rc<FunctionPointer> {
         let parameter_names = (0..count).map(|_| ParameterKey::Positional);
         let parameters: Vec<Rc<Reference>> = (0..count).map(|x| Rc::new(Reference {
             id: Uuid::new_v4(),
@@ -77,11 +73,10 @@ impl FunctionPointer {
             target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
 
             human_interface: Rc::new(HumanFunctionInterface {
-                name: String::from(name),
-                alphanumeric_name: String::from(alphanumeric_name),
+                name: String::from(alphanumeric_name),
                 parameter_names: zip_eq(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
                 parameter_names_internal: vec![],  // TODO Internal names shouldn't need to be specified for builtins?
-                form: FunctionForm::Pattern(if count == 1 { PatternForm::Unary } else { PatternForm::Unary }),
+                form: FunctionForm::Global,
             }),
             machine_interface:Rc::new(MachineFunctionInterface {
                 parameters: parameters.into_iter().collect(),
@@ -91,7 +86,7 @@ impl FunctionPointer {
         })
     }
 
-    pub fn make_global<'a, I>(name: &'a str, alphanumeric_name: &'a str, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionPointer> where I: Iterator<Item=Box<TypeProto>> {
+    pub fn make_global<'a, I>(name: &'a str, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionPointer> where I: Iterator<Item=Box<TypeProto>> {
         let parameters: Vec<Rc<Reference>> = parameter_types
             .map(|x| Reference::make_immutable(x.clone()))
             .collect();
@@ -103,7 +98,6 @@ impl FunctionPointer {
 
             human_interface: Rc::new(HumanFunctionInterface {
                 name: String::from(name),
-                alphanumeric_name: String::from(alphanumeric_name),
                 parameter_names: zip_eq(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
                 parameter_names_internal: vec![],  // TODO Internal names shouldn't need to be specified for builtins?
                 form: FunctionForm::Global,
@@ -122,19 +116,13 @@ impl FunctionOverload {
         Rc::new(FunctionOverload {
             pointers: HashSet::from([Rc::clone(function)]),
             name: function.human_interface.name.clone(),
-            is_operator: function.human_interface.form.is_operator(),
         })
     }
 
     pub fn adding_function(&self, function: &Rc<FunctionPointer>) -> Rc<FunctionOverload> {
-        if function.human_interface.form.is_operator() != self.is_operator {
-            panic!("Function has incompatible form.")
-        }
-
         Rc::new(FunctionOverload {
             pointers: self.pointers.iter().chain([function]).map(Rc::clone).collect(),
             name: self.name.clone(),
-            is_operator: self.is_operator
         })
     }
 }
@@ -163,11 +151,6 @@ impl Debug for HumanFunctionInterface {
                 write!(fmt, "{:?}.", self.parameter_names.get(head).unwrap().1.type_declaration)?;
                 head += 1;
             },
-            // TODO Unary operators?
-            FunctionForm::Pattern(form) => {
-
-                return Ok(())
-            }
         }
 
         write!(fmt, "{}(", self.name)?;
@@ -196,14 +179,5 @@ impl Debug for ParameterKey {
 impl ParameterKey {
     pub fn from_string(s: String) -> ParameterKey {
         if s == "_" { ParameterKey::Positional } else { ParameterKey::Name(s) }
-    }
-}
-
-impl FunctionForm {
-    pub fn is_operator(&self) -> bool {
-        match self {
-            FunctionForm::Pattern(_) => true,
-            _ => false
-        }
     }
 }

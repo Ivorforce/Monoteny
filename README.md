@@ -84,13 +84,13 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 - [x] Generics
   - [x] Reverse generic type checking (output types determined from inputs)
   - [ ] Generic constants (`let pi = 3.1415926`, inferred type: `$Float`)
-  - [x] Anonymous generics (`#A`)
+  - [x] Implicit generics (`#A`)
     - [x] ... in imperative code
     - [x] ... with implicit trait conformance requirements (`$Number` -> `if $Number: Number {}`)
     - [ ] ... recursive (`$$Number: $Number`)
+    - [ ] ... anonymous (`#(a: a, b: b)` or `#.a`)
 - [x] Custom patterns with keywords (unary / binary operators)
   - [ ] Custom precedence steps (with associativity) 
-  - [ ] Deconstruction for patterns (e.g. `fun a[data: A] :: ...` or `fun {left: A} + (a: A, b: B) :: ...`) 
 - [ ] 'equivalence transformation' syntax: `((a + b) * c).any()` becomes `a + b .. * c .. .any()`
   - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`
 - [ ] Expression Scopes (`let a = { ... yield b; };`)

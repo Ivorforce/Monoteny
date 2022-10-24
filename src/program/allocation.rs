@@ -1,7 +1,8 @@
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 use std::rc::Rc;
-use crate::program::types::TypeProto;
+use crate::linker::scopes::Environment;
+use crate::program::types::{TypeProto, TypeUnit};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Mutability {
@@ -9,7 +10,7 @@ pub enum Mutability {
     Mutable,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq)]
 pub struct Reference {
     pub id: Uuid,
     pub type_declaration: Box<TypeProto>,
@@ -21,8 +22,6 @@ impl PartialEq for Reference {
         self.id == other.id
     }
 }
-
-impl Eq for Reference {}
 
 impl Hash for Reference {
     fn hash<H: Hasher>(&self, state: &mut H) {

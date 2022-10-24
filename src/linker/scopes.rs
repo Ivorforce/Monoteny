@@ -6,17 +6,16 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::linker::precedence::PrecedenceGroup;
 use crate::linker::LinkError;
-use crate::parser::abstract_syntax::PatternForm;
 use crate::program::allocation::{Mutability, Reference};
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, HumanFunctionInterface, ParameterKey};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::generics::TypeForest;
-use crate::program::types::{Pattern, TypeProto, TypeUnit};
+use crate::program::types::{Pattern, PatternPart, TypeProto, TypeUnit};
 
 // Note: While a single pool cannot own overloaded variables, multiple same-level pools (-> from imports) can.
 // When we have imports, this should be ignored until referenced, to avoid unnecessary import complications.
 // For these cases, we could store an AMBIGUOUS value inside our pool, crashing when accessed?
-type VariablePool = HashMap<String, Rc<Reference>>;
+type RefPool = HashMap<String, Rc<Reference>>;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum Environment {
@@ -28,11 +27,14 @@ pub struct Scope<'a> {
     pub parent: Option<&'a Scope<'a>>,
 
     pub trait_conformance_declarations: TraitConformanceScope,
-    pub precedence_groups: Vec<(Rc<PrecedenceGroup>, HashSet<String>)>,
+
     pub patterns: HashSet<Rc<Pattern>>,
 
-    pub global: VariablePool,
-    pub member: VariablePool,
+    /// Contents: For each precedence groups, matched keywords and how they map to which function names
+    pub precedence_groups: Vec<(Rc<PrecedenceGroup>, HashMap<String, String>)>,
+
+    pub global: RefPool,
+    pub member: RefPool,
 }
 
 impl <'a> Scope<'a> {
@@ -42,6 +44,7 @@ impl <'a> Scope<'a> {
 
             trait_conformance_declarations: TraitConformanceScope::new(),
             precedence_groups: vec![],
+
             patterns: HashSet::new(),
 
             global: HashMap::new(),
@@ -58,6 +61,7 @@ impl <'a> Scope<'a> {
 
             trait_conformance_declarations: self.trait_conformance_declarations.clone(),
             precedence_groups: self.precedence_groups.clone(),
+
             patterns: self.patterns.clone(),
 
             global: HashMap::new(),
@@ -65,14 +69,14 @@ impl <'a> Scope<'a> {
         }
     }
 
-    pub fn variables_mut(&mut self, environment: Environment) -> &mut VariablePool {
+    pub fn references_mut(&mut self, environment: Environment) -> &mut RefPool {
         match environment {
             Environment::Global => &mut self.global,
             Environment::Member => &mut self.member
         }
     }
 
-    pub fn variables(&self, environment: Environment) -> &VariablePool {
+    pub fn references(&self, environment: Environment) -> &RefPool {
         match environment {
             Environment::Global => &self.global,
             Environment::Member => &self.member
@@ -86,7 +90,7 @@ impl <'a> Scope<'a> {
         };
         let name = &fun.human_interface.name;
 
-        let mut variables = self.variables_mut(environment);
+        let mut variables = self.references_mut(environment);
 
         // Remove the current FunctionOverload reference and replace with a reference containing also our new overload.
         // This may seem weird at first but it kinda makes sense - if someone queries the scope, gets a reference,
@@ -110,11 +114,11 @@ impl <'a> Scope<'a> {
                     TypeProto::unit(TypeUnit::FunctionOverload(overload.adding_function(fun)))
                 );
 
-                let mut variables = self.variables_mut(environment);
+                let mut variables = self.references_mut(environment);
                 variables.insert(fun.human_interface.name.clone(), variable);
             }
 
-            let mut variables = self.variables_mut(environment);
+            let mut variables = self.references_mut(environment);
 
             let variable = Reference::make_immutable(
                 TypeProto::unit(TypeUnit::FunctionOverload(FunctionOverload::from(fun)))
@@ -143,39 +147,83 @@ impl <'a> Scope<'a> {
         }
     }
 
-    pub fn insert_singleton(&mut self, environment: Environment, variable: Rc<Reference>, name: &String) {
-        let mut variables = self.variables_mut(environment);
+    pub fn insert_singleton(&mut self, environment: Environment, reference: Rc<Reference>, name: &String) {
+        let mut references = self.references_mut(environment);
 
-        if let Some(_) = variables.insert(name.clone(), variable) {
+        if let Some(other) = references.insert(name.clone(), reference) {
             panic!("Multiple variables of the same name: {}", name);
         }
     }
 
+    pub fn insert_keyword(&mut self, keyword: &String) {
+        let reference = Reference::make_immutable(TypeProto::unit(TypeUnit::Keyword(keyword.clone())));
+        let mut references = self.references_mut(Environment::Global);
+
+        if let Some(other) = references.insert(keyword.clone(), reference) {
+            if &TypeUnit::Keyword(keyword.clone()) != &other.type_declaration.unit {
+                panic!("Multiple variables of the same name: {}", keyword);
+            }
+        }
+    }
+
     pub fn override_variable(&mut self, environment: Environment, variable: Rc<Reference>, name: &String) {
-        let mut variables = self.variables_mut(environment);
+        let mut variables = self.references_mut(environment);
 
         variables.insert(name.clone(), variable);
     }
 
     pub fn contains(&mut self, environment: Environment, name: &String) -> bool {
-        self.variables(environment).contains_key(name)
+        self.references(environment).contains_key(name)
     }
 
-    pub fn add_pattern(&mut self, pattern: Rc<Pattern>) {
-        for (other_group, set) in self.precedence_groups.iter_mut() {
-            if other_group == &pattern.precedence_group {
-                set.insert(pattern.operator.clone());
-                continue
+    pub fn add_pattern(&mut self, pattern: Rc<Pattern>) -> Result<(), LinkError> {
+        for (precedence_group, keyword_map) in self.precedence_groups.iter_mut() {
+            if precedence_group != &pattern.precedence_group {
+                continue;
             }
+
+            match &pattern.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
+                [
+                    PatternPart::Keyword(keyword),
+                    PatternPart::Parameter { .. },
+                ] => {
+                    assert_eq!(precedence_group.name, "LeftUnaryPrecedence");
+                    keyword_map.insert(keyword.clone(), pattern.alias.clone());
+                    self.insert_keyword(keyword);
+                },
+                [
+                    PatternPart::Parameter { .. },
+                    PatternPart::Keyword(keyword),
+                ] => {
+                    assert_eq!(precedence_group.name, "RightUnaryPrecedence");
+                    keyword_map.insert(keyword.clone(), pattern.alias.clone());
+                    self.insert_keyword(keyword);
+                },
+                [
+                    PatternPart::Parameter { .. },
+                    PatternPart::Keyword(keyword),
+                    PatternPart::Parameter { .. },
+                ] => {
+                    assert_ne!(precedence_group.name, "LeftUnaryPrecedence");
+                    assert_ne!(precedence_group.name, "RightUnaryPrecedence");
+                    keyword_map.insert(keyword.clone(), pattern.alias.clone());
+                    self.insert_keyword(keyword);
+                }
+                _ => return Err(LinkError::LinkError { msg: String::from("This pattern form is not supported; try using unary or binary patterns.") }),
+            };
+
+            self.patterns.insert(pattern);
+
+            return Ok(())
         }
 
-        self.patterns.insert(pattern);
+        panic!()
     }
 }
 
 impl <'a> Scope<'a> {
     pub fn resolve(&'a self, environment: Environment, variable_name: &String) -> Result<&'a Rc<Reference>, LinkError> {
-        if let Some(matches) = self.variables(environment).get(variable_name) {
+        if let Some(matches) = self.references(environment).get(variable_name) {
             return Ok(matches)
         }
 
@@ -204,16 +252,6 @@ impl <'a> Scope<'a> {
         }
     }
 
-    pub fn resolve_operator_pattern(&self, operator_name: &String, form: &PatternForm) -> &Pattern {
-        for pattern in self.patterns.iter() {
-            if &pattern.precedence_group.form == form && operator_name == &pattern.operator {
-                return pattern
-            }
-        }
-
-        panic!("Pattern could not be resolved for operator: {}", operator_name)
-    }
-
     pub fn resolve_precedence_group(&self, name: &String) -> Rc<PrecedenceGroup> {
         for (group, _) in self.precedence_groups.iter() {
             if &group.name == name {
@@ -222,5 +260,14 @@ impl <'a> Scope<'a> {
         }
 
         panic!("Precedence group could not be resolved: {}", name)
+    }
+
+    pub fn resolve_function_overload(&self, environment: Environment, name: &String) -> Result<Rc<FunctionOverload>, LinkError> {
+        let type_declaration = &self.resolve(environment, name)?.type_declaration;
+
+        match &type_declaration.unit {
+            TypeUnit::FunctionOverload(overload) => Ok(Rc::clone(overload)),
+            _ => Err(LinkError::LinkError { msg: format!("{}' is not a function in this context.", name) })
+        }
     }
 }

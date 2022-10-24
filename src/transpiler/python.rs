@@ -45,7 +45,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     }
 
     for function in program.functions.iter() {
-        file_namespace.register_definition(function.implementation_id, &function.human_interface.alphanumeric_name);
+        file_namespace.register_definition(function.implementation_id, &function.human_interface.name);
 
         let function_namespace = file_namespace.add_sublevel();
         for (variable, name) in function.variable_names.iter() {
@@ -97,7 +97,7 @@ fn add_ids_as_name(declaration: &Rc<TraitConformanceDeclaration>, name: &String,
 
 fn add_injections_to_namespace(declaration: &Rc<TraitConformanceDeclaration>, namespace: &mut namespaces::Level) {
     for injected_function in declaration.function_implementations.values() {
-        namespace.register_definition(injected_function.pointer_id.clone(), &injected_function.human_interface.alphanumeric_name);
+        namespace.register_definition(injected_function.pointer_id.clone(), &injected_function.human_interface.name);
     }
 
     for declaration in declaration.trait_requirements_conformance.values() {

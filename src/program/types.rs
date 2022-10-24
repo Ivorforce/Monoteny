@@ -33,6 +33,7 @@ pub enum TypeUnit {
     Trait(Rc<Trait>),
     FunctionOverload(Rc<FunctionOverload>),
     PrecedenceGroup(Rc<PrecedenceGroup>),
+    Keyword(String),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -44,9 +45,16 @@ pub struct Generic {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Pattern {
     pub id: Uuid,
-    pub operator: String,
     pub alias: String,
     pub precedence_group: Rc<PrecedenceGroup>,
+
+    pub parts: Vec<Box<PatternPart>>,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum PatternPart {
+    Parameter { key: ParameterKey, internal_name: String },
+    Keyword(String),
 }
 
 impl Debug for TypeProto {
@@ -80,6 +88,7 @@ impl Debug for TypeUnit {
                 write_comma_separated_list(fmt, names)?;
                 write!(fmt, ")")
             }
+            Keyword(s) => write!(fmt, "{}", s),
         }
     }
 }

@@ -11,7 +11,7 @@ use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{LinkError, scopes};
 use crate::linker::interface::{link_function_pointer, link_operator_pointer};
 use crate::linker::r#type::TypeFactory;
-use crate::parser::abstract_syntax::{PatternForm, Term};
+use crate::parser::abstract_syntax::{PatternDeclaration, Term};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::{primitives, Program};
 use crate::program::allocation::Reference;
@@ -94,24 +94,8 @@ impl <'a> GlobalLinker<'a> {
     pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, requirements: &HashSet<Rc<TraitConformanceRequirement>>) -> Result<(), LinkError> {
         match statement {
             abstract_syntax::GlobalStatement::Pattern(pattern) => {
-                let scope = &self.global_variables;
-
-                let precedence_group = scope.resolve_precedence_group(&pattern.precedence);
-                if precedence_group.form != pattern.form {
-                    if pattern.form == PatternForm::Binary {
-                        panic!("Binary patterns cannot use a unary precedence group.")
-                    }
-                    else {
-                        panic!("Unary patterns cannot use a binary precedence group.")
-                    }
-                }
-
-                &self.global_variables.add_pattern(Rc::new(Pattern {
-                    id: Uuid::new_v4(),
-                    operator: pattern.operator.clone(),
-                    alias: pattern.alias.clone(),
-                    precedence_group
-                }));
+                let pattern = self.link_pattern(pattern)?;
+                &self.global_variables.add_pattern(pattern);
             }
             abstract_syntax::GlobalStatement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
@@ -144,5 +128,16 @@ impl <'a> GlobalLinker<'a> {
         }
 
         Ok(())
+    }
+
+    pub fn link_pattern(&mut self, syntax: &PatternDeclaration) -> Result<Rc<Pattern>, LinkError> {
+        let precedence_group = self.global_variables.resolve_precedence_group(&syntax.precedence);
+
+        Ok(Rc::new(Pattern {
+            id: Uuid::new_v4(),
+            alias: syntax.alias.clone(),
+            precedence_group,
+            parts: syntax.parts.clone(),
+        }))
     }
 }

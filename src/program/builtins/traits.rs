@@ -34,8 +34,8 @@ pub fn make_eq_functions(type_: &Box<TypeProto>) -> EqFunctions {
     let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
 
     EqFunctions {
-        equal_to: FunctionPointer::make_operator("==", "is_equal", 2, type_, &bool_type),
-        not_equal_to: FunctionPointer::make_operator("!=", "is_not_equal", 2, type_, &bool_type),
+        equal_to: FunctionPointer::make_operator("is_equal", 2, type_, &bool_type),
+        not_equal_to: FunctionPointer::make_operator("is_not_equal", 2, type_, &bool_type),
     }
 }
 
@@ -62,20 +62,20 @@ pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
     let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
 
     NumberFunctions {
-        add: FunctionPointer::make_operator("+", "add", 2, type_, type_),
-        subtract: FunctionPointer::make_operator("-", "subtract", 2, type_, type_),
-        multiply: FunctionPointer::make_operator("*", "multiply", 2, type_, type_),
-        divide: FunctionPointer::make_operator("/", "divide", 2, type_, type_),
+        add: FunctionPointer::make_operator("add", 2, type_, type_),
+        subtract: FunctionPointer::make_operator("subtract", 2, type_, type_),
+        multiply: FunctionPointer::make_operator("multiply", 2, type_, type_),
+        divide: FunctionPointer::make_operator("divide", 2, type_, type_),
 
-        positive: FunctionPointer::make_operator("+", "positive", 1, type_, type_),
-        negative: FunctionPointer::make_operator("-", "negative", 1, type_, type_),
+        positive: FunctionPointer::make_operator("positive", 1, type_, type_),
+        negative: FunctionPointer::make_operator("negative", 1, type_, type_),
 
-        modulo: FunctionPointer::make_operator("%", "modulo", 2, type_, type_),
+        modulo: FunctionPointer::make_operator("modulo", 2, type_, type_),
 
-        greater_than: FunctionPointer::make_operator(">", "is_greater", 2, type_, &bool_type),
-        greater_than_or_equal_to: FunctionPointer::make_operator(">=", "is_greater_or_equal", 2, type_, &bool_type),
-        lesser_than: FunctionPointer::make_operator("<", "is_lesser", 2, type_, &bool_type),
-        lesser_than_or_equal_to: FunctionPointer::make_operator("<=", "is_lesser_or_equal", 2, type_, &bool_type),
+        greater_than: FunctionPointer::make_operator("is_greater", 2, type_, &bool_type),
+        greater_than_or_equal_to: FunctionPointer::make_operator("is_greater_or_equal", 2, type_, &bool_type),
+        lesser_than: FunctionPointer::make_operator("is_lesser", 2, type_, &bool_type),
+        lesser_than_or_equal_to: FunctionPointer::make_operator("is_lesser_or_equal", 2, type_, &bool_type),
     }
 }
 
@@ -86,8 +86,8 @@ pub struct FloatFunctions {
 
 pub fn make_float_functions(type_: &Box<TypeProto>) -> FloatFunctions {
     FloatFunctions {
-        exponent: FunctionPointer::make_operator("**", "exponent", 2, type_, type_),
-        logarithm: FunctionPointer::make_operator("//", "logarithm", 2, type_, type_),
+        exponent: FunctionPointer::make_operator("exponent", 2, type_, type_),
+        logarithm: FunctionPointer::make_operator("logarithm", 2, type_, type_),
     }
 }
 
