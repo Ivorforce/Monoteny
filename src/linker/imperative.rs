@@ -252,14 +252,14 @@ impl <'a> ImperativeLinker<'a> {
                         ReferenceType::Keyword(keyword) => {
                             precedence::Token::Keyword(keyword.clone())
                         }
-                        ReferenceType::Constant(_) => {
-                            todo!()
+                        ReferenceType::Constant(f) => {
+                            precedence::Token::Expression(self.link_constant(f, scope)?)
                         }
                         ReferenceType::FunctionOverload(overload) => {
                             precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
                         }
                         ReferenceType::PrecedenceGroup(_) => {
-                            todo!()
+                            return Err(LinkError::LinkError { msg: format!("Precedence group references are not allowed in this context.") })
                         }
                     }
                 }
@@ -316,7 +316,6 @@ impl <'a> ImperativeLinker<'a> {
         todo!()
     }
 
-
     pub fn link_function_call(&mut self, functions: &HashSet<Rc<FunctionPointer>>, fn_name: &String, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
         // TODO Check if any arguments are void before anything else
         let seed = Uuid::new_v4();
@@ -371,5 +370,22 @@ impl <'a> ImperativeLinker<'a> {
         }
 
         panic!("function {} could not be resolved.", fn_name)
+    }
+
+    pub fn link_constant(&mut self, function: &Rc<FunctionPointer>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
+        let seed = Uuid::new_v4();
+        let binding = scope.trait_conformance_declarations
+            .satisfy_requirements(&function.machine_interface.requirements, &seed, &mut self.expressions.type_forest)?;
+        let return_type = function.machine_interface.return_type.with_any_as_generic(&seed);
+
+        self.link_unambiguous_expression(
+            vec![],
+            return_type.as_ref(),
+            ExpressionOperation::FunctionCall {
+                function: Rc::clone(function),
+                argument_targets: vec![],
+                binding
+            }
+        )
     }
 }

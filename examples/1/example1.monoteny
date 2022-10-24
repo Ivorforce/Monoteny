@@ -6,14 +6,15 @@ fun square(_: a '$Number) -> $Number :: a * a;
 
 fun {$Number}.square() -> $Number :: square(self);
 
+let test 'Float32 :: 5;
+
 fun main() :: {
     print("Test: ");
 
     let a 'Float32 = 2.2.square() * 3;
 
-    var b = square(5);
+    var b = square(5) + test;
     upd b = b.square() ** -2.2 /_ a // 2;
 
     print(b < 2 and not (a > 2) and true);
-
 }
