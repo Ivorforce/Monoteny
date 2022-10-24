@@ -125,6 +125,9 @@ impl <'a> GlobalLinker<'a> {
                 // Create a variable for the function
                 self.global_variables.overload_function(&fun);
             }
+            abstract_syntax::GlobalStatement::Constant(syntax) => {
+                todo!()
+            }
         }
 
         Ok(())

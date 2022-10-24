@@ -54,6 +54,7 @@ pub GlobalStatement: Box<GlobalStatement> = {
     Function => Box::new(GlobalStatement::FunctionDeclaration(<>)),
     Pattern => Box::new(GlobalStatement::Pattern(<>)),
     OperatorFunction => Box::new(GlobalStatement::Operator(<>)),
+    Constant => Box::new(GlobalStatement::Constant(<>)),
 };
 
 Pattern: Box<PatternDeclaration> = {
@@ -68,6 +69,10 @@ PatternPart: Box<PatternPart> = {
 
 Function: Box<Function> = {
     "fun" <target_type: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
+}
+
+Constant: Box<Constant> = {
+    "let" <identifier: Identifier> "'" <declared_type: Expression> "::" <body: FunctionBody> => Box::new(Constant { <> }),
 }
 
 OperatorFunction: Box<OperatorFunction> = {
@@ -85,7 +90,7 @@ ContextualParameter: Box<Expression> = {
 
 FunctionBody: Vec<Box<Statement>> = {
     "{" <(<Statement> ";")*> "}",
-    <Expression> ";" => vec![Box::new(Statement::Expression(<>))],
+    <Expression> ";" => vec![Box::new(Statement::Return(Some(<>)))],
 }
 
 KeyedParameter: Box<KeyedParameter> = {

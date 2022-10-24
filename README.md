@@ -70,6 +70,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [x] Inheritance (`if Number<#A> { trait OtherTrait<#A> }`)
   - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
   - [ ] Abstract Functions, Conformance Declarations
+  - [ ] Generic values from literals (`let b '$Float = 5`)
   - [ ] Stored Properties (for traits with associated Self)
     - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract
       - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
@@ -80,7 +81,6 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
     - [ ] Deconstruction assignment
 - [ ] Non-linear linking (allow references to identifiers declared below)
 - [ ] Comments (with transpilation)
-- [ ] Right-Unary Operators
 - [ ] Constants
   - [ ] ... generically typed (`let pi = 3.1415926`, inferred type: `$Float`)
 - [x] Generics
@@ -91,6 +91,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
     - [ ] ... recursive (`$$Number: $Number`)
     - [ ] ... anonymous (`#(a: a, b: b)` or `#.a`)
 - [x] Custom patterns with keywords (unary / binary operators)
+  - [ ] Right-Unary Operators
   - [ ] Custom precedence steps (with associativity) 
 - [ ] 'equivalence transformation' syntax: `((a + b) * c).any()` becomes `a + b .. * c .. .any()`
   - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`

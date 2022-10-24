@@ -15,6 +15,7 @@ pub enum GlobalStatement {
     FunctionDeclaration(Box<Function>),
     Operator(Box<OperatorFunction>),
     Pattern(Box<PatternDeclaration>),
+    Constant(Box<Constant>),
 }
 
 pub enum MemberStatement {
@@ -53,6 +54,13 @@ pub struct PatternDeclaration {
 
     pub alias: String,
     pub parts: Vec<Box<PatternPart>>,
+}
+
+pub struct Constant {
+    pub identifier: String,
+
+    pub body: Vec<Box<Statement>>,
+    pub declared_type: Expression,
 }
 
 // =============================== Code =====================================
@@ -124,6 +132,7 @@ impl Debug for GlobalStatement {
             FunctionDeclaration(function) => write!(fmt, "{:?}", function),
             Pattern(pattern) => write!(fmt, "{:?}", pattern),
             Operator(operator) => write!(fmt, "{:?}", operator),
+            Constant(constant) => write!(fmt, "{:?}", constant),
         }
     }
 }
@@ -162,6 +171,17 @@ impl Debug for OperatorFunction {
             }
         }
         write!(fmt, " -> {:?} {{\n", self.return_type)?;
+        for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };
+        write!(fmt, "}}")?;
+        return Ok(())
+    }
+}
+
+impl Debug for Constant {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "let {} '", self.identifier)?;
+        for item in self.declared_type.iter() { write!(fmt, "{:?} ", item)? };
+        write!(fmt, ":: {{")?;
         for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };
         write!(fmt, "}}")?;
         return Ok(())
