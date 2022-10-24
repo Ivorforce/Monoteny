@@ -6,7 +6,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::linker::precedence::PrecedenceGroup;
 use crate::linker::LinkError;
-use crate::program::allocation::{Mutability, Reference};
+use crate::program::allocation::{Mutability, Reference, ReferenceType};
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, HumanFunctionInterface, ParameterKey};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::generics::TypeForest;
@@ -96,9 +96,9 @@ impl <'a> Scope<'a> {
         // This may seem weird at first but it kinda makes sense - if someone queries the scope, gets a reference,
         // and then the scope is modified, the previous caller still expects their reference to not change.
         if let Some(existing) = variables.remove(name) {
-            if let TypeUnit::FunctionOverload(overload) = &existing.type_declaration.unit {
-                let variable = Reference::make_immutable(
-                    TypeProto::unit(TypeUnit::FunctionOverload(overload.adding_function(fun)))
+            if let ReferenceType::FunctionOverload(overload) = &existing.type_ {
+                let variable = Reference::make(
+                    ReferenceType::FunctionOverload(overload.adding_function(fun))
                 );
 
                 variables.insert(fun.human_interface.name.clone(), variable);
@@ -109,9 +109,9 @@ impl <'a> Scope<'a> {
         }
         else {
             // Copy the parent's function overload into us and then add the function to the overload
-            if let Some(Some(TypeUnit::FunctionOverload(overload))) = self.parent.map(|x| x.resolve(environment, name).ok().map(|x| &x.as_ref().type_declaration.unit)) {
-                let variable = Reference::make_immutable(
-                    TypeProto::unit(TypeUnit::FunctionOverload(overload.adding_function(fun)))
+            if let Some(Some(ReferenceType::FunctionOverload(overload))) = self.parent.map(|x| x.resolve(environment, name).ok().map(|x| &x.as_ref().type_)) {
+                let variable = Reference::make(
+                    ReferenceType::FunctionOverload(overload.adding_function(fun))
                 );
 
                 let mut variables = self.references_mut(environment);
@@ -120,8 +120,8 @@ impl <'a> Scope<'a> {
 
             let mut variables = self.references_mut(environment);
 
-            let variable = Reference::make_immutable(
-                TypeProto::unit(TypeUnit::FunctionOverload(FunctionOverload::from(fun)))
+            let variable = Reference::make(
+                ReferenceType::FunctionOverload(FunctionOverload::from(fun))
             );
 
             variables.insert(fun.human_interface.name.clone(), variable);
@@ -132,7 +132,7 @@ impl <'a> Scope<'a> {
         let name = t.name.clone();
         self.insert_singleton(
             Environment::Global,
-            Reference::make_immutable(TypeProto::unit(TypeUnit::Trait(Rc::clone(t)))),
+            Reference::make_immutable_type(TypeProto::unit(TypeUnit::Trait(Rc::clone(t)))),
             &name
         );
     }
@@ -155,12 +155,16 @@ impl <'a> Scope<'a> {
         }
     }
 
+    pub fn insert_constant(&mut self, fun: Rc<FunctionPointer>) {
+        self.insert_singleton(Environment::Global, Reference::make(ReferenceType::Constant(Rc::clone(&fun))), &fun.human_interface.name)
+    }
+
     pub fn insert_keyword(&mut self, keyword: &String) {
-        let reference = Reference::make_immutable(TypeProto::unit(TypeUnit::Keyword(keyword.clone())));
+        let reference = Reference::make(ReferenceType::Keyword(keyword.clone()));
         let mut references = self.references_mut(Environment::Global);
 
         if let Some(other) = references.insert(keyword.clone(), reference) {
-            if &TypeUnit::Keyword(keyword.clone()) != &other.type_declaration.unit {
+            if &ReferenceType::Keyword(keyword.clone()) != &other.type_ {
                 panic!("Multiple variables of the same name: {}", keyword);
             }
         }
@@ -234,24 +238,6 @@ impl <'a> Scope<'a> {
         Err(LinkError::LinkError { msg: format!("Variable '{}' could not be resolved", variable_name) })
     }
 
-    pub fn resolve_metatype(&'a self, environment: Environment, variable_name: &String) -> Result<&'a TypeUnit, LinkError> {
-        let type_declaration = &self.resolve(environment, variable_name)?.type_declaration;
-
-        match &type_declaration.unit {
-            TypeUnit::MetaType => Ok(&type_declaration.arguments.get(0).unwrap().unit),
-            _ => Err(LinkError::LinkError { msg: format!("{}' is not a type.", variable_name) })
-        }
-    }
-
-    pub fn resolve_trait(&'a self, environment: Environment, variable_name: &String) -> &'a Rc<Trait> {
-        let type_declaration = &self.resolve(environment, variable_name).unwrap().type_declaration;
-
-        match &type_declaration.unit {
-            TypeUnit::Trait(t) => t,
-            _ => panic!("{}' is not a type.", variable_name)
-        }
-    }
-
     pub fn resolve_precedence_group(&self, name: &String) -> Rc<PrecedenceGroup> {
         for (group, _) in self.precedence_groups.iter() {
             if &group.name == name {
@@ -260,14 +246,5 @@ impl <'a> Scope<'a> {
         }
 
         panic!("Precedence group could not be resolved: {}", name)
-    }
-
-    pub fn resolve_function_overload(&self, environment: Environment, name: &String) -> Result<Rc<FunctionOverload>, LinkError> {
-        let type_declaration = &self.resolve(environment, name)?.type_declaration;
-
-        match &type_declaration.unit {
-            TypeUnit::FunctionOverload(overload) => Ok(Rc::clone(overload)),
-            _ => Err(LinkError::LinkError { msg: format!("{}' is not a function in this context.", name) })
-        }
     }
 }

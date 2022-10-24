@@ -12,7 +12,7 @@ use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate
 use crate::linker::precedence::{link_patterns};
 use crate::linker::r#type::TypeFactory;
 use crate::parser::abstract_syntax;
-use crate::program::allocation::{Mutability, Reference};
+use crate::program::allocation::{Mutability, ObjectReference, Reference, ReferenceType};
 use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
@@ -29,7 +29,7 @@ pub struct ImperativeLinker<'a> {
     pub expressions: Box<ExpressionForest>,
     pub ambiguities: Vec<Box<dyn LinkerAmbiguity>>,
 
-    pub variable_names: HashMap<Rc<Reference>, String>,
+    pub variable_names: HashMap<Rc<ObjectReference>, String>,
 }
 
 impl <'a> ImperativeLinker<'a> {
@@ -45,7 +45,7 @@ impl <'a> ImperativeLinker<'a> {
         // TODO Register generics as variables so they can be referenced in the function
 
         for (internal_name, (_, variable)) in zip_eq(self.function.human_interface.parameter_names_internal.iter(), self.function.human_interface.parameter_names.iter()) {
-            scope.insert_singleton(scopes::Environment::Global, variable.clone(), internal_name);
+            scope.insert_singleton(scopes::Environment::Global, Reference::make(ReferenceType::Object(variable.clone())), internal_name);
         }
 
         let statements: Vec<Box<Statement>> = self.link_top_scope(body, &scope)?;
@@ -154,7 +154,7 @@ impl <'a> ImperativeLinker<'a> {
                         for (name, generic) in type_factory.generics.into_iter() {
                             scope.insert_singleton(
                                 scopes::Environment::Global,
-                                Reference::make_immutable(TypeProto::unit(generic.clone())),
+                                Reference::make_immutable_type(TypeProto::unit(generic.clone())),
                                 &name
                             );
                         }
@@ -162,16 +162,16 @@ impl <'a> ImperativeLinker<'a> {
                         self.expressions.type_forest.bind(new_value, type_declaration.as_ref())?;
                     }
 
+                    let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(new_value)), mutability: mutability.clone() });
                     let variable = Rc::new(Reference {
                         id: Uuid::new_v4(),
-                        type_declaration: TypeProto::unit(TypeUnit::Generic(new_value)),
-                        mutability: mutability.clone(),
+                        type_: ReferenceType::Object(Rc::clone(&object_ref)),
                     });
 
                     statements.push(Box::new(
-                        Statement::VariableAssignment(Rc::clone(&variable), new_value)
+                        Statement::VariableAssignment(Rc::clone(&object_ref), new_value)
                     ));
-                    self.variable_names.insert(Rc::clone(&variable), identifier.clone());
+                    self.variable_names.insert(object_ref, identifier.clone());
                     scope.override_variable(scopes::Environment::Global, variable, identifier);
                 },
                 abstract_syntax::Statement::Return(expression) => {
@@ -198,17 +198,14 @@ impl <'a> ImperativeLinker<'a> {
                     statements.push(Box::new(Statement::Expression(expression)));
                 }
                 abstract_syntax::Statement::VariableAssignment { variable_name, new_value } => {
-                    let variable = scope.resolve(scopes::Environment::Global, variable_name)?;
-
-                    if variable.mutability == Mutability::Immutable {
-                        panic!("Cannot assign to immutable variable '{}'.", variable_name);
-                    }
+                    let ref_ = scope.resolve(scopes::Environment::Global, variable_name)?
+                        .as_object_ref(true)?;
 
                     let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
-                    self.expressions.type_forest.bind(new_value, variable.type_declaration.as_ref())?;
+                    self.expressions.type_forest.bind(new_value, &ref_.type_)?;
 
                     statements.push(Box::new(
-                        Statement::VariableAssignment(Rc::clone(&variable), new_value)
+                        Statement::VariableAssignment(Rc::clone(&ref_), new_value)
                     ));
                 }
             }
@@ -242,18 +239,28 @@ impl <'a> ImperativeLinker<'a> {
                 else {
                     let variable = scope.resolve(scopes::Environment::Global, s)?;
 
-                    if let TypeUnit::FunctionOverload(overload) = &variable.type_declaration.unit {
-                        precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
-                    }
-                    else if let TypeUnit::Keyword(keyword) = &variable.type_declaration.unit {
-                        precedence::Token::Keyword(keyword.clone())
-                    }
-                    else {
-                        precedence::Token::Expression(self.link_unambiguous_expression(
-                            vec![],
-                            &variable.type_declaration,
-                            ExpressionOperation::VariableLookup(variable.clone())
-                        )?)
+                    match &variable.type_ {
+                        ReferenceType::Object(ref_) => {
+                            let ObjectReference { id, type_, mutability } = ref_.as_ref();
+
+                            precedence::Token::Expression(self.link_unambiguous_expression(
+                                vec![],
+                                type_,
+                                ExpressionOperation::VariableLookup(ref_.clone())
+                            )?)
+                        }
+                        ReferenceType::Keyword(keyword) => {
+                            precedence::Token::Keyword(keyword.clone())
+                        }
+                        ReferenceType::Constant(_) => {
+                            todo!()
+                        }
+                        ReferenceType::FunctionOverload(overload) => {
+                            precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
+                        }
+                        ReferenceType::PrecedenceGroup(_) => {
+                            todo!()
+                        }
                     }
                 }
             }
@@ -273,7 +280,7 @@ impl <'a> ImperativeLinker<'a> {
 
                 let variable = scope.resolve(scopes::Environment::Global, member_name)?;
 
-                if let TypeUnit::FunctionOverload(overload) = &variable.type_declaration.unit {
+                if let ReferenceType::FunctionOverload(overload) = &variable.type_ {
                     precedence::Token::FunctionReference { overload: Rc::clone(overload), target: Some(target) }
                 }
                 else {
@@ -328,7 +335,7 @@ impl <'a> ImperativeLinker<'a> {
 
             candidates.push(Box::new(AmbiguousFunctionCandidate {
                 param_types: fun.human_interface.parameter_names.iter()
-                    .map(|x| x.1.type_declaration.with_any_as_generic(&seed))
+                    .map(|x| x.1.type_.with_any_as_generic(&seed))
                     .collect(),
                 return_type: fun.machine_interface.return_type.with_any_as_generic(&seed),
                 function: fun,

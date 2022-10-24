@@ -5,11 +5,12 @@ use std::hash::{Hash, Hasher};
 use crate::program::computation_tree::{ExpressionForest, Statement};
 use crate::program::functions::{HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
-use crate::program::allocation::Reference;
+use crate::program::allocation::{ObjectReference, Reference};
 
 pub enum GlobalStatement {
     Trait(Rc<Trait>),
     Function(Rc<FunctionImplementation>),
+    Constant(Rc<FunctionImplementation>),
 }
 
 pub struct FunctionImplementation {
@@ -23,7 +24,7 @@ pub struct FunctionImplementation {
 
     pub statements: Vec<Box<Statement>>,
     pub expression_forest: Box<ExpressionForest>,
-    pub variable_names: HashMap<Rc<Reference>, String>,
+    pub variable_names: HashMap<Rc<ObjectReference>, String>,
 }
 
 impl PartialEq for FunctionImplementation {

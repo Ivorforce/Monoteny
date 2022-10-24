@@ -13,7 +13,7 @@ pub fn dump(stream: &mut (dyn Write), function: &FunctionImplementation, context
 
         for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
             write!(stream, "        {}: ", context.names.get(&variable.id).unwrap())?;
-            transpile_type(stream, &variable.type_declaration, context)?;
+            transpile_type(stream, &variable.type_, context)?;
             write!(stream, "\n")?;
         }
     }
@@ -38,13 +38,10 @@ pub fn transpile_type(stream: &mut (dyn Write), type_def: &TypeProto, context: &
             transpile_type(stream, &type_def.arguments[0], context)?;
             write!(stream, "[?]")?;
         }
-        TypeUnit::FunctionOverload(_) => todo!(),
         TypeUnit::Generic(_) => todo!(),
         TypeUnit::Any(_) => write!(stream, "Any")?,  // TODO Use generics instead
         TypeUnit::MetaType => todo!(),
-        TypeUnit::PrecedenceGroup(_) => todo!(),
         TypeUnit::Void => todo!(),
-        TypeUnit::Keyword(_) => todo!(),
     }
 
     Ok(())

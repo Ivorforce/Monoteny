@@ -100,7 +100,7 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         primitive_metatypes.insert(primitive_type, metatype.clone());
         constants.insert_singleton(
             scopes::Environment::Global,
-            Reference::make_immutable(metatype.clone()),
+            Reference::make_immutable_type(metatype.clone()),
             &primitive_type.identifier_string()
         );
 

@@ -32,11 +32,11 @@ impl <'a> TypeFactory<'a> {
             return Ok(generic)
         }
 
-        self.hierarchy.resolve_metatype(Environment::Global, &name)
+        self.hierarchy.resolve(Environment::Global, &name)?.as_metatype()
     }
 
     fn resolve_trait(&mut self, name: &String) -> &Rc<Trait> {
-        self.hierarchy.resolve_trait(Environment::Global, &name)
+        self.hierarchy.resolve(Environment::Global, &name).unwrap().as_trait().unwrap()
     }
 
     fn register_anonymous_generic(&mut self, name: &String) -> &TypeUnit {

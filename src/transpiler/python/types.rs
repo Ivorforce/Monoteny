@@ -11,13 +11,10 @@ pub fn transpile(stream: &mut (dyn Write), type_def: &TypeProto, context: &Trans
         TypeUnit::Struct(s) => transpile_struct(stream, s, context)?,
         TypeUnit::Trait(t) => todo!(),
         TypeUnit::Monad => write!(stream, "np.ndarray")?,
-        TypeUnit::FunctionOverload(_) => todo!(),
         TypeUnit::Generic(_) => todo!(),
         TypeUnit::Any(_) => write!(stream, "Any")?,  // TODO Use generics instead
         TypeUnit::MetaType => todo!(),
-        TypeUnit::PrecedenceGroup(_) => todo!(),
         TypeUnit::Void => todo!(),
-        TypeUnit::Keyword(_) => todo!(),
     }
 
     Ok(())

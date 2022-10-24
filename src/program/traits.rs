@@ -6,7 +6,7 @@ use custom_error::custom_error;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use crate::linker::LinkError;
-use crate::program::allocation::Reference;
+use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::generics::{TypeForest};
 use crate::program::types::TypeProto;
@@ -151,9 +151,9 @@ impl Trait {
                     // TODO Mapping variables seems wrong, especially since they are hashable by ID?
                     //  Maybe here, too, there could be a distinction between 'ID of the memory location'
                     //  and 'ID of the pointer to the location'
-                    parameters: abstract_fun.machine_interface.parameters.iter().map(|x| Rc::new(Reference {
+                    parameters: abstract_fun.machine_interface.parameters.iter().map(|x| Rc::new(ObjectReference {
                         id: x.id,
-                        type_declaration: x.type_declaration.replacing_any(&replace_map),
+                        type_: x.type_.replacing_any(&replace_map),
                         mutability: x.mutability
                     })).collect(),
                     return_type: abstract_fun.machine_interface.return_type.replacing_any(&replace_map),

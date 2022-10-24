@@ -20,7 +20,7 @@ pub fn transpile_program(
 
         for (key, variable) in function.human_interface.parameter_names.iter() {
             // External names do not exist in C. Let's just use the internal name.
-            write!(header_stream, "{} {},", transpile_type(&variable.type_declaration), function.variable_names.get(variable).unwrap())?;
+            write!(header_stream, "{} {},", transpile_type(&variable.type_), function.variable_names.get(variable).unwrap())?;
         }
 
         write!(header_stream, ") {{\n\n}}\n\n")?;
@@ -56,12 +56,9 @@ pub fn transpile_type(type_def: &TypeProto) -> String {
             // TODO Shape
             format!("Tensor<{}, 1>", transpile_type(&type_def.arguments[0]))
         }
-        TypeUnit::FunctionOverload(_) => todo!(),
         TypeUnit::Generic(_) => todo!(),
         TypeUnit::Any(_) => format!("Any"),
         TypeUnit::MetaType => todo!(),
-        TypeUnit::PrecedenceGroup(_) => todo!(),
         TypeUnit::Void => todo!(),
-        TypeUnit::Keyword(_) => todo!(),
     }
 }

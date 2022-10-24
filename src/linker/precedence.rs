@@ -159,7 +159,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
             }
         }
 
-        let overload = scope.resolve_function_overload(Environment::Global, &left_unary_operators[&keyword])?;
+        let overload = scope.resolve(Environment::Global, &left_unary_operators[&keyword])?.as_function_overload()?;
 
         // Unary operator, because left of operator is an operator!
         let argument = arguments.remove(0);
@@ -177,7 +177,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
         let lhs = arguments.remove(i);
         let rhs = arguments.remove(i);
         let operator = scope.resolve(Environment::Global, &alias)?;
-        let overload = scope.resolve_function_overload(Environment::Global, alias)?;
+        let overload = scope.resolve(Environment::Global, alias)?.as_function_overload()?;
 
         Ok(arguments.insert(
             i,

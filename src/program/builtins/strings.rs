@@ -24,7 +24,7 @@ pub fn make(constants: &mut scopes::Scope) -> Strings {
 
         constants.insert_singleton(
             scopes::Environment::Global,
-            Reference::make_immutable(s_type),
+            Reference::make_immutable_type(s_type),
             &name
         );
 

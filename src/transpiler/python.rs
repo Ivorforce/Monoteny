@@ -77,6 +77,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 
                 transpile_function(stream, function.as_ref(), &context)?
             },
+            GlobalStatement::Constant(_) => todo!("Cannot transpile constants yet!"),
         }
     }
 
@@ -110,7 +111,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
 
     for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
         write!(stream, "{}: ", context.names.get(&variable.id).unwrap())?;
-        types::transpile(stream, &variable.type_declaration, context)?;
+        types::transpile(stream, &variable.type_, context)?;
         write!(stream, ", ")?;
     }
 
@@ -137,9 +138,9 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
         let variable_name = context.names.get(&variable.id).unwrap();
         let external_name = variable_name;  // external names are not supported in python
 
-        match &variable.type_declaration.unit {
+        match &variable.type_.unit {
             TypeUnit::Monad => {
-                let unit = &variable.type_declaration.arguments[0].as_ref().unit;
+                let unit = &variable.type_.arguments[0].as_ref().unit;
 
                 if let TypeUnit::Struct(s) = unit {
                     write!(

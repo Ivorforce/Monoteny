@@ -30,9 +30,6 @@ pub enum TypeUnit {
     Primitive(primitives::Type),
     Struct(Rc<Struct>),
     Trait(Rc<Trait>),
-    FunctionOverload(Rc<FunctionOverload>),
-    PrecedenceGroup(Rc<PrecedenceGroup>),
-    Keyword(String),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -76,13 +73,10 @@ impl Debug for TypeUnit {
             Struct(s) => write!(fmt, "{:?}", s.name),
             Trait(t) => write!(fmt, "{:?}", t.name),
             Monad => write!(fmt, "Monad"),
-            FunctionOverload(f) => write!(fmt, "FunctionOverload"),
             Generic(g) => write!(fmt, "Generic<{}>", g),
             Any(g) => write!(fmt, "Any<{}>", g),
             MetaType => write!(fmt, "MetaType"),
-            PrecedenceGroup(p) => write!(fmt, "{:?}", p.name),
             Void => write!(fmt, "Void"),
-            Keyword(s) => write!(fmt, "{}", s),
         }
     }
 }

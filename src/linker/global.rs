@@ -9,12 +9,13 @@ use crate::parser::abstract_syntax;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{LinkError, scopes};
-use crate::linker::interface::{link_function_pointer, link_operator_pointer};
+use crate::linker::interface::{link_constant_pointer, link_function_pointer, link_operator_pointer};
 use crate::linker::r#type::TypeFactory;
+use crate::linker::scopes::Environment;
 use crate::parser::abstract_syntax::{PatternDeclaration, Term};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::{primitives, Program};
-use crate::program::allocation::Reference;
+use crate::program::allocation::{Reference, ReferenceType};
 use crate::program::builtins::*;
 use crate::program::functions::{FunctionForm, FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
 use crate::program::generics::TypeForest;
@@ -55,8 +56,8 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
     // Resolve function bodies
     for fun in global_linker.functions.iter() {
         let mut variable_names = HashMap::new();
-        for (name, (_, variable)) in zip_eq(fun.pointer.human_interface.parameter_names_internal.iter(), fun.pointer.human_interface.parameter_names.iter()) {
-            variable_names.insert(Rc::clone(variable), name.clone());
+        for (name, (_, ref_)) in zip_eq(fun.pointer.human_interface.parameter_names_internal.iter(), fun.pointer.human_interface.parameter_names.iter()) {
+            variable_names.insert(Rc::clone(ref_), name.clone());
         }
 
         // TODO Inject traits, not pointers
@@ -126,7 +127,16 @@ impl <'a> GlobalLinker<'a> {
                 self.global_variables.overload_function(&fun);
             }
             abstract_syntax::GlobalStatement::Constant(syntax) => {
-                todo!()
+                let scope = &self.global_variables;
+                let fun = link_constant_pointer(&syntax, &scope, requirements)?;
+
+                self.functions.push(FunctionWithoutBody {
+                    pointer: Rc::clone(&fun),
+                    body: &syntax.body,
+                });
+
+                // Create a variable for the function
+                self.global_variables.insert_constant(fun);
             }
         }
 

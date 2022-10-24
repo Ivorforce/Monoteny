@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use itertools::zip_eq;
 use uuid::Uuid;
-use crate::program::allocation::{Mutability, Reference};
+use crate::program::allocation::{Mutability, ObjectReference, Reference};
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::{TypeProto};
 
@@ -44,14 +44,14 @@ pub struct FunctionOverload {
 pub struct HumanFunctionInterface {
     pub name: String,
 
-    pub parameter_names: Vec<(ParameterKey, Rc<Reference>)>,
+    pub parameter_names: Vec<(ParameterKey, Rc<ObjectReference>)>,
     pub parameter_names_internal: Vec<String>,
 
     pub form: FunctionForm,
 }
 
 pub struct MachineFunctionInterface {
-    pub parameters: HashSet<Rc<Reference>>,
+    pub parameters: HashSet<Rc<ObjectReference>>,
     pub return_type: Box<TypeProto>,
     // Note: This set will almost certainly be larger than actually required, because
     //  it is automatically assembled. To avoid unnecessary arguments,
@@ -62,11 +62,7 @@ pub struct MachineFunctionInterface {
 impl FunctionPointer {
     pub fn make_operator<'a>(alphanumeric_name: &'a str, count: usize, parameter_type: &Box<TypeProto>, return_type: &Box<TypeProto>) -> Rc<FunctionPointer> {
         let parameter_names = (0..count).map(|_| ParameterKey::Positional);
-        let parameters: Vec<Rc<Reference>> = (0..count).map(|x| Rc::new(Reference {
-            id: Uuid::new_v4(),
-            type_declaration: parameter_type.clone(),
-            mutability: Mutability::Immutable
-        })).collect();
+        let parameters: Vec<Rc<ObjectReference>> = (0..count).map(|x| ObjectReference::make_immutable(parameter_type.clone())).collect();
 
         Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
@@ -87,8 +83,8 @@ impl FunctionPointer {
     }
 
     pub fn make_global<'a, I>(name: &'a str, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionPointer> where I: Iterator<Item=Box<TypeProto>> {
-        let parameters: Vec<Rc<Reference>> = parameter_types
-            .map(|x| Reference::make_immutable(x.clone()))
+        let parameters: Vec<Rc<ObjectReference>> = parameter_types
+            .map(|x| ObjectReference::make_immutable(x.clone()))
             .collect();
         let parameter_names = (0..parameters.len()).map(|_| ParameterKey::Positional);
 
@@ -148,7 +144,7 @@ impl Debug for HumanFunctionInterface {
         match self.form {
             FunctionForm::Global => {}
             FunctionForm::Member => {
-                write!(fmt, "{:?}.", self.parameter_names.get(head).unwrap().1.type_declaration)?;
+                write!(fmt, "{:?}.", self.parameter_names.get(head).unwrap().1.type_)?;
                 head += 1;
             },
         }
@@ -156,7 +152,7 @@ impl Debug for HumanFunctionInterface {
         write!(fmt, "{}(", self.name)?;
 
         for (name, variable) in self.parameter_names.iter().skip(head) {
-            write!(fmt, "{:?}: {:?},", name, variable.type_declaration)?;
+            write!(fmt, "{:?}: {:?},", name, variable.type_)?;
         }
 
         write!(fmt, ")")?;

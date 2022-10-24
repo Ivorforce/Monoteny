@@ -3,7 +3,7 @@ use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use crate::linker::LinkError;
-use crate::program::allocation::Reference;
+use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionPointer;
 use crate::program::generics::TypeForest;
@@ -110,7 +110,7 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             let candidate = self.candidates.drain(..).next().unwrap();
             let binding = self.attempt_with_candidate(&mut expressions.type_forest, &candidate)?;
 
-            let argument_targets: Vec<Rc<Reference>> = candidate.function.human_interface.parameter_names.iter()
+            let argument_targets: Vec<Rc<ObjectReference>> = candidate.function.human_interface.parameter_names.iter()
                 .map(|x| Rc::clone(&x.1))
                 .collect();
 

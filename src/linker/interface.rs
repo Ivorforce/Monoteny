@@ -8,7 +8,7 @@ use crate::linker::{LinkError, scopes};
 use crate::linker::scopes::Environment;
 use crate::parser::abstract_syntax;
 use crate::parser::abstract_syntax::{Expression, OperatorArgument};
-use crate::program::allocation::Reference;
+use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionForm, FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
 use crate::program::generics::GenericAlias;
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
@@ -20,12 +20,12 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
 
     let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x)).unwrap_or_else(|| Ok(TypeProto::void()))?;
 
-    let mut parameters: HashSet<Rc<Reference>> = HashSet::new();
-    let mut parameter_names: Vec<(ParameterKey, Rc<Reference>)> = vec![];
+    let mut parameters: HashSet<Rc<ObjectReference>> = HashSet::new();
+    let mut parameter_names: Vec<(ParameterKey, Rc<ObjectReference>)> = vec![];
     let mut parameter_names_internal: Vec<String> = vec![];
 
     if let Some(parameter) = &function.target_type {
-        let variable = Reference::make_immutable(type_factory.link_type(parameter)?);
+        let variable = ObjectReference::make_immutable(type_factory.link_type(parameter)?);
 
         parameters.insert(Rc::clone(&variable));
         parameter_names.push((ParameterKey::Positional, variable));
@@ -33,7 +33,7 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
     }
 
     for parameter in function.parameters.iter() {
-        let variable = Reference::make_immutable(type_factory.link_type(&parameter.param_type)?);
+        let variable = ObjectReference::make_immutable(type_factory.link_type(&parameter.param_type)?);
 
         parameters.insert(Rc::clone(&variable));
         parameter_names.push((parameter.key.clone(), variable));
@@ -71,12 +71,12 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
             continue;
         });
 
-        let mut parameters: HashSet<Rc<Reference>> = HashSet::new();
-        let mut parameter_names: Vec<(ParameterKey, Rc<Reference>)> = vec![];
+        let mut parameters: HashSet<Rc<ObjectReference>> = HashSet::new();
+        let mut parameter_names: Vec<(ParameterKey, Rc<ObjectReference>)> = vec![];
         let mut parameter_names_internal: Vec<String> = vec![];
 
         for (key, internal_name, type_expression) in arguments.into_iter() {
-            let variable = Reference::make_immutable(type_factory.link_type(type_expression)?);
+            let variable = ObjectReference::make_immutable(type_factory.link_type(type_expression)?);
 
             parameters.insert(Rc::clone(&variable));
             parameter_names.push((key.clone(), variable));
@@ -103,6 +103,31 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
     }
 
     return Err(LinkError::LinkError { msg: String::from("Unknown pattern in function definition.") });
+}
+
+pub fn link_constant_pointer(function: &abstract_syntax::Constant, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitConformanceRequirement>>) -> Result<Rc<FunctionPointer>, LinkError> {
+    let mut type_factory = TypeFactory::new(scope);
+
+    let declared_type = type_factory.link_type(&function.declared_type)?;
+
+    Ok(Rc::new(FunctionPointer {
+        pointer_id: Uuid::new_v4(),
+        target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
+
+        machine_interface: Rc::new(MachineFunctionInterface {
+            parameters: HashSet::new(),
+            return_type: declared_type,
+            requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
+        }),
+        human_interface: Rc::new(HumanFunctionInterface {
+            name: function.identifier.clone(),
+
+            parameter_names: vec![],
+            parameter_names_internal: vec![],
+
+            form: FunctionForm::Global,
+        }),
+    }))
 }
 
 pub fn match_patterns<'a>(pattern_parts: &'a Vec<Box<PatternPart>>, function_parts: &'a Vec<Box<OperatorArgument>>) -> Option<Vec<(&'a ParameterKey, &'a String, &'a Expression)>> {
