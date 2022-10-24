@@ -138,6 +138,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] Array Dimension Index (i.e. 'anonymous enum')
   - [ ] Closed Int Range Dimension Index
 - [ ] Computation Tree Folding (resolve static results post link-time)
+- [ ] Optimization Definitions (e.g. an alternative implementation for sort() if all objects are ints)
 - [ ] System I/O API / Permission Contexts
 - [ ] Pointer Monad (-> shared object reference, mutable or immutable)
 
