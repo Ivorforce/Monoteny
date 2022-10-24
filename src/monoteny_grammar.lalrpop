@@ -102,11 +102,9 @@ KeyedParameter: Box<KeyedParameter> = {
 
 
 pub Statement: Box<Statement> = {
-    <mutability: VariableDeclarationMutability> <identifier: Identifier> "'" <type_declaration: Expression> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: Some(type_declaration), expression }),
-    <mutability: VariableDeclarationMutability> <identifier: Identifier> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration: None, expression }),
+    <mutability: VariableDeclarationMutability> <identifier: Identifier> <type_declaration: ("'" <Expression>)?> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration, expression }),
     "upd" <variable_name: Identifier> "=" <new_value: Expression> => Box::new(Statement::VariableAssignment { variable_name, new_value }),
-    "return" <Expression> => Box::new(Statement::Return(Some(<>))),
-    "return" => Box::new(Statement::Return(None)),
+    "return" <Expression?> => Box::new(Statement::Return(<>)),
     Expression => Box::new(Statement::Expression(<>)),
 };
 
