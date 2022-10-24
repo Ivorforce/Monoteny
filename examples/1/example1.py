@@ -51,7 +51,7 @@ def main():
     a = (square_1(float32(2.2), Number=mn.declarations.Number_10)) * float32(3)
     b = square_1(float32(5), Number=mn.declarations.Number_10)
     b = floor_div((square_1(b, Number=mn.declarations.Number_10)) ** (-float32(2.2)), math.log(a, float32(2)), Float=mn.declarations.Float_0)
-    print((b < float32(2)) and (not (a > float32(2))))
+    print(((b < float32(2)) and (not (a > float32(2)))) and True)
 
 
 if __name__ == '__main__':
