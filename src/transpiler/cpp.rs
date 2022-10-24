@@ -62,7 +62,6 @@ pub fn transpile_type(type_def: &TypeProto) -> String {
         TypeUnit::MetaType => todo!(),
         TypeUnit::PrecedenceGroup(_) => todo!(),
         TypeUnit::Void => todo!(),
-        TypeUnit::AnonymousStruct(_) => todo!(),
         TypeUnit::Keyword(_) => todo!(),
     }
 }

@@ -44,7 +44,6 @@ pub fn transpile_type(stream: &mut (dyn Write), type_def: &TypeProto, context: &
         TypeUnit::MetaType => todo!(),
         TypeUnit::PrecedenceGroup(_) => todo!(),
         TypeUnit::Void => todo!(),
-        TypeUnit::AnonymousStruct(_) => todo!(),
         TypeUnit::Keyword(_) => todo!(),
     }
 

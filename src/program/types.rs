@@ -29,7 +29,6 @@ pub enum TypeUnit {
     Monad,
     Primitive(primitives::Type),
     Struct(Rc<Struct>),
-    AnonymousStruct(Vec<ParameterKey>),
     Trait(Rc<Trait>),
     FunctionOverload(Rc<FunctionOverload>),
     PrecedenceGroup(Rc<PrecedenceGroup>),
@@ -83,11 +82,6 @@ impl Debug for TypeUnit {
             MetaType => write!(fmt, "MetaType"),
             PrecedenceGroup(p) => write!(fmt, "{:?}", p.name),
             Void => write!(fmt, "Void"),
-            AnonymousStruct(names) => {
-                write!(fmt, "(")?;
-                write_comma_separated_list(fmt, names)?;
-                write!(fmt, ")")
-            }
             Keyword(s) => write!(fmt, "{}", s),
         }
     }
