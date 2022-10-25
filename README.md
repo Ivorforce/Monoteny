@@ -122,6 +122,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] Anonymous functions
 - [ ] String Comprehension
 - [ ] Imports and Namespaces
+- [ ] Decorators (on structs, definitions)
 - [ ] Non-Varargs subscripts and subscript overloads
 - [ ] Indeterministic polymorphism
   - [ ] Virtual function tables
