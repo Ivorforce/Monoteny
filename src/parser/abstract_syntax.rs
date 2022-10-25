@@ -148,7 +148,7 @@ impl Debug for MemberStatement {
 
 impl Debug for Function {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "fun ")?;
+        write!(fmt, "def ")?;
         if let Some(target_type) = &self.target_type {
             write!(fmt, "{{{:?}}}.", target_type)?;
         }
@@ -163,7 +163,7 @@ impl Debug for Function {
 
 impl Debug for OperatorFunction {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "fun ")?;
+        write!(fmt, "def ")?;
         for argument in self.parts.iter() {
             match argument.as_ref() {
                 OperatorArgument::Parameter(param) => write!(fmt, "{{{:?}}} ", param)?,
@@ -179,7 +179,7 @@ impl Debug for OperatorFunction {
 
 impl Debug for Constant {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "let {} '", self.identifier)?;
+        write!(fmt, "def {} '", self.identifier)?;
         for item in self.declared_type.iter() { write!(fmt, "{:?} ", item)? };
         write!(fmt, ":: {{")?;
         for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };

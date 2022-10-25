@@ -1,14 +1,14 @@
 pattern floor_div(MultiplicationPrecedence) :: {_: lhs} /_ {_: rhs};
 
-fun {$Float} /_ {$Float} -> $Float :: lhs / rhs;
+def {$Float} /_ {$Float} -> $Float :: lhs / rhs;
 
-fun square(_: a '$Number) -> $Number :: a * a;
+def square(_: a '$Number) -> $Number :: a * a;
 
-fun {$Number}.square() -> $Number :: square(self);
+def {$Number}.square() -> $Number :: square(self);
 
-fun test 'Float32 :: 5;
+def test 'Float32 :: 5;
 
-fun main() :: {
+def main() :: {
     print("Test: ");
 
     let a 'Float32 = 2.2.square() * 3;

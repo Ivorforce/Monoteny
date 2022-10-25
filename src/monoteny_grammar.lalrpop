@@ -19,7 +19,7 @@ match {
     ";", ",", ":", "::", "->",
     "=",
     "let", "var", "upd",
-    "fun", "pattern",
+    "def", "pattern",
     "if",
     _
 }
@@ -68,15 +68,15 @@ PatternPart: Box<PatternPart> = {
 }
 
 Function: Box<Function> = {
-    "fun" <target_type: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
+    "def" <target_type: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
 }
 
 Constant: Box<Constant> = {
-    "fun" <identifier: Identifier> "'" <declared_type: Expression> "::" <body: FunctionBody> => Box::new(Constant { <> }),
+    "def" <identifier: Identifier> "'" <declared_type: Expression> "::" <body: FunctionBody> => Box::new(Constant { <> }),
 }
 
 OperatorFunction: Box<OperatorFunction> = {
-    "fun" <parts: OperatorArgument+> <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(OperatorFunction { <> }),
+    "def" <parts: OperatorArgument+> <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(OperatorFunction { <> }),
 }
 
 OperatorArgument: Box<OperatorArgument> = {
