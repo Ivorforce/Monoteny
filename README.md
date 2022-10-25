@@ -24,15 +24,19 @@ Luckily, we know how to solve hard problems in a readable and approachable way. 
 
 Monoteny takes this to heart: Generic types are resolved with user code at compile time. The code is Monoteny, so it is unnecessary to learn a separate language paradigm.
 
-### Subject Oriented Polymorphism
+### Functional and Impure
 
-Polymorphism in Monoteny is offered using traits with abstract functions. When some trait conformance is required for a function, the function is polymorphically callable.
+Programs are, usually, pure and deterministic. At compile-time they are folded to a minimal representation.
 
-The implication depends on caller context. Specifically, it depends on whether the object has a deterministic polymorphism.
-
-- Deterministic polymorphism (regular): Polymorphism can be resolved completely at compile time. No polymorphism exists after compilation.
-- Indeterministic polymorphism (from I/O): Polymorphism cannot be resolved at compile time. Abstract function calls on these objects are resolved with virtual function tables.
-
+In other languages, 4 concepts usually prevent this type of folding:
+- Global Mutables
+  - Monoteny does not allow global mutables. Instead, parameters must be explicitly passed.
+- Functional Impurities (e.g. I/O, Random...)
+  - Monoteny requires explicitly impurity declarations.
+    - `Float[Var]`: Values are dependent on I/O.
+    - `Poly<Float>`: Types are dependent on I/O.
+- Type Loss (e.g. multi-object array, polymorphism).
+  - Monoteny uses statically typed multiplicity and subject-oriented function calls.
 
 ## Roadmap
 
