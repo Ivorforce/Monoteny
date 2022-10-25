@@ -6,23 +6,22 @@ Monoteny is an experimental language focusing on tensor math. It aims to streaml
 
 ## Philosophy
 
-### First-Class Multiple Dimension Monads
+### First-Class Multiplicity
 
-In Monoteny, Monads consist of dimensions referred to by a _dimension specifier_ and indexed by some _monadic type_. This would commonly be array shapes or optionals, but might also be a dictionary keyset or something else.
+Monoteny recognizes multiplicity usually comes in predictable forms:
 
-Every Monad is statically treated as its unit type. At compile time, operations on it are translated to appropriate mapping operations.
+- Some unknown number of objects of the same type.
+  - Monads (-> Arrays)
+- Some known number of objects of different types.
+  - Traits (-> Structs)
+- One object of varying subtype.
+  - Poly (-> Enums)
 
-There are two exceptions: First, when two monad definitions collide, they are broadcast to each other using the dimension specifiers. Second, with the `@` syntax, the encapsulating monad can be referred to. 
+Monads are be treated as their unit. Monoteny allows multiple _dimensions_ in the same monad that auto-broadcast or match. The monadic wrapped must be explicitly referenced if needed (`a@[0]`).
 
-### Shape Safety and Generics
+Through subject-oriented design, objects are often coerced into simple traits. Hereby, complex algorithms can be used in different contexts without glue logic.
 
-Monoteny aims to guarantee shape, lookup and generally array operations safety.
-
-There is a reasonable reason no other language has yet attempted this: Shape resolving can be as hard as executing the program itself. It seems impossible to devise a system that could possibly cover every use-case. Without one, the language quickly falls apart.
-
-Luckily, we know how to solve hard problems in a readable and approachable way. It's programming.
-
-Monoteny takes this to heart: Generic types are resolved with user code at compile time. The code is Monoteny, so it is unnecessary to learn a separate language paradigm.
+Polymorphic types are harder to work with, but are still supported because they are still needed for some use-cases. Some definitions may still be exposed from the original trait. 
 
 ### Functional and Impure
 
@@ -33,10 +32,11 @@ In other languages, 4 concepts usually prevent this type of folding:
   - Monoteny does not allow global mutables. Instead, parameters must be explicitly passed.
 - Functional Impurities (e.g. I/O, Random...)
   - Monoteny requires explicitly impurity declarations.
-    - `Float[Var]`: Values are dependent on I/O.
-    - `Poly<Float>`: Types are dependent on I/O.
+    - `Float[Var]`: Values are unknown at design-time.
 - Type Loss (e.g. multi-object array, polymorphism).
   - Monoteny uses statically typed multiplicity and subject-oriented function calls.
+
+As a side effect to folding, often promises can be made about the code: For example, an array lookup into an empty array will always fail. Monoteny allows user code at fold-time to make promises about the code, from used types, parameters or impurities.
 
 ## Roadmap
 
