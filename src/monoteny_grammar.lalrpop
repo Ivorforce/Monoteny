@@ -72,7 +72,7 @@ Function: Box<Function> = {
 }
 
 Constant: Box<Constant> = {
-    "let" <identifier: Identifier> "'" <declared_type: Expression> "::" <body: FunctionBody> => Box::new(Constant { <> }),
+    "fun" <identifier: Identifier> "'" <declared_type: Expression> "::" <body: FunctionBody> => Box::new(Constant { <> }),
 }
 
 OperatorFunction: Box<OperatorFunction> = {

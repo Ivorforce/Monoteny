@@ -6,7 +6,7 @@ fun square(_: a '$Number) -> $Number :: a * a;
 
 fun {$Number}.square() -> $Number :: square(self);
 
-let test 'Float32 :: 5;
+fun test 'Float32 :: 5;
 
 fun main() :: {
     print("Test: ");
