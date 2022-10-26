@@ -31,10 +31,7 @@ impl LinkerAmbiguity for AmbiguousNumberPrimitive {
                     return Err(LinkError::LinkError { msg: format!("Cannot convert number literal {} to expected primitive type {:?}", &self.value, primitive_type) })
                 }
 
-                match primitive_type.parse_value(&self.value) {
-                    None => return Err(LinkError::LinkError { msg: format!("Failed to parse {:?} from number primitive {}", primitive_type, &self.value) }),
-                    Some(value) => expressions.operations.insert(self.expression_id, ExpressionOperation::Primitive(value)),
-                };
+                expressions.operations.insert(self.expression_id, ExpressionOperation::NumberLiteral(self.value.clone()));
 
                 Ok(true)
             }

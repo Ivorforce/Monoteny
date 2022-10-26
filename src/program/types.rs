@@ -29,7 +29,6 @@ pub enum TypeUnit {
     Monad,
     Primitive(primitives::Type),
     Struct(Rc<Struct>),
-    Trait(Rc<Trait>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -71,7 +70,6 @@ impl Debug for TypeUnit {
         match self {
             Primitive(p) => write!(fmt, "{}", p.identifier_string()),
             Struct(s) => write!(fmt, "{:?}", s.name),
-            Trait(t) => write!(fmt, "{:?}", t.name),
             Monad => write!(fmt, "Monad"),
             Generic(g) => write!(fmt, "Generic<{}>", g),
             Any(g) => write!(fmt, "Any<{}>", g),

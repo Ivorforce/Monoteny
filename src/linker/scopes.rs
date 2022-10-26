@@ -132,7 +132,7 @@ impl <'a> Scope<'a> {
         let name = t.name.clone();
         self.insert_singleton(
             Environment::Global,
-            Reference::make_immutable_type(TypeProto::unit(TypeUnit::Trait(Rc::clone(t)))),
+            Reference::make(ReferenceType::Trait(Rc::clone(t))),
             &name
         );
     }

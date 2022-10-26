@@ -33,7 +33,6 @@ pub fn transpile_type(stream: &mut (dyn Write), type_def: &TypeProto, context: &
     match &type_def.unit {
         TypeUnit::Primitive(n) => types::transpile_primitive(stream, n)?,
         TypeUnit::Struct(s) => types::transpile_struct(stream, s, context)?,
-        TypeUnit::Trait(t) => todo!(),
         TypeUnit::Monad => {
             transpile_type(stream, &type_def.arguments[0], context)?;
             write!(stream, "[?]")?;

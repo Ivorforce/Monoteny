@@ -23,13 +23,21 @@ pub enum Statement {
 }
 
 pub enum ExpressionOperation {
-    Primitive(primitives::Value),
     FunctionCall { function: Rc<FunctionPointer>, argument_targets: Vec<Rc<ObjectReference>>, binding: Box<TraitBinding> },
     PairwiseOperations { functions: Vec<Rc<HumanFunctionInterface>> },
     VariableLookup(Rc<ObjectReference>),
     StructLiteral(Vec<String>),
     ArrayLiteral,
     StringLiteral(String),
+    // It may seem weird to have a string in here, because the code definitely should not parse
+    // floats from strings at runtime for primitives. However, this is better solved by code folding
+    // and will thus not be supported for literals, which are best represented by their strings from
+    // the code.
+    // TODO Different objects or languages may not support different notations. Not sure how to
+    //  represent this, if there is a way to abstract it. There may as well not be because it must
+    //  be noted in the main grammar for literals like '2e5'.
+    NumberLiteral(String),
+    BoolLiteral(bool),
 }
 
 pub struct ExpressionForest {

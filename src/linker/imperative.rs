@@ -228,12 +228,10 @@ impl <'a> ImperativeLinker<'a> {
                 if s == "true" || s == "false" {
                     // TODO Once we have constants, register these as constants instead.
                     //  Yes, that makes them shadowable. Sue me.
-                    let value = primitives::Value::Bool(s == "true");
-
                     precedence::Token::Expression(self.link_unambiguous_expression(
                         vec![],
                         &TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool)),
-                        ExpressionOperation::Primitive(value)
+                        ExpressionOperation::BoolLiteral(s == "true")
                     )?)
                 }
                 else {
@@ -259,7 +257,10 @@ impl <'a> ImperativeLinker<'a> {
                             precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
                         }
                         ReferenceType::PrecedenceGroup(_) => {
-                            return Err(LinkError::LinkError { msg: format!("Precedence group references are not allowed in this context.") })
+                            return Err(LinkError::LinkError { msg: format!("Precedence group references are not supported in expressions yet.") })
+                        }
+                        ReferenceType::Trait(_) => {
+                            return Err(LinkError::LinkError { msg: format!("Trait references are not supported in expressions yet.") })
                         }
                     }
                 }

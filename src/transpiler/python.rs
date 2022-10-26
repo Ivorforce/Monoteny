@@ -197,8 +197,16 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
 
 pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, context: &TranspilerContext) -> Result<(), std::io::Error> {
     match &context.expressions.operations.get(&expression).unwrap() {
-        ExpressionOperation::Primitive(value) => {
-            types::transpile_primitive_value(stream, value)?;
+        ExpressionOperation::NumberLiteral(value) => {
+            match context.expressions.type_forest.get_unit(&expression).unwrap() {
+                TypeUnit::Primitive(type_) => {
+                    types::transpile_primitive_value(stream, value, type_)?;
+                }
+                _ => unreachable!(),
+            }
+        }
+        ExpressionOperation::BoolLiteral(value) => {
+            write!(stream, "{}", (if *value { "True" } else { "False" }))?;
         }
         ExpressionOperation::StringLiteral(string) => {
             write!(stream, "\"{}\"", escape_string(&string))?;
@@ -415,7 +423,8 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
 
 pub fn is_simple(operation: &ExpressionOperation) -> bool {
     match operation {
-        ExpressionOperation::Primitive(_) => true,
+        ExpressionOperation::NumberLiteral(_) => true,
+        ExpressionOperation::BoolLiteral(_) => true,
         ExpressionOperation::VariableLookup(_) => true,
         ExpressionOperation::StringLiteral(_) => true,
         ExpressionOperation::ArrayLiteral => true,

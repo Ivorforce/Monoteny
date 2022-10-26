@@ -35,7 +35,7 @@ impl <'a> TypeFactory<'a> {
         self.hierarchy.resolve(Environment::Global, &name)?.as_metatype()
     }
 
-    fn resolve_trait(&mut self, name: &String) -> &Rc<Trait> {
+    fn resolve_trait(&mut self, name: &String) -> Rc<Trait> {
         self.hierarchy.resolve(Environment::Global, &name).unwrap().as_trait().unwrap()
     }
 
@@ -73,7 +73,7 @@ impl <'a> TypeFactory<'a> {
                             });
 
                             if type_name.starts_with("$") {
-                                let requirement_trait = Rc::clone(self.resolve_trait(&String::from(&type_name[1..])));
+                                let requirement_trait = self.resolve_trait(&String::from(&type_name[1..]));
                                 self.register_requirement(Rc::new(TraitConformanceRequirement {
                                     id: Uuid::new_v4(),
                                     trait_: requirement_trait,

@@ -29,6 +29,7 @@ pub enum ReferenceType {
     Constant(Rc<FunctionPointer>),
     FunctionOverload(Rc<FunctionOverload>),
     PrecedenceGroup(Rc<PrecedenceGroup>),
+    Trait(Rc<Trait>),
 }
 
 #[derive(Clone, Eq)]
@@ -83,12 +84,11 @@ impl Reference {
         Ok(&type_.arguments.get(0).unwrap().unit)
     }
 
-    pub fn as_trait(&self) -> Result<&Rc<Trait>, LinkError> {
-        guard!(let TypeUnit::Trait(t) = &self.as_object_ref(false)?.type_.unit else {
-           return Err(LinkError::LinkError { msg: format!("Reference is not a trait.") });
-        });
-
-        Ok(t)
+    pub fn as_trait(&self) -> Result<Rc<Trait>, LinkError> {
+        match &self.type_ {
+            ReferenceType::Trait(trait_) => Ok(Rc::clone(trait_)),
+            _ => Err(LinkError::LinkError { msg: format!("Reference is not a trait.") })
+        }
     }
 
     pub fn as_function_overload(&self) -> Result<Rc<FunctionOverload>, LinkError> {
@@ -130,6 +130,7 @@ impl Debug for ReferenceType {
             PrecedenceGroup(p) => write!(fmt, "{:?}", &p.name),
             Keyword(s) => write!(fmt, "{}", s),
             Constant(c) => write!(fmt, "{}", &c.human_interface.name),
+            Trait(t) => write!(fmt, "{:?}", t.name),
         }
     }
 }
