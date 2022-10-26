@@ -10,6 +10,8 @@ Monoteny is an experimental language focusing on tensor math. It aims to streaml
 
 Many languages adopt different concepts because they may map differently to machine code. Instead, Monoteny strives for minimal logic duplication: Many concepts can emerge naturally from properly abstracted concepts. Once one is recognized, it can still later be optimized by the compiler without losing semantic minimalilty.
 
+This simplicity also allows for dialect agnosticity: Many language design choices arbitrary and better offloaded to a dialect designer. Indeed, different groups of users may prefer different dialects to understand the same code. Monoteny encourages this to aid adoption. 
+
 ### First-Class Multiplicity
 
 Monoteny recognizes multiplicity usually comes in predictable forms:
