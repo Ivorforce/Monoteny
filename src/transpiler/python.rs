@@ -2,7 +2,7 @@ pub mod docstrings;
 pub mod types;
 pub mod builtins;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::rc::Rc;
 use guard::guard;
@@ -332,23 +332,23 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<Func
         return Ok(false);
     }
 
-    let expression = arguments.iter().next().unwrap();
+    let expression = arguments[0];
 
     // TODO We can probably avoid unnecessary parentheses here and in the other operators if we ask the expression for its (python) precedence, and compare it with ours.
-    let mut transpile_unary_operator = |name: &str| -> Result<bool, std::io::Error> {
-        write!(stream, "{}", name)?;
-        transpile_maybe_parenthesized_expression(stream, expression.clone(), context)?;
-        Ok(true)
-    };
+    for (collection, operator) in [
+        (&context.builtins.primitives.positive, "+"),
+        (&context.builtins.primitives.negative, "-"),
 
-    if context.builtins.primitives.positive.contains(function) {
-        return transpile_unary_operator("+");
-    }
-    else if context.builtins.primitives.negative.contains(function) {
-        return transpile_unary_operator("-");
-    }
-    else if function.as_ref() == context.builtins.primitives.not.as_ref() {
-        return transpile_unary_operator("not ");
+        (&HashSet::from([Rc::clone(&context.builtins.primitives.not)]), "not "),
+    ] {
+        if !(collection.contains(function)) {
+            continue;
+        }
+
+        write!(stream, "{}", operator)?;
+        transpile_maybe_parenthesized_expression(stream, expression.clone(), context)?;
+
+        return Ok(true);
     }
 
     return Ok(false);
@@ -362,60 +362,35 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
     let lhs = arguments[0];
     let rhs = arguments[1];
 
-    let mut transpile_binary_operator = |name: &str| -> Result<bool, std::io::Error> {
+    for (collection, operator) in [
+        (&HashSet::from([Rc::clone(&context.builtins.primitives.and)]), "and"),
+        (&HashSet::from([Rc::clone(&context.builtins.primitives.or)]), "or"),
+
+        (&context.builtins.primitives.equal_to, "=="),
+        (&context.builtins.primitives.not_equal_to, "!="),
+
+        (&context.builtins.primitives.greater_than, ">"),
+        (&context.builtins.primitives.greater_than_or_equal_to, ">="),
+        (&context.builtins.primitives.lesser_than, "<"),
+        (&context.builtins.primitives.lesser_than_or_equal_to, "<="),
+
+        (&context.builtins.primitives.add, "+"),
+        (&context.builtins.primitives.subtract, "-"),
+        (&context.builtins.primitives.multiply, "*"),
+        (&context.builtins.primitives.divide, "/"),
+
+        (&context.builtins.primitives.exponent, "**"),
+        (&context.builtins.primitives.modulo, "%"),
+    ] {
+        if !(collection.contains(function)) {
+            continue;
+        }
+
         transpile_maybe_parenthesized_expression(stream, lhs.clone(), context)?;
-        write!(stream, " {} ", name)?;
+        write!(stream, " {} ", operator)?;
         transpile_maybe_parenthesized_expression(stream, rhs.clone(), context)?;
 
-        Ok(true)
-    };
-
-    // TODO And and Or exist but work only for boolean arguments, not tensors.
-    //  We could make use of them if the arguments are booleans and the result is too.
-    if function.as_ref() == context.builtins.primitives.and.as_ref() {
-        return transpile_binary_operator("and");
-    }
-    else if function.as_ref() == context.builtins.primitives.or.as_ref() {
-        return transpile_binary_operator("or");
-    }
-
-    else if context.builtins.primitives.equal_to.contains(function) {
-        return transpile_binary_operator("==");
-    }
-    else if context.builtins.primitives.not_equal_to.contains(function) {
-        return transpile_binary_operator("!=");
-    }
-
-    else if context.builtins.primitives.greater_than.contains(function) {
-        return transpile_binary_operator(">");
-    }
-    else if context.builtins.primitives.greater_than_or_equal_to.contains(function) {
-        return transpile_binary_operator(">=");
-    }
-    else if context.builtins.primitives.lesser_than.contains(function) {
-        return transpile_binary_operator("<");
-    }
-    else if context.builtins.primitives.lesser_than_or_equal_to.contains(function) {
-        return transpile_binary_operator("<=");
-    }
-
-    else if context.builtins.primitives.add.contains(function) {
-        return transpile_binary_operator("+");
-    }
-    else if context.builtins.primitives.subtract.contains(function) {
-        return transpile_binary_operator("-");
-    }
-    else if context.builtins.primitives.multiply.contains(function) {
-        return transpile_binary_operator("*");
-    }
-    else if context.builtins.primitives.divide.contains(function) {
-        return transpile_binary_operator("/");
-    }
-    else if context.builtins.primitives.exponent.contains(function) {
-        return transpile_binary_operator("**");
-    }
-    else if context.builtins.primitives.modulo.contains(function) {
-        return transpile_binary_operator("%");
+        return Ok(true);
     }
 
     return Ok(false);
