@@ -43,7 +43,7 @@ def square_1(self: Any, Number: mn.traits.Number, ) -> Any:
     return square_0(self, Number=Number)
 
 
-def test() -> float32:
+def test_1() -> float32:
     """
     <Docstring TODO!>
 
@@ -52,14 +52,24 @@ def test() -> float32:
     return float32(5)
 
 
+def test_0() -> int32:
+    """
+    <Docstring TODO!>
+
+    Returns: int32
+    """
+    return int32(5)
+
+
 def main():
     """
     <Docstring TODO!>
     """
     print("Test: ")
     a = (square_0(float32(2.2), Number=mn.declarations.Number_10)) * float32(3)
-    b = (square_0(float32(5), Number=mn.declarations.Number_10)) + (test())
+    b = (square_0(float32(5), Number=mn.declarations.Number_10)) + (test_1())
     b = floor_div((square_0(b, Number=mn.declarations.Number_10)) ** (-float32(2.2)), math.log(a, float32(2)), Float=mn.declarations.Float_0)
+    c = test_0()
     print(((b < float32(2)) and (not (a > float32(2)))) and True)
 
 

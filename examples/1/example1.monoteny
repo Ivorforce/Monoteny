@@ -7,6 +7,7 @@ def square(_: a '$Number) -> $Number :: a * a;
 def {$Number}.square() -> $Number :: square(self);
 
 def test -> Float32 :: 5;
+def test -> Int32 :: 5;
 
 def main() :: {
     print("Test: ");
@@ -15,6 +16,8 @@ def main() :: {
 
     var b = square(5) + test;
     upd b = b.square() ** -2.2 /_ a // 2;
+
+    var c 'Int32 = test;
 
     print(b < 2 and not (a > 2) and true);
 }
