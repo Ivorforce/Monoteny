@@ -250,11 +250,16 @@ impl <'a> ImperativeLinker<'a> {
                         ReferenceType::Keyword(keyword) => {
                             precedence::Token::Keyword(keyword.clone())
                         }
-                        ReferenceType::Constant(f) => {
-                            precedence::Token::Expression(self.link_constant(f, scope)?)
-                        }
                         ReferenceType::FunctionOverload(overload) => {
-                            precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
+                            match overload.form {
+                                FunctionForm::Global => {
+                                    precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
+                                }
+                                FunctionForm::Member => panic!(),
+                                FunctionForm::Constant => {
+                                    precedence::Token::Expression(self.link_function_call(&overload.pointers, &overload.name, vec![], vec![], scope)?)
+                                }
+                            }
                         }
                         ReferenceType::PrecedenceGroup(_) => {
                             return Err(LinkError::LinkError { msg: format!("Precedence group references are not supported in expressions yet.") })
@@ -371,22 +376,5 @@ impl <'a> ImperativeLinker<'a> {
         }
 
         panic!("function {} could not be resolved.", fn_name)
-    }
-
-    pub fn link_constant(&mut self, function: &Rc<FunctionPointer>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
-        let seed = Uuid::new_v4();
-        let binding = scope.trait_conformance_declarations
-            .satisfy_requirements(&function.machine_interface.requirements, &seed, &mut self.expressions.type_forest)?;
-        let return_type = function.machine_interface.return_type.with_any_as_generic(&seed);
-
-        self.link_unambiguous_expression(
-            vec![],
-            return_type.as_ref(),
-            ExpressionOperation::FunctionCall {
-                function: Rc::clone(function),
-                argument_targets: vec![],
-                binding
-            }
-        )
     }
 }

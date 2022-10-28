@@ -83,10 +83,11 @@ impl <'a> Scope<'a> {
         }
     }
 
-    pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>) {
+    pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>) -> Result<(), LinkError> {
         let environment = match fun.human_interface.form {
             FunctionForm::Member => Environment::Member,
-            _ => Environment::Global
+            FunctionForm::Global => Environment::Global,
+            FunctionForm::Constant => Environment::Global,
         };
         let name = &fun.human_interface.name;
 
@@ -98,7 +99,7 @@ impl <'a> Scope<'a> {
         if let Some(existing) = variables.remove(name) {
             if let ReferenceType::FunctionOverload(overload) = &existing.type_ {
                 let variable = Reference::make(
-                    ReferenceType::FunctionOverload(overload.adding_function(fun))
+                    ReferenceType::FunctionOverload(overload.adding_function(fun)?)
                 );
 
                 variables.insert(fun.human_interface.name.clone(), variable);
@@ -111,7 +112,7 @@ impl <'a> Scope<'a> {
             // Copy the parent's function overload into us and then add the function to the overload
             if let Some(Some(ReferenceType::FunctionOverload(overload))) = self.parent.map(|x| x.resolve(environment, name).ok().map(|x| &x.as_ref().type_)) {
                 let variable = Reference::make(
-                    ReferenceType::FunctionOverload(overload.adding_function(fun))
+                    ReferenceType::FunctionOverload(overload.adding_function(fun)?)
                 );
 
                 let mut variables = self.references_mut(environment);
@@ -126,6 +127,8 @@ impl <'a> Scope<'a> {
 
             variables.insert(fun.human_interface.name.clone(), variable);
         }
+
+        Ok(())
     }
 
     pub fn insert_trait(&mut self, t: &Rc<Trait>) {
@@ -153,10 +156,6 @@ impl <'a> Scope<'a> {
         if let Some(other) = references.insert(name.clone(), reference) {
             panic!("Multiple variables of the same name: {}", name);
         }
-    }
-
-    pub fn insert_constant(&mut self, fun: Rc<FunctionPointer>) {
-        self.insert_singleton(Environment::Global, Reference::make(ReferenceType::Constant(Rc::clone(&fun))), &fun.human_interface.name)
     }
 
     pub fn insert_keyword(&mut self, keyword: &String) {

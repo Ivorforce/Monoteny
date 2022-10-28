@@ -6,7 +6,7 @@ def square(_: a '$Number) -> $Number :: a * a;
 
 def {$Number}.square() -> $Number :: square(self);
 
-def test 'Float32 :: 5;
+def test -> Float32 :: 5;
 
 def main() :: {
     print("Test: ");

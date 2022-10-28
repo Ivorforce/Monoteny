@@ -9,7 +9,7 @@ use crate::parser::abstract_syntax;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{LinkError, scopes};
-use crate::linker::interface::{link_constant_pointer, link_function_pointer, link_operator_pointer};
+use crate::linker::interface::{link_function_pointer, link_operator_pointer};
 use crate::linker::r#type::TypeFactory;
 use crate::linker::scopes::Environment;
 use crate::parser::abstract_syntax::{PatternDeclaration, Term};
@@ -108,7 +108,7 @@ impl <'a> GlobalLinker<'a> {
                 });
 
                 // Create a variable for the function
-                self.global_variables.overload_function(&fun);
+                self.global_variables.overload_function(&fun)?;
 
                 // if interface.is_member_function {
                 // TODO Create an additional variable as Metatype.function(self, ...args)?
@@ -124,19 +124,7 @@ impl <'a> GlobalLinker<'a> {
                 });
 
                 // Create a variable for the function
-                self.global_variables.overload_function(&fun);
-            }
-            abstract_syntax::GlobalStatement::Constant(syntax) => {
-                let scope = &self.global_variables;
-                let fun = link_constant_pointer(&syntax, &scope, requirements)?;
-
-                self.functions.push(FunctionWithoutBody {
-                    pointer: Rc::clone(&fun),
-                    body: &syntax.body,
-                });
-
-                // Create a variable for the function
-                self.global_variables.insert_constant(fun);
+                self.global_variables.overload_function(&fun)?;
             }
         }
 

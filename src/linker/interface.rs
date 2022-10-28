@@ -65,6 +65,31 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
 
     let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x)).unwrap_or_else(|| Ok(TypeProto::void()))?;
 
+    if let [OperatorArgument::Keyword(name)] = &function.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
+        // Constant
+
+        let fun = Rc::new(FunctionPointer {
+            pointer_id: Uuid::new_v4(),
+            target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
+
+            machine_interface: Rc::new(MachineFunctionInterface {
+                parameters: HashSet::new(),
+                return_type,
+                requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
+            }),
+            human_interface: Rc::new(HumanFunctionInterface {
+                name: name.clone(),
+
+                parameter_names: vec![],
+                parameter_names_internal: vec![],
+
+                form: FunctionForm::Constant,
+            }),
+        });
+
+        return Ok(fun)
+    }
+
     // TODO Throw if multiple patterns match
     for pattern in scope.patterns.iter() {
         guard!(let Some(arguments) = match_patterns(&pattern.parts, &function.parts) else {
@@ -103,31 +128,6 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
     }
 
     return Err(LinkError::LinkError { msg: String::from("Unknown pattern in function definition.") });
-}
-
-pub fn link_constant_pointer(function: &abstract_syntax::Constant, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitConformanceRequirement>>) -> Result<Rc<FunctionPointer>, LinkError> {
-    let mut type_factory = TypeFactory::new(scope);
-
-    let declared_type = type_factory.link_type(&function.declared_type)?;
-
-    Ok(Rc::new(FunctionPointer {
-        pointer_id: Uuid::new_v4(),
-        target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
-
-        machine_interface: Rc::new(MachineFunctionInterface {
-            parameters: HashSet::new(),
-            return_type: declared_type,
-            requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
-        }),
-        human_interface: Rc::new(HumanFunctionInterface {
-            name: function.identifier.clone(),
-
-            parameter_names: vec![],
-            parameter_names_internal: vec![],
-
-            form: FunctionForm::Global,
-        }),
-    }))
 }
 
 pub fn match_patterns<'a>(pattern_parts: &'a Vec<Box<PatternPart>>, function_parts: &'a Vec<Box<OperatorArgument>>) -> Option<Vec<(&'a ParameterKey, &'a String, &'a Expression)>> {

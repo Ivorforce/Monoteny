@@ -1,9 +1,10 @@
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, format, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use itertools::zip_eq;
 use uuid::Uuid;
+use crate::LinkError;
 use crate::program::allocation::{Mutability, ObjectReference, Reference};
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::{TypeProto};
@@ -12,6 +13,7 @@ use crate::program::types::{TypeProto};
 pub enum FunctionForm {
     Global,
     Member,
+    Constant,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -39,6 +41,7 @@ pub struct FunctionPointer {
 pub struct FunctionOverload {
     pub pointers: HashSet<Rc<FunctionPointer>>,
     pub name: String,
+    pub form: FunctionForm,
 }
 
 pub struct HumanFunctionInterface {
@@ -112,14 +115,20 @@ impl FunctionOverload {
         Rc::new(FunctionOverload {
             pointers: HashSet::from([Rc::clone(function)]),
             name: function.human_interface.name.clone(),
+            form: function.human_interface.form.clone(),
         })
     }
 
-    pub fn adding_function(&self, function: &Rc<FunctionPointer>) -> Rc<FunctionOverload> {
-        Rc::new(FunctionOverload {
+    pub fn adding_function(&self, function: &Rc<FunctionPointer>) -> Result<Rc<FunctionOverload>, LinkError> {
+        if self.form != function.human_interface.form {
+            return Err(LinkError::LinkError { msg: format!("Cannot overload functions and constants.") })
+        }
+
+        Ok(Rc::new(FunctionOverload {
             pointers: self.pointers.iter().chain([function]).map(Rc::clone).collect(),
             name: self.name.clone(),
-        })
+            form: self.form.clone(),
+        }))
     }
 }
 
@@ -143,6 +152,7 @@ impl Debug for HumanFunctionInterface {
 
         match self.form {
             FunctionForm::Global => {}
+            FunctionForm::Constant => {}
             FunctionForm::Member => {
                 write!(fmt, "{:?}.", self.parameter_names.get(head).unwrap().1.type_)?;
                 head += 1;

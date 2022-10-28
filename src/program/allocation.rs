@@ -26,7 +26,6 @@ pub struct Reference {
 pub enum ReferenceType {
     Object(Rc<ObjectReference>),
     Keyword(String),
-    Constant(Rc<FunctionPointer>),
     FunctionOverload(Rc<FunctionOverload>),
     PrecedenceGroup(Rc<PrecedenceGroup>),
     Trait(Rc<Trait>),
@@ -129,7 +128,6 @@ impl Debug for ReferenceType {
             FunctionOverload(f) => write!(fmt, "{}", &f.name),
             PrecedenceGroup(p) => write!(fmt, "{:?}", &p.name),
             Keyword(s) => write!(fmt, "{}", s),
-            Constant(c) => write!(fmt, "{}", &c.human_interface.name),
             Trait(t) => write!(fmt, "{:?}", t.name),
         }
     }
