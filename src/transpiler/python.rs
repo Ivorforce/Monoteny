@@ -219,6 +219,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                 try_transpile_binary_operator(stream, function, arguments, context)?
                 || try_transpile_unary_operator(stream, function, arguments, context)?
                 || try_transpile_literal(stream, function, arguments, &expression, context)?
+                || try_transpile_constant(stream, function, arguments, &expression, context)?
             {
                 // no-op
             }
@@ -250,7 +251,8 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                 }
 
                 for requirement in function.machine_interface.requirements.iter() {
-                    let declaration = &context.functions_by_id[&function.pointer_id].conformance_delegations[requirement];
+                    let implementation = &context.functions_by_id[&function.pointer_id];
+                    let declaration = &implementation.conformance_delegations[requirement];
 
                     let param_name = context.names.get(&declaration.id).unwrap();
                     let arg_name = context.names.get(&binding.resolution[requirement].id).unwrap();
@@ -402,13 +404,38 @@ pub fn try_transpile_literal(stream: &mut (dyn Write), function: &Rc<FunctionPoi
 
     if context.builtins.primitives.parse_int_literal.contains(function) && is_int.is_match(literal) {
         write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
-
         return Ok(true);
     }
     else if context.builtins.primitives.parse_float_literal.contains(function) && is_float.is_match(literal) {
         write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
-
         return Ok(true);
+    }
+
+    Ok(false)
+}
+
+pub fn try_transpile_constant(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+    if !arguments.is_empty() {
+        return Ok(false);
+    };
+
+    guard!(let TypeUnit::Primitive(_) = context.types.resolve_binding_alias(expression_id).unwrap().unit else {
+        return Ok(false)
+    });
+
+    let type_string = transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap());
+
+    if function == &context.builtins.math.pi {
+        write!(stream, "{}(np.pi)", type_string)?;
+        return Ok(true)
+    }
+    if function == &context.builtins.math.tau {
+        write!(stream, "{}(np.pi * 2)", type_string)?;
+        return Ok(true)
+    }
+    if function == &context.builtins.math.e {
+        write!(stream, "{}(np.e)", type_string)?;
+        return Ok(true)
     }
 
     Ok(false)

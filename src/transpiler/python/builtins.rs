@@ -64,5 +64,9 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
         namespace.register_definition(declaration.id, &format!("mn.declarations.{}", &declaration.trait_.name));
     }
 
+    namespace.register_definition(builtins.math.pi.pointer_id, &String::from("mn.pi"));
+    namespace.register_definition(builtins.math.tau.pointer_id, &String::from("mn.tau"));
+    namespace.register_definition(builtins.math.e.pointer_id, &String::from("mn.e"));
+
     namespace
 }

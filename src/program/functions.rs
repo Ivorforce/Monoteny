@@ -63,6 +63,25 @@ pub struct MachineFunctionInterface {
 }
 
 impl FunctionPointer {
+    pub fn make_constant<'a>(alphanumeric_name: &'a str, return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitConformanceRequirement>>) -> Rc<FunctionPointer> {
+        Rc::new(FunctionPointer {
+            pointer_id: Uuid::new_v4(),
+            target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
+
+            human_interface: Rc::new(HumanFunctionInterface {
+                name: String::from(alphanumeric_name),
+                parameter_names: vec![],
+                parameter_names_internal: vec![],
+                form: FunctionForm::Constant,
+            }),
+            machine_interface:Rc::new(MachineFunctionInterface {
+                parameters: HashSet::new(),
+                return_type: return_type.clone(),
+                requirements: requirements.into_iter().map(Rc::clone).collect(),
+            })
+        })
+    }
+
     pub fn make_operator<'a>(alphanumeric_name: &'a str, count: usize, parameter_type: &Box<TypeProto>, return_type: &Box<TypeProto>) -> Rc<FunctionPointer> {
         let parameter_names = (0..count).map(|_| ParameterKey::Positional);
         let parameters: Vec<Rc<ObjectReference>> = (0..count).map(|x| ObjectReference::make_immutable(parameter_type.clone())).collect();

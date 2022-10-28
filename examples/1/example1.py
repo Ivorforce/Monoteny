@@ -43,16 +43,16 @@ def square_0(self: Any, Number: mn.traits.Number, ) -> Any:
     return square_1(self, Number=Number)
 
 
-def kinda_pi_0(Float: mn.traits.Float, ) -> Any:
+def pi_ish_0(Float: mn.traits.Float, ) -> Any:
     """
     <Docstring TODO!>
 
     Returns: Any
     """
-    return Float.parse_float_literal("3.1415926")
+    return Float.parse_float_literal("3.14")
 
 
-def kinda_pi_1(Int: mn.traits.Int, ) -> Any:
+def pi_ish_1(Int: mn.traits.Int, ) -> Any:
     """
     <Docstring TODO!>
 
@@ -66,10 +66,10 @@ def main():
     <Docstring TODO!>
     """
     print("Test: ")
-    a = (square_1(float32(2.2), Number=mn.declarations.Number_10)) * (float32(3))
-    b = (square_1(float32(5), Number=mn.declarations.Number_10)) + (kinda_pi_0(Float=mn.declarations.Float_0))
-    b = floor_div((square_1(b, Number=mn.declarations.Number_10)) ** (-(float32(2.2))), math.log(a, float32(2)), Float=mn.declarations.Float_0)
-    c = kinda_pi_1(Int=mn.declarations.Int_2)
+    a = (square_1(float32(2.2), Number=mn.declarations.Number_10)) * (float32(np.e))
+    b = (square_1(float32(5), Number=mn.declarations.Number_10)) + (pi_ish_0(Float=mn.declarations.Float_0))
+    b = floor_div((square_1(b, Number=mn.declarations.Number_10)) ** (-(float32(2.2))), math.log(a, float32(np.pi * 2)), Float=mn.declarations.Float_0)
+    c = pi_ish_1(Int=mn.declarations.Int_2)
     print(((b < (float32(2))) and (not (a > (float32(2))))) and True)
 
 

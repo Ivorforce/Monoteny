@@ -6,16 +6,16 @@ def square(_: a '$Number) -> $Number :: a * a;
 
 def {$Number}.square() -> $Number :: square(self);
 
-def pi_ish -> $Float :: 3.1415926;
+def pi_ish -> $Float :: 3.14;
 def pi_ish -> $Int :: 3;
 
 def main() :: {
     print("Test: ");
 
-    let a 'Float32 = 2.2.square() * 3;
+    let a 'Float32 = 2.2.square() * e;
 
     var b = square(5) + pi_ish;
-    upd b = b.square() ** -2.2 /_ a // 2;
+    upd b = b.square() ** -2.2 /_ a // tau;
 
     var c 'Int32 = pi_ish;
 
