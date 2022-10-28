@@ -91,8 +91,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
     - [ ] Deconstruction assignment
 - [ ] Non-linear linking (allow references to identifiers declared below)
 - [ ] Comments (with transpilation)
-- [ ] Constants
-  - [ ] ... generically typed (`let pi = 3.1415926`, inferred type: `$Float`)
+- [x] Constant-Like function syntax (without `()`)
 - [x] Generics
   - [x] Reverse generic type checking (output types determined from inputs)
   - [x] Implicit generics (`#A`)

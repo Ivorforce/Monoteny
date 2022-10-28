@@ -6,18 +6,18 @@ def square(_: a '$Number) -> $Number :: a * a;
 
 def {$Number}.square() -> $Number :: square(self);
 
-def kinda_pi -> $Float :: 3.1415926;
-def kinda_pi -> $Int :: 3;
+def pi_ish -> $Float :: 3.1415926;
+def pi_ish -> $Int :: 3;
 
 def main() :: {
     print("Test: ");
 
     let a 'Float32 = 2.2.square() * 3;
 
-    var b = square(5) + kinda_pi;
+    var b = square(5) + pi_ish;
     upd b = b.square() ** -2.2 /_ a // 2;
 
-    var c 'Int32 = kinda_pi;
+    var c 'Int32 = pi_ish;
 
     print(b < 2 and not (a > 2) and true);
 }
