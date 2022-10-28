@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
+use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use custom_error::custom_error;
@@ -10,6 +10,7 @@ use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::generics::{TypeForest};
 use crate::program::types::TypeProto;
+use crate::util::fmt::write_comma_separated_list;
 use crate::util::multimap::{extend_multimap, push_into_multimap};
 
 #[derive(Clone)]
@@ -70,24 +71,19 @@ impl TraitConformanceScope {
         push_into_multimap(&mut self.declarations, &declaration.trait_, Rc::clone(declaration));
     }
 
-    pub fn satisfy_requirements(&self, requirements: &HashSet<Rc<TraitConformanceRequirement>>, seed: &Uuid, mapping: &TypeForest) -> Result<Box<TraitBinding>, LinkError> {
+    pub fn satisfy_requirements(&self, requirements: &HashSet<Rc<TraitConformanceRequirement>>, mapping: &TypeForest) -> Result<Box<TraitBinding>, LinkError> {
         if requirements.len() == 0 {
             return Ok(Box::new(TraitBinding {
                 resolution: HashMap::new(),
             }));
         }
 
-        let requirements = requirements.clone();
-
         if requirements.len() > 1 {
             todo!("Multiple requirements are not supported yet")
         }
 
         let requirement = requirements.iter().next().unwrap();
-        let bound_requirement_arguments: Vec<Box<TypeProto>> = requirement.arguments.iter()
-            .map(|x| mapping.resolve_type(&x.with_any_as_generic(seed)))
-            .try_collect()?;
-
+        let bound_requirement_arguments: Vec<Box<TypeProto>> = requirement.arguments.iter().map(|x| mapping.resolve_type(x)).try_collect()?;
         let mut candidates: Vec<Box<TraitBinding>> = vec![];
 
         for declaration in self.declarations.get(&requirement.trait_).unwrap_or(&vec![]).iter() {
@@ -112,10 +108,10 @@ impl TraitConformanceScope {
             // TODO Due to unbound generics, trait conformance may be coerced later.
             //  However, we don't want to accidentally use another function while this function has ambiguous conformance.
             //  In that case, evaluation should fail when no further generics can be decided.
-            panic!("Trait conformance is ambiguous ({}x): {}", candidates.len(), requirement.trait_.name);
+            panic!("Trait conformance is ambiguous ({}x): {:?}", candidates.len(), requirement);
         }
 
-        Err(LinkError::LinkError { msg: String::from(format!("No candidates for trait conformance: {}", requirement.trait_.name)) })
+        Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", requirement)) })
     }
 }
 
@@ -180,6 +176,46 @@ impl Trait {
     }
 }
 
+impl TraitConformanceDeclaration {
+    pub fn make(trait_: &Rc<Trait>, parameters: Vec<Box<TypeProto>>, function_implementations: Vec<(&Rc<FunctionPointer>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
+        Rc::new(TraitConformanceDeclaration {
+            id: Uuid::new_v4(),
+            trait_: Rc::clone(trait_),
+            arguments: parameters,
+            requirements: HashSet::new(),
+            trait_requirements_conformance: HashMap::new(),
+            function_implementations: function_implementations.into_iter()
+                .map(|(l, r)| (Rc::clone(l), Rc::clone(r)))
+                .collect()
+        })
+    }
+
+    pub fn make_child(trait_: &Rc<Trait>, parent_conformances: Vec<&Rc<TraitConformanceDeclaration>>, function_implementations: Vec<(&Rc<FunctionPointer>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
+        Rc::new(TraitConformanceDeclaration {
+            id: Uuid::new_v4(),
+            trait_: Rc::clone(trait_),
+            arguments: parent_conformances.iter().next().unwrap().arguments.clone(),
+            requirements: HashSet::new(),
+            trait_requirements_conformance: parent_conformances.into_iter()
+                .map(|d| (Rc::clone(trait_.requirements.iter().filter(|r| r.trait_ == d.trait_).next().unwrap()), Rc::clone(d)))
+                .collect(),
+            function_implementations: function_implementations.into_iter()
+                .map(|(l, r)| (Rc::clone(l), Rc::clone(r)))
+                .collect()
+        })
+    }
+}
+
+impl TraitConformanceRequirement {
+    pub fn with_any_as_generic(&self, seed: &Uuid) -> Rc<TraitConformanceRequirement> {
+        Rc::new(TraitConformanceRequirement {
+            id: self.id,
+            trait_: Rc::clone(&self.trait_),
+            arguments: self.arguments.iter().map(|x| x.with_any_as_generic(seed)).collect()
+        })
+    }
+}
+
 impl PartialEq for Trait {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
@@ -221,5 +257,25 @@ impl Eq for TraitConformanceDeclaration {}
 impl Hash for TraitConformanceDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
+    }
+}
+
+impl Debug for TraitConformanceDeclaration {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "{}<", self.trait_.name)?;
+        write_comma_separated_list(fmt, &self.arguments)?;
+        write!(fmt, ">")?;
+
+        Ok(())
+    }
+}
+
+impl Debug for TraitConformanceRequirement {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "{}<", self.trait_.name)?;
+        write_comma_separated_list(fmt, &self.arguments)?;
+        write!(fmt, ">")?;
+
+        Ok(())
     }
 }

@@ -42,8 +42,8 @@ pub fn transpile_primitive_type(type_def: &primitives::Type) -> String {
         primitives::Type::UInt32 => "uint32_t",
         primitives::Type::UInt64 => "uint64_t",
         primitives::Type::UInt128 => "uint128_t",
-        primitives::Type::Float32 => "float",
-        primitives::Type::Float64 => "double",
+        primitives::Type::Float32 => "float32",
+        primitives::Type::Float64 => "float64",
     })
 }
 

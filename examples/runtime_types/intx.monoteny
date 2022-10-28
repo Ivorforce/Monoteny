@@ -1,0 +1,10 @@
+def main() {
+    -- Create a type Int5 that stores variables using 5 bits
+    let Int5 = IntX(5);
+    -- Instantiate Int5 with 1282 through IntParseable
+    --   (which parses from IntX(10) types, because the literal is entered base 10)
+    --   i.e. parse(_: values 'IntX(10)) -> Self
+    let v 'Int5 = 1282;
+    -- Print the value, the type, and the type's bit count.
+    print("\(v) '\(Int5) using \(Int5.bit_count) bits.")
+}

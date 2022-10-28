@@ -12,7 +12,8 @@ match {
     // so i heard u like regex
     r"([$#])?[a-zA-Z_]\w*" => _Identifier,
     r"[!+\-*/&%=><|.^?][!+\-*/&%=><|.^?_]*" => _OperatorIdentifier,
-    r"[0-9]+(\.[0-9]*)?" => _Number,
+    r"[0-9]+" => _Int,
+    r"[0-9]+\.[0-9]*" => _Float,
     "return",
     ".", "'",
     "(", ")", "{", "}", "[",  "]", "..",
@@ -39,8 +40,12 @@ AnyIdentifier: String = {
     OperatorIdentifier,
 };
 
-Number: String = {
-    _Number => format!("{}", <>)
+Int: String = {
+    _Int => format!("{}", <>)
+};
+
+Float: String = {
+    _Float => format!("{}", <>)
 };
 
 // =============================== Global =====================================
@@ -126,7 +131,8 @@ TypedTerm: Box<Term> = {
 
 Term: Box<Term> = {
     AnyIdentifier => Box::new(Term::Identifier(<>)),
-    Number => Box::new(Term::Number(<>)),
+    Int => Box::new(Term::Int(<>)),
+    Float => Box::new(Term::Float(<>)),
     "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Box::new(Term::Array(<>)),
     "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Box::new(Term::Struct(<>)),
     <target: Term> "." <member_name: Identifier> => Box::new(Term::MemberAccess { <> }),

@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
+use crate::linker::imperative::ImperativeLinker;
 use crate::linker::LinkError;
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation};
@@ -9,34 +10,53 @@ use crate::program::functions::FunctionPointer;
 use crate::program::generics::TypeForest;
 use crate::program::primitives;
 use crate::program::primitives::Value;
-use crate::program::traits::{TraitBinding, TraitConformanceScope};
+use crate::program::traits::{TraitBinding, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub trait LinkerAmbiguity {
-    fn attempt_to_resolve(&mut self, expressions: &mut ExpressionForest) -> Result<bool, LinkError>;
+    fn attempt_to_resolve(&mut self, expressions: &mut ImperativeLinker) -> Result<bool, LinkError>;
 }
 
 pub struct AmbiguousNumberPrimitive {
     pub expression_id: ExpressionID,
     pub value: String,
-    pub candidates: HashSet<primitives::Type>
+    pub traits: TraitConformanceScope,
+    pub is_float: bool,
 }
 
 impl LinkerAmbiguity for AmbiguousNumberPrimitive {
-    fn attempt_to_resolve(&mut self, expressions: &mut ExpressionForest) -> Result<bool, LinkError> {
-        match expressions.type_forest.get_unit(&self.expression_id) {
-            None => Ok(false),  // Not done yet
-            Some(TypeUnit::Primitive(primitive_type)) => {
-                if !self.candidates.contains(primitive_type) {
-                    return Err(LinkError::LinkError { msg: format!("Cannot convert number literal {} to expected primitive type {:?}", &self.value, primitive_type) })
-                }
+    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<bool, LinkError> {
+        match linker.types.resolve_binding_alias(&self.expression_id) {
+            Err(_) => Ok(false),  // Not done yet
+            Ok(type_) => {
+                let literal_expression_id = linker.register_new_expression(vec![]);
+                linker.expressions.operations.insert(
+                    literal_expression_id.clone(),
+                    ExpressionOperation::StringLiteral(self.value.clone())
+                );
+                linker.types.bind(literal_expression_id.clone(), TypeProto::unit(TypeUnit::Struct(Rc::clone(&linker.builtins.traits.String))).as_ref())?;
 
-                expressions.operations.insert(self.expression_id, ExpressionOperation::NumberLiteral(self.value.clone()));
+                let requirement = Rc::new(TraitConformanceRequirement {
+                    id: Uuid::new_v4(),
+                    trait_: Rc::clone(if self.is_float { &linker.builtins.traits.ConstructableByFloatLiteral } else { &linker.builtins.traits.ConstructableByIntLiteral }),
+                    arguments: vec![type_.clone()]
+                });
+                let binding = self.traits.satisfy_requirements(
+                    &HashSet::from([requirement]), &linker.types
+                )?;
+                let declaration = binding.resolution.values().next().unwrap();
+                let parse_function = &declaration.function_implementations[
+                    if self.is_float { &linker.builtins.traits.parse_float_literal_function } else { &linker.builtins.traits.parse_int_literal_function }
+                ];
+
+                linker.expressions.arguments.insert(self.expression_id.clone(), vec![literal_expression_id]);
+                linker.expressions.operations.insert(
+                    self.expression_id.clone(),
+                    ExpressionOperation::FunctionCall { function: Rc::clone(parse_function), argument_targets: vec![], binding }
+                );
+                linker.types.bind(self.expression_id.clone(), type_.as_ref())?;
 
                 Ok(true)
-            }
-            unit => {
-                Err(LinkError::LinkError { msg: format!("Cannot convert number literal {} to expected type {:?}", self.value, unit) })
             }
         }
     }
@@ -44,14 +64,15 @@ impl LinkerAmbiguity for AmbiguousNumberPrimitive {
 
 pub struct AmbiguousFunctionCandidate {
     pub function: Rc<FunctionPointer>,
+    // All these are seeded already
     pub param_types: Vec<Box<TypeProto>>,
     pub return_type: Box<TypeProto>,
+    pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 }
 
 pub struct AmbiguousFunctionCall {
     pub expression_id: ExpressionID,
     pub function_name: String,
-    pub seed: Uuid,
     pub arguments: Vec<ExpressionID>,
     pub trait_conformance_declarations: TraitConformanceScope,
 
@@ -61,7 +82,6 @@ pub struct AmbiguousFunctionCall {
 
 impl AmbiguousFunctionCall {
     fn attempt_with_candidate(&self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<Box<TraitBinding>, LinkError> {
-        let fun = &candidate.function;
         let param_types = &candidate.param_types;
 
         for (arg, param) in zip_eq(
@@ -73,17 +93,20 @@ impl AmbiguousFunctionCall {
         types.bind(self.expression_id.clone(), &candidate.return_type)?;
 
         let binding = self.trait_conformance_declarations
-            .satisfy_requirements(&fun.machine_interface.requirements, &self.seed, &types)?;
+            .satisfy_requirements(
+                &candidate.requirements,
+                &types
+            )?;
 
         Ok(binding)
     }
 }
 
 impl LinkerAmbiguity for AmbiguousFunctionCall {
-    fn attempt_to_resolve(&mut self, expressions: &mut ExpressionForest) -> Result<bool, LinkError> {
+    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<bool, LinkError> {
         let mut is_ambiguous = false;
         for candidate in self.candidates.drain(..).collect_vec() {
-            let mut types_copy = expressions.type_forest.clone();
+            let mut types_copy = linker.types.clone();
             let result = self.attempt_with_candidate(&mut types_copy, &candidate);
 
             match result {
@@ -105,13 +128,13 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
 
         if self.candidates.len() == 1 {
             let candidate = self.candidates.drain(..).next().unwrap();
-            let binding = self.attempt_with_candidate(&mut expressions.type_forest, &candidate)?;
+            let binding = self.attempt_with_candidate(&mut linker.types, &candidate)?;
 
             let argument_targets: Vec<Rc<ObjectReference>> = candidate.function.human_interface.parameter_names.iter()
                 .map(|x| Rc::clone(&x.1))
                 .collect();
 
-            expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall {
+            linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall {
                 function: candidate.function,
                 argument_targets,
                 binding
@@ -124,17 +147,17 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
         // TODO We should probably output the locations of candidates.
 
         let argument_types = self.arguments.iter().map(|t|
-            expressions.type_forest.prototype_binding_alias(t)
+            linker.types.prototype_binding_alias(t)
         ).collect_vec();
 
         if self.failed_candidates.len() == 1 {
             // TODO How so?
             let (candidate, err) = self.failed_candidates.iter().next().unwrap();
 
-            panic!("function {:?} could not be resolved. Candidate failed type / requirements test: {:?}", &candidate.function.human_interface, err)
+            Err(LinkError::LinkError { msg: format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function.human_interface, err) })
         } else {
             // TODO Print types of arguments too, for context.
-            panic!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, self.failed_candidates.len(), &argument_types)
+            Err(LinkError::LinkError { msg: format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, self.failed_candidates.len(), &argument_types) })
         }
     }
 }

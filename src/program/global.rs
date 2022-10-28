@@ -6,6 +6,7 @@ use crate::program::computation_tree::{ExpressionForest, Statement};
 use crate::program::functions::{HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::allocation::{ObjectReference, Reference};
+use crate::program::generics::TypeForest;
 
 pub enum GlobalStatement {
     Trait(Rc<Trait>),
@@ -24,6 +25,7 @@ pub struct FunctionImplementation {
 
     pub statements: Vec<Box<Statement>>,
     pub expression_forest: Box<ExpressionForest>,
+    pub type_forest: Box<TypeForest>,
     pub variable_names: HashMap<Rc<ObjectReference>, String>,
 }
 

@@ -10,7 +10,6 @@ pub mod functions;
 pub mod generics;
 pub mod global;
 pub mod primitives;
-pub mod structs;
 pub mod traits;
 pub mod types;
 

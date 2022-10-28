@@ -19,7 +19,7 @@ def floor_div(lhs: Any, rhs: Any, Float: mn.traits.Float, ) -> Any:
     return Float.divide(lhs, rhs)
 
 
-def square_0(a: Any, Number: mn.traits.Number, ) -> Any:
+def square_1(a: Any, Number: mn.traits.Number, ) -> Any:
     """
     <Docstring TODO!>
 
@@ -31,7 +31,7 @@ def square_0(a: Any, Number: mn.traits.Number, ) -> Any:
     return Number.multiply(a, a)
 
 
-def square_1(self: Any, Number: mn.traits.Number, ) -> Any:
+def square_0(self: Any, Number: mn.traits.Number, ) -> Any:
     """
     <Docstring TODO!>
 
@@ -40,25 +40,25 @@ def square_1(self: Any, Number: mn.traits.Number, ) -> Any:
 
     Returns: Any
     """
-    return square_0(self, Number=Number)
+    return square_1(self, Number=Number)
 
 
-def test_1() -> float32:
+def kinda_pi_0(Float: mn.traits.Float, ) -> Any:
     """
     <Docstring TODO!>
 
-    Returns: float32
+    Returns: Any
     """
-    return float32(5)
+    return Float.parse_float_literal("3.1415926")
 
 
-def test_0() -> int32:
+def kinda_pi_1(Int: mn.traits.Int, ) -> Any:
     """
     <Docstring TODO!>
 
-    Returns: int32
+    Returns: Any
     """
-    return int32(5)
+    return Int.parse_int_literal("3")
 
 
 def main():
@@ -66,11 +66,11 @@ def main():
     <Docstring TODO!>
     """
     print("Test: ")
-    a = (square_0(float32(2.2), Number=mn.declarations.Number_10)) * float32(3)
-    b = (square_0(float32(5), Number=mn.declarations.Number_10)) + (test_1())
-    b = floor_div((square_0(b, Number=mn.declarations.Number_10)) ** (-float32(2.2)), math.log(a, float32(2)), Float=mn.declarations.Float_0)
-    c = test_0()
-    print(((b < float32(2)) and (not (a > float32(2)))) and True)
+    a = (square_1(float32(2.2), Number=mn.declarations.Number_10)) * (float32(3))
+    b = (square_1(float32(5), Number=mn.declarations.Number_10)) + (kinda_pi_0(Float=mn.declarations.Float_0))
+    b = floor_div((square_1(b, Number=mn.declarations.Number_10)) ** (-(float32(2.2))), math.log(a, float32(2)), Float=mn.declarations.Float_0)
+    c = kinda_pi_1(Int=mn.declarations.Int_2)
+    print(((b < (float32(2))) and (not (a > (float32(2))))) and True)
 
 
 if __name__ == '__main__':

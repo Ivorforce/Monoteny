@@ -125,7 +125,9 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 
 - [ ] Exceptions (as monads)
   - [ ] Early return syntax
-- [ ] IntX, FloatX (big int & float, which are structs)
+- [ ] Meta Traits (traits whose instantiations can act as traits)
+  - [ ] IntX, FloatX (variable bitcount int and float) - regular ints and floats are just 'optimized special cases' of this
+- [ ] IntUnbound (int that can store any value)
 - [ ] IntNative, FloatNative (platform-optimized int and float)
 - [ ] Imports
 - [ ] Local functions and declarations

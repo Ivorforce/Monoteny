@@ -73,7 +73,8 @@ pub enum Statement {
 
 pub enum Term {
     Identifier(String),
-    Number(String),
+    Int(String),
+    Float(String),
     MemberAccess { target: Box<Term>, member_name: String },
     TypeHint { object: Box<Term>, type_: Box<Term> },
     Struct(Vec<StructArgument>),
@@ -199,7 +200,8 @@ impl Debug for Term {
         use self::Term::*;
         match self {
             Identifier(s) => write!(fmt, "{}", s),
-            Number(s) => write!(fmt, "{}", s),
+            Int(s) => write!(fmt, "{}", s),
+            Float(s) => write!(fmt, "{}", s),
             StringLiteral(string) => write!(fmt, "{:?}", string),
             MemberAccess { target, member_name } =>  write!(fmt, "{:?}.{}", target, member_name),
             Struct(arguments) => {

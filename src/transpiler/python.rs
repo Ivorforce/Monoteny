@@ -8,23 +8,26 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::zip_eq;
 use uuid::Uuid;
+use regex;
 
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, ParameterKey};
 use crate::program::{primitives, Program};
 use crate::program::allocation::Reference;
+use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation, GlobalStatement};
 use crate::program::traits::TraitConformanceDeclaration;
 use crate::program::types::{TypeProto, TypeUnit};
+use crate::transpiler::cpp::transpile_type;
 use crate::transpiler::namespaces;
-
 
 pub struct TranspilerContext<'a> {
     names: &'a HashMap<Uuid, String>,
     functions_by_id: &'a HashMap<Uuid, Rc<FunctionImplementation>>,
     builtins: &'a Builtins,
     expressions: &'a ExpressionForest,
+    types: &'a TypeForest,
 }
 
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &Builtins) -> Result<(), std::io::Error> {
@@ -72,7 +75,8 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
                     names: &names,
                     functions_by_id: &functions_by_id,
                     builtins,
-                    expressions: &function.expression_forest
+                    expressions: &function.expression_forest,
+                    types: &function.type_forest
                 };
 
                 transpile_function(stream, function.as_ref(), &context)?
@@ -197,14 +201,6 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
 
 pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, context: &TranspilerContext) -> Result<(), std::io::Error> {
     match &context.expressions.operations.get(&expression).unwrap() {
-        ExpressionOperation::NumberLiteral(value) => {
-            match context.expressions.type_forest.get_unit(&expression).unwrap() {
-                TypeUnit::Primitive(type_) => {
-                    types::transpile_primitive_value(stream, value, type_)?;
-                }
-                _ => unreachable!(),
-            }
-        }
         ExpressionOperation::BoolLiteral(value) => {
             write!(stream, "{}", (if *value { "True" } else { "False" }))?;
         }
@@ -219,10 +215,11 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
         ExpressionOperation::FunctionCall { function, argument_targets, binding } => {
             let arguments = context.expressions.arguments.get(&expression).unwrap();
 
-            if try_transpile_binary_operator(stream, function, arguments, context)? {
-                // no-op
-            }
-            else if try_transpile_unary_operator(stream, function, arguments, context)? {
+            if
+                try_transpile_binary_operator(stream, function, arguments, context)?
+                || try_transpile_unary_operator(stream, function, arguments, context)?
+                || try_transpile_literal(stream, function, arguments, &expression, context)?
+            {
                 // no-op
             }
             else {
@@ -328,11 +325,9 @@ pub fn escape_string(string: &String) -> String {
 }
 
 pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
-    if arguments.len() != 1 {
-        return Ok(false);
-    }
-
-    let expression = arguments[0];
+    guard!(let [expression] = arguments[..] else {
+        return Ok(false)
+    });
 
     // TODO We can probably avoid unnecessary parentheses here and in the other operators if we ask the expression for its (python) precedence, and compare it with ours.
     for (collection, operator) in [
@@ -355,12 +350,9 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<Func
 }
 
 pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
-    if arguments.len() != 2 {
-        return Ok(false);
-    }
-
-    let lhs = arguments[0];
-    let rhs = arguments[1];
+    guard!(let [lhs, rhs] = arguments[..] else {
+        return Ok(false)
+    });
 
     for (collection, operator) in [
         (&HashSet::from([Rc::clone(&context.builtins.primitives.and)]), "and"),
@@ -396,9 +388,34 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
     return Ok(false);
 }
 
+pub fn try_transpile_literal(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+    guard!(let [argument] = &arguments[..] else {
+        return Ok(false)
+    });
+
+    guard!(let ExpressionOperation::StringLiteral(literal) = &context.expressions.operations[argument] else {
+        return Ok(false)
+    });
+
+    let is_float = regex::Regex::new("^[0-9]+\\.[0-9]*$").unwrap();
+    let is_int = regex::Regex::new("^[0-9]+$").unwrap();
+
+    if context.builtins.primitives.parse_int_literal.contains(function) && is_int.is_match(literal) {
+        write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
+
+        return Ok(true);
+    }
+    else if context.builtins.primitives.parse_float_literal.contains(function) && is_float.is_match(literal) {
+        write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
+
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
 pub fn is_simple(operation: &ExpressionOperation) -> bool {
     match operation {
-        ExpressionOperation::NumberLiteral(_) => true,
         ExpressionOperation::BoolLiteral(_) => true,
         ExpressionOperation::VariableLookup(_) => true,
         ExpressionOperation::StringLiteral(_) => true,

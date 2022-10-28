@@ -64,6 +64,7 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
         let mut resolver = Box::new(ImperativeLinker {
             function: Rc::clone(&fun.pointer),
             builtins,
+            types: Box::new(TypeForest::new()),
             expressions: Box::new(ExpressionForest::new()),
             variable_names,
             ambiguities: vec![]

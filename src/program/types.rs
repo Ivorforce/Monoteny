@@ -11,7 +11,6 @@ use crate::program::functions::{FunctionOverload, FunctionPointer, HumanFunction
 use crate::program::generics::{GenericAlias, TypeForest};
 
 use crate::program::primitives;
-use crate::program::structs::Struct;
 use crate::util::fmt::write_comma_separated_list;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -24,11 +23,11 @@ pub struct TypeProto {
 pub enum TypeUnit {
     Void,  // Not a type
     MetaType,  // Type of a type
-    Any(Uuid),  // Bound to some unknown type
-    Generic(GenericAlias),  // Bound to a type within a GenericMapping
-    Monad,
-    Primitive(primitives::Type),
-    Struct(Rc<Struct>),
+    Any(Uuid),  // some unknown type - may be described by requirements
+    Generic(GenericAlias),  // some type that isn't bound yet
+    Monad,  // Bound to a monad with arguments [unit, dimensions...]
+    Primitive(primitives::Type),  // a primitive
+    Struct(Rc<Trait>),  // Bound to an instance of some trait (non-abstract)
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]

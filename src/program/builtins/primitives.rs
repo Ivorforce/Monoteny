@@ -45,6 +45,10 @@ pub struct Primitives {
     // float
     pub exponent: HashSet<Rc<FunctionPointer>>,
     pub logarithm: HashSet<Rc<FunctionPointer>>,
+
+    // parse
+    pub parse_int_literal: HashSet<Rc<FunctionPointer>>,
+    pub parse_float_literal: HashSet<Rc<FunctionPointer>>,
 }
 
 
@@ -54,19 +58,6 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
     let mut add_function = |function: &Rc<FunctionPointer>, category: &mut HashSet<Rc<FunctionPointer>>, constants: &mut scopes::Scope| {
         category.insert(Rc::clone(&function));
         constants.overload_function(&function);
-    };
-
-    let make_conformance_declaration = |trait_: &Rc<Trait>, parent_conformance: &Rc<TraitConformanceDeclaration>, function_implementations: Vec<(&Rc<FunctionPointer>, &Rc<FunctionPointer>)>| -> Rc<TraitConformanceDeclaration> {
-        Rc::new(TraitConformanceDeclaration {
-            id: Uuid::new_v4(),
-            trait_: Rc::clone(trait_),
-            arguments: parent_conformance.arguments.clone(),
-            requirements: HashSet::new(),
-            trait_requirements_conformance: zip_eq(trait_.requirements.iter().map(Rc::clone), [parent_conformance].map(Rc::clone)).collect(),
-            function_implementations: function_implementations.into_iter()
-                .map(|(l, r)| (Rc::clone(l), Rc::clone(r)))
-                .collect()
-        })
     };
 
 
@@ -93,6 +84,9 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
     let mut pos_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
     let mut neg_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
 
+    let mut parse_int_literal: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut parse_float_literal: HashSet<Rc<FunctionPointer>> = HashSet::new();
+
     for primitive_type in primitives::Type::iter() {
         let type_ = &TypeProto::unit(TypeUnit::Primitive(primitive_type));
         let metatype = TypeProto::meta(type_.clone());
@@ -109,17 +103,14 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         add_function(&eq_functions.equal_to, &mut eq__ops, &mut constants);
         add_function(&eq_functions.not_equal_to, &mut neq_ops, &mut constants);
 
-        let eq_conformance = Rc::new(TraitConformanceDeclaration {
-            id: Uuid::new_v4(),
-            trait_: Rc::clone(&traits.Eq),
-            arguments: vec![type_.clone()],
-            requirements: HashSet::new(),
-            trait_requirements_conformance: HashMap::new(),
-            function_implementations: HashMap::from([
-                (Rc::clone(&traits.Eq_functions.equal_to), Rc::clone(&eq_functions.equal_to)),
-                (Rc::clone(&traits.Eq_functions.not_equal_to), Rc::clone(&eq_functions.not_equal_to)),
-            ])
-        });
+        let eq_conformance = TraitConformanceDeclaration::make(
+            &traits.Eq,
+            vec![type_.clone()],
+            vec![
+                (&traits.Eq_functions.equal_to, &eq_functions.equal_to),
+                (&traits.Eq_functions.not_equal_to, &eq_functions.not_equal_to),
+            ]
+        );
         constants.trait_conformance_declarations.add(&eq_conformance);
 
         if !primitive_type.is_number() {
@@ -134,8 +125,8 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         add_function(&number_functions.lesser_than, &mut le__ops, &mut constants);
         add_function(&number_functions.lesser_than_or_equal_to, &mut leq_ops, &mut constants);
 
-        let ord_conformance = make_conformance_declaration(
-            &traits.Ord, &eq_conformance, vec![
+        let ord_conformance = TraitConformanceDeclaration::make_child(
+            &traits.Ord, vec![&eq_conformance], vec![
                 (&traits.Number_functions.greater_than, &number_functions.greater_than),
                 (&traits.Number_functions.greater_than_or_equal_to, &number_functions.greater_than_or_equal_to),
                 (&traits.Number_functions.lesser_than, &number_functions.lesser_than),
@@ -153,8 +144,17 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         add_function(&number_functions.positive, &mut pos_ops, &mut constants);
         add_function(&number_functions.negative, &mut neg_ops, &mut constants);
 
-        let number_conformance = make_conformance_declaration(
-            &traits.Number, &ord_conformance, vec![
+        let _parse_int_literal = FunctionPointer::make_operator("parse_int_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_);
+        add_function(&_parse_int_literal, &mut parse_int_literal, &mut constants);
+        let ParseableByIntLiteral = TraitConformanceDeclaration::make(
+            &traits.ConstructableByIntLiteral, vec![type_.clone()], vec![
+                (&traits.parse_int_literal_function, &_parse_int_literal),
+            ]
+        );
+        constants.trait_conformance_declarations.add(&ParseableByIntLiteral);
+
+        let number_conformance = TraitConformanceDeclaration::make_child(
+            &traits.Number, vec![&ord_conformance], vec![
                 (&traits.Number_functions.add, &number_functions.add),
                 (&traits.Number_functions.subtract, &number_functions.subtract),
                 (&traits.Number_functions.multiply, &number_functions.multiply),
@@ -168,7 +168,7 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
 
         if primitive_type.is_int() {
             constants.trait_conformance_declarations.add(
-                &make_conformance_declaration(&traits.Int, &number_conformance, vec![])
+                &TraitConformanceDeclaration::make_child(&traits.Int, vec![&number_conformance, &ParseableByIntLiteral], vec![])
             );
         }
 
@@ -180,7 +180,16 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         add_function(&float_functions.exponent, &mut exp_ops, &mut constants);
         add_function(&float_functions.logarithm, &mut log_ops, &mut constants);
 
-        let float_conformance = make_conformance_declaration(&traits.Float, &number_conformance, vec![
+        let _parse_float_literal = FunctionPointer::make_operator("parse_float_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_);
+        add_function(&_parse_float_literal, &mut parse_float_literal, &mut constants);
+        let ParseableByFloatLiteral = TraitConformanceDeclaration::make(
+            &traits.ConstructableByFloatLiteral, vec![type_.clone()], vec![
+                (&traits.parse_float_literal_function, &_parse_float_literal),
+            ]
+        );
+        constants.trait_conformance_declarations.add(&ParseableByFloatLiteral);
+
+        let float_conformance = TraitConformanceDeclaration::make_child(&traits.Float, vec![&number_conformance, &ParseableByIntLiteral, &ParseableByFloatLiteral], vec![
             (&traits.Float_functions.exponent, &float_functions.exponent),
             (&traits.Float_functions.logarithm, &float_functions.logarithm),
         ]);
@@ -224,5 +233,8 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         positive: pos_ops,
         negative: neg_ops,
         not: not_op,
+
+        parse_int_literal,
+        parse_float_literal,
     }
 }

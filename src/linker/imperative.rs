@@ -18,7 +18,7 @@ use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer,
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
+use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
@@ -26,6 +26,7 @@ pub struct ImperativeLinker<'a> {
 
     pub builtins: &'a Builtins,
 
+    pub types: Box<TypeForest>,
     pub expressions: Box<ExpressionForest>,
     pub ambiguities: Vec<Box<dyn LinkerAmbiguity>>,
 
@@ -33,6 +34,15 @@ pub struct ImperativeLinker<'a> {
 }
 
 impl <'a> ImperativeLinker<'a> {
+    pub fn register_new_expression(&mut self, arguments: Vec<ExpressionID>) -> ExpressionID {
+        let id = ExpressionID::new_v4();
+
+        self.types.register(id);
+        self.expressions.arguments.insert(id, arguments);
+
+        id
+    }
+
     pub fn link_function_body(mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Rc<FunctionImplementation>, LinkError> {
         let mut conformance_delegations = HashMap::new();
         let mut scope = scope.subscope();
@@ -61,7 +71,7 @@ impl <'a> ImperativeLinker<'a> {
 
             let callbacks: Vec<Box<dyn LinkerAmbiguity>> = self.ambiguities.drain(..).collect();
             for mut ambiguity in callbacks {
-                if ambiguity.attempt_to_resolve(&mut self.expressions)? {
+                if ambiguity.attempt_to_resolve(&mut self)? {
                     has_changed = true;
                 }
                 else {
@@ -80,6 +90,7 @@ impl <'a> ImperativeLinker<'a> {
             machine_interface: Rc::clone(&self.function.machine_interface),
             statements,
             expression_forest: self.expressions,
+            type_forest: self.types,
             variable_names: self.variable_names.clone(),
             conformance_delegations
         }))
@@ -101,16 +112,16 @@ impl <'a> ImperativeLinker<'a> {
     }
 
     pub fn link_unambiguous_expression(&mut self, arguments: Vec<ExpressionID>, return_type: &TypeProto, operation: ExpressionOperation) -> Result<ExpressionID, LinkError> {
-        let id = self.expressions.register_new_expression(arguments);
+        let id = self.register_new_expression(arguments);
 
         self.expressions.operations.insert(id.clone(), operation);
 
-        self.expressions.type_forest.bind(id, &return_type)
+        self.types.bind(id, &return_type)
             .map(|_| id)
     }
 
     pub fn register_ambiguity(&mut self, mut ambiguity: Box<dyn LinkerAmbiguity>) -> Result<(), LinkError> {
-        match ambiguity.attempt_to_resolve(&mut self.expressions) {
+        match ambiguity.attempt_to_resolve(self) {
             Ok(true) => Ok(()),  // Done already!
             Ok(false) => {
                  self.ambiguities.push(ambiguity);
@@ -121,12 +132,13 @@ impl <'a> ImperativeLinker<'a> {
         }
     }
 
-    pub fn link_primitive<I>(&mut self, value: &String, candidates: I) -> Result<ExpressionID, LinkError> where I: Iterator<Item=primitives::Type> {
-        let expression_id = self.expressions.register_new_expression(vec![]);
+    pub fn link_primitive(&mut self, value: &String, traits: TraitConformanceScope, is_float: bool) -> Result<ExpressionID, LinkError> {
+        let expression_id = self.register_new_expression(vec![]);
         self.register_ambiguity(Box::new(AmbiguousNumberPrimitive {
             expression_id,
             value: value.clone(),
-            candidates: candidates.collect()
+            traits,
+            is_float
         }))?;
         Ok(expression_id)
     }
@@ -159,7 +171,7 @@ impl <'a> ImperativeLinker<'a> {
                             );
                         }
 
-                        self.expressions.type_forest.bind(new_value, type_declaration.as_ref())?;
+                        self.types.bind(new_value, type_declaration.as_ref())?;
                     }
 
                     let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(new_value)), mutability: mutability.clone() });
@@ -182,7 +194,7 @@ impl <'a> ImperativeLinker<'a> {
 
                         let result: ExpressionID = self.link_expression(expression.as_ref(), &scope)?;
 
-                        self.expressions.type_forest.bind(result, &self.function.machine_interface.return_type.as_ref())?;
+                        self.types.bind(result, &self.function.machine_interface.return_type.as_ref())?;
                         statements.push(Box::new(Statement::Return(Some(result))));
                     }
                     else {
@@ -202,7 +214,7 @@ impl <'a> ImperativeLinker<'a> {
                         .as_object_ref(true)?;
 
                     let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
-                    self.expressions.type_forest.bind(new_value, &ref_.type_)?;
+                    self.types.bind(new_value, &ref_.type_)?;
 
                     statements.push(Box::new(
                         Statement::VariableAssignment(Rc::clone(&ref_), new_value)
@@ -270,11 +282,18 @@ impl <'a> ImperativeLinker<'a> {
                     }
                 }
             }
-            abstract_syntax::Term::Number(string) => {
+            abstract_syntax::Term::Int(string) => {
                 precedence::Token::Expression(self.link_primitive(
                     string,
-                    primitives::Type::iter()
-                        .filter(primitives::Type::is_number)
+                    scope.trait_conformance_declarations.clone(),
+                    false,
+                )?)
+            }
+            abstract_syntax::Term::Float(string) => {
+                precedence::Token::Expression(self.link_primitive(
+                    string,
+                    scope.trait_conformance_declarations.clone(),
+                    true,
                 )?)
             }
             abstract_syntax::Term::MemberAccess { target, member_name } => {
@@ -308,7 +327,7 @@ impl <'a> ImperativeLinker<'a> {
             abstract_syntax::Term::StringLiteral(string) => {
                 precedence::Token::Expression(self.link_unambiguous_expression(
                     vec![],
-                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.strings.String))),
+                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.traits.String))),
                     ExpressionOperation::StringLiteral(string.clone())
                 )?)
             }
@@ -343,17 +362,17 @@ impl <'a> ImperativeLinker<'a> {
                     .map(|x| x.1.type_.with_any_as_generic(&seed))
                     .collect(),
                 return_type: fun.machine_interface.return_type.with_any_as_generic(&seed),
+                requirements: fun.machine_interface.requirements.iter().map(|x| x.with_any_as_generic(&seed)).collect(),
                 function: fun,
             }));
         }
 
         if candidates.len() >= 1 {
-            let expression_id = self.expressions.register_new_expression(argument_expressions.clone());
+            let expression_id = self.register_new_expression(argument_expressions.clone());
 
             self.register_ambiguity(Box::new(AmbiguousFunctionCall {
                 expression_id,
                 function_name: fn_name.clone(),
-                seed,
                 arguments: argument_expressions,
                 trait_conformance_declarations: scope.trait_conformance_declarations.clone(),
                 candidates,
