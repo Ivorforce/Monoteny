@@ -295,11 +295,6 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
             //     }
             // }
         }
-        ExpressionOperation::StructLiteral(_) => {
-            // There are no anonymous structs in python; instead we'll need to define a class
-            //  somewhere, otherwise we get no typing support.
-            todo!()
-        }
     }
 
     Ok(())
@@ -460,6 +455,5 @@ pub fn is_simple(operation: &ExpressionOperation) -> bool {
         ExpressionOperation::ArrayLiteral => true,
         ExpressionOperation::FunctionCall { .. } => false,
         ExpressionOperation::PairwiseOperations { .. } => false,
-        ExpressionOperation::StructLiteral(_) => false,
     }
 }
