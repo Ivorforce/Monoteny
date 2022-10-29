@@ -76,8 +76,8 @@ impl <'a> TypeFactory<'a> {
                                 let requirement_trait = self.resolve_trait(&String::from(&type_name[1..]));
                                 self.register_requirement(Rc::new(TraitConformanceRequirement {
                                     id: Uuid::new_v4(),
+                                    binding: HashMap::from([(*requirement_trait.generics.iter().next().unwrap(), type_.clone())]),
                                     trait_: requirement_trait,
-                                    arguments: vec![type_.clone()]
                                 }));
                             }
 

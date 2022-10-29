@@ -47,7 +47,7 @@ impl <'a> ImperativeLinker<'a> {
         let mut conformance_delegations = HashMap::new();
         let mut scope = scope.subscope();
         for requirement in self.function.machine_interface.requirements.iter() {
-            let declaration = Trait::assume_granted(&requirement.trait_, requirement.arguments.clone());
+            let declaration = Trait::assume_granted(&requirement.trait_, requirement.binding.clone());
             scope.add_trait_conformance(&declaration);
             conformance_delegations.insert(Rc::clone(requirement), declaration);
         }

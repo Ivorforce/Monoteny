@@ -10,7 +10,7 @@ use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface};
 use crate::program::generics::{TypeForest};
 use crate::program::types::TypeProto;
-use crate::util::fmt::write_comma_separated_list;
+use crate::util::fmt::{write_comma_separated_list, write_keyval};
 use crate::util::multimap::{extend_multimap, push_into_multimap};
 
 #[derive(Clone)]
@@ -21,7 +21,7 @@ pub struct Trait {
     // You can interpret this like 'inheritance' in other languages
     pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 
-    pub parameters: Vec<Uuid>,
+    pub generics: HashSet<Uuid>,
     pub abstract_functions: HashSet<Rc<FunctionPointer>>
 }
 
@@ -29,14 +29,14 @@ pub struct Trait {
 pub struct TraitConformanceRequirement {
     pub id: Uuid,
     pub trait_: Rc<Trait>,
-    pub arguments: Vec<Box<TypeProto>>,
+    pub binding: HashMap<Uuid, Box<TypeProto>>,
 }
 
 #[derive(Clone)]
 pub struct TraitConformanceDeclaration {
     pub id: Uuid,
     pub trait_: Rc<Trait>,
-    pub arguments: Vec<Box<TypeProto>>,
+    pub binding: HashMap<Uuid, Box<TypeProto>>,
     pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 
     pub trait_requirements_conformance: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
@@ -83,7 +83,9 @@ impl TraitConformanceScope {
         }
 
         let requirement = requirements.iter().next().unwrap();
-        let bound_requirement_arguments: Vec<Box<TypeProto>> = requirement.arguments.iter().map(|x| mapping.resolve_type(x)).try_collect()?;
+        let bound_requirement_arguments: HashMap<Uuid, Box<TypeProto>> = requirement.binding.iter()
+            .map(|(generic_id, type_)| Ok((*generic_id, mapping.resolve_type(type_)?)))
+            .try_collect()?;
         let mut candidates: Vec<Box<TraitBinding>> = vec![];
 
         for declaration in self.declarations.get(&requirement.trait_).unwrap_or(&vec![]).iter() {
@@ -91,7 +93,7 @@ impl TraitConformanceScope {
                 todo!("Trait conformance declarations with requirements are not supported yet")
             }
 
-            if bound_requirement_arguments != declaration.arguments {
+            if bound_requirement_arguments != declaration.binding {
                 continue
             }
 
@@ -116,18 +118,18 @@ impl TraitConformanceScope {
 }
 
 impl Trait {
-    pub fn require(trait_: &Rc<Trait>, arguments: Vec<Box<TypeProto>>) -> Rc<TraitConformanceRequirement> {
+    pub fn require(trait_: &Rc<Trait>, binding: HashMap<Uuid, Box<TypeProto>>) -> Rc<TraitConformanceRequirement> {
         Rc::new(TraitConformanceRequirement {
             id: Uuid::new_v4(),
             trait_: Rc::clone(trait_),
-            arguments
+            binding
         })
     }
 
-    pub fn assume_granted(trait_: &Rc<Trait>, arguments: Vec<Box<TypeProto>>) -> Rc<TraitConformanceDeclaration> {
+    pub fn assume_granted(trait_: &Rc<Trait>, binding: HashMap<Uuid, Box<TypeProto>>) -> Rc<TraitConformanceDeclaration> {
         let mut replace_map = HashMap::new();
-        for (param, arg) in zip_eq(trait_.parameters.iter(), arguments.iter()) {
-            replace_map.insert(param.clone(), arg.clone());
+        for generic_id in trait_.generics.iter() {
+            replace_map.insert(generic_id.clone(), binding[generic_id].clone());
         }
 
         let declaration_id = Uuid::new_v4();
@@ -165,11 +167,11 @@ impl Trait {
         Rc::new(TraitConformanceDeclaration {
             id: declaration_id,
             trait_: Rc::clone(trait_),
-            arguments,
+            binding,
             // This declaration can be treated as fulfilled within the scope
             requirements: HashSet::new(),
             trait_requirements_conformance: trait_.requirements.iter().map(|requirement| {
-                (Rc::clone(requirement), Trait::assume_granted(&requirement.trait_, requirement.arguments.iter().map(|x| x.replacing_any(&replace_map)).collect()))
+                (Rc::clone(requirement), Trait::assume_granted(&requirement.trait_, requirement.binding.iter().map(|(generic_id, type_)| (*generic_id, type_.replacing_any(&replace_map))).collect()))
             }).collect(),
             function_implementations: abstract_to_mapped
         })
@@ -177,11 +179,11 @@ impl Trait {
 }
 
 impl TraitConformanceDeclaration {
-    pub fn make(trait_: &Rc<Trait>, parameters: Vec<Box<TypeProto>>, function_implementations: Vec<(&Rc<FunctionPointer>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
+    pub fn make(trait_: &Rc<Trait>, binding: HashMap<Uuid, Box<TypeProto>>, function_implementations: Vec<(&Rc<FunctionPointer>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
         Rc::new(TraitConformanceDeclaration {
             id: Uuid::new_v4(),
             trait_: Rc::clone(trait_),
-            arguments: parameters,
+            binding,
             requirements: HashSet::new(),
             trait_requirements_conformance: HashMap::new(),
             function_implementations: function_implementations.into_iter()
@@ -194,7 +196,7 @@ impl TraitConformanceDeclaration {
         Rc::new(TraitConformanceDeclaration {
             id: Uuid::new_v4(),
             trait_: Rc::clone(trait_),
-            arguments: parent_conformances.iter().next().unwrap().arguments.clone(),
+            binding: parent_conformances.iter().next().unwrap().binding.clone(),
             requirements: HashSet::new(),
             trait_requirements_conformance: parent_conformances.into_iter()
                 .map(|d| (Rc::clone(trait_.requirements.iter().filter(|r| r.trait_ == d.trait_).next().unwrap()), Rc::clone(d)))
@@ -211,7 +213,7 @@ impl TraitConformanceRequirement {
         Rc::new(TraitConformanceRequirement {
             id: self.id,
             trait_: Rc::clone(&self.trait_),
-            arguments: self.arguments.iter().map(|x| x.with_any_as_generic(seed)).collect()
+            binding: self.binding.iter().map(|(generic_id, type_) | (*generic_id, type_.with_any_as_generic(seed))).collect()
         })
     }
 }
@@ -263,7 +265,7 @@ impl Hash for TraitConformanceDeclaration {
 impl Debug for TraitConformanceDeclaration {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "{}<", self.trait_.name)?;
-        write_comma_separated_list(fmt, &self.arguments)?;
+        write_keyval(fmt, &self.binding)?;
         write!(fmt, ">")?;
 
         Ok(())
@@ -273,7 +275,7 @@ impl Debug for TraitConformanceDeclaration {
 impl Debug for TraitConformanceRequirement {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "{}<", self.trait_.name)?;
-        write_comma_separated_list(fmt, &self.arguments)?;
+        write_keyval(fmt, &self.binding)?;
         write!(fmt, ">")?;
 
         Ok(())

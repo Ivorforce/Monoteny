@@ -26,7 +26,7 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Math {
     let float_requirement = Rc::new(TraitConformanceRequirement {
         id: Uuid::new_v4(),
         trait_: Rc::clone(&traits.Float),
-        arguments: vec![float_generic.clone()]
+        binding: HashMap::from(([(*traits.Float.generics.iter().next().unwrap(), float_generic.clone())]))
     });
 
     // TODO We should also provide builtin implementations for these (call to from_literal)

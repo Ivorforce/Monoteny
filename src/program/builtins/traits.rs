@@ -1,6 +1,6 @@
 use uuid::Uuid;
 use std::rc::Rc;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use crate::linker::scopes::Scope;
 use crate::program::functions::FunctionPointer;
 use crate::program::primitives;
@@ -93,13 +93,16 @@ pub fn make_trait(name: &str, generic_id: &Uuid, fns: Vec<&Rc<FunctionPointer>>,
     let mut t = Trait {
         id: Uuid::new_v4(),
         name: String::from(name),
-        parameters: vec![*generic_id],
+        generics: HashSet::from([*generic_id]),
         abstract_functions: fns.into_iter().map(Rc::clone).collect(),
         requirements: HashSet::new(),
     };
 
     for parent in parents {
-        t.requirements.insert(Trait::require(parent, vec![generic_type.clone()]));
+        assert_eq!(parent.generics.len(), 1);
+        t.requirements.insert(
+            Trait::require(parent, HashMap::from([(*parent.generics.iter().next().unwrap(), generic_type.clone())]))
+        );
     }
 
     return Rc::new(t)

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
@@ -36,10 +36,11 @@ impl LinkerAmbiguity for AmbiguousNumberPrimitive {
                 );
                 linker.types.bind(literal_expression_id.clone(), TypeProto::unit(TypeUnit::Struct(Rc::clone(&linker.builtins.traits.String))).as_ref())?;
 
+                let trait_ = Rc::clone(if self.is_float { &linker.builtins.traits.ConstructableByFloatLiteral } else { &linker.builtins.traits.ConstructableByIntLiteral });
                 let requirement = Rc::new(TraitConformanceRequirement {
                     id: Uuid::new_v4(),
-                    trait_: Rc::clone(if self.is_float { &linker.builtins.traits.ConstructableByFloatLiteral } else { &linker.builtins.traits.ConstructableByIntLiteral }),
-                    arguments: vec![type_.clone()]
+                    binding: HashMap::from([(*trait_.generics.iter().next().unwrap(), type_.clone())]),
+                    trait_,
                 });
                 let binding = self.traits.satisfy_requirements(
                     &HashSet::from([requirement]), &linker.types

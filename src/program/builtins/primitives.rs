@@ -105,7 +105,7 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
 
         let eq_conformance = TraitConformanceDeclaration::make(
             &traits.Eq,
-            vec![type_.clone()],
+            HashMap::from([(*traits.Eq.generics.iter().next().unwrap(), type_.clone())]),
             vec![
                 (&traits.Eq_functions.equal_to, &eq_functions.equal_to),
                 (&traits.Eq_functions.not_equal_to, &eq_functions.not_equal_to),
@@ -147,7 +147,7 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         let _parse_int_literal = FunctionPointer::make_operator("parse_int_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_);
         add_function(&_parse_int_literal, &mut parse_int_literal, &mut constants);
         let ParseableByIntLiteral = TraitConformanceDeclaration::make(
-            &traits.ConstructableByIntLiteral, vec![type_.clone()], vec![
+            &traits.ConstructableByIntLiteral, HashMap::from([(*traits.ConstructableByIntLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
                 (&traits.parse_int_literal_function, &_parse_int_literal),
             ]
         );
@@ -183,7 +183,7 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         let _parse_float_literal = FunctionPointer::make_operator("parse_float_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_);
         add_function(&_parse_float_literal, &mut parse_float_literal, &mut constants);
         let ParseableByFloatLiteral = TraitConformanceDeclaration::make(
-            &traits.ConstructableByFloatLiteral, vec![type_.clone()], vec![
+            &traits.ConstructableByFloatLiteral, HashMap::from([(*traits.ConstructableByFloatLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
                 (&traits.parse_float_literal_function, &_parse_float_literal),
             ]
         );
