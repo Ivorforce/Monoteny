@@ -31,7 +31,7 @@ Polymorphic types are harder to work with, but are still supported because they 
 
 ### Functional and Impure
 
-Programs are, usually, pure and deterministic. At compile-time they are folded to a minimal representation.
+Large parts of programs can be designed pure and deterministic. At compile-time, Monoteny first generically unfolds function calls to resolve types, and then statically folds all pure code.
 
 In other languages, 4 concepts usually prevent this type of folding:
 - Global Mutables
