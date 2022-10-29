@@ -29,7 +29,6 @@ pub enum ExpressionOperation {
     StructLiteral(Vec<String>),
     ArrayLiteral,
     StringLiteral(String),
-    BoolLiteral(bool),
 }
 
 pub struct ExpressionForest {

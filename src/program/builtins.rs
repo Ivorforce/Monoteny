@@ -7,6 +7,7 @@ pub mod debug;
 pub mod traits;
 pub mod primitives;
 pub mod math;
+pub mod common;
 
 pub struct Builtins {
     pub traits: traits::Traits,
@@ -14,6 +15,7 @@ pub struct Builtins {
     pub primitives: primitives::Primitives,
     pub precedence_groups: precedence::PrecedenceGroups,
 
+    pub common: common::Common,
     pub math: math::Math,
 
     pub global_constants: Scope<'static>,
@@ -27,6 +29,7 @@ pub fn create_builtins() -> Rc<Builtins> {
     let primitives = primitives::make(&mut constants, &traits);
 
     Rc::new(Builtins {
+        common: common::make(&mut constants, &traits),
         math: math::make(&mut constants, &traits),
         debug: debug::make_functions(&mut constants),
         primitives,

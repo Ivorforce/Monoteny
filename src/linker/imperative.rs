@@ -237,48 +237,37 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_term(&mut self, syntax: &abstract_syntax::Term, scope: &scopes::Scope) -> Result<precedence::Token, LinkError> {
         Ok(match syntax {
             abstract_syntax::Term::Identifier(s) => {
-                if s == "true" || s == "false" {
-                    // TODO Once we have constants, register these as constants instead.
-                    //  Yes, that makes them shadowable. Sue me.
-                    precedence::Token::Expression(self.link_unambiguous_expression(
-                        vec![],
-                        &TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool)),
-                        ExpressionOperation::BoolLiteral(s == "true")
-                    )?)
-                }
-                else {
-                    let variable = scope.resolve(scopes::Environment::Global, s)?;
+                let variable = scope.resolve(scopes::Environment::Global, s)?;
 
-                    match &variable.type_ {
-                        ReferenceType::Object(ref_) => {
-                            let ObjectReference { id, type_, mutability } = ref_.as_ref();
+                match &variable.type_ {
+                    ReferenceType::Object(ref_) => {
+                        let ObjectReference { id, type_, mutability } = ref_.as_ref();
 
-                            precedence::Token::Expression(self.link_unambiguous_expression(
-                                vec![],
-                                type_,
-                                ExpressionOperation::VariableLookup(ref_.clone())
-                            )?)
-                        }
-                        ReferenceType::Keyword(keyword) => {
-                            precedence::Token::Keyword(keyword.clone())
-                        }
-                        ReferenceType::FunctionOverload(overload) => {
-                            match overload.form {
-                                FunctionForm::Global => {
-                                    precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
-                                }
-                                FunctionForm::Member => panic!(),
-                                FunctionForm::Constant => {
-                                    precedence::Token::Expression(self.link_function_call(&overload.pointers, &overload.name, vec![], vec![], scope)?)
-                                }
+                        precedence::Token::Expression(self.link_unambiguous_expression(
+                            vec![],
+                            type_,
+                            ExpressionOperation::VariableLookup(ref_.clone())
+                        )?)
+                    }
+                    ReferenceType::Keyword(keyword) => {
+                        precedence::Token::Keyword(keyword.clone())
+                    }
+                    ReferenceType::FunctionOverload(overload) => {
+                        match overload.form {
+                            FunctionForm::Global => {
+                                precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
+                            }
+                            FunctionForm::Member => panic!(),
+                            FunctionForm::Constant => {
+                                precedence::Token::Expression(self.link_function_call(&overload.pointers, &overload.name, vec![], vec![], scope)?)
                             }
                         }
-                        ReferenceType::PrecedenceGroup(_) => {
-                            return Err(LinkError::LinkError { msg: format!("Precedence group references are not supported in expressions yet.") })
-                        }
-                        ReferenceType::Trait(_) => {
-                            return Err(LinkError::LinkError { msg: format!("Trait references are not supported in expressions yet.") })
-                        }
+                    }
+                    ReferenceType::PrecedenceGroup(_) => {
+                        return Err(LinkError::LinkError { msg: format!("Precedence group references are not supported in expressions yet.") })
+                    }
+                    ReferenceType::Trait(_) => {
+                        return Err(LinkError::LinkError { msg: format!("Trait references are not supported in expressions yet.") })
                     }
                 }
             }

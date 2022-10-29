@@ -201,9 +201,6 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
 
 pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, context: &TranspilerContext) -> Result<(), std::io::Error> {
     match &context.expressions.operations.get(&expression).unwrap() {
-        ExpressionOperation::BoolLiteral(value) => {
-            write!(stream, "{}", (if *value { "True" } else { "False" }))?;
-        }
         ExpressionOperation::StringLiteral(string) => {
             write!(stream, "\"{}\"", escape_string(&string))?;
         }
@@ -216,10 +213,11 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
             let arguments = context.expressions.arguments.get(&expression).unwrap();
 
             if
-                try_transpile_binary_operator(stream, function, arguments, context)?
+                try_transpile_keyword(stream, function, context)?
+                || try_transpile_binary_operator(stream, function, arguments, context)?
+                || try_transpile_constant(stream, function, arguments, &expression, context)?
                 || try_transpile_unary_operator(stream, function, arguments, context)?
                 || try_transpile_literal(stream, function, arguments, &expression, context)?
-                || try_transpile_constant(stream, function, arguments, &expression, context)?
             {
                 // no-op
             }
@@ -414,6 +412,20 @@ pub fn try_transpile_literal(stream: &mut (dyn Write), function: &Rc<FunctionPoi
     Ok(false)
 }
 
+pub fn try_transpile_keyword(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+    if function == &context.builtins.common.true_ {
+        write!(stream, "True")?;
+        return Ok(true)
+    }
+
+    if function == &context.builtins.common.false_ {
+        write!(stream, "False")?;
+        return Ok(true)
+    }
+
+    Ok(false)
+}
+
 pub fn try_transpile_constant(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<bool, std::io::Error> {
     if !arguments.is_empty() {
         return Ok(false);
@@ -443,7 +455,6 @@ pub fn try_transpile_constant(stream: &mut (dyn Write), function: &Rc<FunctionPo
 
 pub fn is_simple(operation: &ExpressionOperation) -> bool {
     match operation {
-        ExpressionOperation::BoolLiteral(_) => true,
         ExpressionOperation::VariableLookup(_) => true,
         ExpressionOperation::StringLiteral(_) => true,
         ExpressionOperation::ArrayLiteral => true,
