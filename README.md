@@ -2,15 +2,15 @@
 
 Welcome to the mathemagical land of Monoteny! 
 
-Monoteny is an experimental language focusing on tensor math. It aims to streamline complex syntax, borrowing from modern trends in programming languages like Swift, Rust and Python.  
+Monoteny is an experimental language intended for making libraries. It aims to expose logic using simple syntax, selectively borrowing concepts from many different languages that have worked well for this purpose.
 
 ## Philosophy
 
-### Ideologic Simplicity
+### Idealistic Simplicity
 
-Many languages adopt different concepts because they may map differently to machine code. Instead, Monoteny strives for minimal logic duplication: Many concepts can emerge naturally from properly abstracted concepts. Once one is recognized, it can still later be optimized by the compiler without losing semantic minimalilty.
+Many languages adopt concepts because they map to machine code in some desirable way. Instead, Monoteny strives for logic coherence: One piece of logic is reusable in many contexts, even if there are vastly different implications for the execution. In Monoteny, these implications are considered optimizations which are handled with hints and compiler logic.
 
-This simplicity also allows for dialect agnosticity: Many language design choices are arbitrary and better offloaded to a dialect designer. Indeed, different groups of users may prefer different dialects to better understand the piece of logic. Monoteny encourages this to aid adoption. 
+On a syntactical level, many decisions are trade-offs between readability vs. brevity. Decisions often take into account one particular subset of domains, and may be arbitrary or obscure for other domains. Indeed, different groups of people may prefer different dialects to better understand some piece of logic. Monoteny supports and encourages dialects on a language level to aid adoption. 
 
 ### First-Class Multiplicity
 
@@ -23,15 +23,15 @@ Monoteny recognizes multiplicity usually comes in predictable forms:
 - One object of varying subtype.
   - Poly (-> Enums)
 
-Monads are be treated as their unit. Monoteny allows multiple _dimensions_ in the same monad that auto-broadcast or match. The monadic wrapped must be explicitly referenced if needed (`a@[0]`).
+A monad is a wrapper that hides multiplicity on interaction with the type. Only when referenced (e.g. `a@[0]`) is interaction with the monadic wrapper permitted. A monadic wrapper might be anything from arrays over dictionaries to streams or nullability.
 
-Through subject-oriented design, objects are often coerced into simple traits. Hereby, complex algorithms can be used in different contexts without glue logic.
+Meanwhile, objects come with a known type and can only be interacted with using declared traits. Functions cannot extract more knowledge from an object than they are given, aiding determinism. Often, objects are viewed from a minimalist perspective in order to reduce complexity.
 
-Polymorphic types are harder to work with, but are still supported because they are still needed for some use-cases. Some definitions may still be exposed from the original trait. 
+Polymorphic types carry a sub-type per object. Generic traits defined on the supertype are adopted. For non-generically defined functions, the sub-types must be acted on one by one. 
 
 ### Functional and Impure
 
-Large parts of programs can be designed pure and deterministic. At compile-time, Monoteny first generically unfolds function calls to resolve types, and then statically folds all pure code.
+Large parts of programs can be designed in a pure and deterministic way. When compiling, Monoteny first generically unfolds function calls to resolve generic types, and then statically folds all pure code to minimize runtime cost.
 
 In other languages, 4 concepts usually prevent this type of folding:
 - Global Mutables
@@ -48,7 +48,7 @@ As a side effect to folding, often promises can be made about the code: For exam
 
 ### Transpilation Targets
 
-Monoteny lacks many features required to build full apps. Luckily, many excellent ecosystems exist where it is possible to build such things. Therefore, instead, Monoteny aims to focus on its most vital feature: Being a modern imperative math programming language.
+Monoteny lacks many features required to build full apps. Luckily, many excellent ecosystems exist where it is possible to build such things. Therefore, instead, Monoteny aims to focus on its most vital feature: Being a minimal and understandable imperative logic language.
 
 This will be possible by Monoteny coming with several different transpilers. Hereby, any algorithms built in Monoteny will be usable in _any_ of those ecosystems. The transpilation targets are:
 
@@ -75,23 +75,6 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 
 ### Monoteny 0.2 (Proof of Concept Stage)
 
-- [x] Traits
-  - [x] Requirements (`if Number<A> {}`)
-  - [x] Inheritance (`if Number<#A> { trait OtherTrait<#A> }`)
-  - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
-  - [ ] Abstract Functions, Conformance Declarations
-  - [ ] Generic values from literals (`let b '$Float = 5`)
-  - [ ] Stored Properties (for traits with associated Self)
-    - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract
-      - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
-    - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
-    - [ ] Properties conforming to property-like functions (automatically?)
-      - [ ] Dynamic properties implemented as functions
-    - [ ] Tuples (`tuple(x, y, z)` -> `trait<A> { let x: A, y: A, z: A }`)
-    - [ ] Deconstruction assignment
-- [ ] Non-linear linking (allow references to identifiers declared below)
-- [ ] Comments (with transpilation)
-- [x] Constant-Like function syntax (without `()`)
 - [x] Generics
   - [x] Reverse generic type checking (output types determined from inputs)
   - [x] Implicit generics (`#A`)
@@ -99,19 +82,46 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
     - [x] ... with implicit trait conformance requirements (`$Number` -> `if $Number: Number {}`)
     - [ ] ... recursive (`$$Number: $Number`)
     - [ ] ... anonymous (`#(a: a, b: b)` or `#.a`)
-- [x] Custom patterns with keywords (unary / binary operators)
-  - [ ] Right-Unary Operators
+- [x] Modules
+  - [x] `trait`: Objects that functions can be associated with.
+    - [x] `trait` `inherit`: Require trait conformance to another trait
+    - [ ] Stored Properties (for traits with associated Self)
+      - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract
+      - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
+      - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
+      - [ ] Properties conforming to property-like functions (automatically?)
+        - [ ] Dynamic properties implemented as functions
+      - [ ] Deconstruction assignment (`let (x, y, z) = vec`)
+    - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
+    - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
+  - [ ] Generic Unfolding: Compile functions statically, injecting their final states where appropriate.
+  - [ ] `use` statements: Use parts of a module without changing or re-exporting it.
+  - [ ] `abstract` functions: Declare functions only later.
+  - [ ] `@transpile` decorators: Functions or traits that will be made pretty for transpilation. 
+  - [ ] `@private` decorators: Functions or traits that can only be referenced using qualified syntax.
+  - [ ] `inherit` statements: Use and expose another module within your module, allowing additions and overrides.
+    - [ ] Partial inheritance: Use generic unfolding to use only the parts of a module /  trait that is actually needed.
+  - [ ] Abstract Functions, Conformance Declarations
+  - [x] Generic values from literals (`let b '$Float = 5`)
+- [ ] Comments
+  - [ ] Documentation
+- [x] Constant-Like function syntax (without `()`)
+- [x] Custom expression patterns with keywords (unary / binary operators)
+  - [x] Right-Unary Operators
   - [ ] Custom precedence steps (with associativity) 
 - [ ] 'equivalence transformation' syntax: `((a + b) * c).any()` becomes `a + b .. * c .. .any()`
   - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`
-- [ ] Expression Scopes (`let a = { ... yield b; };`)
-- [ ] If / Else, if let
+- [ ] Control Callbacks (e.g. `def if(expression 'Bool, onTrue 'fun, onFalse 'Fun[Option]) { ... }`))
+  - [ ] If / Else
+  - [ ] If let (refutable patterns)
+  - [ ] Guard: call a closure with everything after the guard as a function (e.g. `guard if let` or `guard with`)
+  - [ ] Expression Scopes (`let a = { ... yield b; };`)
 - [ ] Type Alias, aka `String = Character[Int...]` (defining functions on alias doesn't define them for the equal type)
   - [ ] Enums / Enum type inheritance (achieved through type alias)
 - [ ] Monads
   - [ ] Tuple Dimension Index
   - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
-  - [ ] Open Int Range Dimension Index, array start / end handle syntax (>|, <|)
+  - [ ] Open Int Range Dimension Index, array start / end handle syntax (|>, <|)
   - [ ] Auto Broadcast
   - [ ] Varargs: Int keying with infinite parameters (syntax: `a...: Type[0...]` for `print(a, b)` and `a...: Type[String]` for `print(a: a, b: b)`)
   - [ ] Optionals
@@ -129,11 +139,12 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 - [ ] IntUnbound (int that can store any value)
 - [ ] IntNative, FloatNative (platform-optimized int and float)
 - [ ] Imports
+- [ ] Switch / Match
 - [ ] Local functions and declarations
   - [ ] Anonymous functions
 - [ ] String Comprehension
 - [ ] Imports and Namespaces
-- [ ] Decorators (on structs, definitions)
+- [ ] Custom Decorators (on structs, definitions)
 - [ ] Non-Varargs subscripts and subscript overloads
 - [ ] Indeterministic polymorphism
   - [ ] Virtual function tables
@@ -153,16 +164,15 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 - [ ] Optimization Definitions (e.g. an alternative implementation for sort() if all objects are ints)
 - [ ] System I/O API / Permission Contexts
 - [ ] Pointer Monad (-> shared object reference, mutable or immutable)
+- [ ] String-Indexing of members of structs (reflection)
 
 ### Standard Library
 
-- [ ] Standard unary + binary operators
-- [ ] String Handling
-- [ ] Common boolean resolving (all, any, none, etc.)
-- [ ] Common functional dimension operations (filter, fold, etc.)
-- [ ] Common 0D-Math operations (pow, sqrt, etc.)
-- [ ] Common 1D-Math operations (sum, std, etc.)
-- [ ] Common timeseries data functions (filter, gaussian, running mean, etc.)
+- [ ] 0D-Math operations (pow, sqrt, etc.)
+- [ ] Array manipulation (filter, add, etc.)
+- [ ] Collection reductions (sum, std, any, etc.)
+- [ ] 1D timeseries data functions (filter, gaussian, running mean, etc.)
+- [ ] String Handling (e.g. UTF8 (-> UInt8), replace, index_of)
 
 ### Currently not planned
 
@@ -174,5 +184,5 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - Global variables are usually bad practice. Instead, Monoteny encourages context objects.
 - Multithreading
   - Very complex, and of limited use for (pure) mathematical applications.
-- Unsafe / Reflection
-  - Because Monoteny is transpiled, this is not applicable to the language.
+- Unsafe
+  - Unsafe operations go against the philosophy of Monoteny. Changes to the language must be offered via plugins.
