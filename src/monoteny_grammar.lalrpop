@@ -9,6 +9,9 @@ grammar;
 // =============================== Lexer Precedence =====================================
 
 match {
+    r"\s*" => { },  // whitespace
+    r"--[^\n\r]*[\n\r]*" => { }, // line comment
+} else {
     // so i heard u like regex
     r"([$#])?[a-zA-Z_]\w*" => _Identifier,
     r"[!+\-*/&%=><|.^?][!+\-*/&%=><|.^?_]*" => _OperatorIdentifier,

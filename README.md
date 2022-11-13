@@ -104,7 +104,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
     - [ ] Partial inheritance: Use generic unfolding to use only the parts of a module /  trait that is actually needed.
   - [ ] Abstract Functions, Conformance Declarations
   - [x] Generic values from literals (`let b '$Float = 5`)
-- [ ] Comments
+- [x] Comments
   - [ ] Documentation
 - [x] Constant-Like function syntax (without `()`)
 - [x] Custom expression patterns with keywords (unary / binary operators)
