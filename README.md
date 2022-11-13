@@ -53,8 +53,9 @@ Monoteny lacks many features required to build full apps. Luckily, many excellen
 This will be possible by Monoteny coming with several different transpilers. Hereby, any algorithms built in Monoteny will be usable in _any_ of those ecosystems. The transpilation targets are:
 
 * [WIP] Python with NumPy
-* [Future] C++ with Eigen
+* [Future] Monoteny Dialect
 * [Future] Octave / MatLab
+* [Future] C++ with Eigen
 * [Future] R
 
 Note: Transpilation of some features is quite difficult and cannot be achieved in human-readable fashion easily. For that reason, documentation keywords exist to specify how to export some things to specific languages. Everything not explicitly exported will not have readability as a high priority.
@@ -71,7 +72,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [x] Static member functions
 - [x] Binary operators: + - * / || && > < >= <= == != % **
   - [x] Unary operators: + - !
-  - [x] "Conjunctive Pairs" comparison syntax, ex.: a > b >= c == d
+  - [x] "Conjunctive Pairs" comparison syntax, ex.: a > b >= c
 
 ### Monoteny 0.2 (Proof of Concept Stage)
 
