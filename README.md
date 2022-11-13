@@ -175,6 +175,12 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 - [ ] 1D timeseries data functions (filter, gaussian, running mean, etc.)
 - [ ] String Handling (e.g. UTF8 (-> UInt8), replace, index_of)
 
+### Common Dialects
+
+- [ ] Common (writer-centric for monoteny programmers)
+- [ ] Human (reader-centric for everyone, pseudo code inspired)
+- [ ] Algebraic (reader-centric for mathematicians, strongly symbolic)
+
 ### Currently not planned
 
 - Compiler / LLVM / Virtual Machine
