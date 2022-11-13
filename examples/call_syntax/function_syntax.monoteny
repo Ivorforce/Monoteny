@@ -1,91 +1,91 @@
-// ================ Global Functions ====================
-// Functions that don't pertain to one specific object or class.
+-- ================ Global Functions ====================
+-- Functions that don't pertain to one specific object or class.
 
-// five()
-fun five() -> Int32 :: 5;
+-- five()
+def five() -> Int32 :: 5;
 
-// times_two(value: 5)
-fun times_two(value: Int32) -> Int32 :: value * 2;
+-- times_two(value: 5)
+def times_two(value: Int32) -> Int32 :: value * 2;
 
-// ================ Member Functions ====================
-// Functions that are mostly associated with one object.
-
-if Self: Int32 {
-    // 5.times_two()
-    fun .times_two() -> Self :: value * 2;
-
-    // 5(added: 2)
-    fun self(added: Int32) -> Int32 :: value + added;
-}
-
-// ================ Var-Like Member Functions ====================
-// Getters and setters that look like member variables in practice.
+-- ================ Member Functions ====================
+-- Functions that are mostly associated with one object.
 
 if Self: Int32 {
-    // 5.times_two
-    fun .times_two -> Self :: value * 2;
+    -- 5.times_two()
+    def .times_two() -> Self :: value * 2;
 
-    // 5.times_two = 2
-    fun .times_two = <value: Self> :: todo();
+    -- 5(added: 2)
+    def self(added 'Int32) -> Int32 :: value + added;
 }
 
-// ================ External vs Internal Parameter Names ====================
-// Parameters are keyed by syntactically deterministic identifiers: String, Int or simply their position.
+-- ================ Var-Like Member Functions ====================
+-- Getters and setters that look like member variables in practice.
 
-// foo(1, b: 2, 3)
-fun foo(_ a: Int32, b: Int32, _ c: Int32) :: a + b + c;
+if Self: Int32 {
+    -- 5.times_two
+    def .times_two -> Self :: value * 2;
 
-// ================ Subscript Functions ====================
-// Getters and setters for specific member 'locations'.
-// Parameters are keyed by objects. 
+    -- 5.times_two = 2
+    def .times_two = <value 'Self> :: todo();
+}
+
+-- ================ External vs Internal Parameter Names ====================
+-- Parameters are keyed by syntactically deterministic identifiers: String, Int or simply their position.
+
+-- foo(1, b: 2, 3)
+def foo(_: a 'Int32, b 'Int32, _: c 'Int32) :: a + b + c;
+
+-- ================ Subscript Functions ====================
+-- Getters and setters for specific member 'locations'.
+-- Parameters are keyed by objects. 
 
 let location;
 
-// object.at[location: 2]
-fun {self: SomeObject}.at[location: Int32] -> Int32 :: self.values[location] = value;
+-- object.at[location: 2]
+def {self: SomeObject}.at[location 'Int32] -> Int32 :: self.values[location] = value;
 
-// object[location: 2]
-fun {self: SomeObject}[location: Int32] -> Int32 :: self.values[location];
+-- object[location: 2]
+def {self: SomeObject}[location 'Int32] -> Int32 :: self.values[location];
 
-// object.at[location: 2] = 2
-fun {self: var SomeObject}.at[location: Int32] = <value: Int32> :: self.values[location] = value;
+-- object.at[location: 2] = 2
+def {self 'var SomeObject}.at[location 'Int32] = <value 'Int32> :: self.values[location] = value;
 
-// object[location: 2] = 2
-fun {self: var SomeObject}[location: Int32] = <value: Int32> :: self.values[location] = value;
+-- object[location: 2] = 2
+def {self: 'var SomeObject}[location 'Int32] = <value 'Int32> :: self.values[location] = value;
 
-// object[2] = 2
-fun {self: var SomeObject}[_ location: Int32] = <value: Int32> :: self.values[location] = value;
+-- object[2] = 2
+def {self: 'var SomeObject}[_ location 'Int32] = <value 'Int32> :: self.values[location] = value;
 
-// ================ Static Functions ====================
-// Functions that run on a type itself.
-// Dot notation, when a type is asked, is possible to omit the type name itself.
-// All previous function forms are compatible with this syntax.
+-- ================ Static Functions ====================
+-- Functions that run on a type itself.
+-- Dot notation, when a type is asked, is possible to omit the type name itself.
+-- All previous function forms are compatible with this syntax.
 
-// Int32.make_two()
-// times_two(.make_two())
-fun {Type<Int32>}.make_two() -> Int32 :: 2;
+-- Int32.make_two()
+-- times_two(.make_two())
+def {Type<Int32>}.make_two() -> Int32 :: 2;
 
-// ================ Binary and Unary Functions ====================
-// Functions that are notated in binary or unary math-like form.
+-- ================ Binary and Unary Functions ====================
+-- Functions that are notated in binary or unary math-like form.
 
-// 5 + 2
-fun {lhs: Int32} + <rhs: Int32> -> Int32 :: lhs + rhs;
+-- 5 + 2
+def {lhs 'Int32} + <rhs 'Int32> -> Int32 :: lhs + rhs;
 
-// +2
-fun + {rhs: Int32} -> Int32 :: +rhs;
+-- +2
+def + {rhs 'Int32} -> Int32 :: +rhs;
 
-// ================ Variadic Parameters ====================
-// Parameters can be dynamically inserted into an array.
+-- ================ Variadic Parameters ====================
+-- Parameters can be dynamically inserted into an array.
 
-// format("Test {} {} {}", 5, "test", 2.0)
-fun format(format_string: String, _ arguments...: StringConvertible[0...]) :: todo();
+-- format("Test {} {} {}", 5, "test", 2.0)
+def format(format_string: String, _ arguments...: StringConvertible[0...]) :: todo();
 
-// ================ Default Parameters ====================
-// Parameters can be omitted in favour of the function defining its own default.
+-- ================ Default Parameters ====================
+-- Parameters can be omitted in favour of the function defining its own default.
 
-// add(5, to: 2)
-// add(to: 2)
-// add(2)
-// add()
-// add(.default, to: .default)
-fun add(_ a: Default[Int32], b: Default[Int32]) :: (a ?? 0) + (b ?? 0);
+-- add(5, to: 2)
+-- add(to: 2)
+-- add(2)
+-- add()
+-- add(.default, to: .default)
+def add(_ a: Default[Int32], b: Default[Int32]) :: (a ?? 0) + (b ?? 0);

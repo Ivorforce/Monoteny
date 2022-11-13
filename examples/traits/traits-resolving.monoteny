@@ -1,54 +1,54 @@
 trait Floatable {
-    abstract fun either_is_float(a: #A, b: #B) -> Bool;
+    abstract def either_is_float(a '#A, b '#B) -> Bool;
 }
 
-declare either_is_float<A: #A, B: Float> {
-    fun either_is_float(a: #A, b: Float) -> Bool :: true;
+declare either_is_float<A '#A, B 'Float> {
+    def either_is_float(a '#A, b 'Float) -> Bool :: true;
 }
 
-declare either_is_float<A: Float, B: #B> {
-    fun either_is_float(a: Float, b: #B) -> Bool :: true;
+declare either_is_float<A 'Float, B '#B> {
+    def either_is_float(a 'Float, b '#B) -> Bool :: true;
 }
 
 if Floatable<A: #A, B: Float> {
-    // Floatable<A: A, B: Float> means either_is_float(a: #A, b: Float) is declared.
+    -- Floatable<A: A, B: Float> means either_is_float(a: #A, b: Float) is declared.
 
-    fun main(a: #A) :: {
-        // Matches no functions.
-        // ---> Error
+    def main(a '#A) :: {
+        -- Matches no functions.
+        -- ---> Error
         either_is_float(a: a, b: a)
 
-        // Matches lower function (Float, ?).
+        -- Matches lower function (Float, ?).
         either_is_float(a: 5.0, b: a)
 
-        // Matches both upper function (?, Float) and abstract function (through requirement)
-        // This is ambiguous because the abstract function might resolve to any function, i.e. might not be the upper function.
-        // ---> Error
+        -- Matches both upper function (?, Float) and abstract function (through requirement)
+        -- This is ambiguous because the abstract function might resolve to any function, i.e. might not be the upper function.
+        -- ---> Error
         either_is_float(a: a, b: 5.0)
 
-        // Matches both functions.
-        // ---> Error
+        -- Matches both functions.
+        -- ---> Error
         either_is_float(a: 5.0, b: 5.0)
     }
 }
 
-// Trying to call this with main(a: Float) would match both declarations
-// ---> Error
+-- Trying to call this with main(a: Float) would match both declarations
+-- ---> Error
 if Floatable<A: #A, B: #A> {
-    // Floatable<A, A> means either_is_float(a: #A, b: #A) is declared.
+    -- Floatable<A, A> means either_is_float(a: #A, b: #A) is declared.
 
-    fun main(a: #A) :: {
-        // Matches abstract function through requirement.
+    def main(a '#A) :: {
+        -- Matches abstract function through requirement.
         either_is_float(a: a, b: a)
 
-        // Matches upper function.
+        -- Matches upper function.
         either_is_float(a: 5.0, b: a)
 
-        // Matches lower function.
+        -- Matches lower function.
         either_is_float(a: a, b: 5.0)
 
-        // Matches both functions.
-        // ---> Error
+        -- Matches both functions.
+        -- ---> Error
         either_is_float(a: 5.0, b: 5.0)
     }
 }

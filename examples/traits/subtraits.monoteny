@@ -1,56 +1,56 @@
-// Trait that inherits from float but adds a comment string.
+-- Trait that inherits from float but adds a comment string.
 trait FloatWithComment if Self is Float {
-    var comment: String;
+    var comment 'String;
 }
 
-// $$Number means it's a type that inherits from a $Number, where $Number is a type that inherits from Number.
+-- $$Number means it's a type that inherits from a $Number, where $Number is a type that inherits from Number.
 if Self is $$Number[$Ordered] {
-    mut fun .sort(ascending: Bool[Default]) :: {
+    mut def .sort(ascending 'Bool[Default]) :: {
         let ascending = ascending@.or(true);
 
-        // Imagine a functioning algorithm here lol
+        -- Imagine a functioning algorithm here lol
 
-        // Each element is of type $$Number
-        // --> Valid
+        -- Each element is of type $$Number
+        -- --> Valid
         (self@[0], self@[1]) = (self@[1], self@[0]);
 
-        // $$Number + $$Number is not defined.
-        // But $$Number inherits from $Number, and $Number + $Number exists,
-        //   so this call would be coerced to $Number + $Number -> $Number.
-        // $Number is not equal to $$Number so it can't be placed in the monad.
-        // --> Error
+        -- $$Number + $$Number is not defined.
+        -- But $$Number inherits from $Number, and $Number + $Number exists,
+        --   so this call would be coerced to $Number + $Number -> $Number.
+        -- $Number is not equal to $$Number so it can't be placed in the monad.
+        -- --> Error
         self@[0] = self@[0] + self@[1];
 
         return self
     }
 }
 
-fun main() :: {
-    // Bind:
-    //   $$Number: Int32
-    //   $Number: Int32
-    //   $Ordered: OpenIntRange
-    // .sort called in an expression, so it copies it first and then returns the result.
+def main() :: {
+    -- Bind:
+    --   $$Number: Int32
+    --   $Number: Int32
+    --   $Ordered: OpenIntRange
+    -- .sort called in an expression, so it copies it first and then returns the result.
     let list_a: Int32[0...] = [3, 2, 5].sort();
 
-    // FloatWithComment<Float32>
+    -- FloatWithComment<Float32>
     var commented_list = [
         FloatWithComment(Float32(2.5), comment: "Test 1"),
         FloatWithComment(2.8, comment: "Test 2"),
         FloatWithComment(1.2, comment: "Test 3"),
     ];
 
-    // Bind:
-    //   $$Number: FloatWithComment<Float32>
-    //   $Number: Float32
-    //   $Ordered: OpenIntRange
-    // .sort called in equivalence update syntax, so it's updated in-place.
+    -- Bind:
+    --   $$Number: FloatWithComment<Float32>
+    --   $Number: Float32
+    --   $Ordered: OpenIntRange
+    -- .sort called in equivalence update syntax, so it's updated in-place.
     commented_list |= .sort();
 
-    // For illustration:
+    -- For illustration:
 
-    // FloatWithComment<Float32> inherits from Float32, and is now coerced to it.
-    // Which means Float32 + Float32 -> Float32 is defined.
-    // So b's type is Float32, not FloatWithComment<Float32>.
+    -- FloatWithComment<Float32> inherits from Float32, and is now coerced to it.
+    -- Which means Float32 + Float32 -> Float32 is defined.
+    -- So b's type is Float32, not FloatWithComment<Float32>.
     let f = commented_list@[0] + commented_list@[1];
 }

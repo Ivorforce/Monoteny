@@ -1,30 +1,30 @@
 if Self is Number define trait Twiceable {
-    abstract fun .twice: $Number;
+    abstract def .twice '$Number;
 }
 
-// When encountering a declaration, check that all required functions exist.
-// It finds the below function, which matches the trait declaration.
+-- When encountering a declaration, check that all required functions exist.
+-- It finds the below function, which matches the trait declaration.
 if Self is Number declare Self as Twiceable {
-    // A polymorphic function that runs on numbers that can do addition.
-    // This is, first and foremost, a static function like any other.
-    // abstract function '+' is matched by the linker because Number is of type 'Number'.
-    // This results in a dynamic function call.
-    fun .twice: Self :: self + self;
+    -- A polymorphic function that runs on numbers that can do addition.
+    -- This is, first and foremost, a static function like any other.
+    -- abstract function '+' is matched by the linker because Number is of type 'Number'.
+    -- This results in a dynamic function call.
+    def .twice 'Self :: self + self;
 }
 
-// Require a twiceable type, and dynamically call twice twice on it.
+-- Require a twiceable type, and dynamically call twice twice on it.
 if Self is Number {
-    fun .times_4: Self :: self.twice.twice;
+    def .times_4 'Self :: self.twice.twice;
 }
 
-fun main() :: {
-    // Linker finds static function 'twice' declared above because 5 conforms to Number.
-    // This results in a static function call.
-    let a: Int32 = 5.twice;  // yields 10
+def main() :: {
+    -- Linker finds static function 'twice' declared above because 5 conforms to Number.
+    -- This results in a static function call.
+    let a 'Int32 = 5.twice;  -- yields 10
 
-    // Int32 as Number is declared (builtin).
-    // -> Int32 as Twiceable is declared.
-    // Linker function 'times_4' declared above because of this.
-    // This results in a static function call to times_4, which makes two dynamic function calls.
-    let b: Int32 = 5.times_4;  // yields 20
+    -- Int32 as Number is declared (builtin).
+    -- -> Int32 as Twiceable is declared.
+    -- Linker function 'times_4' declared above because of this.
+    -- This results in a static function call to times_4, which makes two dynamic function calls.
+    let b 'Int32 = 5.times_4;  -- yields 20
 }

@@ -1,3 +1,5 @@
+import(monoteny.dialects.common.0.0);
+
 pattern floor_div(MultiplicationPrecedence) :: {_: lhs} /_ {_: rhs};
 
 def {$Float} /_ {$Float} -> $Float :: lhs / rhs;
