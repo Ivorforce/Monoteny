@@ -20,7 +20,7 @@ def main() :: {
 
     -- Demonstrate type inference
     var b = square(5) + pi_ish;
-    upd b = b.square() ** -2.2 /_ a // tau;
+    upd b = b.square() ** -2.2 /_ a + tau;
 
     -- Bind c, inferring b
     var c 'Int32 = pi_ish;

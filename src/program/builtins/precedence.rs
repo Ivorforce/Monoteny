@@ -57,7 +57,7 @@ pub fn make_groups(scope: &mut scopes::Scope) -> PrecedenceGroups {
         ),
         ExponentiationPrecedence: add_precedence_group(
             scope, "ExponentiationPrecedence", OperatorAssociativity::Right,
-            vec![("**", "exponent"), ("//", "logarithm")]
+            vec![("**", "exponent")]
         ),
         MultiplicationPrecedence: add_precedence_group(
             scope, "MultiplicationPrecedence", OperatorAssociativity::Left,
