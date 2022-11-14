@@ -83,18 +83,18 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
     - [x] ... with implicit trait conformance requirements (`$Number` -> `if $Number: Number {}`)
     - [ ] ... recursive (`$$Number: $Number`)
     - [ ] ... anonymous (`#(a: a, b: b)` or `#.a`)
-- [x] Modules
-  - [x] `trait`: Objects that functions can be associated with.
-    - [x] `trait` `inherit`: Require trait conformance to another trait
-    - [ ] Stored Properties (for traits with associated Self)
-      - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract
-      - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
-      - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
-      - [ ] Properties conforming to property-like functions (automatically?)
-        - [ ] Dynamic properties implemented as functions
-      - [ ] Deconstruction assignment (`let (x, y, z) = vec`)
-    - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
-    - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
+- [x] `trait`: Objects that functions can be associated with.
+  - [x] `trait` `inherit`: Require trait conformance to another trait
+  - [ ] Stored Properties (for traits with associated Self)
+    - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract
+    - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
+    - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
+    - [ ] Properties conforming to property-like functions (automatically?)
+      - [ ] Dynamic properties implemented as functions
+    - [ ] Deconstruction assignment (`let (x, y, z) = vec`)
+  - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
+  - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
+- [ ] Modules
   - [ ] Generic Unfolding: Compile functions statically, injecting their final states where appropriate.
   - [ ] `use` statements: Use parts of a module without changing or re-exporting it.
   - [ ] `abstract` functions: Declare functions only later.
@@ -103,15 +103,6 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] `inherit` statements: Use and expose another module within your module, allowing additions and overrides.
     - [ ] Partial inheritance: Use generic unfolding to use only the parts of a module /  trait that is actually needed.
   - [ ] Abstract Functions, Conformance Declarations
-  - [x] Generic values from literals (`let b '$Float = 5`)
-- [x] Comments
-  - [ ] Documentation
-- [x] Constant-Like function syntax (without `()`)
-- [x] Custom expression patterns with keywords (unary / binary operators)
-  - [x] Right-Unary Operators
-  - [ ] Custom precedence steps (with associativity) 
-- [ ] 'equivalence transformation' syntax: `((a + b) * c).any()` becomes `a + b .. * c .. .any()`
-  - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`
 - [ ] Control Callbacks (e.g. `def if(expression 'Bool, onTrue 'fun, onFalse 'Fun[Option]) { ... }`))
   - [ ] If / Else
   - [ ] If let (refutable patterns)
@@ -119,7 +110,6 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] Expression Scopes (`let a = { ... yield b; };`)
 - [ ] Type Alias, aka `String = Character[Int...]` (defining functions on alias doesn't define them for the equal type)
   - [ ] Enums / Enum type inheritance (achieved through type alias)
-- [x] `(a:)` syntax: 'argument keyed by its variable name' for consistent function definitions, -calls and deconstructions
 - [ ] Monads
   - [ ] Tuple Dimension Index
   - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
@@ -131,6 +121,16 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] Dict Literals
   - [ ] Iterators
   - [ ] Defaults (`a: $Float[Default]` for parameters to be omittable)
+- Syntax
+  - [x] Constant-Like function syntax (without `()`)
+  - [x] `(a:)` syntax: 'argument keyed by its variable name' for consistent function definitions, -calls and deconstructions
+  - [ ] 'equivalence transformation' syntax: `((a + b) * c).any()` becomes `a + b .. * c .. .any()`
+    - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`
+  - [x] Custom expression patterns with keywords (unary / binary operators)
+    - [x] Right-Unary Operators
+    - [ ] Custom precedence steps (with associativity)
+  - [x] Comments
+    - [ ] Documentation
 
 ### Monoteny 1.0
 
