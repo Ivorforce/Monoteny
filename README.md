@@ -92,6 +92,9 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
     - [ ] Properties conforming to property-like functions (automatically?)
       - [ ] Dynamic properties implemented as functions
     - [ ] Deconstruction assignment (`let (x, y, z) = vec`)
+      - [x] `let`: Assign new variables
+      - [x] `upd`: Change existing variables
+      - [ ] `cnf`: Refutably assert equality to existing variables
   - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
   - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
 - [ ] Modules
