@@ -292,7 +292,7 @@ impl <'a> ImperativeLinker<'a> {
                     return Err(LinkError::LinkError { msg: format!("Dot notation is not supported in this context.") })
                 });
 
-                let variable = scope.resolve(scopes::Environment::Global, member_name)?;
+                let variable = scope.resolve(scopes::Environment::Member, member_name)?;
 
                 if let ReferenceType::FunctionOverload(overload) = &variable.type_ {
                     precedence::Token::FunctionReference { overload: Rc::clone(overload), target: Some(target) }
@@ -374,13 +374,13 @@ impl <'a> ImperativeLinker<'a> {
         // TODO We should probably output the locations of candidates.
 
         if candidates_with_failed_signature.len() > 1 {
-            panic!("function {} could not be resolved. {} candidates have mismatching arguments: {:?}", fn_name, candidates_with_failed_signature.len(), argument_keys)
+            panic!("function {}({:?}) could not be resolved. {} candidates have mismatching signatures.", fn_name, argument_keys, candidates_with_failed_signature.len())
         }
 
         if candidates_with_failed_signature.len() == 1 {
             // TODO Print passed arguments like a signature, not array
             let candidate = candidates_with_failed_signature.iter().next().unwrap();
-            panic!("function {:?} could not be resolved. Candidate has mismatching arguments: {:?}", candidate.human_interface, argument_keys)
+            panic!("function {}({:?}) could not be resolved. Candidate has mismatching signature: {:?}", fn_name, argument_keys, candidate.human_interface)
         }
 
         panic!("function {} could not be resolved.", fn_name)

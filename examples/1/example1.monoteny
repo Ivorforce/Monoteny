@@ -1,12 +1,12 @@
 -- import(monoteny.dialects.common.0.0);
 
-pattern floor_div(MultiplicationPrecedence) :: {_: lhs} /_ {_: rhs};
+pattern floor_div(MultiplicationPrecedence) :: {lhs} /_ {rhs};
 
 def {$Float} /_ {$Float} -> $Float :: lhs / rhs;
 
-def square(_: a '$Number) -> $Number :: a * a;
+def {$Number}.square() -> $Number :: self * self;
 
-def {$Number}.square() -> $Number :: square(self);
+def square(value: '$Number) -> $Number :: value.square();
 
 def pi_ish -> $Float :: 3.14;
 def pi_ish -> $Int :: 3;
@@ -15,16 +15,16 @@ def main() :: {
     -- Print string
     print("Test: ");
 
-    -- Demonstrate member function
-    let a 'Float32 = 2.2.square() * e;
+    -- 'value' not bound yet
+    let value = 2.2.square() * e;
 
-    -- Demonstrate type inference
-    var b = square(5) + pi_ish;
-    upd b = b.square() ** -2.2 /_ a + tau;
+    -- Bind 'value' implicitly by binding b to Float32
+    var b 'Float32 = square(value:) + pi_ish;
+    upd b = b.square() ** -2.2 /_ value + tau;
 
-    -- Bind c, inferring b
+    -- Use constant-like function overload pi_ish -> $Int
     var c 'Int32 = pi_ish;
 
     -- Print boolean
-    print(b < 2 and not (a > 2) and true);
+    print(b < 2 and not (value > 2) and true);
 }

@@ -70,8 +70,7 @@ Pattern: Box<PatternDeclaration> = {
 
 PatternPart: Box<PatternPart> = {
     AnyIdentifier => Box::new(PatternPart::Keyword(<>)),
-    "{" <key: AnyIdentifier> ":" <internal_name: AnyIdentifier> "}" => Box::new(PatternPart::Parameter { key: ParameterKey::from_string(key), internal_name }),
-    "{" <key: AnyIdentifier> "}" => Box::new(PatternPart::Parameter { key: ParameterKey::from_string(key.clone()), internal_name: key }),
+    "{" <name_value: NameValuePair> "}" => Box::new(PatternPart::Parameter { key: name_value.0, internal_name: name_value.1 }),
 }
 
 Function: Box<Function> = {
@@ -97,12 +96,15 @@ FunctionBody: Vec<Box<Statement>> = {
 }
 
 KeyedParameter: Box<KeyedParameter> = {
-    <internal_name: Identifier> "'" <param_type: Expression> => Box::new(KeyedParameter {
-        key: ParameterKey::Name(internal_name.clone()), internal_name, param_type
+    <name_value: NameValuePair> "'" <param_type: Expression> => Box::new(KeyedParameter {
+        key: name_value.0, internal_name: name_value.1, param_type
     }),
-    <key: Identifier> ":" <internal_name: Identifier> "'" <param_type: Expression> => Box::new(KeyedParameter {
-        key: ParameterKey::from_string(key), internal_name, param_type
-    }),
+}
+
+NameValuePair: (ParameterKey, String) = {
+    <name: Identifier> ":" <value: Identifier> => (ParameterKey::Name(name), value),
+    <name: Identifier> ":" => (ParameterKey::Name(name.clone()), name),
+    <value: Identifier> => (ParameterKey::Positional, value),
 }
 
 
@@ -147,7 +149,8 @@ Term: Box<Term> = {
 
 StructArgument: StructArgument = {
     <key: Identifier> ":" <value: Expression> => StructArgument { key: ParameterKey::Name(key), value },
-    <value: Expression> => StructArgument { key: ParameterKey::Positional, value }
+    <value: Expression> => StructArgument { key: ParameterKey::Positional, value },
+    <key: Identifier> ":" => StructArgument { key: ParameterKey::Name(key.clone()), value: vec![Box::new(Term::Identifier(key))] },  // TODO Maybe better handled post-syntax?
 }
 
 ArrayArgument: ArrayArgument = {

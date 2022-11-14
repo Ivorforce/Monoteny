@@ -180,8 +180,8 @@ impl Debug for HumanFunctionInterface {
 
         write!(fmt, "{}(", self.name)?;
 
-        for (name, variable) in self.parameter_names.iter().skip(head) {
-            write!(fmt, "{:?}: {:?},", name, variable.type_)?;
+        for (key, variable) in self.parameter_names.iter().skip(head) {
+            write!(fmt, "{:?} '{:?},", key, variable.type_)?;
         }
 
         write!(fmt, ")")?;
@@ -195,14 +195,8 @@ impl Debug for ParameterKey {
         use ParameterKey::*;
         use crate::program::functions::ParameterKey::Positional;
         match self {
-            Name(s) => write!(fmt, "{}", s),
-            Positional => write!(fmt, "_"),
+            Name(s) => write!(fmt, ":{}", s),
+            Positional => write!(fmt, "<>"),
         }
-    }
-}
-
-impl ParameterKey {
-    pub fn from_string(s: String) -> ParameterKey {
-        if s == "_" { ParameterKey::Positional } else { ParameterKey::Name(s) }
     }
 }

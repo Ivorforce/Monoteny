@@ -119,6 +119,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] Expression Scopes (`let a = { ... yield b; };`)
 - [ ] Type Alias, aka `String = Character[Int...]` (defining functions on alias doesn't define them for the equal type)
   - [ ] Enums / Enum type inheritance (achieved through type alias)
+- [x] `(a:)` syntax: 'argument keyed by its variable name' for consistent function definitions, -calls and deconstructions
 - [ ] Monads
   - [ ] Tuple Dimension Index
   - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
