@@ -186,6 +186,7 @@ impl <'a> Scope<'a> {
             }
 
             match &pattern.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
+                [_] => return Err(LinkError::LinkError { msg: format!("Pattern is too short: {}.", pattern.alias) }),
                 [
                     PatternPart::Keyword(keyword),
                     PatternPart::Parameter { .. },
