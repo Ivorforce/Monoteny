@@ -57,6 +57,7 @@ This will be possible by Monoteny coming with several different transpilers. Her
 * [Future] Octave / MatLab
 * [Future] C++ with Eigen
 * [Future] R
+* [Future] LaTeX (expressions)
 
 Note: Transpilation of some features is quite difficult and cannot be achieved in human-readable fashion easily. For that reason, documentation keywords exist to specify how to export some things to specific languages. Everything not explicitly exported will not have readability as a high priority.
 
@@ -98,7 +99,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
   - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
 - [ ] Modules
-  - [ ] Generic Unfolding: Compile functions statically, injecting their final states where appropriate.
+  - [ ] Generic Unfolding: Compile functions with deeply resolved generics
   - [ ] `use` statements: Use parts of a module without changing or re-exporting it.
   - [ ] `abstract` functions: Declare functions only later.
   - [ ] `@transpile` decorators: Functions or traits that will be made pretty for transpilation. 
@@ -183,7 +184,6 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 
 - [ ] Common (writer-centric for monoteny programmers)
 - [ ] Human (reader-centric for everyone, pseudo code inspired)
-- [ ] Algebraic (reader-centric for mathematicians, strongly symbolic)
 
 ### Currently not planned
 
