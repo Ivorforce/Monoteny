@@ -27,9 +27,7 @@ if self is String {
 -- Declare any string as hashable
 declare String 'Hashable {
     -- Implement the required function
-    def hash(into: hasher 'Hasher) {
-        self.characters.hash(into: hasher);
-    }
+    def hash(into: hasher 'Hasher) :: self.characters.hash(into: hasher);
 }
 
 -- Declare any string as equatable
