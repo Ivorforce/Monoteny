@@ -3,10 +3,11 @@ extern crate lalrpop_util;
 extern crate core;
 
 lalrpop_mod!(pub monoteny_grammar);
-pub mod parser;
+pub mod interpreter;
 pub mod linker;
-pub mod transpiler;
+pub mod parser;
 pub mod program;
+pub mod transpiler;
 pub mod util;
 
 use std::ffi::OsStr;
@@ -22,6 +23,12 @@ fn cli() -> Command<'static> {
         .subcommand_required(true)
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
+        .subcommand(
+            Command::new("run")
+                .about("Run a file using the interpreter.")
+                .arg_required_else_help(true)
+                .arg(arg!(<PATH> "file to run").value_parser(clap::value_parser!(PathBuf)))
+        )
         .subcommand(
             Command::new("check")
                 .about("Parse files to check for validity.")
@@ -42,6 +49,22 @@ fn cli() -> Command<'static> {
 fn main() -> Result<(), LinkError> {
     let matches = cli().get_matches();
     match matches.subcommand() {
+        Some(("run", sub_matches)) => {
+            let path = sub_matches.get_one::<PathBuf>("PATH").unwrap();
+
+            let builtins = program::builtins::create_builtins();
+            let builtin_variable_scope = &builtins.global_constants;
+
+            let content = std::fs::read_to_string(&path)
+                .expect("could not read file");
+
+            let syntax_tree = parser::parse_program(&content);
+
+            let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;
+            interpreter::run_program(&computation_tree, &builtins);
+
+            println!("All files are valid .monoteny!");
+        },
         Some(("check", sub_matches)) => {
             let paths = sub_matches
                 .get_many::<PathBuf>("PATH")
@@ -124,7 +147,9 @@ fn main() -> Result<(), LinkError> {
                 };
             }
         },
-        _ => unreachable!(),
+        _ => {
+            panic!("Unsupported action.")
+        },
     }
 
     Ok(())

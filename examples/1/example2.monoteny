@@ -1,0 +1,6 @@
+-- import(monoteny.dialects.common.0.0);
+
+@main
+def main() :: {
+    print("Test: ");
+}
