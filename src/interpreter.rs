@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use std::os::macos::raw::stat;
 use std::rc::Rc;
 use itertools::Itertools;
@@ -5,6 +6,14 @@ use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statement};
 use crate::program::global::FunctionImplementation;
 use crate::program::Program;
+use crate::program::primitives;
+
+
+pub enum Value {
+    String(String),
+    Primitive(primitives::Value),
+}
+
 
 pub fn find_main(program: &Program) -> Option<&Rc<FunctionImplementation>> {
     program.functions.iter()
@@ -44,14 +53,14 @@ pub fn run_function(function: &FunctionImplementation, builtins: &Builtins) {
     }
 }
 
-pub fn evaluate(expression_id: &ExpressionID, function: &FunctionImplementation, builtins: &Builtins) -> Option<String> {
+pub fn evaluate(expression_id: &ExpressionID, function: &FunctionImplementation, builtins: &Builtins) -> Option<Value> {
     let arguments = &function.expression_forest.arguments[expression_id];
 
     match &function.expression_forest.operations[expression_id] {
         ExpressionOperation::FunctionCall { function: fun, argument_targets, binding } => {
             if fun == &builtins.debug.print {
                 let arguments_strings = arguments.iter()
-                    .map(|x| evaluate(x, function, builtins).unwrap())
+                    .map(|x| format!("{:?}", evaluate(x, function, builtins).unwrap()))
                     .collect_vec();
 
                 println!("{}", arguments_strings.join(" "))
@@ -70,9 +79,18 @@ pub fn evaluate(expression_id: &ExpressionID, function: &FunctionImplementation,
             panic!()
         }
         ExpressionOperation::StringLiteral(value) => {
-            return Some(value.clone())
+            return Some(Value::String(value.clone()))
         }
     }
 
     None
+}
+
+impl Debug for Value {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::String(s) => write!(fmt, "{}", s),
+            Value::Primitive(v) => write!(fmt, "{:?}", v),
+        }
+    }
 }

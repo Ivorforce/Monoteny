@@ -1,7 +1,8 @@
+use std::fmt::{Debug, Formatter};
 use std::str::FromStr;
 use strum::EnumIter;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Value {
     Bool(bool),
     Int8(i8),
