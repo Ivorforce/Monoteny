@@ -2,7 +2,7 @@
 
 Welcome to the mathemagical land of Monoteny! 
 
-Monoteny is an experimental language intended for making libraries. It aims to expose logic using simple syntax, selectively borrowing concepts from many different languages that have worked well for this purpose.
+Monoteny is an experimental language intended for making libraries and solving deterministic problems. It aims to expose logic using simple syntax, selectively borrowing concepts from many different languages that have worked well for this purpose.
 
 ## Philosophy
 
