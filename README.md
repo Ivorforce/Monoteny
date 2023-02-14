@@ -102,7 +102,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] Generic Unfolding: Compile functions with deeply resolved generics
   - [ ] `use` statements: Use parts of a module without changing or re-exporting it.
   - [ ] `abstract` functions: Declare functions only later.
-  - [ ] `@transpile` decorators: Functions or traits that will be made pretty for transpilation. 
+  - [ ] `@transpile` decorators: Functions that are called when making a transpilation target. 
   - [ ] `@private` decorators: Functions or traits that can only be referenced using qualified syntax.
   - [ ] `inherit` statements: Use and expose another module within your module, allowing additions and overrides.
     - [ ] Partial inheritance: Use generic unfolding to use only the parts of a module /  trait that is actually needed.
