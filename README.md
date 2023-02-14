@@ -50,7 +50,7 @@ As a side effect to folding, often promises can be made about the code: For exam
 
 Monoteny lacks many features required to build full apps. Luckily, many excellent ecosystems exist where it is possible to build such things. Therefore, instead, Monoteny aims to focus on its most vital feature: Being a minimal and understandable imperative logic language.
 
-This will be possible by Monoteny coming with several different transpilers. Hereby, any algorithms built in Monoteny will be usable in _any_ of those ecosystems. The transpilation targets are:
+This will be possible through Monoteny coming with several transpilers. Hereby, any algorithms built in Monoteny will be usable in _any_ of those ecosystems. The transpilation targets are:
 
 * [WIP] Python with NumPy
 * [Future] Monoteny Dialect
@@ -59,7 +59,10 @@ This will be possible by Monoteny coming with several different transpilers. Her
 * [Future] R
 * [Future] LaTeX (expressions)
 
-Note: Transpilation of some features is quite difficult and cannot be achieved in human-readable fashion easily. For that reason, documentation keywords exist to specify how to export some things to specific languages. Everything not explicitly exported will not have readability as a high priority.
+Note: Monoteny has some features that do not translate easily to other languages.
+For this reason, transpilation responsibility is handed over to the programmer.
+They will ultimately decide how, especially w.r.t. different languages, code should be transpiled.
+What this results in is a somewhat unusual 2-layer transpilation: Those functions and types that are designed to work with the outside, and those that 'just need to work'.
 
 
 ### Monoteny 0.1 (Toy Language Stage)
