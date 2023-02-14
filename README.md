@@ -59,7 +59,9 @@ This will be possible through Monoteny coming with several transpilers. Hereby, 
 * [Future] R
 * [Future] LaTeX (expressions)
 
-Note: Monoteny has some features that do not translate easily to other languages.
+Note: Monoteny has some features that do not translate easily to other languages. For example: In Monoteny, a constant is a function requiring arguments on the return type and inferred function binds.
+This amount of flexibility would be confusing and difficult to use in Python or C.
+
 For this reason, transpilation responsibility is handed over to the programmer.
 They will ultimately decide how, especially w.r.t. different languages, code should be transpiled.
 What this results in is a somewhat unusual 2-layer transpilation: Those functions and types that are designed to work with the outside, and those that 'just need to work'.
