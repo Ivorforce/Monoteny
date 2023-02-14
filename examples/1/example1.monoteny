@@ -11,6 +11,7 @@ def square(value: '$Number) -> $Number :: value.square();
 def pi_ish -> $Float :: 3.14;
 def pi_ish -> $Int :: 3;
 
+@transpile
 def main() :: {
     -- Print string
     print("Test: ");

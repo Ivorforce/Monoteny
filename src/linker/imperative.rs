@@ -23,6 +23,7 @@ use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
     pub function: Rc<FunctionPointer>,
+    pub decorators: Vec<String>,
 
     pub builtins: &'a Builtins,
 
@@ -86,6 +87,7 @@ impl <'a> ImperativeLinker<'a> {
                 FunctionPointerTarget::Static { implementation_id } => implementation_id,
                 _ => panic!()
             },
+            decorators: self.decorators,
             human_interface: Rc::clone(&self.function.human_interface),
             machine_interface: Rc::clone(&self.function.machine_interface),
             statements,

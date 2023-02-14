@@ -17,6 +17,7 @@ pub enum GlobalStatement {
 pub struct FunctionImplementation {
     pub implementation_id: Uuid,
     pub function_id: Uuid,
+    pub decorators: Vec<String>,
 
     pub human_interface: Rc<HumanFunctionInterface>,
     pub machine_interface: Rc<MachineFunctionInterface>,

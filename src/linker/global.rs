@@ -33,6 +33,7 @@ struct GlobalLinker<'a> {
 
 struct FunctionWithoutBody<'a> {
     pointer: Rc<FunctionPointer>,
+    decorators: Vec<String>,
     body: &'a Vec<Box<abstract_syntax::Statement>>,
 }
 
@@ -63,6 +64,7 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
         // TODO Inject traits, not pointers
         let mut resolver = Box::new(ImperativeLinker {
             function: Rc::clone(&fun.pointer),
+            decorators: fun.decorators.clone(),
             builtins,
             types: Box::new(TypeForest::new()),
             expressions: Box::new(ExpressionForest::new()),
@@ -105,6 +107,7 @@ impl <'a> GlobalLinker<'a> {
 
                 self.functions.push(FunctionWithoutBody {
                     pointer: Rc::clone(&fun),
+                    decorators: syntax.decorators.clone(),
                     body: &syntax.body,
                 });
 
@@ -121,6 +124,7 @@ impl <'a> GlobalLinker<'a> {
 
                 self.functions.push(FunctionWithoutBody {
                     pointer: Rc::clone(&fun),
+                    decorators: syntax.decorators.clone(),
                     body: &syntax.body,
                 });
 

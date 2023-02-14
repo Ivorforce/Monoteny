@@ -74,11 +74,15 @@ PatternPart: Box<PatternPart> = {
 }
 
 Function: Box<Function> = {
-    "def" <target_type: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
+    <decorators: Decorator*> "def" <target_type: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
 }
 
 OperatorFunction: Box<OperatorFunction> = {
-    "def" <parts: OperatorArgument+> <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(OperatorFunction { <> }),
+    <decorators: Decorator*> "def" <parts: OperatorArgument+> <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(OperatorFunction { <> }),
+}
+
+Decorator: String = {
+    "@" <Identifier>
 }
 
 OperatorArgument: Box<OperatorArgument> = {

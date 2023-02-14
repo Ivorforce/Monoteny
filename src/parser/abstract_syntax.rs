@@ -26,6 +26,8 @@ pub struct Function {
     pub identifier: String,
     pub parameters: Vec<Box<KeyedParameter>>,
 
+    pub decorators: Vec<String>,
+
     pub body: Vec<Box<Statement>>,
     pub return_type: Option<Expression>,
 }
@@ -38,6 +40,7 @@ pub struct KeyedParameter {
 
 pub struct OperatorFunction {
     pub parts: Vec<Box<OperatorArgument>>,
+    pub decorators: Vec<String>,
 
     pub body: Vec<Box<Statement>>,
     pub return_type: Option<Expression>,
