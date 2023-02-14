@@ -9,9 +9,10 @@ use crate::linker;
 use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation, Statement};
 use crate::linker::{LinkError, precedence, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberPrimitive, LinkerAmbiguity};
-use crate::linker::precedence::{link_patterns};
+use crate::linker::precedence::link_patterns;
 use crate::linker::r#type::TypeFactory;
 use crate::parser::abstract_syntax;
+use crate::parser::abstract_syntax::Expression;
 use crate::program::allocation::{Mutability, ObjectReference, Reference, ReferenceType};
 use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
@@ -145,6 +146,28 @@ impl <'a> ImperativeLinker<'a> {
         Ok(expression_id)
     }
 
+    pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &Expression, scope: &scopes::Scope) -> Result<(), LinkError> {
+        let mut type_factory = TypeFactory::new(&scope);
+
+        let type_declaration = type_factory.link_type(&type_declaration)?;
+
+        for requirement in type_factory.requirements {
+            todo!("Implicit imperative requirements are not implemented yet")
+        }
+
+        for (name, generic) in type_factory.generics.into_iter() {
+            panic!("Anonymous type hints are not supported yet") // need a mut scope
+            // scope.insert_singleton(
+            //     scopes::Environment::Global,
+            //     Reference::make_immutable_type(TypeProto::unit(generic.clone())),
+            //     &name
+            // );
+        }
+
+        self.types.bind(value, type_declaration.as_ref())?;
+        Ok(())
+    }
+
     pub fn link_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
         let mut scope = scope.subscope();
         let mut statements: Vec<Box<Statement>> = Vec::new();
@@ -157,23 +180,7 @@ impl <'a> ImperativeLinker<'a> {
                     let new_value: ExpressionID = self.link_expression(&expression, &scope)?;
 
                     if let Some(type_declaration) = type_declaration {
-                        let mut type_factory = TypeFactory::new(&scope);
-
-                        let type_declaration = type_factory.link_type(&type_declaration)?;
-
-                        for requirement in type_factory.requirements {
-                            todo!("Implicit imperative requirements are not implemented yet")
-                        }
-
-                        for (name, generic) in type_factory.generics.into_iter() {
-                            scope.insert_singleton(
-                                scopes::Environment::Global,
-                                Reference::make_immutable_type(TypeProto::unit(generic.clone())),
-                                &name
-                            );
-                        }
-
-                        self.types.bind(new_value, type_declaration.as_ref())?;
+                        self.hint_type(new_value, type_declaration, &scope);
                     }
 
                     let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(new_value)), mutability: mutability.clone() });
@@ -304,15 +311,35 @@ impl <'a> ImperativeLinker<'a> {
                 }
             }
             abstract_syntax::Term::Struct(s) => {
+                let values = s.iter().map(|x| {
+                    let value = self.link_expression(&x.value, scope)?;
+                    if let Some(type_declaration) = &x.type_declaration {
+                        self.hint_type(value, type_declaration, scope)?
+                    }
+                    Ok(value)
+                }).try_collect()?;
+
                 precedence::Token::AnonymousStruct {
-                    keys: s.iter().map(|x| x.key.clone()).collect(),
-                    values: s.iter().map(|x| self.link_expression(&x.value, scope)).try_collect()?,
+                    keys: s.iter()
+                        .map(|x| x.key.clone())
+                        .collect(),
+                    values,
                 }
             }
             abstract_syntax::Term::Array(a) => {
+                let values = a.iter().map(|x| {
+                    let value = self.link_expression(&x.value, scope)?;
+                    if let Some(type_declaration) = &x.type_declaration {
+                        self.hint_type(value, type_declaration, scope)?
+                    }
+                    Ok(value)
+                }).try_collect()?;
+
                 precedence::Token::AnonymousArray {
-                    keys: a.iter().map(|x| x.key.as_ref().try_map(|x| self.link_expression(x, scope))).try_collect()?,
-                    values: a.iter().map(|x| self.link_expression(&x.value, scope)).try_collect()?,
+                    keys: a.iter()
+                        .map(|x| x.key.as_ref().try_map(|x| self.link_expression(x, scope)))
+                        .try_collect()?,
+                    values,
                 }
             }
             abstract_syntax::Term::StringLiteral(string) => {
@@ -321,9 +348,6 @@ impl <'a> ImperativeLinker<'a> {
                     &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.traits.String))),
                     ExpressionOperation::StringLiteral(string.clone())
                 )?)
-            }
-            abstract_syntax::Term::TypeHint { object, type_ } => {
-                todo!()
             }
         })
     }

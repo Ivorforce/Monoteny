@@ -79,7 +79,6 @@ pub enum Term {
     Int(String),
     Float(String),
     MemberAccess { target: Box<Term>, member_name: String },
-    TypeHint { object: Box<Term>, type_: Box<Term> },
     Struct(Vec<StructArgument>),
     Array(Vec<ArrayArgument>),
     StringLiteral(String),
@@ -88,11 +87,13 @@ pub enum Term {
 pub struct StructArgument {
     pub key: ParameterKey,
     pub value: Expression,
+    pub type_declaration: Option<Expression>,
 }
 
 pub struct ArrayArgument {
     pub key: Option<Expression>,
     pub value: Expression,
+    pub type_declaration: Option<Expression>,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -219,7 +220,6 @@ impl Debug for Term {
                 write!(fmt, "]")?;
                 return Ok(())
             },
-            TypeHint { object, type_ } => write!(fmt, "{:?} '{:?}", object, type_),
         }
     }
 }
