@@ -62,8 +62,6 @@ fn main() -> Result<(), LinkError> {
 
             let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;
             interpreter::run_program(&computation_tree, &builtins);
-
-            println!("All files are valid .monoteny!");
         },
         Some(("check", sub_matches)) => {
             let paths = sub_matches

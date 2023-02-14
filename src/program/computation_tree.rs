@@ -45,3 +45,22 @@ impl ExpressionForest {
         }
     }
 }
+
+impl Debug for Statement {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Statement::VariableAssignment(target, expression_id) => {
+                write!(fmt, "ASSIGN {} to {}", &target.id, expression_id)
+            }
+            Statement::Expression(expression) => {
+                write!(fmt, "RUN {}", expression)
+            }
+            Statement::Return(expression) => {
+                match expression {
+                    None => write!(fmt, "RETURN"),
+                    Some(expression) => write!(fmt, "RETURN {}", expression),
+                }
+            }
+        }
+    }
+}

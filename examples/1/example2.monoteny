@@ -2,5 +2,5 @@
 
 @main
 def main() :: {
-    print("Test: ");
+    print("Test String Print");
 }
