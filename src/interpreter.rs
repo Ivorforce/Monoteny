@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::os::macos::raw::stat;
 use std::rc::Rc;
+use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::program::builtins::Builtins;
@@ -57,27 +58,56 @@ pub fn run_function(function: &FunctionImplementation, builtins: &Builtins) {
 }
 
 pub fn evaluate(expression_id: &ExpressionID, function: &FunctionImplementation, builtins: &Builtins, assignments: &HashMap<Uuid, Value>) -> Option<Value> {
-    let arguments = &function.expression_forest.arguments[expression_id];
+    let arguments = &function.expression_forest.arguments[expression_id].iter()
+        .map(|x| evaluate(x, function, builtins, assignments).unwrap())
+        .collect_vec();
 
     match &function.expression_forest.operations[expression_id] {
         ExpressionOperation::FunctionCall { function: fun, argument_targets, binding } => {
             if fun == &builtins.debug.print {
-                let arguments_strings = arguments.iter()
-                    .map(|x| evaluate(x, function, builtins, assignments).unwrap().as_string())
-                    .collect_vec();
+                let arguments_strings = arguments.iter().map(|x| x.as_string()).collect_vec();
 
-                println!("{}", arguments_strings.join(" "))
+                println!("{}", arguments_strings.join(" "));
+                return None;
             }
             else if let Some(primitive_type) = builtins.primitives.parse_float_literal.get(fun) {
-                let value = evaluate(&arguments[0], function, builtins, assignments).unwrap().as_string();
-                return Some(Value::Primitive(primitive_type.parse_value(&value).unwrap()));
+                guard!(let [value] = &arguments[..] else {
+                    panic!();
+                });
+                return Some(Value::Primitive(primitive_type.parse_value(&value.as_string()).unwrap()));
             }
             else if let Some(primitive_type) = builtins.primitives.parse_int_literal.get(fun) {
-                let value = evaluate(&arguments[0], function, builtins, assignments).unwrap().as_string();
-                return Some(Value::Primitive(primitive_type.parse_value(&value).unwrap()));
+                guard!(let [value] = &arguments[..] else {
+                    panic!();
+                });
+                return Some(Value::Primitive(primitive_type.parse_value(&value.as_string()).unwrap()));
+            }
+            else if builtins.primitives.add.contains_key(fun) {
+                guard!(let [Value::Primitive(l), Value::Primitive(r)] = &arguments[..] else {
+                    panic!();
+                });
+                return Some(Value::Primitive(primitives::Value::add(l, r).unwrap()));
+            }
+            else if builtins.primitives.subtract.contains_key(fun) {
+                guard!(let [Value::Primitive(l), Value::Primitive(r)] = &arguments[..] else {
+                    panic!();
+                });
+                return Some(Value::Primitive(primitives::Value::subtract(l, r).unwrap()));
+            }
+            else if builtins.primitives.multiply.contains_key(fun) {
+                guard!(let [Value::Primitive(l), Value::Primitive(r)] = &arguments[..] else {
+                    panic!();
+                });
+                return Some(Value::Primitive(primitives::Value::multiply(l, r).unwrap()));
+            }
+            else if builtins.primitives.divide.contains_key(fun) {
+                guard!(let [Value::Primitive(l), Value::Primitive(r)] = &arguments[..] else {
+                    panic!();
+                });
+                return Some(Value::Primitive(primitives::Value::divide(l, r).unwrap()));
             }
             else {
-                panic!()
+                panic!("Unsupported function")
             }
         }
         ExpressionOperation::PairwiseOperations { .. } => {
@@ -93,8 +123,6 @@ pub fn evaluate(expression_id: &ExpressionID, function: &FunctionImplementation,
             return Some(Value::String(value.clone()))
         }
     }
-
-    None
 }
 
 impl Value {

@@ -2,6 +2,7 @@ use std::fmt::{Debug, Formatter};
 use std::str::FromStr;
 use strum::EnumIter;
 
+
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Value {
     Bool(bool),
@@ -54,6 +55,86 @@ impl Value {
             Float32(_) => Type::Float32,
             Float64(_) => Type::Float64,
         }
+    }
+
+    pub fn add(lhs: &Value, rhs: &Value) -> Option<Value> {
+        use Value::*;
+
+        Some(match (lhs, rhs) {
+            (Int8(l), Int8(r)) => Int8(l + r),
+            (Int16(l), Int16(r)) => Int16(l + r),
+            (Int32(l), Int32(r)) => Int32(l + r),
+            (Int64(l), Int64(r)) => Int64(l + r),
+            (Int128(l), Int128(r)) => Int128(l + r),
+            (UInt8(l), UInt8(r)) => UInt8(l + r),
+            (UInt16(l), UInt16(r)) => UInt16(l + r),
+            (UInt32(l), UInt32(r)) => UInt32(l + r),
+            (UInt64(l), UInt64(r)) => UInt64(l + r),
+            (UInt128(l), UInt128(r)) => UInt128(l + r),
+            (Float32(l), Float32(r)) => Float32(l + r),
+            (Float64(l), Float64(r)) => Float64(l + r),
+            _ => return None
+        })
+    }
+
+    pub fn subtract(lhs: &Value, rhs: &Value) -> Option<Value> {
+        use Value::*;
+
+        Some(match (lhs, rhs) {
+            (Int8(l), Int8(r)) => Int8(l - r),
+            (Int16(l), Int16(r)) => Int16(l - r),
+            (Int32(l), Int32(r)) => Int32(l - r),
+            (Int64(l), Int64(r)) => Int64(l - r),
+            (Int128(l), Int128(r)) => Int128(l - r),
+            (UInt8(l), UInt8(r)) => UInt8(l - r),
+            (UInt16(l), UInt16(r)) => UInt16(l - r),
+            (UInt32(l), UInt32(r)) => UInt32(l - r),
+            (UInt64(l), UInt64(r)) => UInt64(l - r),
+            (UInt128(l), UInt128(r)) => UInt128(l - r),
+            (Float32(l), Float32(r)) => Float32(l - r),
+            (Float64(l), Float64(r)) => Float64(l - r),
+            _ => return None
+        })
+    }
+
+    pub fn multiply(lhs: &Value, rhs: &Value) -> Option<Value> {
+        use Value::*;
+
+        Some(match (lhs, rhs) {
+            (Int8(l), Int8(r)) => Int8(l * r),
+            (Int16(l), Int16(r)) => Int16(l * r),
+            (Int32(l), Int32(r)) => Int32(l * r),
+            (Int64(l), Int64(r)) => Int64(l * r),
+            (Int128(l), Int128(r)) => Int128(l * r),
+            (UInt8(l), UInt8(r)) => UInt8(l * r),
+            (UInt16(l), UInt16(r)) => UInt16(l * r),
+            (UInt32(l), UInt32(r)) => UInt32(l * r),
+            (UInt64(l), UInt64(r)) => UInt64(l * r),
+            (UInt128(l), UInt128(r)) => UInt128(l * r),
+            (Float32(l), Float32(r)) => Float32(l * r),
+            (Float64(l), Float64(r)) => Float64(l * r),
+            _ => return None
+        })
+    }
+
+    pub fn divide(lhs: &Value, rhs: &Value) -> Option<Value> {
+        use Value::*;
+
+        Some(match (lhs, rhs) {
+            (Int8(l), Int8(r)) => Int8(l / r),
+            (Int16(l), Int16(r)) => Int16(l / r),
+            (Int32(l), Int32(r)) => Int32(l / r),
+            (Int64(l), Int64(r)) => Int64(l / r),
+            (Int128(l), Int128(r)) => Int128(l / r),
+            (UInt8(l), UInt8(r)) => UInt8(l / r),
+            (UInt16(l), UInt16(r)) => UInt16(l / r),
+            (UInt32(l), UInt32(r)) => UInt32(l / r),
+            (UInt64(l), UInt64(r)) => UInt64(l / r),
+            (UInt128(l), UInt128(r)) => UInt128(l / r),
+            (Float32(l), Float32(r)) => Float32(l / r),
+            (Float64(l), Float64(r)) => Float64(l / r),
+            _ => return None
+        })
     }
 }
 

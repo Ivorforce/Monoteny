@@ -11,7 +11,7 @@ def square(value: '$Number) -> $Number :: value.square();
 def pi_ish -> $Float :: 3.14;
 def pi_ish -> $Int :: 3;
 
-@transpile
+@main
 def main() :: {
     -- Print string
     print("Test: ");
@@ -28,4 +28,13 @@ def main() :: {
 
     -- Print boolean
     print(b < 2 and not (value > 2) and true);
+}
+
+@transpile
+def transpile(transpiler 'Transpiler) :: {
+    -- The idea is that if we transpile this and run it, it should yield the same output
+    -- as if running using the interpreter.
+
+    -- Ideally, constant folding can break it down to just print statements.
+    transpiler.insert(main);
 }

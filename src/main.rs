@@ -43,6 +43,7 @@ fn cli() -> Command<'static> {
                 .arg(arg!(<INPUT> "file to transpile").value_parser(clap::value_parser!(PathBuf)).long("input").short('i'))
                 .arg(arg!(<OUTPUT> "output file path").value_parser(clap::value_parser!(PathBuf)).long("output").short('o'))
                 .arg(arg!(<ALL> "output using all available transpilers").required(false).takes_value(false).long("all"))
+                .arg(arg!(<NOFOLD> "don't use constant folding to shorten the code at compile time").required(false).takes_value(false).long("nofold"))
         )
 }
 
@@ -95,6 +96,7 @@ fn main() -> Result<(), LinkError> {
             let input_path = sub_matches.get_one::<PathBuf>("INPUT").unwrap();
             let output_path = sub_matches.get_one::<PathBuf>("OUTPUT").unwrap();
             let should_output_all = sub_matches.is_present("ALL");
+            let should_constant_fold = !sub_matches.is_present("NOFOLD");
 
             let output_extensions: Vec<&str> = match should_output_all {
                 true => vec!["py"],
