@@ -3,4 +3,6 @@
 @main
 def main() :: {
     print("Test String Print");
+    let a 'Int32 = 62;
+    print(a);
 }

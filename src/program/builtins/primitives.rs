@@ -22,70 +22,70 @@ pub struct Primitives {
     pub not: Rc<FunctionPointer>,
 
     // eq
-    pub equal_to: HashSet<Rc<FunctionPointer>>,
-    pub not_equal_to: HashSet<Rc<FunctionPointer>>,
+    pub equal_to: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub not_equal_to: HashMap<Rc<FunctionPointer>, primitives::Type>,
 
     // ord
-    pub greater_than: HashSet<Rc<FunctionPointer>>,
-    pub greater_than_or_equal_to: HashSet<Rc<FunctionPointer>>,
-    pub lesser_than: HashSet<Rc<FunctionPointer>>,
-    pub lesser_than_or_equal_to: HashSet<Rc<FunctionPointer>>,
+    pub greater_than: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub greater_than_or_equal_to: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub lesser_than: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub lesser_than_or_equal_to: HashMap<Rc<FunctionPointer>, primitives::Type>,
 
     // number
-    pub add: HashSet<Rc<FunctionPointer>>,
-    pub subtract: HashSet<Rc<FunctionPointer>>,
-    pub multiply: HashSet<Rc<FunctionPointer>>,
-    pub divide: HashSet<Rc<FunctionPointer>>,
+    pub add: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub subtract: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub multiply: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub divide: HashMap<Rc<FunctionPointer>, primitives::Type>,
 
-    pub positive: HashSet<Rc<FunctionPointer>>,
-    pub negative: HashSet<Rc<FunctionPointer>>,
+    pub positive: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub negative: HashMap<Rc<FunctionPointer>, primitives::Type>,
 
-    pub modulo: HashSet<Rc<FunctionPointer>>,
+    pub modulo: HashMap<Rc<FunctionPointer>, primitives::Type>,
 
     // float
-    pub exponent: HashSet<Rc<FunctionPointer>>,
-    pub logarithm: HashSet<Rc<FunctionPointer>>,
+    pub exponent: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub logarithm: HashMap<Rc<FunctionPointer>, primitives::Type>,
 
     // parse
-    pub parse_int_literal: HashSet<Rc<FunctionPointer>>,
-    pub parse_float_literal: HashSet<Rc<FunctionPointer>>,
+    pub parse_int_literal: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub parse_float_literal: HashMap<Rc<FunctionPointer>, primitives::Type>,
 }
 
 
 pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
     let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
 
-    let mut add_function = |function: &Rc<FunctionPointer>, category: &mut HashSet<Rc<FunctionPointer>>, constants: &mut scopes::Scope| {
-        category.insert(Rc::clone(&function));
+    let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, category: &mut HashMap<Rc<FunctionPointer>, primitives::Type>, constants: &mut scopes::Scope| {
+        category.insert(Rc::clone(&function), primitive_type);
         constants.overload_function(&function);
     };
 
 
     let mut primitive_metatypes = HashMap::new();
 
-    let mut eq__ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
-    let mut neq_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut eq__ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut neq_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
 
-    let mut add_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
-    let mut sub_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
-    let mut mul_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
-    let mut div_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut add_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut sub_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut mul_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut div_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
 
-    let mut mod_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut mod_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
 
-    let mut exp_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
-    let mut log_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut exp_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut log_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
 
-    let mut gr__ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
-    let mut geq_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
-    let mut le__ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
-    let mut leq_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut gr__ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut geq_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut le__ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut leq_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
 
-    let mut pos_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
-    let mut neg_ops: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut pos_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut neg_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
 
-    let mut parse_int_literal: HashSet<Rc<FunctionPointer>> = HashSet::new();
-    let mut parse_float_literal: HashSet<Rc<FunctionPointer>> = HashSet::new();
+    let mut parse_int_literal: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut parse_float_literal: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
 
     for primitive_type in primitives::Type::iter() {
         let type_ = &TypeProto::unit(TypeUnit::Primitive(primitive_type));
@@ -100,8 +100,8 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
 
         // Pair-Associative
         let eq_functions = traits::make_eq_functions(type_);
-        add_function(&eq_functions.equal_to, &mut eq__ops, &mut constants);
-        add_function(&eq_functions.not_equal_to, &mut neq_ops, &mut constants);
+        add_function(&eq_functions.equal_to, primitive_type, &mut eq__ops, &mut constants);
+        add_function(&eq_functions.not_equal_to, primitive_type, &mut neq_ops, &mut constants);
 
         let eq_conformance = TraitConformanceDeclaration::make(
             &traits.Eq,
@@ -120,10 +120,10 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         let number_functions = traits::make_number_functions(&type_);
 
         // Ord
-        add_function(&number_functions.greater_than, &mut gr__ops, &mut constants);
-        add_function(&number_functions.greater_than_or_equal_to, &mut geq_ops, &mut constants);
-        add_function(&number_functions.lesser_than, &mut le__ops, &mut constants);
-        add_function(&number_functions.lesser_than_or_equal_to, &mut leq_ops, &mut constants);
+        add_function(&number_functions.greater_than, primitive_type, &mut gr__ops, &mut constants);
+        add_function(&number_functions.greater_than_or_equal_to, primitive_type, &mut geq_ops, &mut constants);
+        add_function(&number_functions.lesser_than, primitive_type, &mut le__ops, &mut constants);
+        add_function(&number_functions.lesser_than_or_equal_to, primitive_type, &mut leq_ops, &mut constants);
 
         let ord_conformance = TraitConformanceDeclaration::make_child(
             &traits.Ord, vec![&eq_conformance], vec![
@@ -136,16 +136,16 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         constants.trait_conformance_declarations.add(&ord_conformance);
 
         // Number
-        add_function(&number_functions.add, &mut add_ops, &mut constants);
-        add_function(&number_functions.subtract, &mut sub_ops, &mut constants);
-        add_function(&number_functions.multiply, &mut mul_ops, &mut constants);
-        add_function(&number_functions.divide, &mut div_ops, &mut constants);
-        add_function(&number_functions.modulo, &mut mod_ops, &mut constants);
-        add_function(&number_functions.positive, &mut pos_ops, &mut constants);
-        add_function(&number_functions.negative, &mut neg_ops, &mut constants);
+        add_function(&number_functions.add, primitive_type, &mut add_ops, &mut constants);
+        add_function(&number_functions.subtract, primitive_type, &mut sub_ops, &mut constants);
+        add_function(&number_functions.multiply, primitive_type, &mut mul_ops, &mut constants);
+        add_function(&number_functions.divide, primitive_type, &mut div_ops, &mut constants);
+        add_function(&number_functions.modulo, primitive_type, &mut mod_ops, &mut constants);
+        add_function(&number_functions.positive, primitive_type, &mut pos_ops, &mut constants);
+        add_function(&number_functions.negative, primitive_type, &mut neg_ops, &mut constants);
 
         let _parse_int_literal = FunctionPointer::make_operator("parse_int_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_);
-        add_function(&_parse_int_literal, &mut parse_int_literal, &mut constants);
+        add_function(&_parse_int_literal, primitive_type, &mut parse_int_literal, &mut constants);
         let ParseableByIntLiteral = TraitConformanceDeclaration::make(
             &traits.ConstructableByIntLiteral, HashMap::from([(*traits.ConstructableByIntLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
                 (&traits.parse_int_literal_function, &_parse_int_literal),
@@ -177,11 +177,11 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         }
 
         let float_functions = traits::make_float_functions(&type_);
-        add_function(&float_functions.exponent, &mut exp_ops, &mut constants);
-        add_function(&float_functions.logarithm, &mut log_ops, &mut constants);
+        add_function(&float_functions.exponent, primitive_type, &mut exp_ops, &mut constants);
+        add_function(&float_functions.logarithm, primitive_type, &mut log_ops, &mut constants);
 
         let _parse_float_literal = FunctionPointer::make_operator("parse_float_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_);
-        add_function(&_parse_float_literal, &mut parse_float_literal, &mut constants);
+        add_function(&_parse_float_literal, primitive_type, &mut parse_float_literal, &mut constants);
         let ParseableByFloatLiteral = TraitConformanceDeclaration::make(
             &traits.ConstructableByFloatLiteral, HashMap::from([(*traits.ConstructableByFloatLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
                 (&traits.parse_float_literal_function, &_parse_float_literal),

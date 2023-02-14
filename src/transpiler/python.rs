@@ -329,9 +329,10 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<Func
         (&context.builtins.primitives.positive, "+"),
         (&context.builtins.primitives.negative, "-"),
 
-        (&HashSet::from([Rc::clone(&context.builtins.primitives.not)]), "not "),
+        todo!(),
+        // (&HashSet::from([Rc::clone(&context.builtins.primitives.not)]), "not "),
     ] {
-        if !(collection.contains(function)) {
+        if !(collection.contains_key(function)) {
             continue;
         }
 
@@ -350,8 +351,9 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
     });
 
     for (collection, operator) in [
-        (&HashSet::from([Rc::clone(&context.builtins.primitives.and)]), "and"),
-        (&HashSet::from([Rc::clone(&context.builtins.primitives.or)]), "or"),
+        // (&HashSet::from([Rc::clone(&context.builtins.primitives.and)]), "and"),
+        // (&HashSet::from([Rc::clone(&context.builtins.primitives.or)]), "or"),
+        todo!(),
 
         (&context.builtins.primitives.equal_to, "=="),
         (&context.builtins.primitives.not_equal_to, "!="),
@@ -369,7 +371,7 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
         (&context.builtins.primitives.exponent, "**"),
         (&context.builtins.primitives.modulo, "%"),
     ] {
-        if !(collection.contains(function)) {
+        if !(collection.contains_key(function)) {
             continue;
         }
 
@@ -395,11 +397,11 @@ pub fn try_transpile_literal(stream: &mut (dyn Write), function: &Rc<FunctionPoi
     let is_float = regex::Regex::new("^[0-9]+\\.[0-9]*$").unwrap();
     let is_int = regex::Regex::new("^[0-9]+$").unwrap();
 
-    if context.builtins.primitives.parse_int_literal.contains(function) && is_int.is_match(literal) {
+    if context.builtins.primitives.parse_int_literal.contains_key(function) && is_int.is_match(literal) {
         write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
         return Ok(true);
     }
-    else if context.builtins.primitives.parse_float_literal.contains(function) && is_float.is_match(literal) {
+    else if context.builtins.primitives.parse_float_literal.contains_key(function) && is_float.is_match(literal) {
         write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
         return Ok(true);
     }

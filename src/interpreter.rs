@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::os::macos::raw::stat;
 use std::rc::Rc;
 use itertools::Itertools;
+use uuid::Uuid;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statement};
 use crate::program::global::FunctionImplementation;
@@ -9,6 +11,7 @@ use crate::program::Program;
 use crate::program::primitives;
 
 
+#[derive(Clone)]
 pub enum Value {
     String(String),
     Primitive(primitives::Value),
@@ -27,16 +30,16 @@ pub fn run_program(program: &Program, builtins: &Builtins) {
 
 // TODO Return Value
 pub fn run_function(function: &FunctionImplementation, builtins: &Builtins) {
-    for statement in function.statements.iter() {
-        println!("{:?}", statement);
+    let mut assignments: HashMap<Uuid, Value> = HashMap::new();
 
+    for statement in function.statements.iter() {
         match statement.as_ref() {
             Statement::VariableAssignment(target, value) => {
-                evaluate(value, function, builtins);
-                // TODO Assign
+                let value = evaluate(value, function, builtins, &assignments);
+                assignments.insert(target.id.clone(), value.unwrap());
             }
             Statement::Expression(expression_id) => {
-                evaluate(expression_id, function, builtins);
+                evaluate(expression_id, function, builtins, &assignments);
             }
             Statement::Return(return_value) => {
                 match return_value {
@@ -44,7 +47,7 @@ pub fn run_function(function: &FunctionImplementation, builtins: &Builtins) {
                         return;
                     }
                     Some(expression_id) => {
-                        evaluate(expression_id, function, builtins);
+                        evaluate(expression_id, function, builtins, &assignments);
                         return;
                     }
                 }
@@ -53,17 +56,25 @@ pub fn run_function(function: &FunctionImplementation, builtins: &Builtins) {
     }
 }
 
-pub fn evaluate(expression_id: &ExpressionID, function: &FunctionImplementation, builtins: &Builtins) -> Option<Value> {
+pub fn evaluate(expression_id: &ExpressionID, function: &FunctionImplementation, builtins: &Builtins, assignments: &HashMap<Uuid, Value>) -> Option<Value> {
     let arguments = &function.expression_forest.arguments[expression_id];
 
     match &function.expression_forest.operations[expression_id] {
         ExpressionOperation::FunctionCall { function: fun, argument_targets, binding } => {
             if fun == &builtins.debug.print {
                 let arguments_strings = arguments.iter()
-                    .map(|x| format!("{:?}", evaluate(x, function, builtins).unwrap()))
+                    .map(|x| evaluate(x, function, builtins, assignments).unwrap().as_string())
                     .collect_vec();
 
                 println!("{}", arguments_strings.join(" "))
+            }
+            else if let Some(primitive_type) = builtins.primitives.parse_float_literal.get(fun) {
+                let value = evaluate(&arguments[0], function, builtins, assignments).unwrap().as_string();
+                return Some(Value::Primitive(primitive_type.parse_value(&value).unwrap()));
+            }
+            else if let Some(primitive_type) = builtins.primitives.parse_int_literal.get(fun) {
+                let value = evaluate(&arguments[0], function, builtins, assignments).unwrap().as_string();
+                return Some(Value::Primitive(primitive_type.parse_value(&value).unwrap()));
             }
             else {
                 panic!()
@@ -72,8 +83,8 @@ pub fn evaluate(expression_id: &ExpressionID, function: &FunctionImplementation,
         ExpressionOperation::PairwiseOperations { .. } => {
             panic!()
         }
-        ExpressionOperation::VariableLookup(_) => {
-            panic!()
+        ExpressionOperation::VariableLookup(variable) => {
+            return Some(assignments[&variable.id].clone())
         }
         ExpressionOperation::ArrayLiteral => {
             panic!()
@@ -84,6 +95,12 @@ pub fn evaluate(expression_id: &ExpressionID, function: &FunctionImplementation,
     }
 
     None
+}
+
+impl Value {
+    fn as_string(&self) -> String {
+        format!("{:?}", self)
+    }
 }
 
 impl Debug for Value {

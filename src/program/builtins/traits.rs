@@ -10,6 +10,7 @@ use crate::program::types::{TypeProto, TypeUnit};
 #[allow(non_snake_case)]
 pub struct Traits {
     pub all: HashSet<Rc<Trait>>,
+    pub self_id: Uuid,
 
     pub Eq: Rc<Trait>,
     pub Eq_functions: EqFunctions,
@@ -87,13 +88,13 @@ pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
     }
 }
 
-pub fn make_trait(name: &str, generic_id: &Uuid, fns: Vec<&Rc<FunctionPointer>>, parents: Vec<&Rc<Trait>>) -> Rc<Trait> {
-    let generic_type = TypeProto::unit(TypeUnit::Any(*generic_id));
+pub fn make_trait(name: &str, self_id: &Uuid, fns: Vec<&Rc<FunctionPointer>>, parents: Vec<&Rc<Trait>>) -> Rc<Trait> {
+    let self_type = TypeProto::unit(TypeUnit::Any(*self_id));
 
     let mut t = Trait {
         id: Uuid::new_v4(),
         name: String::from(name),
-        generics: HashSet::from([*generic_id]),
+        generics: HashSet::from([*self_id]),
         abstract_functions: fns.into_iter().map(Rc::clone).collect(),
         requirements: HashSet::new(),
     };
@@ -101,7 +102,7 @@ pub fn make_trait(name: &str, generic_id: &Uuid, fns: Vec<&Rc<FunctionPointer>>,
     for parent in parents {
         assert_eq!(parent.generics.len(), 1);
         t.requirements.insert(
-            Trait::require(parent, HashMap::from([(*parent.generics.iter().next().unwrap(), generic_type.clone())]))
+            Trait::require(parent, HashMap::from([(*parent.generics.iter().next().unwrap(), self_type.clone())]))
         );
     }
 
@@ -121,19 +122,19 @@ pub fn make_float_functions(type_: &Box<TypeProto>) -> FloatFunctions {
 }
 
 pub fn make(constants: &mut Scope) -> Traits {
-    let generic_id = Uuid::new_v4();
-    let generic_type = TypeProto::unit(TypeUnit::Any(generic_id));
+    let self_id = Uuid::new_v4();
+    let self_type = TypeProto::unit(TypeUnit::Any(self_id));
 
-    let eq_functions = make_eq_functions(&generic_type);
-    let eq_trait = make_trait("Eq", &generic_id, vec![
+    let eq_functions = make_eq_functions(&self_type);
+    let eq_trait = make_trait("Eq", &self_id, vec![
         &eq_functions.equal_to,
         &eq_functions.not_equal_to,
     ], vec![]);
     constants.insert_trait(&eq_trait);
 
-    let number_functions = make_number_functions(&generic_type);
+    let number_functions = make_number_functions(&self_type);
 
-    let ord_trait = make_trait("Ord", &generic_id, vec![
+    let ord_trait = make_trait("Ord", &self_id, vec![
         &number_functions.greater_than,
         &number_functions.greater_than_or_equal_to,
         &number_functions.lesser_than,
@@ -141,7 +142,7 @@ pub fn make(constants: &mut Scope) -> Traits {
     ], vec![&eq_trait]);
     constants.insert_trait(&ord_trait);
 
-    let number_trait = make_trait("Number", &generic_id, vec![
+    let number_trait = make_trait("Number", &self_id, vec![
         &number_functions.add,
         &number_functions.subtract,
         &number_functions.multiply,
@@ -153,37 +154,37 @@ pub fn make(constants: &mut Scope) -> Traits {
     constants.insert_trait(&number_trait);
 
 
-    let String = make_trait("String", &generic_id, vec![], vec![]);
+    let String = make_trait("String", &self_id, vec![], vec![]);
     constants.insert_trait(&String);
 
 
     let parse_int_literal_function = FunctionPointer::make_global(
         "parse_int_literal",
         [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
-        TypeProto::void()
+        self_type.clone(),
     );
     constants.overload_function(&parse_int_literal_function);
 
-    let ConstructableByIntLiteral = make_trait("ConstructableByIntLiteral", &generic_id, vec![&parse_int_literal_function], vec![]);
+    let ConstructableByIntLiteral = make_trait("ConstructableByIntLiteral", &self_id, vec![&parse_int_literal_function], vec![]);
     constants.insert_trait(&ConstructableByIntLiteral);
 
 
     let parse_float_literal_function = FunctionPointer::make_global(
         "parse_float_literal",
         [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
-        TypeProto::void()
+        self_type.clone(),
     );
     constants.overload_function(&parse_float_literal_function);
 
-    let ConstructableByFloatLiteral = make_trait("ConstructableByFloatLiteral", &generic_id, vec![&parse_float_literal_function], vec![]);
+    let ConstructableByFloatLiteral = make_trait("ConstructableByFloatLiteral", &self_id, vec![&parse_float_literal_function], vec![]);
     constants.insert_trait(&ConstructableByFloatLiteral);
 
 
-    let float_functions = make_float_functions(&generic_type);
+    let float_functions = make_float_functions(&self_type);
 
     let float_trait = make_trait(
         "Float",
-        &generic_id,
+        &self_id,
         vec![&float_functions.exponent],
         vec![&number_trait, &ConstructableByFloatLiteral, &ConstructableByIntLiteral]
     );
@@ -191,7 +192,7 @@ pub fn make(constants: &mut Scope) -> Traits {
 
     let int_trait = make_trait(
         "Int",
-        &generic_id,
+        &self_id,
         vec![],
         vec![&number_trait, &ConstructableByIntLiteral]
     );
@@ -199,6 +200,7 @@ pub fn make(constants: &mut Scope) -> Traits {
 
     let traits = Traits {
         all: [&eq_trait, &ord_trait, &number_trait, &float_trait, &int_trait, &ConstructableByFloatLiteral, &ConstructableByIntLiteral, &String].map(Rc::clone).into_iter().collect(),
+        self_id,
 
         Eq: eq_trait,
         Eq_functions: eq_functions,
