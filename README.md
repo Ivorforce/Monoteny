@@ -46,12 +46,17 @@ As a side effect to folding, often promises can be made about the code: For exam
 
 ## Roadmap
 
-### Transpilation Targets
+### Targets
 
-Monoteny lacks many features required to build full apps. Luckily, many excellent ecosystems exist where it is possible to build such things. Therefore, instead, Monoteny aims to focus on its most vital feature: Being a minimal and understandable imperative logic language.
+Monoteny lacks many features required to build full apps. Luckily, many excellent ecosystems exist where it is possible to build such things.
+Therefore, instead, Monoteny aims to focus on its most vital feature: Being a minimal and understandable imperative logic language.
 
-This will be possible through Monoteny coming with several transpilers. Hereby, any algorithms built in Monoteny will be usable in _any_ of those ecosystems. The transpilation targets are:
+This will be possible through Monoteny coming with several transpilers.
+Hereby, any algorithms built in Monoteny will be usable in _any_ of those ecosystems.
+In addition, an interpreter is used to fold constant code and run during transpile time.
+The planned targets are:
 
+* [WIP] Interpreter
 * [WIP] Python with NumPy
 * [Future] Monoteny Dialect
 * [Future] Octave / MatLab
@@ -191,8 +196,8 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
 
 ### Currently not planned
 
-- Compiler / LLVM / Virtual Machine
-  - See [Transpilation Targets](#Transpilation Targets)
+- Compiler / LLVM
+  - See [Targets](#Targets)
 - for / for-each loops
   - .map / .forEach calls do the same. Instead, there will be a strong callable integration allowing for return / break / continue statements inside an anonymous closure. 
 - Global (mutable) variables
