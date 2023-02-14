@@ -14,14 +14,14 @@ On a syntactical level, many decisions are trade-offs between readability vs. br
 
 ### First-Class Multiplicity
 
-Monoteny recognizes multiplicity usually comes in predictable forms:
+Monoteny recognizes multiplicity (data) usually comes in predictable forms:
 
+- Some known number of objects of different types.
+  - Product Types (-> Traits / Structs)
+- One object of varying subtype.
+  - Tagged Union (-> Poly / Enums)
 - Some unknown number of objects of the same type.
   - Monads (-> Arrays)
-- Some known number of objects of different types.
-  - Traits (-> Structs)
-- One object of varying subtype.
-  - Poly (-> Enums)
 
 A monad is a wrapper that hides multiplicity on interaction with the type. Only when referenced (e.g. `a@[0]`) is interaction with the monadic wrapper permitted. A monadic wrapper might be anything from arrays over dictionaries to streams or nullability.
 
@@ -31,7 +31,7 @@ Polymorphic types carry a sub-type per object. Generic traits defined on the sup
 
 ### Functional and Impure
 
-Large parts of programs can be designed in a pure and deterministic way. When compiling, Monoteny first generically unfolds function calls to resolve generic types, and then statically folds all pure code to minimize runtime cost.
+Large parts of programs can be designed in a pure and deterministic way. When compiling, Monoteny first generically unfolds function calls to resolve generic types, and then statically folds all constant code to minimize runtime cost.
 
 In other languages, 4 concepts usually prevent this type of folding:
 - Global Mutables
@@ -98,7 +98,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
       - [ ] `cnf`: Refutably assert equality to existing variables
   - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
   - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
-- [ ] Modules
+- [ ] Modules (imports)
   - [ ] Generic Unfolding: Compile functions with deeply resolved generics
   - [ ] `use` statements: Use parts of a module without changing or re-exporting it.
   - [ ] `abstract` functions: Declare functions only later.
@@ -107,6 +107,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] `inherit` statements: Use and expose another module within your module, allowing additions and overrides.
     - [ ] Partial inheritance: Use generic unfolding to use only the parts of a module /  trait that is actually needed.
   - [ ] Abstract Functions, Conformance Declarations
+  - [ ] Namespaces
 - [ ] Control Callbacks (e.g. `def if(expression 'Bool, onTrue 'fun, onFalse 'Fun[Option]) { ... }`))
   - [ ] If / Else
   - [ ] If let (refutable patterns)
@@ -144,12 +145,10 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
   - [ ] IntX, FloatX (variable bitcount int and float) - regular ints and floats are just 'optimized special cases' of this
 - [ ] IntUnbound (int that can store any value)
 - [ ] IntNative, FloatNative (platform-optimized int and float)
-- [ ] Imports
 - [ ] Switch / Match
 - [ ] Local functions and declarations
   - [ ] Anonymous functions
 - [ ] String Comprehension
-- [ ] Imports and Namespaces
 - [ ] Custom Decorators (on structs, definitions)
 - [ ] Non-Varargs subscripts and subscript overloads
 - [ ] Indeterministic polymorphism
@@ -166,7 +165,7 @@ Note: Transpilation of some features is quite difficult and cannot be achieved i
 - [ ] Post Link-Time Shape Tests
   - [ ] Array Dimension Index (i.e. 'anonymous enum')
   - [ ] Closed Int Range Dimension Index
-- [ ] Computation Tree Folding (resolve static results post link-time)
+- [ ] Constant Folding (resolve static results post link-time)
 - [ ] Optimization Definitions (e.g. an alternative implementation for sort() if all objects are ints)
 - [ ] System I/O API / Permission Contexts
 - [ ] Pointer Monad (-> shared object reference, mutable or immutable)
