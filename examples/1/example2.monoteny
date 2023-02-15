@@ -3,6 +3,8 @@
 @main
 def main() :: {
     print("Test String Print");
-    print(2 ** 8 - 3 * 2 'Float32);
-    print(true or false);
+
+    let a 'Float32 = 2;
+    print(a ** 8 - 3 * 2 'Float32);
+    print(a > 5 or a <= 1);
 }

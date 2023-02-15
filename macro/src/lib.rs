@@ -21,7 +21,7 @@ pub fn bin_op(_item: TokenStream) -> TokenStream {
                     let r = interpreter.evaluate(&args[1]).unwrap();
 
                     let data = alloc(layout);
-                    (*(data as *mut {result_type})) = *(l.data as *mut {type_}) {op} *(r.data as *mut {type_});
+                    (*(data as *mut {result_type})) = *(l.data as *const {type_}) {op} *(r.data as *const {type_});
                     return Some(Value {{ data, layout }});
                 }}
             }})
@@ -44,7 +44,7 @@ pub fn un_op(_item: TokenStream) -> TokenStream {
                     let arg = interpreter.evaluate(&args[0]).unwrap();
 
                     let data = alloc(layout);
-                    (*(data as *mut {type_})) = {op} *(arg.data as *mut {type_});
+                    (*(data as *mut {type_})) = {op} *(arg.data as *const {type_});
                     return Some(Value {{ data, layout }});
                 }}
             }})
@@ -71,7 +71,7 @@ pub fn fun_op(_item: TokenStream) -> TokenStream {
                     let r = interpreter.evaluate(&args[1]).unwrap();
 
                     let data = alloc(layout);
-                    (*(data as *mut {result_type})) = {result_type}::{op}(*(l.data as *mut {type_}), *(r.data as *mut {type_}));
+                    (*(data as *mut {result_type})) = {result_type}::{op}(*(l.data as *const {type_}), *(r.data as *const {type_}));
                     return Some(Value {{ data, layout }});
                 }}
             }})
@@ -92,7 +92,7 @@ pub fn parse_op(_item: TokenStream) -> TokenStream {
                     let args = &interpreter.function.expression_forest.arguments[expression_id];
                     let arg = interpreter.evaluate(&args[0]).unwrap();
                     let data = alloc(layout);
-                    *(data as *mut {type_}) = {type_}::from_str((*(arg.data as *mut String)).as_str()).unwrap();
+                    *(data as *mut {type_}) = {type_}::from_str((*(arg.data as *const String)).as_str()).unwrap();
                     return Some(Value {{ data, layout }});
                 }}
             }})

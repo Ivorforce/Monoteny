@@ -239,25 +239,25 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Rc<FunctionPointer>, Func
             println!("{}", match arg_type {
                 TypeUnit::Struct(s) => {
                     if s == &interpreter.builtins.traits.String {
-                        (*(arg.data as *mut String)).clone()
+                        (*(arg.data as *const String)).clone()
                     }
                     else {
                         panic!()
                     }
                 },
-                TypeUnit::Primitive(primitives::Type::Bool) => (*(arg.data as *mut bool)).to_string(),
-                TypeUnit::Primitive(primitives::Type::Int8) => (*(arg.data as *mut i8)).to_string(),
-                TypeUnit::Primitive(primitives::Type::Int16) => (*(arg.data as *mut i16)).to_string(),
-                TypeUnit::Primitive(primitives::Type::Int32) => (*(arg.data as *mut i32)).to_string(),
-                TypeUnit::Primitive(primitives::Type::Int64) => (*(arg.data as *mut i64)).to_string(),
-                TypeUnit::Primitive(primitives::Type::Int128) => (*(arg.data as *mut i128)).to_string(),
-                TypeUnit::Primitive(primitives::Type::UInt8) => (*(arg.data as *mut u8)).to_string(),
-                TypeUnit::Primitive(primitives::Type::UInt16) => (*(arg.data as *mut u16)).to_string(),
-                TypeUnit::Primitive(primitives::Type::UInt32) => (*(arg.data as *mut u32)).to_string(),
-                TypeUnit::Primitive(primitives::Type::UInt64) => (*(arg.data as *mut u64)).to_string(),
-                TypeUnit::Primitive(primitives::Type::UInt128) => (*(arg.data as *mut u128)).to_string(),
-                TypeUnit::Primitive(primitives::Type::Float32) => (*(arg.data as *mut f32)).to_string(),
-                TypeUnit::Primitive(primitives::Type::Float64) => (*(arg.data as *mut f64)).to_string(),
+                TypeUnit::Primitive(primitives::Type::Bool) => (*(arg.data as *const bool)).to_string(),
+                TypeUnit::Primitive(primitives::Type::Int8) => (*(arg.data as *const i8)).to_string(),
+                TypeUnit::Primitive(primitives::Type::Int16) => (*(arg.data as *const i16)).to_string(),
+                TypeUnit::Primitive(primitives::Type::Int32) => (*(arg.data as *const i32)).to_string(),
+                TypeUnit::Primitive(primitives::Type::Int64) => (*(arg.data as *const i64)).to_string(),
+                TypeUnit::Primitive(primitives::Type::Int128) => (*(arg.data as *const i128)).to_string(),
+                TypeUnit::Primitive(primitives::Type::UInt8) => (*(arg.data as *const u8)).to_string(),
+                TypeUnit::Primitive(primitives::Type::UInt16) => (*(arg.data as *const u16)).to_string(),
+                TypeUnit::Primitive(primitives::Type::UInt32) => (*(arg.data as *const u32)).to_string(),
+                TypeUnit::Primitive(primitives::Type::UInt64) => (*(arg.data as *const u64)).to_string(),
+                TypeUnit::Primitive(primitives::Type::UInt128) => (*(arg.data as *const u128)).to_string(),
+                TypeUnit::Primitive(primitives::Type::Float32) => (*(arg.data as *const f32)).to_string(),
+                TypeUnit::Primitive(primitives::Type::Float64) => (*(arg.data as *const f64)).to_string(),
                 _ => panic!(),
             });
 
