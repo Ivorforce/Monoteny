@@ -28,7 +28,7 @@ pub struct Value {
 
 pub struct FunctionInterpreter<'a> {
     pub builtins: &'a Builtins,
-    pub function_evaluators: &'a HashMap<Rc<FunctionPointer>, FunctionInterpreterImpl>,
+    pub function_evaluators: &'a HashMap<Uuid, FunctionInterpreterImpl>,
 
     pub function: &'a FunctionImplementation,
 
@@ -42,9 +42,17 @@ pub fn find_main(program: &Program) -> Option<&Rc<FunctionImplementation>> {
 
 pub fn run_program(program: &Program, builtins: &Builtins) {
     let main_function = find_main(program).expect("No main function!");
+    let mut evaluators = builtins::make_evaluators(builtins);
+
+    for function in program.functions.iter() {
+        evaluators.insert(function.function_id, Box::new(|interpreter, expression_id| {
+            todo!()
+        }));
+    }
+
     let mut interpreter = FunctionInterpreter {
         builtins,
-        function_evaluators: &builtins::make_evaluators(builtins),
+        function_evaluators: &evaluators,
         function: main_function,
         assignments: HashMap::new(),
     };
@@ -79,14 +87,14 @@ impl FunctionInterpreter<'_> {
     pub unsafe fn evaluate(&mut self, expression_id: &ExpressionID) -> Option<Value> {
         match &self.function.expression_forest.operations[expression_id] {
             ExpressionOperation::FunctionCall { function: fun, argument_targets, binding } => {
-                let fun = match fun.target {
-                    FunctionPointerTarget::Static { .. } => fun,
+                let function_id = match &fun.target {
+                    FunctionPointerTarget::Static { function_id } => function_id,
                     FunctionPointerTarget::Polymorphic { .. } => todo!("Polymorphic resolving via binding is not supported yet")
                 };
-                let implementation = &self.function_evaluators.get(fun);
+                let implementation = &self.function_evaluators.get(function_id);
 
                 guard!(let Some(implementation) = implementation else {
-                    panic!("Cannot find implementation for function: {:?}", &fun.human_interface);
+                    panic!("Cannot find function ({}) with interface: {:?}", function_id, &fun.human_interface);
                 });
 
                 return implementation(self, expression_id)

@@ -42,7 +42,7 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
 
     Ok(Rc::new(FunctionPointer {
         pointer_id: Uuid::new_v4(),
-        target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
+        target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
 
         machine_interface: Rc::new(MachineFunctionInterface {
             parameters,
@@ -70,7 +70,7 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
 
         let fun = Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
+            target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
 
             machine_interface: Rc::new(MachineFunctionInterface {
                 parameters: HashSet::new(),
@@ -110,7 +110,7 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
 
         return Ok(Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
+            target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
 
             machine_interface: Rc::new(MachineFunctionInterface {
                 parameters,

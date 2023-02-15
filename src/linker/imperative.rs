@@ -85,7 +85,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(Rc::new(FunctionImplementation {
             implementation_id: self.function.pointer_id,
             function_id: match self.function.target {
-                FunctionPointerTarget::Static { implementation_id } => implementation_id,
+                FunctionPointerTarget::Static { function_id } => function_id,
                 _ => panic!()
             },
             decorators: self.decorators,

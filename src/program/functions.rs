@@ -24,7 +24,7 @@ pub enum ParameterKey {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum FunctionPointerTarget {
-    Static { implementation_id: Uuid },
+    Static { function_id: Uuid },
     Polymorphic { declaration_id: Uuid, abstract_function: Rc<FunctionPointer> },
 }
 
@@ -66,7 +66,7 @@ impl FunctionPointer {
     pub fn make_constant<'a>(alphanumeric_name: &'a str, return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitConformanceRequirement>>) -> Rc<FunctionPointer> {
         Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
+            target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
 
             human_interface: Rc::new(HumanFunctionInterface {
                 name: String::from(alphanumeric_name),
@@ -88,7 +88,7 @@ impl FunctionPointer {
 
         Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
+            target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
 
             human_interface: Rc::new(HumanFunctionInterface {
                 name: String::from(alphanumeric_name),
@@ -112,7 +112,7 @@ impl FunctionPointer {
 
         Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            target: FunctionPointerTarget::Static { implementation_id: Uuid::new_v4() },
+            target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
 
             human_interface: Rc::new(HumanFunctionInterface {
                 name: String::from(name),
@@ -126,6 +126,13 @@ impl FunctionPointer {
                 requirements: HashSet::new(),
             })
         })
+    }
+
+    pub fn unwrap_id(&self) -> Uuid {
+        match self.target {
+            FunctionPointerTarget::Static { function_id } => function_id,
+            FunctionPointerTarget::Polymorphic { .. } => panic!("Cannot unwrap polymorphic implementation ID"),
+        }
     }
 }
 
