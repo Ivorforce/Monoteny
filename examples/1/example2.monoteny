@@ -3,5 +3,5 @@
 @main
 def main() :: {
     print("Test String Print");
-    print(62 + 23 * 2 / 5 'Float32);
+    print(2 ** 8 - 3 * 2 'Float32);
 }

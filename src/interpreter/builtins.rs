@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
-use monoteny_macro::{bin_op, parse_op, un_op};
+use monoteny_macro::{bin_op, parse_op, un_op, fun_op};
 use std::str::FromStr;
 use crate::interpreter::{FunctionInterpreter, FunctionInterpreterImpl, Value};
 use crate::program::builtins::Builtins;
@@ -115,7 +115,10 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Rc<FunctionPointer>, Func
     map.insert(Rc::clone(&builtins.primitives.modulo[&primitives::Type::Float64]), bin_op!(f64 % f64));
 
     // -------------------------------------- Floats --------------------------------------
-    // TODO Exponent, Logarithm (rust has no builtin operator, just functions)
+    map.insert(Rc::clone(&builtins.primitives.exponent[&primitives::Type::Float32]), fun_op!(f32 powf f32));
+    map.insert(Rc::clone(&builtins.primitives.exponent[&primitives::Type::Float64]), fun_op!(f64 powf f64));
+    map.insert(Rc::clone(&builtins.primitives.logarithm[&primitives::Type::Float32]), fun_op!(f32 log f32));
+    map.insert(Rc::clone(&builtins.primitives.logarithm[&primitives::Type::Float64]), fun_op!(f64 log f64));
 
     // -------------------------------------- Positive --------------------------------------
     // TODO Either remove positive op, or solve it as no-op. Either way, rust has no 'positive' op.
