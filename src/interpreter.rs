@@ -1,3 +1,6 @@
+mod builtins;
+
+use std::alloc::{alloc, dealloc, Layout};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::os::macos::raw::stat;
@@ -5,19 +8,33 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
+use strum::IntoEnumIterator;
+use crate::parser::abstract_syntax::Expression;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statement};
+use crate::program::functions::FunctionPointer;
 use crate::program::global::FunctionImplementation;
 use crate::program::Program;
 use crate::program::primitives;
 
 
+pub type FunctionInterpreterImpl = Box<dyn Fn(&mut FunctionInterpreter, &ExpressionID) -> Option<Value>>;
+
+
 #[derive(Clone)]
-pub enum Value {
-    String(String),
-    Primitive(primitives::Value),
+pub struct Value {
+    pub layout: Layout,
+    pub data: *mut u8,
 }
 
+pub struct FunctionInterpreter<'a> {
+    pub builtins: &'a Builtins,
+    pub function_evaluators: &'a HashMap<Rc<FunctionPointer>, FunctionInterpreterImpl>,
+
+    pub function: &'a FunctionImplementation,
+
+    pub assignments: HashMap<Uuid, Value>,
+}
 
 pub fn find_main(program: &Program) -> Option<&Rc<FunctionImplementation>> {
     program.functions.iter()
@@ -26,116 +43,81 @@ pub fn find_main(program: &Program) -> Option<&Rc<FunctionImplementation>> {
 
 pub fn run_program(program: &Program, builtins: &Builtins) {
     let main_function = find_main(program).expect("No main function!");
-    run_function(main_function, builtins);
+    let mut interpreter = FunctionInterpreter {
+        builtins,
+        function_evaluators: &builtins::make_evaluators(builtins),
+        function: main_function,
+        assignments: HashMap::new(),
+    };
+    unsafe {
+        interpreter.run();
+    }
 }
 
-// TODO Return Value
-pub fn run_function(function: &FunctionImplementation, builtins: &Builtins) {
-    let mut assignments: HashMap<Uuid, Value> = HashMap::new();
-
-    for statement in function.statements.iter() {
-        match statement.as_ref() {
-            Statement::VariableAssignment(target, value) => {
-                let value = evaluate(value, function, builtins, &assignments);
-                assignments.insert(target.id.clone(), value.unwrap());
-            }
-            Statement::Expression(expression_id) => {
-                evaluate(expression_id, function, builtins, &assignments);
-            }
-            Statement::Return(return_value) => {
-                match return_value {
-                    None => {
-                        return;
-                    }
-                    Some(expression_id) => {
-                        evaluate(expression_id, function, builtins, &assignments);
-                        return;
+impl FunctionInterpreter<'_> {
+    pub unsafe fn run(&mut self) -> Option<Value> {
+        for statement in self.function.statements.iter() {
+            match statement.as_ref() {
+                Statement::VariableAssignment(target, value) => {
+                    let value = self.evaluate(value);
+                    self.assignments.insert(target.id.clone(), value.unwrap());
+                }
+                Statement::Expression(expression_id) => {
+                    self.evaluate(expression_id);
+                }
+                Statement::Return(return_value) => {
+                    return match return_value {
+                        None => None,
+                        Some(expression_id) => self.evaluate(expression_id),
                     }
                 }
             }
         }
+
+        return None
+    }
+
+    pub unsafe fn evaluate(&mut self, expression_id: &ExpressionID) -> Option<Value> {
+        match &self.function.expression_forest.operations[expression_id] {
+            ExpressionOperation::FunctionCall { function: fun, argument_targets, binding } => {
+                // TODO Resolve actual function via our binding (not the one FOR the function)
+                let implementation = &self.function_evaluators.get(fun);
+
+                guard!(let Some(implementation) = implementation else {
+                    panic!("Cannot find implementation for function: {:?}", &fun.human_interface);
+                });
+
+                return implementation(self, expression_id)
+            }
+            ExpressionOperation::PairwiseOperations { .. } => {
+                panic!()
+            }
+            ExpressionOperation::VariableLookup(variable) => {
+                return Some(self.assignments[&variable.id].clone())
+            }
+            ExpressionOperation::ArrayLiteral => {
+                panic!()
+            }
+            ExpressionOperation::StringLiteral(value) => {
+                let string_layout = Layout::new::<String>();
+                let ptr = alloc(string_layout);
+                *(ptr as *mut String) = value.clone();
+                return Some(Value { data: ptr, layout: string_layout })
+            }
+        }
+    }
+
+    pub unsafe fn evaluate_vec(&mut self, expression_id: &ExpressionID) -> Vec<Value> {
+        self.function.expression_forest.arguments[expression_id].iter()
+            .map(|x| self.evaluate(x).unwrap())
+            .collect_vec()
     }
 }
 
-pub fn evaluate(expression_id: &ExpressionID, function: &FunctionImplementation, builtins: &Builtins, assignments: &HashMap<Uuid, Value>) -> Option<Value> {
-    let arguments = &function.expression_forest.arguments[expression_id].iter()
-        .map(|x| evaluate(x, function, builtins, assignments).unwrap())
-        .collect_vec();
-
-    match &function.expression_forest.operations[expression_id] {
-        ExpressionOperation::FunctionCall { function: fun, argument_targets, binding } => {
-            if fun == &builtins.debug.print {
-                let arguments_strings = arguments.iter().map(|x| x.as_string()).collect_vec();
-
-                println!("{}", arguments_strings.join(" "));
-                return None;
-            }
-            else if let Some(primitive_type) = builtins.primitives.parse_float_literal.get(fun) {
-                guard!(let [value] = &arguments[..] else {
-                    panic!();
-                });
-                return Some(Value::Primitive(primitive_type.parse_value(&value.as_string()).unwrap()));
-            }
-            else if let Some(primitive_type) = builtins.primitives.parse_int_literal.get(fun) {
-                guard!(let [value] = &arguments[..] else {
-                    panic!();
-                });
-                return Some(Value::Primitive(primitive_type.parse_value(&value.as_string()).unwrap()));
-            }
-            else if builtins.primitives.add.contains_key(fun) {
-                guard!(let [Value::Primitive(l), Value::Primitive(r)] = &arguments[..] else {
-                    panic!();
-                });
-                return Some(Value::Primitive(primitives::Value::add(l, r).unwrap()));
-            }
-            else if builtins.primitives.subtract.contains_key(fun) {
-                guard!(let [Value::Primitive(l), Value::Primitive(r)] = &arguments[..] else {
-                    panic!();
-                });
-                return Some(Value::Primitive(primitives::Value::subtract(l, r).unwrap()));
-            }
-            else if builtins.primitives.multiply.contains_key(fun) {
-                guard!(let [Value::Primitive(l), Value::Primitive(r)] = &arguments[..] else {
-                    panic!();
-                });
-                return Some(Value::Primitive(primitives::Value::multiply(l, r).unwrap()));
-            }
-            else if builtins.primitives.divide.contains_key(fun) {
-                guard!(let [Value::Primitive(l), Value::Primitive(r)] = &arguments[..] else {
-                    panic!();
-                });
-                return Some(Value::Primitive(primitives::Value::divide(l, r).unwrap()));
-            }
-            else {
-                panic!("Unsupported function")
-            }
-        }
-        ExpressionOperation::PairwiseOperations { .. } => {
-            panic!()
-        }
-        ExpressionOperation::VariableLookup(variable) => {
-            return Some(assignments[&variable.id].clone())
-        }
-        ExpressionOperation::ArrayLiteral => {
-            panic!()
-        }
-        ExpressionOperation::StringLiteral(value) => {
-            return Some(Value::String(value.clone()))
-        }
-    }
-}
-
-impl Value {
-    fn as_string(&self) -> String {
-        format!("{:?}", self)
-    }
-}
-
-impl Debug for Value {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Value::String(s) => write!(fmt, "{}", s),
-            Value::Primitive(v) => write!(fmt, "{:?}", v),
+impl Drop for Value {
+    fn drop(&mut self) {
+        unsafe {
+            dealloc(self.data, self.layout)
         }
     }
 }

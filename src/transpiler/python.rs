@@ -324,25 +324,26 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<Func
         return Ok(false)
     });
 
+    todo!()
+
     // TODO We can probably avoid unnecessary parentheses here and in the other operators if we ask the expression for its (python) precedence, and compare it with ours.
-    for (collection, operator) in [
-        (&context.builtins.primitives.positive, "+"),
-        (&context.builtins.primitives.negative, "-"),
-
-        todo!(),
-        // (&HashSet::from([Rc::clone(&context.builtins.primitives.not)]), "not "),
-    ] {
-        if !(collection.contains_key(function)) {
-            continue;
-        }
-
-        write!(stream, "{}", operator)?;
-        transpile_maybe_parenthesized_expression(stream, expression.clone(), context)?;
-
-        return Ok(true);
-    }
-
-    return Ok(false);
+    // for (collection, operator) in [
+    //     (&context.builtins.primitives.positive, "+"),
+    //     (&context.builtins.primitives.negative, "-"),
+    //
+    //     // (&HashSet::from([Rc::clone(&context.builtins.primitives.not)]), "not "),
+    // ] {
+    //     if !(collection.contains_key(function)) {
+    //         continue;
+    //     }
+    //
+    //     write!(stream, "{}", operator)?;
+    //     transpile_maybe_parenthesized_expression(stream, expression.clone(), context)?;
+    //
+    //     return Ok(true);
+    // }
+    //
+    // return Ok(false);
 }
 
 pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
@@ -350,39 +351,40 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
         return Ok(false)
     });
 
-    for (collection, operator) in [
-        // (&HashSet::from([Rc::clone(&context.builtins.primitives.and)]), "and"),
-        // (&HashSet::from([Rc::clone(&context.builtins.primitives.or)]), "or"),
-        todo!(),
+    todo!()
 
-        (&context.builtins.primitives.equal_to, "=="),
-        (&context.builtins.primitives.not_equal_to, "!="),
-
-        (&context.builtins.primitives.greater_than, ">"),
-        (&context.builtins.primitives.greater_than_or_equal_to, ">="),
-        (&context.builtins.primitives.lesser_than, "<"),
-        (&context.builtins.primitives.lesser_than_or_equal_to, "<="),
-
-        (&context.builtins.primitives.add, "+"),
-        (&context.builtins.primitives.subtract, "-"),
-        (&context.builtins.primitives.multiply, "*"),
-        (&context.builtins.primitives.divide, "/"),
-
-        (&context.builtins.primitives.exponent, "**"),
-        (&context.builtins.primitives.modulo, "%"),
-    ] {
-        if !(collection.contains_key(function)) {
-            continue;
-        }
-
-        transpile_maybe_parenthesized_expression(stream, lhs.clone(), context)?;
-        write!(stream, " {} ", operator)?;
-        transpile_maybe_parenthesized_expression(stream, rhs.clone(), context)?;
-
-        return Ok(true);
-    }
-
-    return Ok(false);
+    // for (collection, operator) in [
+    //     // (&HashSet::from([Rc::clone(&context.builtins.primitives.and)]), "and"),
+    //     // (&HashSet::from([Rc::clone(&context.builtins.primitives.or)]), "or"),
+    //
+    //     (&context.builtins.primitives.equal_to, "=="),
+    //     (&context.builtins.primitives.not_equal_to, "!="),
+    //
+    //     (&context.builtins.primitives.greater_than, ">"),
+    //     (&context.builtins.primitives.greater_than_or_equal_to, ">="),
+    //     (&context.builtins.primitives.lesser_than, "<"),
+    //     (&context.builtins.primitives.lesser_than_or_equal_to, "<="),
+    //
+    //     (&context.builtins.primitives.add, "+"),
+    //     (&context.builtins.primitives.subtract, "-"),
+    //     (&context.builtins.primitives.multiply, "*"),
+    //     (&context.builtins.primitives.divide, "/"),
+    //
+    //     (&context.builtins.primitives.exponent, "**"),
+    //     (&context.builtins.primitives.modulo, "%"),
+    // ] {
+    //     if !(collection.contains_key(function)) {
+    //         continue;
+    //     }
+    //
+    //     transpile_maybe_parenthesized_expression(stream, lhs.clone(), context)?;
+    //     write!(stream, " {} ", operator)?;
+    //     transpile_maybe_parenthesized_expression(stream, rhs.clone(), context)?;
+    //
+    //     return Ok(true);
+    // }
+    //
+    // return Ok(false);
 }
 
 pub fn try_transpile_literal(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<bool, std::io::Error> {
@@ -397,16 +399,17 @@ pub fn try_transpile_literal(stream: &mut (dyn Write), function: &Rc<FunctionPoi
     let is_float = regex::Regex::new("^[0-9]+\\.[0-9]*$").unwrap();
     let is_int = regex::Regex::new("^[0-9]+$").unwrap();
 
-    if context.builtins.primitives.parse_int_literal.contains_key(function) && is_int.is_match(literal) {
-        write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
-        return Ok(true);
-    }
-    else if context.builtins.primitives.parse_float_literal.contains_key(function) && is_float.is_match(literal) {
-        write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
-        return Ok(true);
-    }
-
-    Ok(false)
+    todo!()
+    // if context.builtins.primitives.parse_int_literal.contains_key(function) && is_int.is_match(literal) {
+    //     write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
+    //     return Ok(true);
+    // }
+    // else if context.builtins.primitives.parse_float_literal.contains_key(function) && is_float.is_match(literal) {
+    //     write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
+    //     return Ok(true);
+    // }
+    //
+    // Ok(false)
 }
 
 pub fn try_transpile_keyword(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, context: &TranspilerContext) -> Result<bool, std::io::Error> {

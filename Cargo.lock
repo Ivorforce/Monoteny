@@ -278,12 +278,17 @@ dependencies = [
  "itertools",
  "lalrpop",
  "lalrpop-util",
+ "monoteny-macro",
  "regex",
  "replace_with",
  "strum",
  "try_map",
  "uuid",
 ]
+
+[[package]]
+name = "monoteny-macro"
+version = "0.1.0"
 
 [[package]]
 name = "new_debug_unreachable"

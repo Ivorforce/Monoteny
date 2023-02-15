@@ -43,7 +43,7 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
         ("op.truediv", &builtins.primitives.divide),
         ("math.log", &builtins.primitives.logarithm),
     ]{
-        for fun in functions.keys() {
+        for fun in functions.values() {
             namespace.insert_keyword(fun.pointer_id, &String::from(name));
         }
     }

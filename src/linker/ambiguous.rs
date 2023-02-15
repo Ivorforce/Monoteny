@@ -9,7 +9,6 @@ use crate::program::computation_tree::{ExpressionForest, ExpressionID, Expressio
 use crate::program::functions::FunctionPointer;
 use crate::program::generics::TypeForest;
 use crate::program::primitives;
-use crate::program::primitives::Value;
 use crate::program::traits::{TraitBinding, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::types::{TypeProto, TypeUnit};
 

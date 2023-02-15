@@ -22,70 +22,69 @@ pub struct Primitives {
     pub not: Rc<FunctionPointer>,
 
     // eq
-    pub equal_to: HashMap<Rc<FunctionPointer>, primitives::Type>,
-    pub not_equal_to: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub equal_to: HashMap<primitives::Type, Rc<FunctionPointer>>,
+    pub not_equal_to: HashMap<primitives::Type, Rc<FunctionPointer>>,
 
     // ord
-    pub greater_than: HashMap<Rc<FunctionPointer>, primitives::Type>,
-    pub greater_than_or_equal_to: HashMap<Rc<FunctionPointer>, primitives::Type>,
-    pub lesser_than: HashMap<Rc<FunctionPointer>, primitives::Type>,
-    pub lesser_than_or_equal_to: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub greater_than: HashMap<primitives::Type, Rc<FunctionPointer>>,
+    pub greater_than_or_equal_to: HashMap<primitives::Type, Rc<FunctionPointer>>,
+    pub lesser_than: HashMap<primitives::Type, Rc<FunctionPointer>>,
+    pub lesser_than_or_equal_to: HashMap<primitives::Type, Rc<FunctionPointer>>,
 
     // number
-    pub add: HashMap<Rc<FunctionPointer>, primitives::Type>,
-    pub subtract: HashMap<Rc<FunctionPointer>, primitives::Type>,
-    pub multiply: HashMap<Rc<FunctionPointer>, primitives::Type>,
-    pub divide: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub add: HashMap<primitives::Type, Rc<FunctionPointer>>,
+    pub subtract: HashMap<primitives::Type, Rc<FunctionPointer>>,
+    pub multiply: HashMap<primitives::Type, Rc<FunctionPointer>>,
+    pub divide: HashMap<primitives::Type, Rc<FunctionPointer>>,
+    pub modulo: HashMap<primitives::Type, Rc<FunctionPointer>>,
 
-    pub positive: HashMap<Rc<FunctionPointer>, primitives::Type>,
-    pub negative: HashMap<Rc<FunctionPointer>, primitives::Type>,
-
-    pub modulo: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub positive: HashMap<primitives::Type, Rc<FunctionPointer>>,
+    pub negative: HashMap<primitives::Type, Rc<FunctionPointer>>,  // TODO This shouldn't exist for unsigned types
 
     // float
-    pub exponent: HashMap<Rc<FunctionPointer>, primitives::Type>,
-    pub logarithm: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub exponent: HashMap<primitives::Type, Rc<FunctionPointer>>,
+    pub logarithm: HashMap<primitives::Type, Rc<FunctionPointer>>,
 
     // parse
-    pub parse_int_literal: HashMap<Rc<FunctionPointer>, primitives::Type>,
-    pub parse_float_literal: HashMap<Rc<FunctionPointer>, primitives::Type>,
+    pub parse_int_literal: HashMap<primitives::Type, Rc<FunctionPointer>>,
+    pub parse_float_literal: HashMap<primitives::Type, Rc<FunctionPointer>>,
 }
 
 
 pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
     let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
 
-    let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, category: &mut HashMap<Rc<FunctionPointer>, primitives::Type>, constants: &mut scopes::Scope| {
-        category.insert(Rc::clone(&function), primitive_type);
+    let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, category: &mut HashMap<primitives::Type, Rc<FunctionPointer>>, constants: &mut scopes::Scope| {
+        category.insert(primitive_type, Rc::clone(&function));
         constants.overload_function(&function);
     };
 
 
     let mut primitive_metatypes = HashMap::new();
 
-    let mut eq__ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
-    let mut neq_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut eq__ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
+    let mut neq_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
 
-    let mut add_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
-    let mut sub_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
-    let mut mul_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
-    let mut div_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut add_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
+    let mut sub_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
+    let mut mul_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
+    let mut div_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
 
-    let mut mod_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut mod_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
 
-    let mut exp_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
-    let mut log_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut exp_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
+    let mut log_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
 
-    let mut gr__ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
-    let mut geq_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
-    let mut le__ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
-    let mut leq_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut gr__ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
+    let mut geq_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
+    let mut le__ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
+    let mut leq_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
 
-    let mut pos_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
-    let mut neg_ops: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut pos_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
+    let mut neg_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
 
-    let mut parse_int_literal: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
-    let mut parse_float_literal: HashMap<Rc<FunctionPointer>, primitives::Type> = HashMap::new();
+    let mut parse_int_literal: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
+    let mut parse_float_literal: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
 
     for primitive_type in primitives::Type::iter() {
         let type_ = &TypeProto::unit(TypeUnit::Primitive(primitive_type));
@@ -159,9 +158,9 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
                 (&traits.Number_functions.subtract, &number_functions.subtract),
                 (&traits.Number_functions.multiply, &number_functions.multiply),
                 (&traits.Number_functions.divide, &number_functions.divide),
+                (&traits.Number_functions.modulo, &number_functions.modulo),
                 (&traits.Number_functions.positive, &number_functions.positive),
                 (&traits.Number_functions.negative, &number_functions.negative),
-                (&traits.Number_functions.modulo, &number_functions.modulo),
             ]
         );
         constants.trait_conformance_declarations.add(&number_conformance);
