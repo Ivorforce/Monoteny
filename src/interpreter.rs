@@ -12,7 +12,7 @@ use strum::IntoEnumIterator;
 use crate::parser::abstract_syntax::Expression;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statement};
-use crate::program::functions::FunctionPointer;
+use crate::program::functions::{FunctionPointer, FunctionPointerTarget};
 use crate::program::global::FunctionImplementation;
 use crate::program::Program;
 use crate::program::primitives;
@@ -80,7 +80,10 @@ impl FunctionInterpreter<'_> {
     pub unsafe fn evaluate(&mut self, expression_id: &ExpressionID) -> Option<Value> {
         match &self.function.expression_forest.operations[expression_id] {
             ExpressionOperation::FunctionCall { function: fun, argument_targets, binding } => {
-                // TODO Resolve actual function via our binding (not the one FOR the function)
+                let fun = match fun.target {
+                    FunctionPointerTarget::Static { .. } => fun,
+                    FunctionPointerTarget::Polymorphic { .. } => todo!("Polymorphic resolving via binding is not supported yet")
+                };
                 let implementation = &self.function_evaluators.get(fun);
 
                 guard!(let Some(implementation) = implementation else {
