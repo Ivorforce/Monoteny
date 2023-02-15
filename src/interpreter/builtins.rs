@@ -14,32 +14,6 @@ use crate::program::types::TypeUnit;
 pub fn make_evaluators(builtins: &Builtins) -> HashMap<Rc<FunctionPointer>, FunctionInterpreterImpl> {
     let mut map: HashMap<Rc<FunctionPointer>, FunctionInterpreterImpl> = HashMap::new();
 
-    map.insert(Rc::clone(&builtins.debug.print), Box::new(|interpreter, expression_id| {
-        unsafe {
-            let arg_id = &interpreter.function.expression_forest.arguments[expression_id][0];
-            let arg = interpreter.evaluate(arg_id).unwrap();
-            let arg_type = interpreter.function.type_forest.get_unit(arg_id).unwrap();
-
-            println!("{}", match arg_type {
-                TypeUnit::Struct(s) => {
-                    if s == &interpreter.builtins.traits.String {
-                        (*(arg.data as *mut String)).clone()
-                    }
-                    else {
-                        panic!()
-                    }
-                },
-                TypeUnit::Primitive(primitives::Type::Bool) => (*(arg.data as *mut bool)).to_string(),
-                TypeUnit::Primitive(primitives::Type::Int8) => (*(arg.data as *mut i8)).to_string(),
-                TypeUnit::Primitive(primitives::Type::Int16) => (*(arg.data as *mut i16)).to_string(),
-                TypeUnit::Primitive(primitives::Type::Float32) => (*(arg.data as *mut f32)).to_string(),
-                _ => panic!(),
-            });
-
-            return None;
-        }
-    }));
-
     // -------------------------------------- ------ --------------------------------------
     // -------------------------------------- Math --------------------------------------
     // -------------------------------------- ------ --------------------------------------
@@ -249,6 +223,52 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Rc<FunctionPointer>, Func
     map.insert(Rc::clone(&builtins.primitives.lesser_than_or_equal_to[&primitives::Type::Int128]), bin_op!(i128 <= bool));
     map.insert(Rc::clone(&builtins.primitives.lesser_than_or_equal_to[&primitives::Type::Float32]), bin_op!(f32 <= bool));
     map.insert(Rc::clone(&builtins.primitives.lesser_than_or_equal_to[&primitives::Type::Float64]), bin_op!(f64 <= bool));
+
+    // -------------------------------------- ------ --------------------------------------
+    // -------------------------------------- Common --------------------------------------
+    // -------------------------------------- ------ --------------------------------------
+
+    map.insert(Rc::clone(&builtins.debug.print), Box::new(|interpreter, expression_id| {
+        unsafe {
+            let arg_id = &interpreter.function.expression_forest.arguments[expression_id][0];
+            let arg = interpreter.evaluate(arg_id).unwrap();
+            let arg_type = interpreter.function.type_forest.get_unit(arg_id).unwrap();
+
+            println!("{}", match arg_type {
+                TypeUnit::Struct(s) => {
+                    if s == &interpreter.builtins.traits.String {
+                        (*(arg.data as *mut String)).clone()
+                    }
+                    else {
+                        panic!()
+                    }
+                },
+                TypeUnit::Primitive(primitives::Type::Bool) => (*(arg.data as *mut bool)).to_string(),
+                TypeUnit::Primitive(primitives::Type::Int8) => (*(arg.data as *mut i8)).to_string(),
+                TypeUnit::Primitive(primitives::Type::Int16) => (*(arg.data as *mut i16)).to_string(),
+                TypeUnit::Primitive(primitives::Type::Float32) => (*(arg.data as *mut f32)).to_string(),
+                _ => panic!(),
+            });
+
+            return None;
+        }
+    }));
+
+    let bool_layout = Layout::new::<bool>();
+    map.insert(Rc::clone(&builtins.common.true_), Box::new(move |interpreter, expression_id| {
+        unsafe {
+            let ptr = alloc(bool_layout);
+            *(ptr as *mut bool) = true;
+            return Some(Value { data: ptr, layout: bool_layout })
+        }
+    }));
+    map.insert(Rc::clone(&builtins.common.false_), Box::new(move |interpreter, expression_id| {
+        unsafe {
+            let ptr = alloc(bool_layout);
+            *(ptr as *mut bool) = false;
+            return Some(Value { data: ptr, layout: bool_layout })
+        }
+    }));
 
     map
 }
