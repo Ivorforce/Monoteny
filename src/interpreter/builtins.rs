@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
-use monoteny_macro::{bin_op, parse_op, un_op, fun_op};
+use monoteny_macro::{bin_op, parse_op, un_op, fun_op, load_constant, load_float_constant};
 use std::str::FromStr;
 use uuid::Uuid;
 use crate::interpreter::{FunctionInterpreter, FunctionInterpreterImpl, Value};
@@ -266,21 +266,12 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
         }
     }));
 
-    let bool_layout = Layout::new::<bool>();
-    map.insert(builtins.common.true_.unwrap_id(), Box::new(move |interpreter, expression_id, binding| {
-        unsafe {
-            let ptr = alloc(bool_layout);
-            *(ptr as *mut bool) = true;
-            return Some(Value { data: ptr, layout: bool_layout })
-        }
-    }));
-    map.insert(builtins.common.false_.unwrap_id(), Box::new(move |interpreter, expression_id, binding| {
-        unsafe {
-            let ptr = alloc(bool_layout);
-            *(ptr as *mut bool) = false;
-            return Some(Value { data: ptr, layout: bool_layout })
-        }
-    }));
+    map.insert(builtins.common.true_.unwrap_id(), load_constant!(bool true));
+    map.insert(builtins.common.false_.unwrap_id(), load_constant!(bool false));
+
+    map.insert(builtins.math.e.unwrap_id(), load_float_constant!(2.71828));
+    map.insert(builtins.math.pi.unwrap_id(), load_float_constant!(3.14159265));
+    map.insert(builtins.math.tau.unwrap_id(), load_float_constant!(1.57079633));
 
     map
 }
