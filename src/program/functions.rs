@@ -113,6 +113,24 @@ impl FunctionInterface {
             requirements: HashSet::new(),
         })
     }
+
+    pub fn new_member<'a, I>(name: &'a str, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Box<TypeProto>> {
+        let parameters: Vec<Parameter> = parameter_types
+            .map(|x| Parameter {
+                external_key: ParameterKey::Positional,
+                internal_name: format!("p"),  // TODO Should be numbered? idk
+                target: ObjectReference::make_immutable(x.clone()),
+            })
+            .collect();
+
+        Rc::new(FunctionInterface {
+            name: String::from(name),
+            parameters,
+            form: FunctionForm::Member,
+            return_type: return_type.clone(),
+            requirements: HashSet::new(),
+        })
+    }
 }
 
 impl FunctionPointer {

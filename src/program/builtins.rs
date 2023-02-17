@@ -8,6 +8,7 @@ pub mod traits;
 pub mod primitives;
 pub mod math;
 pub mod common;
+mod transpilation;
 
 pub struct Builtins {
     pub traits: traits::Traits,
@@ -17,6 +18,7 @@ pub struct Builtins {
 
     pub common: common::Common,
     pub math: math::Math,
+    pub transpilation: transpilation::Transpilation,
 
     pub global_constants: Scope<'static>,
 }
@@ -32,6 +34,7 @@ pub fn create_builtins() -> Rc<Builtins> {
         common: common::make(&mut constants, &traits),
         math: math::make(&mut constants, &traits),
         debug: debug::make_functions(&mut constants),
+        transpilation: transpilation::make(&mut constants, &traits),
         primitives,
         precedence_groups,
         traits,

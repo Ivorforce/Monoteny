@@ -26,9 +26,9 @@ pub struct Reference {
 pub enum ReferenceType {
     Object(Rc<ObjectReference>),
     Keyword(String),
+    // TODO This could be an object type in the future, I think.
     FunctionOverload(Rc<FunctionOverload>),
     PrecedenceGroup(Rc<PrecedenceGroup>),
-    Trait(Rc<Trait>),
 }
 
 #[derive(Clone, Eq)]
@@ -67,7 +67,7 @@ impl Reference {
 
     pub fn as_object_ref(&self, require_mutable: bool) -> Result<&Rc<ObjectReference>, LinkError> {
         guard!(let ReferenceType::Object(obj_ref) = &self.type_ else {
-            return Err(LinkError::LinkError { msg: format!("Reference is not to an object.") });
+            return Err(LinkError::LinkError { msg: format!("Reference is not to an object: {:?}", &self.type_) });
         });
 
         Ok(&obj_ref)
@@ -84,9 +84,14 @@ impl Reference {
     }
 
     pub fn as_trait(&self) -> Result<Rc<Trait>, LinkError> {
-        match &self.type_ {
-            ReferenceType::Trait(trait_) => Ok(Rc::clone(trait_)),
-            _ => Err(LinkError::LinkError { msg: format!("Reference is not a trait.") })
+        let type_ = &self.as_object_ref(false)?.type_;
+
+        match type_.unit {
+            TypeUnit::MetaType => match &type_.arguments[0].unit {
+                TypeUnit::Struct(t) => Ok(Rc::clone(t)),
+                _ => Err(LinkError::LinkError { msg: format!("Reference is not a struct metatype.") })
+            },
+            _ => Err(LinkError::LinkError { msg: format!("Reference is not a metatype.") })
         }
     }
 
@@ -128,7 +133,6 @@ impl Debug for ReferenceType {
             FunctionOverload(f) => write!(fmt, "{}", &f.name),
             PrecedenceGroup(p) => write!(fmt, "{}", &p.name),
             Keyword(s) => write!(fmt, "{}", s),
-            Trait(t) => write!(fmt, "{}", t.name),
         }
     }
 }

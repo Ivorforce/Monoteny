@@ -6,7 +6,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::linker::precedence::PrecedenceGroup;
 use crate::linker::LinkError;
-use crate::program::allocation::{Mutability, Reference, ReferenceType};
+use crate::program::allocation::{Mutability, ObjectReference, Reference, ReferenceType};
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, FunctionInterface, ParameterKey};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::generics::TypeForest;
@@ -132,11 +132,10 @@ impl <'a> Scope<'a> {
     }
 
     pub fn insert_trait(&mut self, t: &Rc<Trait>) {
-        let name = t.name.clone();
         self.insert_singleton(
             Environment::Global,
-            Reference::make(ReferenceType::Trait(Rc::clone(t))),
-            &name
+            Reference::make_immutable_type(TypeProto::meta(TypeProto::unit(TypeUnit::Struct(Rc::clone(t))))),
+            &t.name.clone()
         );
     }
 

@@ -274,9 +274,6 @@ impl <'a> ImperativeLinker<'a> {
                     ReferenceType::PrecedenceGroup(_) => {
                         return Err(LinkError::LinkError { msg: format!("Precedence group references are not supported in expressions yet.") })
                     }
-                    ReferenceType::Trait(_) => {
-                        return Err(LinkError::LinkError { msg: format!("Trait references are not supported in expressions yet.") })
-                    }
                 }
             }
             abstract_syntax::Term::Int(string) => {
