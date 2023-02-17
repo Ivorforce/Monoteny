@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::linker::precedence::PrecedenceGroup;
 use crate::linker::LinkError;
 use crate::program::allocation::{Mutability, Reference, ReferenceType};
-use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, HumanFunctionInterface, ParameterKey};
+use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, FunctionInterface, ParameterKey};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::generics::TypeForest;
 use crate::program::types::{Pattern, PatternPart, TypeProto, TypeUnit};
@@ -84,12 +84,12 @@ impl <'a> Scope<'a> {
     }
 
     pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>) -> Result<(), LinkError> {
-        let environment = match fun.human_interface.form {
+        let environment = match fun.interface.form {
             FunctionForm::Member => Environment::Member,
             FunctionForm::Global => Environment::Global,
             FunctionForm::Constant => Environment::Global,
         };
-        let name = &fun.human_interface.name;
+        let name = &fun.interface.name;
 
         let mut variables = self.references_mut(environment);
 
@@ -102,7 +102,7 @@ impl <'a> Scope<'a> {
                     ReferenceType::FunctionOverload(overload.adding_function(fun)?)
                 );
 
-                variables.insert(fun.human_interface.name.clone(), variable);
+                variables.insert(fun.interface.name.clone(), variable);
             }
             else {
                 panic!("Cannot overload with function '{}' if a variable exists in the same scope under the same name.", name);
@@ -116,7 +116,7 @@ impl <'a> Scope<'a> {
                 );
 
                 let mut variables = self.references_mut(environment);
-                variables.insert(fun.human_interface.name.clone(), variable);
+                variables.insert(fun.interface.name.clone(), variable);
             }
 
             let mut variables = self.references_mut(environment);
@@ -125,7 +125,7 @@ impl <'a> Scope<'a> {
                 ReferenceType::FunctionOverload(FunctionOverload::from(fun))
             );
 
-            variables.insert(fun.human_interface.name.clone(), variable);
+            variables.insert(fun.interface.name.clone(), variable);
         }
 
         Ok(())
@@ -142,10 +142,10 @@ impl <'a> Scope<'a> {
 
     pub fn add_trait_conformance(&mut self, declaration: &Rc<TraitConformanceDeclaration>) {
         self.trait_conformance_declarations.add(declaration);
-        for (_, pointer) in declaration.function_implementations.iter() {
+        for (_, pointer) in declaration.abstract_function_resolutions.iter() {
             self.overload_function(pointer);
         }
-        for (_, declaration) in declaration.trait_requirements_conformance.iter() {
+        for (_, declaration) in declaration.trait_requirements_conformance.resolution.iter() {
             self.add_trait_conformance(declaration);
         }
     }

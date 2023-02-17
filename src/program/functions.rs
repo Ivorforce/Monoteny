@@ -23,17 +23,15 @@ pub enum ParameterKey {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum FunctionPointerTarget {
+pub enum FunctionCallType {
     Static { function_id: Uuid },
-    Polymorphic { declaration_id: Uuid, abstract_function: Rc<FunctionPointer> },
+    Polymorphic { abstract_function: Rc<AbstractFunction> },
 }
 
 pub struct FunctionPointer {
     pub pointer_id: Uuid,
-    pub target: FunctionPointerTarget,
-
-    pub human_interface: Rc<HumanFunctionInterface>,
-    pub machine_interface: Rc<MachineFunctionInterface>,
+    pub call_type: FunctionCallType,
+    pub interface: Rc<FunctionInterface>,
 }
 
 /// Reference to a multiplicity of functions, usually resolved when attempting to call
@@ -44,95 +42,110 @@ pub struct FunctionOverload {
     pub form: FunctionForm,
 }
 
-pub struct HumanFunctionInterface {
-    pub name: String,
-
-    pub parameter_names: Vec<(ParameterKey, Rc<ObjectReference>)>,
-    pub parameter_names_internal: Vec<String>,
-
-    pub form: FunctionForm,
+pub struct Parameter {
+    pub external_key: ParameterKey,
+    pub internal_name: String,
+    pub target: Rc<ObjectReference>,
 }
 
-pub struct MachineFunctionInterface {
-    pub parameters: HashSet<Rc<ObjectReference>>,
+pub struct AbstractFunction {
+    pub function_id: Uuid,
+    pub interface: Rc<FunctionInterface>,
+}
+
+pub struct FunctionInterface {
+    /// Parameters to the function
+    pub parameters: Vec<Parameter>,
+    /// Type of what the function returns
     pub return_type: Box<TypeProto>,
-    // Note: This set will almost certainly be larger than actually required, because
-    //  it is automatically assembled. To avoid unnecessary arguments,
-    //  use an implementation's (if known) hint for which are actually in use.
+
+    /// Name of the function.
+    pub name: String,
+    /// How the functon looks in syntax.
+    pub form: FunctionForm,
+    /// Requirements for parameters and the return type.
     pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 }
 
-impl FunctionPointer {
-    pub fn make_constant<'a>(alphanumeric_name: &'a str, return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitConformanceRequirement>>) -> Rc<FunctionPointer> {
-        Rc::new(FunctionPointer {
-            pointer_id: Uuid::new_v4(),
-            target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
-
-            human_interface: Rc::new(HumanFunctionInterface {
-                name: String::from(alphanumeric_name),
-                parameter_names: vec![],
-                parameter_names_internal: vec![],
-                form: FunctionForm::Constant,
-            }),
-            machine_interface:Rc::new(MachineFunctionInterface {
-                parameters: HashSet::new(),
-                return_type: return_type.clone(),
-                requirements: requirements.into_iter().map(Rc::clone).collect(),
-            })
+impl FunctionInterface {
+    pub fn new_constant<'a>(alphanumeric_name: &'a str, return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitConformanceRequirement>>) -> Rc<FunctionInterface> {
+        Rc::new(FunctionInterface {
+            name: String::from(alphanumeric_name),
+            parameters: vec![],
+            form: FunctionForm::Constant,
+            return_type: return_type.clone(),
+            requirements: requirements.into_iter().map(Rc::clone).collect(),
         })
     }
 
-    pub fn make_operator<'a>(alphanumeric_name: &'a str, count: usize, parameter_type: &Box<TypeProto>, return_type: &Box<TypeProto>) -> Rc<FunctionPointer> {
-        let parameter_names = (0..count).map(|_| ParameterKey::Positional);
-        let parameters: Vec<Rc<ObjectReference>> = (0..count).map(|x| ObjectReference::make_immutable(parameter_type.clone())).collect();
+    pub fn new_operator<'a>(alphanumeric_name: &'a str, count: usize, parameter_type: &Box<TypeProto>, return_type: &Box<TypeProto>) -> Rc<FunctionInterface> {
+        let parameters: Vec<Parameter> = (0..count)
+            .map(|x| { Parameter {
+                external_key: ParameterKey::Positional,
+                internal_name: format!("p{}", x),
+                target: ObjectReference::make_immutable(parameter_type.clone()),
+            }
+        }).collect();
 
-        Rc::new(FunctionPointer {
-            pointer_id: Uuid::new_v4(),
-            target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
-
-            human_interface: Rc::new(HumanFunctionInterface {
-                name: String::from(alphanumeric_name),
-                parameter_names: zip_eq(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
-                parameter_names_internal: vec![],  // TODO Internal names shouldn't need to be specified for builtins?
-                form: FunctionForm::Global,
-            }),
-            machine_interface:Rc::new(MachineFunctionInterface {
-                parameters: parameters.into_iter().collect(),
-                return_type: return_type.clone(),
-                requirements: HashSet::new(),
-            })
+        Rc::new(FunctionInterface {
+            name: String::from(alphanumeric_name),
+            parameters,
+            form: FunctionForm::Global,
+            return_type: return_type.clone(),
+            requirements: HashSet::new(),
         })
     }
 
-    pub fn make_global<'a, I>(name: &'a str, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionPointer> where I: Iterator<Item=Box<TypeProto>> {
-        let parameters: Vec<Rc<ObjectReference>> = parameter_types
-            .map(|x| ObjectReference::make_immutable(x.clone()))
+    pub fn new_global<'a, I>(name: &'a str, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Box<TypeProto>> {
+        let parameters: Vec<Parameter> = parameter_types
+            .map(|x| Parameter {
+                external_key: ParameterKey::Positional,
+                internal_name: format!("p"),  // TODO Should be numbered? idk
+                target: ObjectReference::make_immutable(x.clone()),
+            })
             .collect();
-        let parameter_names = (0..parameters.len()).map(|_| ParameterKey::Positional);
 
+        Rc::new(FunctionInterface {
+            name: String::from(name),
+            parameters,
+            form: FunctionForm::Global,
+            return_type: return_type.clone(),
+            requirements: HashSet::new(),
+        })
+    }
+}
+
+impl FunctionPointer {
+    pub fn new_static(interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
         Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
+            call_type: FunctionCallType::Static { function_id: Uuid::new_v4() },
+            interface,
+        })
+    }
 
-            human_interface: Rc::new(HumanFunctionInterface {
-                name: String::from(name),
-                parameter_names: zip_eq(parameter_names, parameters.iter().map(|x| Rc::clone(x))).collect(),
-                parameter_names_internal: vec![],  // TODO Internal names shouldn't need to be specified for builtins?
-                form: FunctionForm::Global,
-            }),
-            machine_interface:Rc::new(MachineFunctionInterface {
-                parameters: parameters.into_iter().collect(),
-                return_type: return_type.clone(),
-                requirements: HashSet::new(),
-            })
+    pub fn new_polymorphic(abstract_function: Rc<AbstractFunction>) -> Rc<FunctionPointer> {
+        Rc::new(FunctionPointer {
+            pointer_id: Uuid::new_v4(),
+            interface: Rc::clone(&abstract_function.interface),
+            call_type: FunctionCallType::Polymorphic { abstract_function },
         })
     }
 
     pub fn unwrap_id(&self) -> Uuid {
-        match self.target {
-            FunctionPointerTarget::Static { function_id } => function_id,
-            FunctionPointerTarget::Polymorphic { .. } => panic!("Cannot unwrap polymorphic implementation ID"),
+        match self.call_type {
+            FunctionCallType::Static { function_id } => function_id,
+            FunctionCallType::Polymorphic { .. } => panic!("Cannot unwrap polymorphic implementation ID"),
         }
+    }
+}
+
+impl AbstractFunction {
+    pub fn new(interface: Rc<FunctionInterface>) -> Rc<AbstractFunction> {
+        Rc::new(AbstractFunction {
+            function_id: Uuid::new_v4(),
+            interface,
+        })
     }
 }
 
@@ -140,13 +153,13 @@ impl FunctionOverload {
     pub fn from(function: &Rc<FunctionPointer>) -> Rc<FunctionOverload> {
         Rc::new(FunctionOverload {
             pointers: HashSet::from([Rc::clone(function)]),
-            name: function.human_interface.name.clone(),
-            form: function.human_interface.form.clone(),
+            name: function.interface.name.clone(),
+            form: function.interface.form.clone(),
         })
     }
 
     pub fn adding_function(&self, function: &Rc<FunctionPointer>) -> Result<Rc<FunctionOverload>, LinkError> {
-        if self.form != function.human_interface.form {
+        if self.form != function.interface.form {
             return Err(LinkError::LinkError { msg: format!("Cannot overload functions and constants.") })
         }
 
@@ -172,7 +185,21 @@ impl Hash for FunctionPointer {
     }
 }
 
-impl Debug for HumanFunctionInterface {
+impl PartialEq for AbstractFunction {
+    fn eq(&self, other: &Self) -> bool {
+        self.function_id == other.function_id
+    }
+}
+
+impl Eq for AbstractFunction {}
+
+impl Hash for AbstractFunction {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.function_id.hash(state);
+    }
+}
+
+impl Debug for FunctionInterface {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         let mut head = 0;
 
@@ -180,20 +207,30 @@ impl Debug for HumanFunctionInterface {
             FunctionForm::Global => {}
             FunctionForm::Constant => {}
             FunctionForm::Member => {
-                write!(fmt, "{:?}.", self.parameter_names.get(head).unwrap().1.type_)?;
+                write!(fmt, "{:?}.", self.parameters.get(head).unwrap().target.type_)?;
                 head += 1;
             },
         }
 
         write!(fmt, "{}(", self.name)?;
 
-        for (key, variable) in self.parameter_names.iter().skip(head) {
-            write!(fmt, "{:?} '{:?},", key, variable.type_)?;
+        for parameter in self.parameters.iter().skip(head) {
+            write!(fmt, "{:?} '{:?},", parameter.external_key, parameter.target.type_)?;
         }
 
         write!(fmt, ")")?;
 
+        if !self.return_type.unit.is_void() {
+            write!(fmt, " -> {:?}", self.return_type)?;
+        }
+
         Ok(())
+    }
+}
+
+impl Debug for AbstractFunction {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "abstract {:?}", self.interface)
     }
 }
 

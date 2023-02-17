@@ -12,7 +12,7 @@ use regex;
 
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
-use crate::program::functions::{FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, ParameterKey};
+use crate::program::functions::{FunctionPointer, FunctionCallType, FunctionInterface, ParameterKey};
 use crate::program::{primitives, Program};
 use crate::program::allocation::Reference;
 use crate::program::generics::TypeForest;
@@ -48,7 +48,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     }
 
     for function in program.functions.iter() {
-        file_namespace.register_definition(function.implementation_id, &function.human_interface.name);
+        file_namespace.register_definition(function.implementation_id, &function.interface.name);
 
         let function_namespace = file_namespace.add_sublevel();
         for (variable, name) in function.variable_names.iter() {
@@ -95,17 +95,17 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 fn add_ids_as_name(declaration: &Rc<TraitConformanceDeclaration>, name: &String, namespace: &mut namespaces::Level) {
     namespace.insert_keyword(declaration.id, name);
 
-    for declaration in declaration.trait_requirements_conformance.values() {
+    for declaration in declaration.trait_requirements_conformance.resolution.values() {
         add_ids_as_name(declaration, name, namespace);
     }
 }
 
 fn add_injections_to_namespace(declaration: &Rc<TraitConformanceDeclaration>, namespace: &mut namespaces::Level) {
-    for injected_function in declaration.function_implementations.values() {
-        namespace.register_definition(injected_function.pointer_id.clone(), &injected_function.human_interface.name);
+    for injected_function in declaration.abstract_function_resolutions.values() {
+        namespace.register_definition(injected_function.pointer_id.clone(), &injected_function.interface.name);
     }
 
-    for declaration in declaration.trait_requirements_conformance.values() {
+    for declaration in declaration.trait_requirements_conformance.resolution.values() {
         add_injections_to_namespace(declaration, namespace);
     }
 }
@@ -113,9 +113,9 @@ fn add_injections_to_namespace(declaration: &Rc<TraitConformanceDeclaration>, na
 pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
     write!(stream, "\n\ndef {}(", context.names[&function.implementation_id])?;
 
-    for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
-        write!(stream, "{}: ", context.names.get(&variable.id).unwrap())?;
-        types::transpile(stream, &variable.type_, context)?;
+    for (idx, parameter) in function.interface.parameters.iter().enumerate() {
+        write!(stream, "{}: ", context.names.get(&parameter.target.id).unwrap())?;
+        types::transpile(stream, &parameter.target.type_, context)?;
         write!(stream, ", ")?;
     }
 
@@ -125,9 +125,9 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
 
     write!(stream, ")")?;
 
-    if !function.machine_interface.return_type.unit.is_void() {
+    if !function.interface.return_type.unit.is_void() {
         write!(stream, " -> ", )?;
-        types::transpile(stream, &function.machine_interface.return_type, context)?;
+        types::transpile(stream, &function.interface.return_type, context)?;
     }
 
     docstrings::dump(stream, function, context)?;
@@ -138,13 +138,13 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
         return Ok(())
     }
 
-    for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
-        let variable_name = context.names.get(&variable.id).unwrap();
+    for (idx, parameter) in function.interface.parameters.iter().enumerate() {
+        let variable_name = context.names.get(&parameter.target.id).unwrap();
         let external_name = variable_name;  // external names are not supported in python
 
-        match &variable.type_.unit {
+        match &parameter.target.type_.unit {
             TypeUnit::Monad => {
-                let unit = &variable.type_.arguments[0].as_ref().unit;
+                let unit = &parameter.target.type_.arguments[0].as_ref().unit;
 
                 if let TypeUnit::Struct(s) = unit {
                     write!(
@@ -222,20 +222,20 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                 // no-op
             }
             else {
-                match &function.target {
+                match &function.call_type {
                     // Can reference the static function
-                    FunctionPointerTarget::Static { .. } => write!(stream, "{}", context.names[&function.pointer_id])?,
+                    FunctionCallType::Static { .. } => write!(stream, "{}", context.names[&function.pointer_id])?,
                     // Have to reference the function by trait
-                    FunctionPointerTarget::Polymorphic { declaration_id, abstract_function } => {
-                        write!(stream, "{}.{}", &context.names[declaration_id], context.names[&abstract_function.pointer_id])?;
+                    FunctionCallType::Polymorphic { abstract_function } => {
+                        write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&abstract_function.function_id])?;
                     }
                 }
                 write!(stream, "(")?;
 
-                let mut arguments_left = arguments.len() + function.machine_interface.requirements.len();
+                let mut arguments_left = arguments.len() + function.interface.requirements.len();
 
-                for ((param_key, variable), argument) in zip_eq(function.human_interface.parameter_names.iter(), arguments.iter()) {
-                    if let ParameterKey::Name(name) = &param_key {
+                for (parameter, argument) in zip_eq(function.interface.parameters.iter(), arguments.iter()) {
+                    if let ParameterKey::Name(name) = &parameter.external_key {
                         write!(stream, "{}=", name)?;
                     }
                     // Otherwise, pass as *args
@@ -248,7 +248,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                     }
                 }
 
-                for requirement in function.machine_interface.requirements.iter() {
+                for requirement in function.interface.requirements.iter() {
                     let implementation = &context.functions_by_id[&function.pointer_id];
                     let declaration = &implementation.conformance_delegations[requirement];
 

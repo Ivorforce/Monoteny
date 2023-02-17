@@ -8,7 +8,7 @@ use crate::linker::scopes::{Environment, Scope};
 use crate::program::allocation::Reference;
 use crate::program::builtins::traits;
 use crate::program::builtins::traits::Traits;
-use crate::program::functions::FunctionPointer;
+use crate::program::functions::{FunctionInterface, FunctionPointer};
 use crate::program::primitives;
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::{TypeProto, TypeUnit};
@@ -31,13 +31,13 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Math {
 
     // TODO We should also provide builtin implementations for these (call to from_literal)
 
-    let pi = FunctionPointer::make_constant("pi", &float_generic, vec![&float_requirement]);
+    let pi = FunctionPointer::new_static(FunctionInterface::new_constant("pi", &float_generic, vec![&float_requirement]));
     constants.overload_function(&pi);
 
-    let tau = FunctionPointer::make_constant("tau", &float_generic, vec![&float_requirement]);
+    let tau = FunctionPointer::new_static(FunctionInterface::new_constant("tau", &float_generic, vec![&float_requirement]));
     constants.overload_function(&tau);
 
-    let e = FunctionPointer::make_constant("e", &float_generic, vec![&float_requirement]);
+    let e = FunctionPointer::new_static(FunctionInterface::new_constant("e", &float_generic, vec![&float_requirement]));
     constants.overload_function(&e);
 
     Math {

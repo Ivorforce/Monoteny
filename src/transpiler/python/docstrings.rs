@@ -8,19 +8,19 @@ use crate::program::types::{TypeProto, TypeUnit};
 pub fn dump(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
     write!(stream, ":\n    \"\"\"\n    <Docstring TODO!>\n")?;
 
-    if !function.human_interface.parameter_names.is_empty() {
+    if !function.interface.parameters.is_empty() {
         write!(stream, "\n    Args:\n")?;
 
-        for (idx, (key, variable)) in function.human_interface.parameter_names.iter().enumerate() {
-            write!(stream, "        {}: ", context.names.get(&variable.id).unwrap())?;
-            transpile_type(stream, &variable.type_, context)?;
+        for (idx, parameter) in function.interface.parameters.iter().enumerate() {
+            write!(stream, "        {}: ", context.names.get(&parameter.target.id).unwrap())?;
+            transpile_type(stream, &parameter.target.type_, context)?;
             write!(stream, "\n")?;
         }
     }
 
-    if !function.machine_interface.return_type.unit.is_void() {
+    if !function.interface.return_type.unit.is_void() {
         write!(stream, "\n    Returns: ")?;
-        transpile_type(stream, &function.machine_interface.return_type, context)?;
+        transpile_type(stream, &function.interface.return_type, context)?;
         write!(stream, "\n")?;
     }
 

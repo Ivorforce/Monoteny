@@ -14,13 +14,13 @@ pub fn transpile_program(
     write!(header_stream, "\n\n")?;
 
     for function in program.functions.iter() {
-        let return_type = transpile_type(&function.machine_interface.return_type);
+        let return_type = transpile_type(&function.interface.return_type);
 
-        write!(header_stream, "{} {}(", return_type, function.human_interface.name)?;
+        write!(header_stream, "{} {}(", return_type, function.interface.name)?;
 
-        for (key, variable) in function.human_interface.parameter_names.iter() {
+        for parameter in function.interface.parameters.iter() {
             // External names do not exist in C. Let's just use the internal name.
-            write!(header_stream, "{} {},", transpile_type(&variable.type_), function.variable_names.get(variable).unwrap())?;
+            write!(header_stream, "{} {},", transpile_type(&parameter.target.type_), function.variable_names.get(&parameter.target).unwrap())?;
         }
 
         write!(header_stream, ") {{\n\n}}\n\n")?;

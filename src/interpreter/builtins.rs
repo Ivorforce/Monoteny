@@ -229,7 +229,7 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
     // -------------------------------------- Common --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    map.insert(builtins.debug.print.unwrap_id(), Box::new(|interpreter, expression_id| {
+    map.insert(builtins.debug.print.unwrap_id(), Box::new(|interpreter, expression_id, binding| {
         unsafe {
             let arg_id = &interpreter.function.expression_forest.arguments[expression_id][0];
             let arg = interpreter.evaluate(arg_id).unwrap();
@@ -267,14 +267,14 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
     }));
 
     let bool_layout = Layout::new::<bool>();
-    map.insert(builtins.common.true_.unwrap_id(), Box::new(move |interpreter, expression_id| {
+    map.insert(builtins.common.true_.unwrap_id(), Box::new(move |interpreter, expression_id, binding| {
         unsafe {
             let ptr = alloc(bool_layout);
             *(ptr as *mut bool) = true;
             return Some(Value { data: ptr, layout: bool_layout })
         }
     }));
-    map.insert(builtins.common.false_.unwrap_id(), Box::new(move |interpreter, expression_id| {
+    map.insert(builtins.common.false_.unwrap_id(), Box::new(move |interpreter, expression_id, binding| {
         unsafe {
             let ptr = alloc(bool_layout);
             *(ptr as *mut bool) = false;

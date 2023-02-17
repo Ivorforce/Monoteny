@@ -6,19 +6,20 @@ use std::fmt::{Debug, Formatter};
 use std::os::macos::raw::stat;
 use std::rc::Rc;
 use guard::guard;
-use itertools::Itertools;
+use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use strum::IntoEnumIterator;
 use crate::parser::abstract_syntax::Expression;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statement};
-use crate::program::functions::{FunctionPointer, FunctionPointerTarget};
+use crate::program::functions::{FunctionPointer, FunctionCallType, AbstractFunction};
 use crate::program::global::FunctionImplementation;
 use crate::program::Program;
 use crate::program::primitives;
+use crate::program::traits::{TraitBinding, TraitConformanceDeclaration};
 
 
-pub type FunctionInterpreterImpl = Box<dyn Fn(&mut FunctionInterpreter, &ExpressionID) -> Option<Value>>;
+pub type FunctionInterpreterImpl = Box<dyn Fn(&mut FunctionInterpreter, &ExpressionID, &TraitBinding) -> Option<Value>>;
 
 
 pub struct Value {
@@ -31,6 +32,7 @@ pub struct FunctionInterpreter<'a> {
     pub function_evaluators: &'a HashMap<Uuid, FunctionInterpreterImpl>,
 
     pub function: &'a FunctionImplementation,
+    pub binding: TraitBinding,
 
     pub assignments: HashMap<Uuid, Value>,
 }
@@ -45,8 +47,21 @@ pub fn run_program(program: &Program, builtins: &Builtins) {
     let mut evaluators = builtins::make_evaluators(builtins);
 
     for function in program.functions.iter() {
-        evaluators.insert(function.function_id, Box::new(|interpreter, expression_id| {
-            todo!()
+        let function = Rc::clone(function);
+        evaluators.insert(function.function_id, Box::new(move |interpreter, expression_id, binding| {
+            unsafe {
+                let arguments = interpreter.evaluate_arguments(expression_id);
+
+                let mut sub_interpreter = FunctionInterpreter {
+                    builtins: &interpreter.builtins,
+                    function_evaluators: &interpreter.function_evaluators,
+                    function: &function,
+                    binding: FunctionInterpreter::combine_bindings(&interpreter.binding, binding),
+                    assignments: HashMap::new(),
+                };
+                sub_interpreter.assign_arguments(arguments);
+                sub_interpreter.run()
+            }
         }));
     }
 
@@ -54,6 +69,7 @@ pub fn run_program(program: &Program, builtins: &Builtins) {
         builtins,
         function_evaluators: &evaluators,
         function: main_function,
+        binding: TraitBinding { resolution: HashMap::new() },
         assignments: HashMap::new(),
     };
     unsafe {
@@ -62,6 +78,13 @@ pub fn run_program(program: &Program, builtins: &Builtins) {
 }
 
 impl FunctionInterpreter<'_> {
+    pub unsafe fn assign_arguments(&mut self, arguments: Vec<Value>) {
+        // TODO Shouldn't use the human interface, but rather a set order of arguments.
+        for (arg, parameter) in zip_eq(arguments, self.function.interface.parameters.iter()) {
+            self.assignments.insert(parameter.target.id.clone(), arg);
+        }
+    }
+
     pub unsafe fn run(&mut self) -> Option<Value> {
         for statement in self.function.statements.iter() {
             match statement.as_ref() {
@@ -84,20 +107,58 @@ impl FunctionInterpreter<'_> {
         return None
     }
 
+    pub fn combine_bindings(lhs: &TraitBinding, rhs: &TraitBinding) -> TraitBinding {
+        TraitBinding {
+            resolution: lhs.resolution.iter().chain(rhs.resolution.iter())
+                .map(|(l, r)| (Rc::clone(l), Rc::clone(r)))
+                .collect()
+        }
+    }
+
+    fn _try_resolve(abstract_function: &Rc<AbstractFunction>, binding: &TraitBinding) -> Option<Rc<FunctionPointer>> {
+        for (requirement, resolution) in binding.resolution.iter() {
+            if let Some(resolution) = resolution.abstract_function_resolutions.get(abstract_function) {
+                return Some(Rc::clone(resolution))
+            }
+
+            if let Some(resolution) = FunctionInterpreter::_try_resolve(abstract_function, &resolution.trait_requirements_conformance) {
+                return Some(resolution)
+            }
+        }
+
+        return None
+    }
+
+    pub fn resolve(&self, pointer: &FunctionPointer) -> Uuid {
+        match &pointer.call_type {
+            FunctionCallType::Static { function_id } => *function_id,
+            FunctionCallType::Polymorphic { abstract_function, .. } => {
+                if let Some(result) = FunctionInterpreter::_try_resolve(abstract_function, &self.binding) {
+                    return self.resolve(&result)
+                }
+
+                panic!("Failed to resolve abstract function {}: {:?}", abstract_function.function_id, abstract_function.interface)
+            },
+        }
+    }
+
     pub unsafe fn evaluate(&mut self, expression_id: &ExpressionID) -> Option<Value> {
+        // TODO We should probably create an interpretation tree and an actual VM, where abstract functions are statically pre-resolved.
+        //  Function instances could be assigned an int ID and thus we can call the functions directly without a UUID hash lookup. Which should be nearly as fast as a switch statement.
+        //  ExpressionOperation outer switch would be replaced by having a function for every call. Literals would be stored and copied somewhere else.
+        //  FunctionInterpreter instances could also be cached - no need to re-create them recursively.
+        //  This would be managed by a global interpreter that is expandable dynamically. i.e. it can be re-used for interactive environments and so on.
+
         match &self.function.expression_forest.operations[expression_id] {
             ExpressionOperation::FunctionCall { function: fun, argument_targets, binding } => {
-                let function_id = match &fun.target {
-                    FunctionPointerTarget::Static { function_id } => function_id,
-                    FunctionPointerTarget::Polymorphic { .. } => todo!("Polymorphic resolving via binding is not supported yet")
-                };
-                let implementation = &self.function_evaluators.get(function_id);
+                let function_id = self.resolve(fun);
+                let implementation = &self.function_evaluators.get(&function_id);
 
                 guard!(let Some(implementation) = implementation else {
-                    panic!("Cannot find function ({}) with interface: {:?}", function_id, &fun.human_interface);
+                    panic!("Cannot find function ({}) with interface: {:?}", function_id, &fun.interface);
                 });
 
-                return implementation(self, expression_id)
+                return implementation(self, expression_id, binding)
             }
             ExpressionOperation::PairwiseOperations { .. } => {
                 panic!()
@@ -117,7 +178,7 @@ impl FunctionInterpreter<'_> {
         }
     }
 
-    pub unsafe fn evaluate_vec(&mut self, expression_id: &ExpressionID) -> Vec<Value> {
+    pub unsafe fn evaluate_arguments(&mut self, expression_id: &ExpressionID) -> Vec<Value> {
         self.function.expression_forest.arguments[expression_id].iter()
             .map(|x| self.evaluate(x).unwrap())
             .collect_vec()

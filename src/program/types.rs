@@ -7,7 +7,7 @@ use std::ops::BitXor;
 use guard::guard;
 use crate::program::traits::{Trait, TraitConformanceRequirement};
 use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
-use crate::program::functions::{FunctionOverload, FunctionPointer, HumanFunctionInterface, ParameterKey};
+use crate::program::functions::{FunctionOverload, FunctionPointer, FunctionInterface, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 
 use crate::program::primitives;
@@ -21,6 +21,11 @@ pub struct TypeProto {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum TypeUnit {
+    // Used because the expression_forest wants to bind a return type for an expression.
+    //  If none is bound, that would rather indicate an error.
+    //  If one is bound, and it's void, that means we KNOW it has return type void.
+    // Having it doesn't hurt anyway; an implementation might actually pass void objects around
+    //  to simplify logic.
     Void,  // Not a type
     MetaType,  // Type of a type
     Any(Uuid),  // some unknown type - may be described by requirements
@@ -68,7 +73,7 @@ impl Debug for TypeUnit {
         use TypeUnit::*;
         match self {
             Primitive(p) => write!(fmt, "{}", p.identifier_string()),
-            Struct(s) => write!(fmt, "{:?}", s.name),
+            Struct(s) => write!(fmt, "{}", s.name),
             Monad => write!(fmt, "Monad"),
             Generic(g) => write!(fmt, "Generic<{}>", g),
             Any(g) => write!(fmt, "Any<{}>", g),

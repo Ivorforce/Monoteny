@@ -126,9 +126,9 @@ impl Debug for ReferenceType {
         match self {
             Object(t) => write!(fmt, "{:?}", t.type_),
             FunctionOverload(f) => write!(fmt, "{}", &f.name),
-            PrecedenceGroup(p) => write!(fmt, "{:?}", &p.name),
+            PrecedenceGroup(p) => write!(fmt, "{}", &p.name),
             Keyword(s) => write!(fmt, "{}", s),
-            Trait(t) => write!(fmt, "{:?}", t.name),
+            Trait(t) => write!(fmt, "{}", t.name),
         }
     }
 }

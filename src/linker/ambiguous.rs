@@ -45,7 +45,7 @@ impl LinkerAmbiguity for AmbiguousNumberPrimitive {
                     &HashSet::from([requirement]), &linker.types
                 )?;
                 let declaration = binding.resolution.values().next().unwrap();
-                let parse_function = &declaration.function_implementations[
+                let parse_function = &declaration.abstract_function_resolutions[
                     if self.is_float { &linker.builtins.traits.parse_float_literal_function } else { &linker.builtins.traits.parse_int_literal_function }
                 ];
 
@@ -130,8 +130,8 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             let candidate = self.candidates.drain(..).next().unwrap();
             let binding = self.attempt_with_candidate(&mut linker.types, &candidate)?;
 
-            let argument_targets: Vec<Rc<ObjectReference>> = candidate.function.human_interface.parameter_names.iter()
-                .map(|x| Rc::clone(&x.1))
+            let argument_targets: Vec<Rc<ObjectReference>> = candidate.function.interface.parameters.iter()
+                .map(|x| Rc::clone(&x.target))
                 .collect();
 
             linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall {
@@ -154,7 +154,7 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             // TODO How so?
             let (candidate, err) = self.failed_candidates.iter().next().unwrap();
 
-            Err(LinkError::LinkError { msg: format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function.human_interface, err) })
+            Err(LinkError::LinkError { msg: format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function.interface, err) })
         } else {
             // TODO Print types of arguments too, for context.
             Err(LinkError::LinkError { msg: format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, self.failed_candidates.len(), &argument_types) })

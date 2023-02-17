@@ -17,7 +17,7 @@ use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanc
 use crate::program::{primitives, Program};
 use crate::program::allocation::{Reference, ReferenceType};
 use crate::program::builtins::*;
-use crate::program::functions::{FunctionForm, FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
+use crate::program::functions::{FunctionForm, FunctionPointer, FunctionCallType, FunctionInterface, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation, GlobalStatement};
 use crate::program::types::*;
@@ -57,8 +57,8 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
     // Resolve function bodies
     for fun in global_linker.functions.iter() {
         let mut variable_names = HashMap::new();
-        for (name, (_, ref_)) in zip_eq(fun.pointer.human_interface.parameter_names_internal.iter(), fun.pointer.human_interface.parameter_names.iter()) {
-            variable_names.insert(Rc::clone(ref_), name.clone());
+        for parameter in fun.pointer.interface.parameters.iter() {
+            variable_names.insert(Rc::clone(&parameter.target), parameter.internal_name.clone());
         }
 
         // TODO Inject traits, not pointers
@@ -79,9 +79,9 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
 
     let main_function = functions.iter()
         .filter(|f| {
-            f.human_interface.name == "main"
-            && f.human_interface.form == FunctionForm::Global
-            && f.human_interface.parameter_names.is_empty()
+            f.interface.name == "main"
+            && f.interface.form == FunctionForm::Global
+            && f.interface.parameters.is_empty()
         })
         .map(Rc::clone)
         .next();

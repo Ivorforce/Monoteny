@@ -8,7 +8,7 @@ use crate::linker::scopes::Scope;
 use crate::program::allocation::Reference;
 use crate::program::builtins::traits;
 use crate::program::builtins::traits::Traits;
-use crate::program::functions::FunctionPointer;
+use crate::program::functions::{FunctionInterface, FunctionPointer};
 use crate::program::primitives;
 use crate::program::traits::{Trait, TraitConformanceDeclaration};
 use crate::program::types::{TypeProto, TypeUnit};
@@ -98,7 +98,7 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         );
 
         // Pair-Associative
-        let eq_functions = traits::make_eq_functions(type_);
+        let eq_functions = traits::make_eq_functions(type_, FunctionPointer::new_static);
         add_function(&eq_functions.equal_to, primitive_type, &mut eq__ops, &mut constants);
         add_function(&eq_functions.not_equal_to, primitive_type, &mut neq_ops, &mut constants);
 
@@ -116,7 +116,7 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
             continue;
         }
 
-        let number_functions = traits::make_number_functions(&type_);
+        let number_functions = traits::make_number_functions(&type_, FunctionPointer::new_static);
 
         // Ord
         add_function(&number_functions.greater_than, primitive_type, &mut gr__ops, &mut constants);
@@ -143,7 +143,7 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         add_function(&number_functions.positive, primitive_type, &mut pos_ops, &mut constants);
         add_function(&number_functions.negative, primitive_type, &mut neg_ops, &mut constants);
 
-        let _parse_int_literal = FunctionPointer::make_operator("parse_int_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_);
+        let _parse_int_literal = FunctionPointer::new_static(FunctionInterface::new_operator("parse_int_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_));
         add_function(&_parse_int_literal, primitive_type, &mut parse_int_literal, &mut constants);
         let ParseableByIntLiteral = TraitConformanceDeclaration::make(
             &traits.ConstructableByIntLiteral, HashMap::from([(*traits.ConstructableByIntLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
@@ -175,11 +175,11 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
             continue;
         }
 
-        let float_functions = traits::make_float_functions(&type_);
+        let float_functions = traits::make_float_functions(&type_, FunctionPointer::new_static);
         add_function(&float_functions.exponent, primitive_type, &mut exp_ops, &mut constants);
         add_function(&float_functions.logarithm, primitive_type, &mut log_ops, &mut constants);
 
-        let _parse_float_literal = FunctionPointer::make_operator("parse_float_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_);
+        let _parse_float_literal = FunctionPointer::new_static(FunctionInterface::new_operator("parse_float_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_));
         add_function(&_parse_float_literal, primitive_type, &mut parse_float_literal, &mut constants);
         let ParseableByFloatLiteral = TraitConformanceDeclaration::make(
             &traits.ConstructableByFloatLiteral, HashMap::from([(*traits.ConstructableByFloatLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
@@ -196,13 +196,13 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         constants.trait_conformance_declarations.add(&float_conformance);
     }
 
-    let and_op = FunctionPointer::make_operator("and_f", 2, &bool_type, &bool_type);
+    let and_op = FunctionPointer::new_static(FunctionInterface::new_operator("and_f", 2, &bool_type, &bool_type));
     constants.overload_function(&and_op);
 
-    let or__op = FunctionPointer::make_operator("or_f", 2, &bool_type, &bool_type);
+    let or__op = FunctionPointer::new_static(FunctionInterface::new_operator("or_f", 2, &bool_type, &bool_type));
     constants.overload_function(&or__op);
 
-    let not_op = FunctionPointer::make_operator("not_f", 1, &bool_type, &bool_type);
+    let not_op = FunctionPointer::new_static(FunctionInterface::new_operator("not_f", 1, &bool_type, &bool_type));
     constants.overload_function(&not_op);
 
 

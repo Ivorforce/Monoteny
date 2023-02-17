@@ -13,7 +13,7 @@ trait String {
 }
 
 -- Static declarations and patterns are defined outside.
-def {lhs: String} + {rhs: String} -> String :: {
+def {lhs 'String} + {rhs 'String} -> String :: {
     String(characters: [lhs, rhs]@.flatten())
 }
 

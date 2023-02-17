@@ -9,7 +9,7 @@ use crate::program::allocation::{Mutability, ObjectReference, Reference};
 use crate::program::types::TypeProto;
 
 use crate::program::builtins::Builtins;
-use crate::program::functions::{FunctionPointer, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
+use crate::program::functions::{FunctionPointer, FunctionInterface, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::primitives;
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
@@ -24,7 +24,7 @@ pub enum Statement {
 
 pub enum ExpressionOperation {
     FunctionCall { function: Rc<FunctionPointer>, argument_targets: Vec<Rc<ObjectReference>>, binding: Box<TraitBinding> },
-    PairwiseOperations { functions: Vec<Rc<HumanFunctionInterface>> },
+    PairwiseOperations { functions: Vec<Rc<FunctionInterface>> },
     VariableLookup(Rc<ObjectReference>),
     ArrayLiteral,
     StringLiteral(String),

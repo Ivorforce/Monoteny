@@ -14,7 +14,7 @@ pub fn bin_op(_item: TokenStream) -> TokenStream {
     format!("
 {{
             let layout = Layout::new::<{result_type}>();
-            Box::new(move |interpreter, expression_id| {{
+            Box::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
                     let args = &interpreter.function.expression_forest.arguments[expression_id];
                     let l = interpreter.evaluate(&args[0]).unwrap();
@@ -38,7 +38,7 @@ pub fn un_op(_item: TokenStream) -> TokenStream {
 
     format!("{{
             let layout = Layout::new::<{type_}>();
-            Box::new(move |interpreter, expression_id| {{
+            Box::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
                     let args = &interpreter.function.expression_forest.arguments[expression_id];
                     let arg = interpreter.evaluate(&args[0]).unwrap();
@@ -64,7 +64,7 @@ pub fn fun_op(_item: TokenStream) -> TokenStream {
     format!("
 {{
             let layout = Layout::new::<{result_type}>();
-            Box::new(move |interpreter, expression_id| {{
+            Box::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
                     let args = &interpreter.function.expression_forest.arguments[expression_id];
                     let l = interpreter.evaluate(&args[0]).unwrap();
@@ -87,7 +87,7 @@ pub fn parse_op(_item: TokenStream) -> TokenStream {
 
     format!("{{
             let layout = Layout::new::<{type_}>();
-            Box::new(move |interpreter, expression_id| {{
+            Box::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
                     let args = &interpreter.function.expression_forest.arguments[expression_id];
                     let arg = interpreter.evaluate(&args[0]).unwrap();

@@ -9,7 +9,7 @@ use crate::linker::scopes::Environment;
 use crate::parser::abstract_syntax;
 use crate::parser::abstract_syntax::{Expression, OperatorArgument};
 use crate::program::allocation::{ObjectReference, Reference};
-use crate::program::functions::{FunctionForm, FunctionPointer, FunctionPointerTarget, HumanFunctionInterface, MachineFunctionInterface, ParameterKey};
+use crate::program::functions::{FunctionForm, FunctionPointer, FunctionCallType, FunctionInterface, ParameterKey, Parameter};
 use crate::program::generics::GenericAlias;
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::{PatternPart, TypeProto, TypeUnit};
@@ -20,41 +20,37 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
 
     let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x)).unwrap_or_else(|| Ok(TypeProto::void()))?;
 
-    let mut parameters: HashSet<Rc<ObjectReference>> = HashSet::new();
-    let mut parameter_names: Vec<(ParameterKey, Rc<ObjectReference>)> = vec![];
-    let mut parameter_names_internal: Vec<String> = vec![];
+    let mut parameters: Vec<Parameter> = vec![];
 
     if let Some(parameter) = &function.target_type {
         let variable = ObjectReference::make_immutable(type_factory.link_type(parameter)?);
 
-        parameters.insert(Rc::clone(&variable));
-        parameter_names.push((ParameterKey::Positional, variable));
-        parameter_names_internal.push(String::from("self"));
+        parameters.push(Parameter {
+            external_key: ParameterKey::Positional,
+            internal_name: String::from("self"),
+            target: Rc::clone(&variable),
+        });
     }
 
     for parameter in function.parameters.iter() {
         let variable = ObjectReference::make_immutable(type_factory.link_type(&parameter.param_type)?);
 
-        parameters.insert(Rc::clone(&variable));
-        parameter_names.push((parameter.key.clone(), variable));
-        parameter_names_internal.push(parameter.internal_name.clone());
+        parameters.push(Parameter {
+            external_key: parameter.key.clone(),
+            internal_name: parameter.internal_name.clone(),
+            target: Rc::clone(&variable),
+        });
     }
 
     Ok(Rc::new(FunctionPointer {
         pointer_id: Uuid::new_v4(),
-        target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
+        call_type: FunctionCallType::Static { function_id: Uuid::new_v4() },
 
-        machine_interface: Rc::new(MachineFunctionInterface {
+        interface: Rc::new(FunctionInterface {
             parameters,
             return_type,
             requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
-        }),
-        human_interface: Rc::new(HumanFunctionInterface {
             name: function.identifier.clone(),
-
-            parameter_names,
-            parameter_names_internal,
-
             form: if function.target_type.is_none() { FunctionForm::Global } else { FunctionForm::Member },
         }),
     }))
@@ -70,19 +66,13 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
 
         let fun = Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
+            call_type: FunctionCallType::Static { function_id: Uuid::new_v4() },
 
-            machine_interface: Rc::new(MachineFunctionInterface {
-                parameters: HashSet::new(),
+            interface: Rc::new(FunctionInterface {
+                parameters: vec![],
                 return_type,
                 requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
-            }),
-            human_interface: Rc::new(HumanFunctionInterface {
                 name: name.clone(),
-
-                parameter_names: vec![],
-                parameter_names_internal: vec![],
-
                 form: FunctionForm::Constant,
             }),
         });
@@ -96,31 +86,27 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
             continue;
         });
 
-        let mut parameters: HashSet<Rc<ObjectReference>> = HashSet::new();
-        let mut parameter_names: Vec<(ParameterKey, Rc<ObjectReference>)> = vec![];
-        let mut parameter_names_internal: Vec<String> = vec![];
+        let mut parameters: Vec<Parameter> = vec![];
 
         for (key, internal_name, type_expression) in arguments.into_iter() {
             let variable = ObjectReference::make_immutable(type_factory.link_type(type_expression)?);
 
-            parameters.insert(Rc::clone(&variable));
-            parameter_names.push((key.clone(), variable));
-            parameter_names_internal.push(internal_name.clone());
+            parameters.push(Parameter {
+                external_key: key.clone(),
+                internal_name: internal_name.clone(),
+                target: Rc::clone(&variable),
+            });
         }
 
         return Ok(Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            target: FunctionPointerTarget::Static { function_id: Uuid::new_v4() },
+            call_type: FunctionCallType::Static { function_id: Uuid::new_v4() },
 
-            machine_interface: Rc::new(MachineFunctionInterface {
+            interface: Rc::new(FunctionInterface {
                 parameters,
                 return_type,
                 requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
-            }),
-            human_interface: Rc::new(HumanFunctionInterface {
                 name: pattern.alias.clone(),
-                parameter_names,
-                parameter_names_internal,
 
                 form: FunctionForm::Global,
             }),

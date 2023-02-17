@@ -3,7 +3,7 @@ use uuid::Uuid;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use crate::program::computation_tree::{ExpressionForest, Statement};
-use crate::program::functions::{HumanFunctionInterface, MachineFunctionInterface};
+use crate::program::functions::{FunctionInterface};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::generics::TypeForest;
@@ -19,8 +19,7 @@ pub struct FunctionImplementation {
     pub function_id: Uuid,
     pub decorators: Vec<String>,
 
-    pub human_interface: Rc<HumanFunctionInterface>,
-    pub machine_interface: Rc<MachineFunctionInterface>,
+    pub interface: Rc<FunctionInterface>,
 
     pub conformance_delegations: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
 

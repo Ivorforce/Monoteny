@@ -1,10 +1,16 @@
 -- import(monoteny.dialects.common.0.0);
 
+def {$Number}.square() -> $Number :: self * self;
+
+def pi_ish -> $Float :: 3.14;
+
 @main
 def main() :: {
-    print("Test String Print");
+    print("Is 3 < 4 < 5:");
+    let three 'Float32 = 3;
+    let four 'Float64 = 4;
+    print(pi_ish > three and pi_ish < four);
 
-    let a 'Float32 = 2;
-    print(a ** 8 - 3 * 2 'Float32);
-    print(a > 5 or a <= 1);
+    let a 'Float32 = 2.0;
+    print(a ** 5 - 2);
 }

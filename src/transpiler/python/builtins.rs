@@ -1,6 +1,6 @@
 use uuid::Uuid;
 use crate::program::builtins::Builtins;
-use crate::program::functions::FunctionPointerTarget;
+use crate::program::functions::FunctionCallType;
 use crate::transpiler::namespaces;
 
 pub fn create(builtins: &Builtins) -> namespaces::Level {
@@ -56,7 +56,7 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
 
         let trait_namespace = namespace.add_sublevel();
         for fun in trait_.abstract_functions.iter() {
-            trait_namespace.register_definition(fun.pointer_id, &fun.human_interface.name);
+            trait_namespace.register_definition(fun.function_id, &fun.interface.name);
         }
     }
 
