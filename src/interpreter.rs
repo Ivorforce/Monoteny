@@ -1,4 +1,5 @@
 mod builtins;
+mod compiler;
 
 use std::alloc::{alloc, dealloc, Layout};
 use std::collections::HashMap;
@@ -46,23 +47,8 @@ pub fn run_program(program: &Program, builtins: &Builtins) {
     let main_function = find_main(program).expect("No main function!");
     let mut evaluators = builtins::make_evaluators(builtins);
 
-    for function in program.functions.iter() {
-        let function = Rc::clone(function);
-        evaluators.insert(function.function_id, Box::new(move |interpreter, expression_id, binding| {
-            unsafe {
-                let arguments = interpreter.evaluate_arguments(expression_id);
-
-                let mut sub_interpreter = FunctionInterpreter {
-                    builtins: &interpreter.builtins,
-                    function_evaluators: &interpreter.function_evaluators,
-                    function: &function,
-                    binding: FunctionInterpreter::combine_bindings(&interpreter.binding, binding),
-                    assignments: HashMap::new(),
-                };
-                sub_interpreter.assign_arguments(arguments);
-                sub_interpreter.run()
-            }
-        }));
+    for function in &program.functions {
+        evaluators.insert(function.function_id.clone(), compiler::compile_function(function));
     }
 
     let mut interpreter = FunctionInterpreter {
