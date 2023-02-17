@@ -14,6 +14,7 @@ use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanc
 use crate::program::types::{TypeProto, TypeUnit};
 
 
+// TODO This module should be written in monoteny.
 pub struct Math {
     pub pi: Rc<FunctionPointer>,
     pub tau: Rc<FunctionPointer>,
