@@ -4,6 +4,41 @@ Welcome to the mathemagical land of Monoteny!
 
 Monoteny is an experimental language intended for making libraries and solving deterministic problems. It aims to expose logic using simple syntax, selectively borrowing concepts from many different languages that have worked well for this purpose.
 
+## Code
+
+```
+-- Define structural named tuples.
+tuple Cartesian(x, y, z);
+tuple Spherical(l, e, a);
+
+@main
+def cartesian_to_spherical_coordinates() :: {
+  -- Define dimensions
+  let n, coord;
+  
+  -- Generate our input randomly, for demonstration's sake.
+  let xyz 'Float32[n: 100, coord: Cartesian] = random(axes=[n,  coord]);
+
+  -- Destructure to x, y, z arrays, each 'Float32[n: 100]'
+  let Cartesian(x, y, z) = xyz;
+  
+  -- Pre-compute xz_sq
+  let xz_sq = x ** 2 + z ** 2;
+  
+  -- Create a multimonad 'Float32[n: 100, coord: Spherical] 
+  let lea = Spherical(
+    l: (xz_sq + y ** 2).sqrt(),
+    e: atan2(xz_sq.sqrt(), y),
+    a: atan2(z, x),
+  )->[coord];
+  
+  -- Print the multimonad
+  print(lea);
+}
+```
+
+More code can be found in the [examples](./examples) directory.
+
 ## Philosophy
 
 ### Idealistic Simplicity
