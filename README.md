@@ -17,15 +17,15 @@ On a syntactical level, many decisions are trade-offs between readability vs. br
 Monoteny recognizes multiplicity (data) usually comes in predictable forms:
 
 - Some known number of objects of different types.
-  - Product Types (-> Traits / Structs)
+  - Fields of an object -> Monoteny: Trait / Struct
 - One object of varying subtype.
-  - Tagged Union (-> Poly / Enums)
+  - Tagged Union -> Monoteny: Enum / Poly
 - Some unknown number of objects of the same type.
-  - Monads (-> Arrays)
+  - Arrays / Dictionaries -> Monoteny: Multimonad
 
 A monad is a wrapper that hides multiplicity on interaction with the type. Only when referenced (e.g. `a@[0]`) is interaction with the monadic wrapper permitted. A monadic wrapper might be anything from arrays over dictionaries to streams or nullability.
 
-Meanwhile, objects come with a known type and can only be interacted with using declared traits. Functions cannot extract more knowledge from an object than they are given, aiding determinism. Often, objects are viewed from a minimalist perspective in order to reduce complexity.
+Meanwhile, objects come with a known type and can only be interacted with using declared traits. Functions cannot extract more knowledge from an object than they are given, trading freedom for functional determinism. Often, objects are viewed from a minimalist perspective in order to reduce complexity.
 
 Polymorphic types carry a sub-type per object. Generic traits defined on the supertype are adopted. For non-generically defined functions, the sub-types must be acted on one by one. 
 
