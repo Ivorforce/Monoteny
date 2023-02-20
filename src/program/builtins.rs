@@ -1,43 +1,59 @@
+use std::collections::HashMap;
 use std::rc::Rc;
-
-use crate::linker::scopes::Scope;
+use crate::linker::scopes;
 
 pub mod precedence;
 pub mod debug;
-pub mod traits;
+pub mod core;
 pub mod primitives;
 pub mod math;
 pub mod common;
-mod transpilation;
+pub mod transpilation;
+pub mod traits;
 
 pub struct Builtins {
-    pub traits: traits::Traits,
-    pub debug: debug::Functions,
-    pub primitives: primitives::Primitives,
+    pub core: core::Core,
     pub precedence_groups: precedence::PrecedenceGroups,
 
     pub common: common::Common,
     pub math: math::Math,
-    pub transpilation: transpilation::Transpilation,
 
-    pub global_constants: Scope<'static>,
+    pub debug: debug::Debug,
+    pub transpilation: transpilation::Transpilation,
 }
 
 pub fn create_builtins() -> Rc<Builtins> {
-    let mut constants: Scope = Scope::new();
-
-    let precedence_groups = precedence::make_groups(&mut constants);
-    let traits = traits::make(&mut constants);
-    let primitives = primitives::make(&mut constants, &traits);
+    let core = core::create();
 
     Rc::new(Builtins {
-        common: common::make(&mut constants, &traits),
-        math: math::make(&mut constants, &traits),
-        debug: debug::make_functions(&mut constants),
-        transpilation: transpilation::make(&mut constants, &traits),
-        primitives,
-        precedence_groups,
-        traits,
-        global_constants: constants,
+        common: common::create(&core),
+        math: math::create(&core),
+        debug: debug::create(),
+        transpilation: transpilation::create(&core),
+        core,
+        precedence_groups: precedence::create(),
     })
+}
+
+impl Builtins {
+    pub fn create_scope(&self) -> scopes::Scope {
+        let mut scope = scopes::Scope::new();
+
+        for precedence_group in self.precedence_groups.list.iter() {
+            scope.precedence_groups.push((Rc::clone(precedence_group), HashMap::new()));
+        }
+
+        for module in [
+            &self.core.module,
+            &self.precedence_groups.module,
+            &self.common.module,
+            &self.math.module,
+            &self.debug.module,
+            &self.transpilation.module,
+        ] {
+            scope.import(module).unwrap();
+        }
+
+        scope
+    }
 }

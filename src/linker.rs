@@ -11,7 +11,7 @@ use crate::parser;
 use crate::parser::abstract_syntax;
 use crate::program::computation_tree::*;
 use crate::linker::global::link_file;
-use crate::program::builtins::*;
+use crate::program::builtins::Builtins;
 use crate::program::Program;
 
 

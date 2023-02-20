@@ -6,16 +6,17 @@ use strum::IntoEnumIterator;
 use crate::linker::scopes;
 use crate::linker::scopes::Scope;
 use crate::program::allocation::Reference;
-use crate::program::builtins::traits;
+use crate::program::builtins::{core, traits};
+use crate::program::builtins::core::Core;
 use crate::program::builtins::traits::Traits;
 use crate::program::functions::{FunctionInterface, FunctionPointer};
+use crate::program::module::Module;
 use crate::program::primitives;
 use crate::program::traits::{Trait, TraitConformanceDeclaration};
 use crate::program::types::{TypeProto, TypeUnit};
 
-pub struct Primitives {
-    metatypes: HashMap<primitives::Type, Box<TypeProto>>,
 
+pub struct PrimitiveFunctions {
     // logical
     pub and: Rc<FunctionPointer>,
     pub or: Rc<FunctionPointer>,
@@ -50,17 +51,26 @@ pub struct Primitives {
     pub parse_float_literal: HashMap<primitives::Type, Rc<FunctionPointer>>,
 }
 
+pub fn create_traits(module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>> {
+    let mut traits: HashMap<primitives::Type, Rc<Trait>> = Default::default();
 
-pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
-    let bool_type = TypeProto::unit(TypeUnit::Primitive(primitives::Type::Bool));
+    for primitive_type in primitives::Type::iter() {
+        let trait_ = Trait::new(primitive_type.identifier_string());
+        traits.insert(primitive_type, Rc::clone(&trait_));
+        module.traits.insert(trait_);
+    }
 
-    let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, category: &mut HashMap<primitives::Type, Rc<FunctionPointer>>, constants: &mut scopes::Scope| {
+    traits
+}
+
+pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<primitives::Type, Rc<Trait>>) -> PrimitiveFunctions {
+    let bool_type = TypeProto::simple_struct(&basis[&primitives::Type::Bool]);
+
+    let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, category: &mut HashMap<primitives::Type, Rc<FunctionPointer>>, module: &mut Module| {
         category.insert(primitive_type, Rc::clone(&function));
-        constants.overload_function(&function);
+        module.functions.insert(Rc::clone(&function));
     };
 
-
-    let mut primitive_metatypes = HashMap::new();
 
     let mut eq__ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
     let mut neq_ops: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
@@ -86,23 +96,18 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
     let mut parse_int_literal: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
     let mut parse_float_literal: HashMap<primitives::Type, Rc<FunctionPointer>> = HashMap::new();
 
-    for primitive_type in primitives::Type::iter() {
-        let type_ = &TypeProto::unit(TypeUnit::Primitive(primitive_type));
-        let metatype = TypeProto::meta(type_.clone());
+    for (primitive_type, trait_) in basis.iter() {
+        let type_ = TypeProto::simple_struct(&basis[primitive_type]);
+        let primitive_type = *primitive_type;
 
-        primitive_metatypes.insert(primitive_type, metatype.clone());
-        constants.insert_singleton(
-            scopes::Environment::Global,
-            Reference::make_immutable_type(metatype.clone()),
-            &primitive_type.identifier_string()
-        );
+        module.traits.insert(Rc::clone(&trait_));
 
         // Pair-Associative
-        let eq_functions = traits::make_eq_functions(type_, FunctionPointer::new_static);
-        add_function(&eq_functions.equal_to, primitive_type, &mut eq__ops, &mut constants);
-        add_function(&eq_functions.not_equal_to, primitive_type, &mut neq_ops, &mut constants);
+        let eq_functions = traits::make_eq_functions(&type_, &bool_type,FunctionPointer::new_static);
+        add_function(&eq_functions.equal_to, primitive_type, &mut eq__ops, module);
+        add_function(&eq_functions.not_equal_to, primitive_type, &mut neq_ops, module);
 
-        let eq_conformance = TraitConformanceDeclaration::make(
+        let Eq = TraitConformanceDeclaration::make(
             &traits.Eq,
             HashMap::from([(*traits.Eq.generics.iter().next().unwrap(), type_.clone())]),
             vec![
@@ -110,50 +115,50 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
                 (&traits.Eq_functions.not_equal_to, &eq_functions.not_equal_to),
             ]
         );
-        constants.trait_conformance_declarations.add(&eq_conformance);
+        module.trait_conformance_declarations.insert(Rc::clone(&Eq));
 
         if !primitive_type.is_number() {
             continue;
         }
 
-        let number_functions = traits::make_number_functions(&type_, FunctionPointer::new_static);
+        let number_functions = traits::make_number_functions(&type_, &bool_type,FunctionPointer::new_static);
 
         // Ord
-        add_function(&number_functions.greater_than, primitive_type, &mut gr__ops, &mut constants);
-        add_function(&number_functions.greater_than_or_equal_to, primitive_type, &mut geq_ops, &mut constants);
-        add_function(&number_functions.lesser_than, primitive_type, &mut le__ops, &mut constants);
-        add_function(&number_functions.lesser_than_or_equal_to, primitive_type, &mut leq_ops, &mut constants);
+        add_function(&number_functions.greater_than, primitive_type, &mut gr__ops, module);
+        add_function(&number_functions.greater_than_or_equal_to, primitive_type, &mut geq_ops, module);
+        add_function(&number_functions.lesser_than, primitive_type, &mut le__ops, module);
+        add_function(&number_functions.lesser_than_or_equal_to, primitive_type, &mut leq_ops, module);
 
-        let ord_conformance = TraitConformanceDeclaration::make_child(
-            &traits.Ord, vec![&eq_conformance], vec![
+        let Ord = TraitConformanceDeclaration::make_child(
+            &traits.Ord, vec![&Eq], vec![
                 (&traits.Number_functions.greater_than, &number_functions.greater_than),
                 (&traits.Number_functions.greater_than_or_equal_to, &number_functions.greater_than_or_equal_to),
                 (&traits.Number_functions.lesser_than, &number_functions.lesser_than),
                 (&traits.Number_functions.lesser_than_or_equal_to, &number_functions.lesser_than_or_equal_to),
             ]
         );
-        constants.trait_conformance_declarations.add(&ord_conformance);
+        module.trait_conformance_declarations.insert(Rc::clone(&Ord));
 
         // Number
-        add_function(&number_functions.add, primitive_type, &mut add_ops, &mut constants);
-        add_function(&number_functions.subtract, primitive_type, &mut sub_ops, &mut constants);
-        add_function(&number_functions.multiply, primitive_type, &mut mul_ops, &mut constants);
-        add_function(&number_functions.divide, primitive_type, &mut div_ops, &mut constants);
-        add_function(&number_functions.modulo, primitive_type, &mut mod_ops, &mut constants);
-        add_function(&number_functions.positive, primitive_type, &mut pos_ops, &mut constants);
-        add_function(&number_functions.negative, primitive_type, &mut neg_ops, &mut constants);
+        add_function(&number_functions.add, primitive_type, &mut add_ops, module);
+        add_function(&number_functions.subtract, primitive_type, &mut sub_ops, module);
+        add_function(&number_functions.multiply, primitive_type, &mut mul_ops, module);
+        add_function(&number_functions.divide, primitive_type, &mut div_ops, module);
+        add_function(&number_functions.modulo, primitive_type, &mut mod_ops, module);
+        add_function(&number_functions.positive, primitive_type, &mut pos_ops, module);
+        add_function(&number_functions.negative, primitive_type, &mut neg_ops, module);
 
         let _parse_int_literal = FunctionPointer::new_static(FunctionInterface::new_operator("parse_int_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_));
-        add_function(&_parse_int_literal, primitive_type, &mut parse_int_literal, &mut constants);
+        add_function(&_parse_int_literal, primitive_type, &mut parse_int_literal, module);
         let ParseableByIntLiteral = TraitConformanceDeclaration::make(
             &traits.ConstructableByIntLiteral, HashMap::from([(*traits.ConstructableByIntLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
                 (&traits.parse_int_literal_function, &_parse_int_literal),
             ]
         );
-        constants.trait_conformance_declarations.add(&ParseableByIntLiteral);
+        module.trait_conformance_declarations.insert(Rc::clone(&ParseableByIntLiteral));
 
-        let number_conformance = TraitConformanceDeclaration::make_child(
-            &traits.Number, vec![&ord_conformance], vec![
+        let Number = TraitConformanceDeclaration::make_child(
+            &traits.Number, vec![&Ord], vec![
                 (&traits.Number_functions.add, &number_functions.add),
                 (&traits.Number_functions.subtract, &number_functions.subtract),
                 (&traits.Number_functions.multiply, &number_functions.multiply),
@@ -163,11 +168,11 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
                 (&traits.Number_functions.negative, &number_functions.negative),
             ]
         );
-        constants.trait_conformance_declarations.add(&number_conformance);
+        module.trait_conformance_declarations.insert(Rc::clone(&Number));
 
         if primitive_type.is_int() {
-            constants.trait_conformance_declarations.add(
-                &TraitConformanceDeclaration::make_child(&traits.Int, vec![&number_conformance, &ParseableByIntLiteral], vec![])
+            module.trait_conformance_declarations.insert(
+                TraitConformanceDeclaration::make_child(&traits.Int, vec![&Number, &ParseableByIntLiteral], vec![])
             );
         }
 
@@ -176,39 +181,37 @@ pub fn make(mut constants: &mut Scope, traits: &Traits) -> Primitives {
         }
 
         let float_functions = traits::make_float_functions(&type_, FunctionPointer::new_static);
-        add_function(&float_functions.exponent, primitive_type, &mut exp_ops, &mut constants);
-        add_function(&float_functions.logarithm, primitive_type, &mut log_ops, &mut constants);
+        add_function(&float_functions.exponent, primitive_type, &mut exp_ops, module);
+        add_function(&float_functions.logarithm, primitive_type, &mut log_ops, module);
 
         let _parse_float_literal = FunctionPointer::new_static(FunctionInterface::new_operator("parse_float_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_));
-        add_function(&_parse_float_literal, primitive_type, &mut parse_float_literal, &mut constants);
+        add_function(&_parse_float_literal, primitive_type, &mut parse_float_literal, module);
         let ParseableByFloatLiteral = TraitConformanceDeclaration::make(
             &traits.ConstructableByFloatLiteral, HashMap::from([(*traits.ConstructableByFloatLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
                 (&traits.parse_float_literal_function, &_parse_float_literal),
             ]
         );
-        constants.trait_conformance_declarations.add(&ParseableByFloatLiteral);
+        module.trait_conformance_declarations.insert(Rc::clone(&ParseableByFloatLiteral));
 
-        let float_conformance = TraitConformanceDeclaration::make_child(&traits.Float, vec![&number_conformance, &ParseableByIntLiteral, &ParseableByFloatLiteral], vec![
+        let Float = TraitConformanceDeclaration::make_child(&traits.Float, vec![&Number, &ParseableByIntLiteral, &ParseableByFloatLiteral], vec![
             (&traits.Float_functions.exponent, &float_functions.exponent),
             (&traits.Float_functions.logarithm, &float_functions.logarithm),
         ]);
 
-        constants.trait_conformance_declarations.add(&float_conformance);
+        module.trait_conformance_declarations.insert(Rc::clone(&Float));
     }
 
     let and_op = FunctionPointer::new_static(FunctionInterface::new_operator("and_f", 2, &bool_type, &bool_type));
-    constants.overload_function(&and_op);
+    module.functions.insert(Rc::clone(&and_op));
 
     let or__op = FunctionPointer::new_static(FunctionInterface::new_operator("or_f", 2, &bool_type, &bool_type));
-    constants.overload_function(&or__op);
+    module.functions.insert(Rc::clone(&or__op));
 
     let not_op = FunctionPointer::new_static(FunctionInterface::new_operator("not_f", 1, &bool_type, &bool_type));
-    constants.overload_function(&not_op);
+    module.functions.insert(Rc::clone(&not_op));
 
 
-    Primitives {
-        metatypes: primitive_metatypes,
-
+    PrimitiveFunctions {
         and: and_op,
         or: or__op,
 

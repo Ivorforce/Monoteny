@@ -4,8 +4,9 @@ use proc_macro::TokenStream;
 #[macro_export]
 #[proc_macro]
 pub fn bin_op(_item: TokenStream) -> TokenStream {
-    let args_str = _item.to_string(); // TODO Stringifying back is stupid; is there a way to force the lexer to split just on spaces?
+    let mut args_str = _item.to_string();  // TODO Stringifying back is stupid; is there a way to force the lexer to split just on spaces?
     let mut args = args_str.split(" ");
+
     let type_ = args.next().unwrap();
     let op = args.next().unwrap();
     let result_type = args.next().unwrap();
@@ -121,31 +122,37 @@ pub fn load_constant(_item: TokenStream) -> TokenStream {
 #[macro_export]
 #[proc_macro]
 pub fn load_float_constant(_item: TokenStream) -> TokenStream {
-    let mut args = _item.into_iter();
+    let mut args_str = _item.to_string();  // TODO Stringifying back is stupid; is there a way to force the lexer to split just on spaces?
+    let mut args = args_str.split(" ");
+
     let value = args.next().unwrap();
+    let f32_type = args.next().unwrap();
+    let f64_type = args.next().unwrap();
 
     format!("{{
         let f32_layout = Layout::new::<f32>();
         let f64_layout = Layout::new::<f64>();
+        let f32_type = {f32_type}.clone();
+        let f64_type = {f64_type}.clone();
 
         Box::new(move |interpreter, expression_id, binding| {{
             unsafe {{
                 let return_type = interpreter.function.type_forest.get_unit(expression_id).unwrap();
 
-                match return_type {{
-                    TypeUnit::Primitive(primitives::Type::Float32) => {{
-                        let ptr = alloc(f32_layout);
-                        *(ptr as *mut f32) = {value};
-                        return Some(Value {{ data: ptr, layout: f32_layout }})
-                    }}
-                    TypeUnit::Primitive(primitives::Type::Float64) => {{
-                        let ptr = alloc(f64_layout);
-                        *(ptr as *mut f64) = {value};
-                        return Some(Value {{ data: ptr, layout: f64_layout }})
-                    }}
-                    _ => panic!(\"Non-float type\")
+                if return_type == &f32_type {{
+                    let ptr = alloc(f32_layout);
+                    *(ptr as *mut f32) = {value};
+                    return Some(Value {{ data: ptr, layout: f32_layout }})
+                }}
+                else if return_type == &f64_type {{
+                    let ptr = alloc(f64_layout);
+                    *(ptr as *mut f64) = {value};
+                    return Some(Value {{ data: ptr, layout: f64_layout }})
+                }}
+                else {{
+                    panic!(\"Non-float type\")
                 }}
             }}
         }})
-    }}", value=value).parse().unwrap()
+    }}", value=value, f32_type=f32_type, f64_type=f64_type).parse().unwrap()
 }

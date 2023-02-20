@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::LinkError;
 use crate::program::allocation::{Mutability, ObjectReference, Reference};
 use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
-use crate::program::types::{TypeProto};
+use crate::program::types::{TypeProto, TypeUnit};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum FunctionForm {
@@ -37,7 +37,7 @@ pub struct FunctionPointer {
 /// Reference to a multiplicity of functions, usually resolved when attempting to call
 #[derive(Clone, PartialEq, Eq)]
 pub struct FunctionOverload {
-    pub pointers: HashSet<Rc<FunctionPointer>>,
+    pub pointers: HashSet<Rc<ObjectReference>>,
     pub name: String,
     pub form: FunctionForm,
 }
@@ -170,7 +170,7 @@ impl AbstractFunction {
 impl FunctionOverload {
     pub fn from(function: &Rc<FunctionPointer>) -> Rc<FunctionOverload> {
         Rc::new(FunctionOverload {
-            pointers: HashSet::from([Rc::clone(function)]),
+            pointers: HashSet::from([ObjectReference::make_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(function))))]),
             name: function.interface.name.clone(),
             form: function.interface.form.clone(),
         })
@@ -182,10 +182,19 @@ impl FunctionOverload {
         }
 
         Ok(Rc::new(FunctionOverload {
-            pointers: self.pointers.iter().chain([function]).map(Rc::clone).collect(),
+            pointers: self.pointers.iter().map(Rc::clone)
+                .chain([ObjectReference::make_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(function))))])
+                .collect(),
             name: self.name.clone(),
             form: self.form.clone(),
         }))
+    }
+
+    pub fn functions(&self) -> Vec<Rc<FunctionPointer>> {
+        self.pointers.iter().map(|x| match &x.type_.unit {
+            TypeUnit::Function(f) => Rc::clone(f),
+            _ => panic!("Function overload has a non-function!")
+        }).collect()
     }
 }
 

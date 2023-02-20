@@ -1,3 +1,4 @@
+use std::arch::x86_64::__m128;
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
@@ -25,9 +26,14 @@ pub struct Reference {
 #[derive(Clone, PartialEq, Eq)]
 pub enum ReferenceType {
     Object(Rc<ObjectReference>),
+    // Keywords aren't really objects and can't be logically passed around.
     Keyword(String),
-    // TODO This could be an object type in the future, I think.
+    // This COULD be an object, but only if it 'inherits' the callable interfaces
+    //  from ALL included overloads. Overall, this is probably too confusing and thus not worth
+    //  the effort. Rather, as in other languages, we should expect the user to resolve the overload
+    //  - either immediately, or by context (e.g. `(should_add ? add : sub)(1, 2)`).
     FunctionOverload(Rc<FunctionOverload>),
+    // Maybe this could be an object or even trait in the future.
     PrecedenceGroup(Rc<PrecedenceGroup>),
 }
 
@@ -110,6 +116,13 @@ impl ObjectReference {
             type_,
             mutability: Mutability::Immutable
         })
+    }
+
+    pub fn as_function_pointer(&self) -> Result<&Rc<FunctionPointer>, LinkError> {
+        match &self.type_.unit {
+            TypeUnit::Function(f) => Ok(f),
+            _ => Err(LinkError::LinkError { msg: format!("Object is not a function in this context.") })
+        }
     }
 }
 

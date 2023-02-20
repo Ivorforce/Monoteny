@@ -1,7 +1,7 @@
 use uuid::Uuid;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Formatter, Pointer};
 use std::collections::{HashMap, HashSet};
 use std::ops::BitXor;
 use guard::guard;
@@ -31,8 +31,8 @@ pub enum TypeUnit {
     Any(Uuid),  // some unknown type - may be described by requirements
     Generic(GenericAlias),  // some type that isn't bound yet
     Monad,  // Bound to a monad with arguments [unit, dimensions...]
-    Primitive(primitives::Type),  // a primitive
     Struct(Rc<Trait>),  // Bound to an instance of some trait (non-abstract)
+    Function(Rc<FunctionPointer>),  // Bound to a function / reference to a function.
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -72,13 +72,13 @@ impl Debug for TypeUnit {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         use TypeUnit::*;
         match self {
-            Primitive(p) => write!(fmt, "{}", p.identifier_string()),
             Struct(s) => write!(fmt, "{}", s.name),
             Monad => write!(fmt, "Monad"),
             Generic(g) => write!(fmt, "Generic<{}>", g),
             Any(g) => write!(fmt, "Any<{}>", g),
             MetaType => write!(fmt, "MetaType"),
             Void => write!(fmt, "Void"),
+            Function(f) => f.fmt(fmt),
         }
     }
 }
@@ -101,6 +101,10 @@ impl TypeProto {
             unit: TypeUnit::MetaType,
             arguments: vec![subtype]
         })
+    }
+
+    pub fn simple_struct(trait_: &Rc<Trait>) -> Box<TypeProto> {
+        TypeProto::unit(TypeUnit::Struct(Rc::clone(trait_)))
     }
 
     pub fn monad(unit: Box<TypeProto>) -> Box<TypeProto> {

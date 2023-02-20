@@ -48,9 +48,10 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_function_body(mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Rc<FunctionImplementation>, LinkError> {
         let mut conformance_delegations = HashMap::new();
         let mut scope = scope.subscope();
+
         for requirement in self.function.interface.requirements.iter() {
             let declaration = Trait::assume_granted(&requirement.trait_, requirement.binding.clone());
-            scope.add_trait_conformance(&declaration);
+            scope.add_implicit_trait_conformance(&declaration)?;
             conformance_delegations.insert(Rc::clone(requirement), declaration);
         }
 
@@ -267,7 +268,9 @@ impl <'a> ImperativeLinker<'a> {
                             }
                             FunctionForm::Member => panic!(),
                             FunctionForm::Constant => {
-                                precedence::Token::Expression(self.link_function_call(&overload.pointers, &overload.name, vec![], vec![], scope)?)
+                                precedence::Token::Expression(
+                                    self.link_function_call(&overload.functions(), &overload.name, vec![], vec![], scope)?
+                                )
                             }
                         }
                     }
@@ -341,7 +344,7 @@ impl <'a> ImperativeLinker<'a> {
             abstract_syntax::Term::StringLiteral(string) => {
                 precedence::Token::Expression(self.link_unambiguous_expression(
                     vec![],
-                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.traits.String))),
+                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.core.traits.String))),
                     ExpressionOperation::StringLiteral(string.clone())
                 )?)
             }
@@ -352,7 +355,7 @@ impl <'a> ImperativeLinker<'a> {
         todo!()
     }
 
-    pub fn link_function_call(&mut self, functions: &HashSet<Rc<FunctionPointer>>, fn_name: &String, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
+    pub fn link_function_call(&mut self, functions: &Vec<Rc<FunctionPointer>>, fn_name: &String, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
         // TODO Check if any arguments are void before anything else
         let seed = Uuid::new_v4();
 

@@ -4,7 +4,6 @@ mod compiler;
 use std::alloc::{alloc, dealloc, Layout};
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use std::os::macos::raw::stat;
 use std::rc::Rc;
 use guard::guard;
 use itertools::{Itertools, zip_eq};

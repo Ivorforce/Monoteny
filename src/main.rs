@@ -54,7 +54,7 @@ fn main() -> Result<(), LinkError> {
             let path = sub_matches.get_one::<PathBuf>("PATH").unwrap();
 
             let builtins = program::builtins::create_builtins();
-            let builtin_variable_scope = &builtins.global_constants;
+            let builtin_variable_scope = builtins.create_scope();
 
             let content = std::fs::read_to_string(&path)
                 .expect("could not read file");
@@ -73,7 +73,7 @@ fn main() -> Result<(), LinkError> {
             let should_output_tree = sub_matches.is_present("TREE");
 
             let builtins = program::builtins::create_builtins();
-            let builtin_variable_scope = &builtins.global_constants;
+            let builtin_variable_scope = &builtins.create_scope();
 
             for path in paths {
                 println!("Checking {:?}...", path);
@@ -110,7 +110,7 @@ fn main() -> Result<(), LinkError> {
 
             let syntax_tree = parser::parse_program(&content);
 
-            let builtin_variable_scope = &builtins.global_constants;
+            let builtin_variable_scope = &builtins.create_scope();
             let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;
 
             for output_extension in output_extensions {

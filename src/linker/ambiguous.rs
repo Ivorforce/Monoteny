@@ -33,9 +33,9 @@ impl LinkerAmbiguity for AmbiguousNumberPrimitive {
                     literal_expression_id.clone(),
                     ExpressionOperation::StringLiteral(self.value.clone())
                 );
-                linker.types.bind(literal_expression_id.clone(), TypeProto::unit(TypeUnit::Struct(Rc::clone(&linker.builtins.traits.String))).as_ref())?;
+                linker.types.bind(literal_expression_id.clone(), TypeProto::unit(TypeUnit::Struct(Rc::clone(&linker.builtins.core.traits.String))).as_ref())?;
 
-                let trait_ = Rc::clone(if self.is_float { &linker.builtins.traits.ConstructableByFloatLiteral } else { &linker.builtins.traits.ConstructableByIntLiteral });
+                let trait_ = Rc::clone(if self.is_float { &linker.builtins.core.traits.ConstructableByFloatLiteral } else { &linker.builtins.core.traits.ConstructableByIntLiteral });
                 let requirement = Rc::new(TraitConformanceRequirement {
                     id: Uuid::new_v4(),
                     binding: HashMap::from([(*trait_.generics.iter().next().unwrap(), type_.clone())]),
@@ -46,7 +46,7 @@ impl LinkerAmbiguity for AmbiguousNumberPrimitive {
                 )?;
                 let declaration = binding.resolution.values().next().unwrap();
                 let parse_function = &declaration.abstract_function_resolutions[
-                    if self.is_float { &linker.builtins.traits.parse_float_literal_function } else { &linker.builtins.traits.parse_int_literal_function }
+                    if self.is_float { &linker.builtins.core.traits.parse_float_literal_function } else { &linker.builtins.core.traits.parse_int_literal_function }
                 ];
 
                 linker.expressions.arguments.insert(self.expression_id.clone(), vec![literal_expression_id]);

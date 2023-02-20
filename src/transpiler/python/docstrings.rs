@@ -31,7 +31,6 @@ pub fn dump(stream: &mut (dyn Write), function: &FunctionImplementation, context
 
 pub fn transpile_type(stream: &mut (dyn Write), type_def: &TypeProto, context: &TranspilerContext) -> Result<(), std::io::Error> {
     match &type_def.unit {
-        TypeUnit::Primitive(n) => types::transpile_primitive(stream, n)?,
         TypeUnit::Struct(s) => types::transpile_struct(stream, s, context)?,
         TypeUnit::Monad => {
             transpile_type(stream, &type_def.arguments[0], context)?;
@@ -41,6 +40,7 @@ pub fn transpile_type(stream: &mut (dyn Write), type_def: &TypeProto, context: &
         TypeUnit::Any(_) => write!(stream, "Any")?,  // TODO Use generics instead
         TypeUnit::MetaType => todo!(),
         TypeUnit::Void => todo!(),
+        TypeUnit::Function(_) => todo!(),
     }
 
     Ok(())

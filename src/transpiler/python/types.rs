@@ -7,13 +7,13 @@ use crate::transpiler::python::TranspilerContext;
 
 pub fn transpile(stream: &mut (dyn Write), type_def: &TypeProto, context: &TranspilerContext) -> Result<(), std::io::Error> {
     match &type_def.unit {
-        TypeUnit::Primitive(n) => transpile_primitive(stream, n)?,
         TypeUnit::Struct(s) => transpile_struct(stream, s, context)?,
         TypeUnit::Monad => write!(stream, "np.ndarray")?,
         TypeUnit::Generic(_) => todo!(),
         TypeUnit::Any(_) => write!(stream, "Any")?,  // TODO Use generics instead
         TypeUnit::MetaType => todo!(),
         TypeUnit::Void => todo!(),
+        TypeUnit::Function(_) => todo!(),
     }
 
     Ok(())
@@ -38,7 +38,8 @@ pub fn transpile_primitive_value(stream: &mut (dyn Write), value: &String, type_
 }
 
 pub fn transpile_struct(stream: &mut (dyn Write), s: &Trait, context: &TranspilerContext) -> Result<(), std::io::Error> {
-    if s == context.builtins.traits.String.as_ref() {
+    // TODO types::transpile_primitive(stream, n)?
+    if s == context.builtins.core.traits.String.as_ref() {
         write!(stream, "str")
     }
     else {

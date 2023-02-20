@@ -75,7 +75,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                 match if i > 0 { tokens.get(i - 1) } else { None } {
                     Some(Token::FunctionReference { overload, target }) => {
                         tokens[i] = Token::Expression(linker.link_function_call(
-                            &overload.pointers,
+                            &overload.functions(),
                             &overload.name,
                             target.iter().map(|_| &ParameterKey::Positional).chain(keys).map(Clone::clone).collect(),
                             target.iter().chain(values).map(Clone::clone).collect(),
@@ -127,7 +127,21 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
     // Resolve function references as curried functions
     for i in 0 .. tokens.len() {
         if let Token::FunctionReference { overload, target } = &tokens[i] {
-            Err(LinkError::LinkError { msg: String::from("Function references are not yet supported.") })?;
+            match overload.pointers.len() {
+                1 => {
+                    let ref_ = overload.pointers.iter().next().unwrap();
+                    let function = ref_.as_function_pointer()?;
+
+                    tokens[i] = Token::Expression(linker.link_unambiguous_expression(
+                        vec![],
+                        &TypeProto::unit(TypeUnit::Function(Rc::clone(function))),
+                        ExpressionOperation::VariableLookup(ref_.clone())
+                    )?);
+                }
+                _ => Err(LinkError::LinkError {
+                    msg: String::from("References to overloaded functions are not yet supported (need syntax to distinguish which to choose).")
+                })?,
+            }
         }
     }
 
@@ -163,7 +177,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
 
         // Unary operator, because left of operator is an operator!
         let argument = arguments.remove(0);
-        arguments.insert(0, linker.link_function_call(&overload.pointers, &overload.name, vec![ParameterKey::Positional], vec![argument], scope)?);
+        arguments.insert(0, linker.link_function_call(&overload.functions(), &overload.name, vec![ParameterKey::Positional], vec![argument], scope)?);
     }
 
     if arguments.len() == 1 {
@@ -181,7 +195,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
 
         Ok(arguments.insert(
             i,
-            linker.link_function_call(&overload.pointers, &overload.name, vec![ParameterKey::Positional, ParameterKey::Positional], vec![lhs, rhs], scope)?
+            linker.link_function_call(&overload.functions(), &overload.name, vec![ParameterKey::Positional, ParameterKey::Positional], vec![lhs, rhs], scope)?
         ))
     };
 

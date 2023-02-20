@@ -49,8 +49,7 @@ pub fn transpile_primitive_type(type_def: &primitives::Type) -> String {
 
 pub fn transpile_type(type_def: &TypeProto) -> String {
     match &type_def.unit {
-        TypeUnit::Primitive(n) => transpile_primitive_type(n),
-        TypeUnit::Struct(t) => todo!(),
+        TypeUnit::Struct(t) => todo!(),  // On primitive metatype, transpile_primitive_type
         TypeUnit::Monad => {
             // TODO Shape
             format!("Tensor<{}, 1>", transpile_type(&type_def.arguments[0]))
@@ -59,5 +58,6 @@ pub fn transpile_type(type_def: &TypeProto) -> String {
         TypeUnit::Any(_) => format!("Any"),
         TypeUnit::MetaType => todo!(),
         TypeUnit::Void => todo!(),
+        TypeUnit::Function(_) => todo!(),
     }
 }

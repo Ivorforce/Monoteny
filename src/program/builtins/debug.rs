@@ -1,23 +1,27 @@
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::linker::scopes;
 use crate::program::functions::{FunctionInterface, FunctionPointer};
+use crate::program::module::Module;
 use crate::program::types::{TypeProto, TypeUnit};
 
-pub struct Functions {
+pub struct Debug {
+    pub module: Rc<Module>,
     pub print: Rc<FunctionPointer>,
 }
 
-pub fn make_functions(constants: &mut scopes::Scope) -> Functions {
+pub fn create() -> Debug {
+    let mut module = Module::new("monoteny.debug".into());
+
     let generic_id = Uuid::new_v4();
     let generic_type = TypeProto::unit(TypeUnit::Any(generic_id));
 
     let print_function = FunctionPointer::new_static(
         FunctionInterface::new_global("print", [generic_type.clone()].into_iter(), TypeProto::void())
     );
-    constants.overload_function(&print_function);
+    module.functions.insert(Rc::clone(&print_function));
 
-    Functions {
+    Debug {
+        module: Rc::new(module),
         print: print_function,
     }
 }

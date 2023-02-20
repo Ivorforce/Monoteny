@@ -10,6 +10,7 @@ use crate::program::allocation::{Mutability, ObjectReference, Reference, Referen
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, FunctionInterface, ParameterKey};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::generics::TypeForest;
+use crate::program::module::Module;
 use crate::program::types::{Pattern, PatternPart, TypeProto, TypeUnit};
 
 // Note: While a single pool cannot own overloaded variables, multiple same-level pools (-> from imports) can.
@@ -83,6 +84,26 @@ impl <'a> Scope<'a> {
         }
     }
 
+    pub fn import(&mut self, module: &Module) -> Result<(), LinkError> {
+        for pattern in module.patterns.iter() {
+            self.add_pattern(Rc::clone(pattern))?;
+        }
+
+        for trait_ in module.traits.iter() {
+            self.insert_trait(trait_);
+        }
+
+        for trait_conformance_declaration in module.trait_conformance_declarations.iter() {
+            self.trait_conformance_declarations.add(trait_conformance_declaration);
+        }
+
+        for function in module.functions.iter() {
+            self.overload_function(function)?;
+        }
+
+        Ok(())
+    }
+
     pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>) -> Result<(), LinkError> {
         let environment = match fun.interface.form {
             FunctionForm::Member => Environment::Member,
@@ -139,14 +160,20 @@ impl <'a> Scope<'a> {
         );
     }
 
-    pub fn add_trait_conformance(&mut self, declaration: &Rc<TraitConformanceDeclaration>) {
+    /// Note: this function is intended only for trait conformances that arise from trait requirements.
+    /// It adds the abstract functions to this scope. If a trait conformance is declared somewhere,
+    /// the functions exist in the global scope already anyway.
+    pub fn add_implicit_trait_conformance(&mut self, declaration: &Rc<TraitConformanceDeclaration>) -> Result<(), LinkError> {
         self.trait_conformance_declarations.add(declaration);
+
         for (_, pointer) in declaration.abstract_function_resolutions.iter() {
-            self.overload_function(pointer);
+            self.overload_function(pointer)?;
         }
         for (_, declaration) in declaration.trait_requirements_conformance.resolution.iter() {
-            self.add_trait_conformance(declaration);
+            self.add_implicit_trait_conformance(declaration)?;
         }
+
+        Ok(())
     }
 
     pub fn insert_singleton(&mut self, environment: Environment, reference: Rc<Reference>, name: &String) {

@@ -36,12 +36,12 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
     // The operators can normally be referenced as operators (which the transpiler does do).
     // However, if a reference is required, we need to resort to another strategy.
     for (name, functions) in [
-        ("op.add", &builtins.primitives.add),
-        ("op.sub", &builtins.primitives.subtract),
-        ("op.mul", &builtins.primitives.multiply),
+        ("op.add", &builtins.core.primitive_fns.add),
+        ("op.sub", &builtins.core.primitive_fns.subtract),
+        ("op.mul", &builtins.core.primitive_fns.multiply),
         // TODO This is not true for int types, there it has to be floordiv
-        ("op.truediv", &builtins.primitives.divide),
-        ("math.log", &builtins.primitives.logarithm),
+        ("op.truediv", &builtins.core.primitive_fns.divide),
+        ("math.log", &builtins.core.primitive_fns.logarithm),
     ]{
         for fun in functions.values() {
             namespace.insert_keyword(fun.pointer_id, &String::from(name));
@@ -50,7 +50,7 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
 
     namespace.insert_keyword(builtins.debug.print.pointer_id, &String::from("print"));
 
-    for trait_ in builtins.traits.all.iter() {
+    for trait_ in builtins.core.module.traits.iter() {
         // TODO Introduce a package ref system.
         namespace.register_definition(trait_.id, &format!("mn.traits.{}", &trait_.name));
 
@@ -60,9 +60,10 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
         }
     }
 
-    for declaration in builtins.global_constants.trait_conformance_declarations.declarations.values().flatten() {
-        namespace.register_definition(declaration.id, &format!("mn.declarations.{}", &declaration.trait_.name));
-    }
+    todo!("Go through all trait conformance declarations somehow");
+    // for declaration in scope.trait_conformance_declarations.declarations.values().flatten() {
+    //     namespace.register_definition(declaration.id, &format!("mn.declarations.{}", &declaration.trait_.name));
+    // }
 
     namespace.register_definition(builtins.math.pi.pointer_id, &String::from("mn.pi"));
     namespace.register_definition(builtins.math.tau.pointer_id, &String::from("mn.tau"));

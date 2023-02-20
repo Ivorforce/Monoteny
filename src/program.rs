@@ -12,6 +12,7 @@ pub mod global;
 pub mod primitives;
 pub mod traits;
 pub mod types;
+pub mod module;
 
 pub struct Program {
     pub functions: HashSet<Rc<FunctionImplementation>>,

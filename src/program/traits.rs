@@ -119,6 +119,16 @@ impl TraitConformanceScope {
 }
 
 impl Trait {
+    pub fn new(name: String) -> Rc<Trait> {
+        Rc::new(Trait {
+            id: Uuid::new_v4(),
+            name,
+            requirements: Default::default(),
+            generics: Default::default(),
+            abstract_functions: Default::default(),
+        })
+    }
+
     pub fn require(trait_: &Rc<Trait>, binding: HashMap<Uuid, Box<TypeProto>>) -> Rc<TraitConformanceRequirement> {
         Rc::new(TraitConformanceRequirement {
             id: Uuid::new_v4(),

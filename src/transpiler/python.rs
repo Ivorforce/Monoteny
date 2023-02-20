@@ -155,15 +155,6 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
                     types::transpile_struct(stream, s, context)?;
                     write!(stream, ")\n")?;
                 }
-                else if let TypeUnit::Primitive(primitive) = unit {
-                    write!(
-                        stream, "    {} = np.asarray({}, dtype=",
-                        variable_name,
-                        external_name
-                    )?;
-                    types::transpile_primitive(stream, primitive)?;
-                    write!(stream, ")\n")?;
-                }
                 else {
                     panic!("Can't have a nested monad in numpy.")
                 }
@@ -431,9 +422,10 @@ pub fn try_transpile_constant(stream: &mut (dyn Write), function: &Rc<FunctionPo
         return Ok(false);
     };
 
-    guard!(let TypeUnit::Primitive(_) = context.types.resolve_binding_alias(expression_id).unwrap().unit else {
-        return Ok(false)
-    });
+    todo!("Check if type is primitive (so it's clear that we can convert)");
+    // guard!(let TypeUnit::Primitive(_) = context.types.resolve_binding_alias(expression_id).unwrap().unit else {
+    //     return Ok(false)
+    // });
 
     let type_string = transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap());
 
