@@ -18,7 +18,7 @@ pub fn create() -> Debug {
     let print_function = FunctionPointer::new_static(
         FunctionInterface::new_global("print", [generic_type.clone()].into_iter(), TypeProto::void())
     );
-    module.functions.insert(Rc::clone(&print_function));
+    module.add_function(&print_function);
 
     Debug {
         module: Rc::new(module),

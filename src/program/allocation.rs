@@ -64,13 +64,6 @@ impl Reference {
         })
     }
 
-    pub fn make_immutable_type(type_: Box<TypeProto>) -> Rc<Reference> {
-        Rc::new(Reference {
-            id: Uuid::new_v4(),
-            type_: ReferenceType::Object(ObjectReference::make_immutable(type_)),
-        })
-    }
-
     pub fn as_object_ref(&self, require_mutable: bool) -> Result<&Rc<ObjectReference>, LinkError> {
         guard!(let ReferenceType::Object(obj_ref) = &self.type_ else {
             return Err(LinkError::LinkError { msg: format!("Reference is not to an object: {:?}", &self.type_) });
@@ -110,7 +103,7 @@ impl Reference {
 }
 
 impl ObjectReference {
-    pub fn make_immutable(type_: Box<TypeProto>) -> Rc<ObjectReference> {
+    pub fn new_immutable(type_: Box<TypeProto>) -> Rc<ObjectReference> {
         Rc::new(ObjectReference {
             id: Uuid::new_v4(),
             type_,

@@ -19,10 +19,10 @@ pub fn create(core: &Core) -> Common {
     let bool_type = TypeProto::simple_struct(&core.primitives[&primitives::Type::Bool]);
 
     let true_ = FunctionPointer::new_static(FunctionInterface::new_constant("true", &bool_type, vec![]));
-    module.functions.insert(Rc::clone(&true_));
+    module.add_function(&true_);
 
     let false_ = FunctionPointer::new_static(FunctionInterface::new_constant("false", &bool_type, vec![]));
-    module.functions.insert(Rc::clone(&false_));
+    module.add_function(&false_);
 
     Common {
         module: Rc::new(module),

@@ -30,7 +30,7 @@ pub fn create(core: &Core) -> Transpilation {
     let self_type = TypeProto::unit(TypeUnit::Any(self_id));
 
     let Transpiler = make_trait("Transpiler", &self_id, vec![], vec![]);
-    module.traits.insert(Rc::clone(&Transpiler));
+    module.add_trait(&Transpiler);
 
     let add = FunctionPointer::new_static(FunctionInterface::new_member(
         "add",
@@ -40,7 +40,7 @@ pub fn create(core: &Core) -> Transpilation {
         ].into_iter(),
         self_type.clone(),
     ));
-    module.functions.insert(Rc::clone(&add));
+    module.add_function(&add);
 
     Transpilation {
         module: Rc::new(module),

@@ -50,7 +50,7 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
 
     namespace.insert_keyword(builtins.debug.print.pointer_id, &String::from("print"));
 
-    for trait_ in builtins.core.module.traits.iter() {
+    for trait_ in builtins.core.module.traits.keys() {
         // TODO Introduce a package ref system.
         namespace.register_definition(trait_.id, &format!("mn.traits.{}", &trait_.name));
 

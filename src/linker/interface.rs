@@ -23,7 +23,7 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
     let mut parameters: Vec<Parameter> = vec![];
 
     if let Some(parameter) = &function.target_type {
-        let variable = ObjectReference::make_immutable(type_factory.link_type(parameter)?);
+        let variable = ObjectReference::new_immutable(type_factory.link_type(parameter)?);
 
         parameters.push(Parameter {
             external_key: ParameterKey::Positional,
@@ -33,7 +33,7 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
     }
 
     for parameter in function.parameters.iter() {
-        let variable = ObjectReference::make_immutable(type_factory.link_type(&parameter.param_type)?);
+        let variable = ObjectReference::new_immutable(type_factory.link_type(&parameter.param_type)?);
 
         parameters.push(Parameter {
             external_key: parameter.key.clone(),
@@ -89,7 +89,7 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
         let mut parameters: Vec<Parameter> = vec![];
 
         for (key, internal_name, type_expression) in arguments.into_iter() {
-            let variable = ObjectReference::make_immutable(type_factory.link_type(type_expression)?);
+            let variable = ObjectReference::new_immutable(type_factory.link_type(type_expression)?);
 
             parameters.push(Parameter {
                 external_key: key.clone(),

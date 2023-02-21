@@ -15,7 +15,7 @@ use crate::linker::scopes::Environment;
 use crate::parser::abstract_syntax::{PatternDeclaration, Term};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
 use crate::program::{primitives, Program};
-use crate::program::allocation::{Reference, ReferenceType};
+use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
 use crate::program::builtins::*;
 use crate::program::functions::{FunctionForm, FunctionPointer, FunctionCallType, FunctionInterface, ParameterKey};
 use crate::program::generics::TypeForest;
@@ -75,7 +75,6 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
         let implementation = resolver.link_function_body(fun.body, &global_variable_scope)?;
 
         implementations.insert(Rc::clone(&fun.pointer), Rc::clone(&implementation));
-        global_linker.module.functions.insert(Rc::clone(&fun.pointer));
     }
 
     Ok(Program {
@@ -102,7 +101,8 @@ impl <'a> GlobalLinker<'a> {
                 });
 
                 // Create a variable for the function
-                self.global_variables.overload_function(&fun)?;
+                self.module.add_function(&fun);
+                self.global_variables.overload_function(&fun, &self.module.functions[&fun])?;
 
                 // if interface.is_member_function {
                 // TODO Create an additional variable as Metatype.function(self, ...args)?
@@ -119,7 +119,8 @@ impl <'a> GlobalLinker<'a> {
                 });
 
                 // Create a variable for the function
-                self.global_variables.overload_function(&fun)?;
+                self.module.add_function(&fun);
+                self.global_variables.overload_function(&fun, &self.module.functions[&fun])?;
             }
         }
 

@@ -125,7 +125,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         &eq_functions.equal_to,
         &eq_functions.not_equal_to,
     ], vec![]);
-    module.traits.insert(Rc::clone(&Eq));
+    module.add_trait(&Eq);
 
     let number_functions = make_number_functions(&self_type, &bool_type, AbstractFunction::new);
 
@@ -135,7 +135,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         &number_functions.lesser_than,
         &number_functions.lesser_than_or_equal_to,
     ], vec![&Eq]);
-    module.traits.insert(Rc::clone(&Ord));
+    module.add_trait(&Ord);
 
     let Number = make_trait("Number", &self_id, vec![
         &number_functions.add,
@@ -146,11 +146,11 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         &number_functions.negative,
         &number_functions.modulo,
     ], vec![&Ord]);
-    module.traits.insert(Rc::clone(&Number));
+    module.add_trait(&Number);
 
 
     let String = make_trait("String", &self_id, vec![], vec![]);
-    module.traits.insert(Rc::clone(&String));
+    module.add_trait(&String);
 
 
     let parse_int_literal_function = AbstractFunction::new(FunctionInterface::new_global(
@@ -160,7 +160,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     ));
 
     let ConstructableByIntLiteral = make_trait("ConstructableByIntLiteral", &self_id, vec![&parse_int_literal_function], vec![]);
-    module.traits.insert(Rc::clone(&ConstructableByIntLiteral));
+    module.add_trait(&ConstructableByIntLiteral);
 
 
     let parse_float_literal_function = AbstractFunction::new(FunctionInterface::new_global(
@@ -170,7 +170,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     ));
 
     let ConstructableByFloatLiteral = make_trait("ConstructableByFloatLiteral", &self_id, vec![&parse_float_literal_function], vec![]);
-    module.traits.insert(Rc::clone(&ConstructableByFloatLiteral));
+    module.add_trait(&ConstructableByFloatLiteral);
 
 
     let float_functions = make_float_functions(&self_type, AbstractFunction::new);
@@ -181,7 +181,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         vec![&float_functions.exponent],
         vec![&Number, &ConstructableByFloatLiteral, &ConstructableByIntLiteral]
     );
-    module.traits.insert(Rc::clone(&Float));
+    module.add_trait(&Float);
 
     let Int = make_trait(
         "Int",
@@ -189,7 +189,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         vec![],
         vec![&Number, &ConstructableByIntLiteral]
     );
-    module.traits.insert(Rc::clone(&Int));
+    module.add_trait(&Int);
 
     Traits {
         Eq,

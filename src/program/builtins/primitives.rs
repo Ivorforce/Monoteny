@@ -56,8 +56,8 @@ pub fn create_traits(module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>
 
     for primitive_type in primitives::Type::iter() {
         let trait_ = Trait::new(primitive_type.identifier_string());
-        traits.insert(primitive_type, Rc::clone(&trait_));
-        module.traits.insert(trait_);
+        module.add_trait(&trait_);
+        traits.insert(primitive_type, trait_);
     }
 
     traits
@@ -67,8 +67,8 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
     let bool_type = TypeProto::simple_struct(&basis[&primitives::Type::Bool]);
 
     let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, category: &mut HashMap<primitives::Type, Rc<FunctionPointer>>, module: &mut Module| {
+        module.add_function(&function);
         category.insert(primitive_type, Rc::clone(&function));
-        module.functions.insert(Rc::clone(&function));
     };
 
 
@@ -99,8 +99,6 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
     for (primitive_type, trait_) in basis.iter() {
         let type_ = TypeProto::simple_struct(&basis[primitive_type]);
         let primitive_type = *primitive_type;
-
-        module.traits.insert(Rc::clone(&trait_));
 
         // Pair-Associative
         let eq_functions = traits::make_eq_functions(&type_, &bool_type,FunctionPointer::new_static);
@@ -202,13 +200,13 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
     }
 
     let and_op = FunctionPointer::new_static(FunctionInterface::new_operator("and_f", 2, &bool_type, &bool_type));
-    module.functions.insert(Rc::clone(&and_op));
+    module.add_function(&and_op);
 
     let or__op = FunctionPointer::new_static(FunctionInterface::new_operator("or_f", 2, &bool_type, &bool_type));
-    module.functions.insert(Rc::clone(&or__op));
+    module.add_function(&or__op);
 
     let not_op = FunctionPointer::new_static(FunctionInterface::new_operator("not_f", 1, &bool_type, &bool_type));
-    module.functions.insert(Rc::clone(&not_op));
+    module.add_function(&not_op);
 
 
     PrimitiveFunctions {

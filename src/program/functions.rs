@@ -83,7 +83,7 @@ impl FunctionInterface {
             .map(|x| { Parameter {
                 external_key: ParameterKey::Positional,
                 internal_name: format!("p{}", x),
-                target: ObjectReference::make_immutable(parameter_type.clone()),
+                target: ObjectReference::new_immutable(parameter_type.clone()),
             }
         }).collect();
 
@@ -101,7 +101,7 @@ impl FunctionInterface {
             .map(|x| Parameter {
                 external_key: ParameterKey::Positional,
                 internal_name: format!("p"),  // TODO Should be numbered? idk
-                target: ObjectReference::make_immutable(x.clone()),
+                target: ObjectReference::new_immutable(x.clone()),
             })
             .collect();
 
@@ -119,7 +119,7 @@ impl FunctionInterface {
             .map(|x| Parameter {
                 external_key: ParameterKey::Positional,
                 internal_name: format!("p"),  // TODO Should be numbered? idk
-                target: ObjectReference::make_immutable(x.clone()),
+                target: ObjectReference::new_immutable(x.clone()),
             })
             .collect();
 
@@ -168,22 +168,23 @@ impl AbstractFunction {
 }
 
 impl FunctionOverload {
-    pub fn from(function: &Rc<FunctionPointer>) -> Rc<FunctionOverload> {
+    pub fn from(function: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Rc<FunctionOverload> {
         Rc::new(FunctionOverload {
-            pointers: HashSet::from([ObjectReference::make_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(function))))]),
+            pointers: HashSet::from([Rc::clone(object_ref)]),
             name: function.interface.name.clone(),
             form: function.interface.form.clone(),
         })
     }
 
-    pub fn adding_function(&self, function: &Rc<FunctionPointer>) -> Result<Rc<FunctionOverload>, LinkError> {
+    pub fn adding_function(&self, function: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Result<Rc<FunctionOverload>, LinkError> {
         if self.form != function.interface.form {
             return Err(LinkError::LinkError { msg: format!("Cannot overload functions and constants.") })
         }
 
         Ok(Rc::new(FunctionOverload {
-            pointers: self.pointers.iter().map(Rc::clone)
-                .chain([ObjectReference::make_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(function))))])
+            pointers: self.pointers.iter()
+                .chain([object_ref])
+                .map(Rc::clone)
                 .collect(),
             name: self.name.clone(),
             form: self.form.clone(),

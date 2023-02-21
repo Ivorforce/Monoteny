@@ -2,16 +2,17 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
 use crate::linker::precedence::PrecedenceGroup;
+use crate::program::allocation::ObjectReference;
 use crate::program::functions::FunctionPointer;
 use crate::program::traits::{Trait, TraitConformanceDeclaration};
-use crate::program::types::Pattern;
+use crate::program::types::{Pattern, TypeProto, TypeUnit};
 
 pub struct Module {
     pub id: Uuid,
     pub name: String,
 
-    pub traits: HashSet<Rc<Trait>>,
-    pub functions: HashSet<Rc<FunctionPointer>>,
+    pub traits: HashMap<Rc<Trait>, Rc<ObjectReference>>,
+    pub functions: HashMap<Rc<FunctionPointer>, Rc<ObjectReference>>,
     pub patterns: HashSet<Rc<Pattern>>,
     pub trait_conformance_declarations: HashSet<Rc<TraitConformanceDeclaration>>
 }
@@ -26,5 +27,19 @@ impl Module {
             patterns: Default::default(),
             trait_conformance_declarations: Default::default(),
         }
+    }
+
+    pub fn add_trait(&mut self, trait_: &Rc<Trait>) {
+        self.traits.insert(
+            Rc::clone(trait_),
+            ObjectReference::new_immutable(TypeProto::meta(TypeProto::unit(TypeUnit::Struct(Rc::clone(trait_)))))
+        );
+    }
+
+    pub fn add_function(&mut self, function: &Rc<FunctionPointer>) {
+        self.functions.insert(
+            Rc::clone(function),
+            ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(function))))
+        );
     }
 }

@@ -89,22 +89,26 @@ impl <'a> Scope<'a> {
             self.add_pattern(Rc::clone(pattern))?;
         }
 
-        for trait_ in module.traits.iter() {
-            self.insert_trait(trait_);
+        for (trait_, object_ref) in module.traits.iter() {
+            self.insert_singleton(
+                Environment::Global,
+                Reference::make(ReferenceType::Object(Rc::clone(object_ref))),
+                &trait_.name.clone()
+            );
         }
 
         for trait_conformance_declaration in module.trait_conformance_declarations.iter() {
             self.trait_conformance_declarations.add(trait_conformance_declaration);
         }
 
-        for function in module.functions.iter() {
-            self.overload_function(function)?;
+        for (function, object_ref) in module.functions.iter() {
+            self.overload_function(function, object_ref)?;
         }
 
         Ok(())
     }
 
-    pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>) -> Result<(), LinkError> {
+    pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Result<(), LinkError> {
         let environment = match fun.interface.form {
             FunctionForm::Member => Environment::Member,
             FunctionForm::Global => Environment::Global,
@@ -120,7 +124,7 @@ impl <'a> Scope<'a> {
         if let Some(existing) = variables.remove(name) {
             if let ReferenceType::FunctionOverload(overload) = &existing.type_ {
                 let variable = Reference::make(
-                    ReferenceType::FunctionOverload(overload.adding_function(fun)?)
+                    ReferenceType::FunctionOverload(overload.adding_function(fun, object_ref)?)
                 );
 
                 variables.insert(fun.interface.name.clone(), variable);
@@ -133,7 +137,7 @@ impl <'a> Scope<'a> {
             // Copy the parent's function overload into us and then add the function to the overload
             if let Some(Some(ReferenceType::FunctionOverload(overload))) = self.parent.map(|x| x.resolve(environment, name).ok().map(|x| &x.as_ref().type_)) {
                 let variable = Reference::make(
-                    ReferenceType::FunctionOverload(overload.adding_function(fun)?)
+                    ReferenceType::FunctionOverload(overload.adding_function(fun, object_ref)?)
                 );
 
                 let mut variables = self.references_mut(environment);
@@ -143,21 +147,13 @@ impl <'a> Scope<'a> {
             let mut variables = self.references_mut(environment);
 
             let variable = Reference::make(
-                ReferenceType::FunctionOverload(FunctionOverload::from(fun))
+                ReferenceType::FunctionOverload(FunctionOverload::from(fun, object_ref))
             );
 
             variables.insert(fun.interface.name.clone(), variable);
         }
 
         Ok(())
-    }
-
-    pub fn insert_trait(&mut self, t: &Rc<Trait>) {
-        self.insert_singleton(
-            Environment::Global,
-            Reference::make_immutable_type(TypeProto::meta(TypeProto::unit(TypeUnit::Struct(Rc::clone(t))))),
-            &t.name.clone()
-        );
     }
 
     /// Note: this function is intended only for trait conformances that arise from trait requirements.
@@ -167,7 +163,10 @@ impl <'a> Scope<'a> {
         self.trait_conformance_declarations.add(declaration);
 
         for (_, pointer) in declaration.abstract_function_resolutions.iter() {
-            self.overload_function(pointer)?;
+            // TODO Do we need to keep track of the object reference created by this trait conformance?
+            //  For the record, it SHOULD be created - an abstract function reference can still be passed around,
+            //  assigned and maybe called later.
+            self.overload_function(pointer, &ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(pointer)))))?;
         }
         for (_, declaration) in declaration.trait_requirements_conformance.resolution.iter() {
             self.add_implicit_trait_conformance(declaration)?;
