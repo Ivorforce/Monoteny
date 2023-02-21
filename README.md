@@ -20,7 +20,7 @@ def cartesian_to_spherical_coordinates() :: {
   let xyz 'Float32[n: 100, coord: Cartesian] = random(axes=[n,  coord]);
 
   -- Destructure to x, y, z arrays, each 'Float32[n: 100]'
-  let Cartesian(x, y, z) = xyz;
+  let #(x, y, z) = xyz;
   
   -- Pre-compute xz_sq
   let xz_sq = x ** 2 + z ** 2;
