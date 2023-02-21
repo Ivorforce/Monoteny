@@ -1,6 +1,9 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use global::{FunctionImplementation, GlobalStatement};
+use itertools::Itertools;
+use global::{FunctionImplementation};
+use crate::program::functions::FunctionPointer;
+use crate::program::module::Module;
 use crate::program::traits::Trait;
 
 pub mod allocation;
@@ -15,9 +18,13 @@ pub mod types;
 pub mod module;
 
 pub struct Program {
-    pub functions: HashSet<Rc<FunctionImplementation>>,
-    pub traits: HashSet<Rc<Trait>>,
+    pub module: Module,
+    pub function_implementations: HashMap<Rc<FunctionPointer>, Rc<FunctionImplementation>>,
+}
 
-    pub global_statements: Vec<GlobalStatement>,
-    pub main_function: Option<Rc<FunctionImplementation>>,
+impl Program {
+    pub fn find_main(&self) -> Option<&Rc<FunctionImplementation>> {
+        self.function_implementations.values()
+            .find_or_first(|f| f.decorators.contains(&String::from("main")))
+    }
 }

@@ -16,7 +16,7 @@ use crate::program::functions::{FunctionPointer, FunctionCallType, FunctionInter
 use crate::program::{primitives, Program};
 use crate::program::allocation::Reference;
 use crate::program::generics::TypeForest;
-use crate::program::global::{FunctionImplementation, GlobalStatement};
+use crate::program::global::{FunctionImplementation};
 use crate::program::traits::TraitConformanceDeclaration;
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::cpp::transpile_type;
@@ -43,11 +43,11 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     let mut object_namespace = namespaces::Level::new();
     let mut functions_by_id = HashMap::new();
 
-    for trait_ in program.traits.iter() {
+    for trait_ in program.module.traits.iter() {
         todo!("Register names like the builtins do")
     }
 
-    for function in program.functions.iter() {
+    for function in program.function_implementations.values() {
         file_namespace.register_definition(function.implementation_id, &function.interface.name);
 
         let function_namespace = file_namespace.add_sublevel();
@@ -67,25 +67,9 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     let mut names = global_namespace.map_names();
     names.extend(object_namespace.map_names());
 
-    for statement in program.global_statements.iter() {
-        match statement {
-            GlobalStatement::Trait(_) => todo!("Cannot transpile traits yet!"),
-            GlobalStatement::Function(function) => {
-                let context = TranspilerContext {
-                    names: &names,
-                    functions_by_id: &functions_by_id,
-                    builtins,
-                    expressions: &function.expression_forest,
-                    types: &function.type_forest
-                };
+    todo!("Call the module's @transpile function");
 
-                transpile_function(stream, function.as_ref(), &context)?
-            },
-            GlobalStatement::Constant(_) => todo!("Cannot transpile constants yet!"),
-        }
-    }
-
-    if let Some(main_function) = &program.main_function {
+    if let Some(main_function) = program.find_main() {
         write!(stream, "\n\nif __name__ == '__main__':\n    {}()\n", names.get(&main_function.implementation_id).unwrap())?;
     }
 

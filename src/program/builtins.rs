@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use crate::linker::scopes;
+use crate::program::module::Module;
 
 pub mod precedence;
 pub mod debug;
@@ -36,6 +37,17 @@ pub fn create_builtins() -> Rc<Builtins> {
 }
 
 impl Builtins {
+    pub fn all_modules(&self) -> Vec<&Module> {
+        vec![
+            &self.core.module,
+            &self.precedence_groups.module,
+            &self.common.module,
+            &self.math.module,
+            &self.debug.module,
+            &self.transpilation.module,
+        ]
+    }
+
     pub fn create_scope(&self) -> scopes::Scope {
         let mut scope = scopes::Scope::new();
 
@@ -43,14 +55,7 @@ impl Builtins {
             scope.precedence_groups.push((Rc::clone(precedence_group), HashMap::new()));
         }
 
-        for module in [
-            &self.core.module,
-            &self.precedence_groups.module,
-            &self.common.module,
-            &self.math.module,
-            &self.debug.module,
-            &self.transpilation.module,
-        ] {
+        for module in self.all_modules() {
             scope.import(module).unwrap();
         }
 

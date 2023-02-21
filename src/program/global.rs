@@ -8,12 +8,6 @@ use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanc
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::generics::TypeForest;
 
-pub enum GlobalStatement {
-    Trait(Rc<Trait>),
-    Function(Rc<FunctionImplementation>),
-    Constant(Rc<FunctionImplementation>),
-}
-
 pub struct FunctionImplementation {
     pub implementation_id: Uuid,
     pub function_id: Uuid,

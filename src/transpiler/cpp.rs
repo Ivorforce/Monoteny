@@ -13,7 +13,7 @@ pub fn transpile_program(
     writeln!(header_stream, "#include <Eigen/Tensor>")?;
     write!(header_stream, "\n\n")?;
 
-    for function in program.functions.iter() {
+    for function in program.function_implementations.values() {
         let return_type = transpile_type(&function.interface.return_type);
 
         write!(header_stream, "{} {}(", return_type, function.interface.name)?;

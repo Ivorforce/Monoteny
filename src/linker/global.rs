@@ -19,14 +19,15 @@ use crate::program::allocation::{Reference, ReferenceType};
 use crate::program::builtins::*;
 use crate::program::functions::{FunctionForm, FunctionPointer, FunctionCallType, FunctionInterface, ParameterKey};
 use crate::program::generics::TypeForest;
-use crate::program::global::{FunctionImplementation, GlobalStatement};
+use crate::program::global::{FunctionImplementation};
+use crate::program::module::Module;
 use crate::program::types::*;
 use crate::util::multimap::extend_multimap;
 
 
 struct GlobalLinker<'a> {
     functions: Vec<FunctionWithoutBody<'a>>,
-    traits: HashSet<Rc<Trait>>,
+    module: Module,
     global_variables: scopes::Scope<'a>,
     builtins: &'a Builtins,
 }
@@ -40,7 +41,7 @@ struct FunctionWithoutBody<'a> {
 pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builtins: &Builtins) -> Result<Program, LinkError> {
     let mut global_linker = GlobalLinker {
         functions: Vec::new(),
-        traits: HashSet::new(),
+        module: Module::new("main".into()),  // TODO Give it a name!
         global_variables: scope.subscope(),
         builtins
     };
@@ -51,8 +52,7 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
     }
 
     let global_variable_scope = &global_linker.global_variables;
-    let mut global_statements = vec![];
-    let mut functions: HashSet<Rc<FunctionImplementation>> = HashSet::new();
+    let mut implementations: HashMap<Rc<FunctionPointer>, Rc<FunctionImplementation>> = HashMap::new();
 
     // Resolve function bodies
     for fun in global_linker.functions.iter() {
@@ -73,24 +73,14 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
         });
 
         let implementation = resolver.link_function_body(fun.body, &global_variable_scope)?;
-        functions.insert(Rc::clone(&implementation));
-        global_statements.push(GlobalStatement::Function(implementation));
+
+        implementations.insert(Rc::clone(&fun.pointer), Rc::clone(&implementation));
+        global_linker.module.functions.insert(Rc::clone(&fun.pointer));
     }
 
-    let main_function = functions.iter()
-        .filter(|f| {
-            f.interface.name == "main"
-            && f.interface.form == FunctionForm::Global
-            && f.interface.parameters.is_empty()
-        })
-        .map(Rc::clone)
-        .next();
-
     Ok(Program {
-        functions,
-        traits: global_linker.traits.iter().map(Rc::clone).collect(),
-        global_statements,
-        main_function,
+        function_implementations: implementations,
+        module: global_linker.module,
     })
 }
 

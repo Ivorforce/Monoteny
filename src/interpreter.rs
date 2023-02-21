@@ -37,17 +37,16 @@ pub struct FunctionInterpreter<'a> {
     pub assignments: HashMap<Uuid, Value>,
 }
 
-pub fn find_main(program: &Program) -> Option<&Rc<FunctionImplementation>> {
-    program.functions.iter()
-        .find_or_first(|f| f.decorators.contains(&String::from("main")))
-}
-
 pub fn run_program(program: &Program, builtins: &Builtins) {
-    let main_function = find_main(program).expect("No main function!");
+    let main_function = program.find_main().expect("No main function!");
     let mut evaluators = builtins::make_evaluators(builtins);
 
-    for function in &program.functions {
+    for function in program.function_implementations.values() {
         evaluators.insert(function.function_id.clone(), compiler::compile_function(function));
+    }
+
+    for module in builtins.all_modules() {
+
     }
 
     let mut interpreter = FunctionInterpreter {
