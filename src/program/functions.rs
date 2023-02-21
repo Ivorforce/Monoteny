@@ -24,8 +24,13 @@ pub enum ParameterKey {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum FunctionCallType {
-    Static { function_id: Uuid },
-    Polymorphic { abstract_function: Rc<AbstractFunction> },
+    Static { function: Rc<Function> },
+    Polymorphic { abstract_function: Rc<Function> },
+}
+
+pub struct Function {
+    pub function_id: Uuid,
+    pub interface: Rc<FunctionInterface>,
 }
 
 pub struct FunctionPointer {
@@ -46,11 +51,6 @@ pub struct Parameter {
     pub external_key: ParameterKey,
     pub internal_name: String,
     pub target: Rc<ObjectReference>,
-}
-
-pub struct AbstractFunction {
-    pub function_id: Uuid,
-    pub interface: Rc<FunctionInterface>,
 }
 
 pub struct FunctionInterface {
@@ -137,12 +137,12 @@ impl FunctionPointer {
     pub fn new_static(interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
         Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            call_type: FunctionCallType::Static { function_id: Uuid::new_v4() },
+            call_type: FunctionCallType::Static { function: Function::new(Rc::clone(&interface)) },
             interface,
         })
     }
 
-    pub fn new_polymorphic(abstract_function: Rc<AbstractFunction>) -> Rc<FunctionPointer> {
+    pub fn new_polymorphic(abstract_function: Rc<Function>) -> Rc<FunctionPointer> {
         Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
             interface: Rc::clone(&abstract_function.interface),
@@ -151,16 +151,16 @@ impl FunctionPointer {
     }
 
     pub fn unwrap_id(&self) -> Uuid {
-        match self.call_type {
-            FunctionCallType::Static { function_id } => function_id,
+        match &self.call_type {
+            FunctionCallType::Static { function } => function.function_id,
             FunctionCallType::Polymorphic { .. } => panic!("Cannot unwrap polymorphic implementation ID"),
         }
     }
 }
 
-impl AbstractFunction {
-    pub fn new(interface: Rc<FunctionInterface>) -> Rc<AbstractFunction> {
-        Rc::new(AbstractFunction {
+impl Function {
+    pub fn new(interface: Rc<FunctionInterface>) -> Rc<Function> {
+        Rc::new(Function {
             function_id: Uuid::new_v4(),
             interface,
         })
@@ -213,15 +213,15 @@ impl Hash for FunctionPointer {
     }
 }
 
-impl PartialEq for AbstractFunction {
+impl PartialEq for Function {
     fn eq(&self, other: &Self) -> bool {
         self.function_id == other.function_id
     }
 }
 
-impl Eq for AbstractFunction {}
+impl Eq for Function {}
 
-impl Hash for AbstractFunction {
+impl Hash for Function {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.function_id.hash(state);
     }
@@ -256,7 +256,7 @@ impl Debug for FunctionInterface {
     }
 }
 
-impl Debug for AbstractFunction {
+impl Debug for Function {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "abstract {:?}", self.interface)
     }

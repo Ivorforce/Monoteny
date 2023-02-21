@@ -7,7 +7,7 @@ use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use crate::linker::LinkError;
 use crate::program::allocation::{ObjectReference, Reference};
-use crate::program::functions::{AbstractFunction, FunctionPointer, FunctionCallType, FunctionInterface, Parameter};
+use crate::program::functions::{Function, FunctionPointer, FunctionCallType, FunctionInterface, Parameter};
 use crate::program::generics::{TypeForest};
 use crate::program::types::TypeProto;
 use crate::util::fmt::{write_comma_separated_list, write_keyval};
@@ -22,7 +22,7 @@ pub struct Trait {
     pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 
     pub generics: HashSet<Uuid>,
-    pub abstract_functions: HashSet<Rc<AbstractFunction>>
+    pub abstract_functions: HashSet<Rc<Function>>
 }
 
 #[derive(Clone)]
@@ -40,7 +40,7 @@ pub struct TraitConformanceDeclaration {
     pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 
     pub trait_requirements_conformance: TraitBinding,
-    pub abstract_function_resolutions: HashMap<Rc<AbstractFunction>, Rc<FunctionPointer>>
+    pub abstract_function_resolutions: HashMap<Rc<Function>, Rc<FunctionPointer>>
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -198,7 +198,7 @@ impl Trait {
 }
 
 impl TraitConformanceDeclaration {
-    pub fn make(trait_: &Rc<Trait>, binding: HashMap<Uuid, Box<TypeProto>>, abstract_function_resolutions: Vec<(&Rc<AbstractFunction>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
+    pub fn make(trait_: &Rc<Trait>, binding: HashMap<Uuid, Box<TypeProto>>, abstract_function_resolutions: Vec<(&Rc<Function>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
         Rc::new(TraitConformanceDeclaration {
             id: Uuid::new_v4(),
             trait_: Rc::clone(trait_),
@@ -211,7 +211,7 @@ impl TraitConformanceDeclaration {
         })
     }
 
-    pub fn make_child(trait_: &Rc<Trait>, parent_conformances: Vec<&Rc<TraitConformanceDeclaration>>, abstract_function_resolutions: Vec<(&Rc<AbstractFunction>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
+    pub fn make_child(trait_: &Rc<Trait>, parent_conformances: Vec<&Rc<TraitConformanceDeclaration>>, abstract_function_resolutions: Vec<(&Rc<Function>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
         Rc::new(TraitConformanceDeclaration {
             id: Uuid::new_v4(),
             trait_: Rc::clone(trait_),

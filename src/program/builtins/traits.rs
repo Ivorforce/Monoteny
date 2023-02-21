@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::program::functions::{AbstractFunction, FunctionInterface};
+use crate::program::functions::{Function, FunctionInterface};
 use crate::program::module::Module;
 use crate::program::{builtins, primitives};
 use crate::program::traits::Trait;
@@ -10,23 +10,23 @@ use crate::program::types::{TypeProto, TypeUnit};
 
 pub struct Traits {
     pub Eq: Rc<Trait>,
-    pub Eq_functions: EqFunctions<AbstractFunction>,
+    pub Eq_functions: EqFunctions<Function>,
 
     pub Ord: Rc<Trait>,
 
     pub String: Rc<Trait>,
 
     pub ConstructableByIntLiteral: Rc<Trait>,
-    pub parse_int_literal_function: Rc<AbstractFunction>,
+    pub parse_int_literal_function: Rc<Function>,
 
     pub ConstructableByFloatLiteral: Rc<Trait>,
-    pub parse_float_literal_function: Rc<AbstractFunction>,
+    pub parse_float_literal_function: Rc<Function>,
 
     pub Number: Rc<Trait>,
-    pub Number_functions: NumberFunctions<AbstractFunction>,
+    pub Number_functions: NumberFunctions<Function>,
 
     pub Float: Rc<Trait>,
-    pub Float_functions: FloatFunctions<AbstractFunction>,
+    pub Float_functions: FloatFunctions<Function>,
 
     pub Int: Rc<Trait>,
 }
@@ -82,7 +82,7 @@ pub fn make_number_functions<T>(type_: &Box<TypeProto>, bool_type: &Box<TypeProt
     }
 }
 
-pub fn make_trait(name: &str, self_id: &Uuid, fns: Vec<&Rc<AbstractFunction>>, parents: Vec<&Rc<Trait>>) -> Rc<Trait> {
+pub fn make_trait(name: &str, self_id: &Uuid, fns: Vec<&Rc<Function>>, parents: Vec<&Rc<Trait>>) -> Rc<Trait> {
     let self_type = TypeProto::unit(TypeUnit::Any(*self_id));
 
     let mut t = Trait {
@@ -120,14 +120,14 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     let self_type = TypeProto::unit(TypeUnit::Any(self_id));
     let bool_type = TypeProto::simple_struct(&primitive_traits[&primitives::Type::Bool]);
 
-    let eq_functions = make_eq_functions(&self_type, &bool_type, AbstractFunction::new);
+    let eq_functions = make_eq_functions(&self_type, &bool_type, Function::new);
     let Eq = make_trait("Eq", &self_id, vec![
         &eq_functions.equal_to,
         &eq_functions.not_equal_to,
     ], vec![]);
     module.add_trait(&Eq);
 
-    let number_functions = make_number_functions(&self_type, &bool_type, AbstractFunction::new);
+    let number_functions = make_number_functions(&self_type, &bool_type, Function::new);
 
     let Ord = make_trait("Ord", &self_id, vec![
         &number_functions.greater_than,
@@ -153,7 +153,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.add_trait(&String);
 
 
-    let parse_int_literal_function = AbstractFunction::new(FunctionInterface::new_global(
+    let parse_int_literal_function = Function::new(FunctionInterface::new_global(
         "parse_int_literal",
         [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
         self_type.clone(),
@@ -163,7 +163,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.add_trait(&ConstructableByIntLiteral);
 
 
-    let parse_float_literal_function = AbstractFunction::new(FunctionInterface::new_global(
+    let parse_float_literal_function = Function::new(FunctionInterface::new_global(
         "parse_float_literal",
         [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
         self_type.clone(),
@@ -173,7 +173,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.add_trait(&ConstructableByFloatLiteral);
 
 
-    let float_functions = make_float_functions(&self_type, AbstractFunction::new);
+    let float_functions = make_float_functions(&self_type, Function::new);
 
     let Float = make_trait(
         "Float",

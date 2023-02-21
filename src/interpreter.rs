@@ -13,7 +13,7 @@ use strum::IntoEnumIterator;
 use crate::parser::abstract_syntax::Expression;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statement};
-use crate::program::functions::{FunctionPointer, FunctionCallType, AbstractFunction};
+use crate::program::functions::{FunctionPointer, FunctionCallType, Function};
 use crate::program::global::FunctionImplementation;
 use crate::program::Program;
 use crate::program::primitives;
@@ -44,7 +44,7 @@ pub fn run_program(program: &Program, builtins: &Builtins) {
     let mut assignments = HashMap::new();
 
     for (function_pointer, implementation) in program.function_implementations.iter() {
-        evaluators.insert(implementation.function_id.clone(), compiler::compile_function(implementation));
+        evaluators.insert(implementation.function.function_id.clone(), compiler::compile_function(implementation));
 
         unsafe {
             let fn_layout = Layout::new::<Uuid>();
@@ -107,7 +107,7 @@ impl FunctionInterpreter<'_> {
         }
     }
 
-    fn _try_resolve(abstract_function: &Rc<AbstractFunction>, binding: &TraitBinding) -> Option<Rc<FunctionPointer>> {
+    fn _try_resolve(abstract_function: &Rc<Function>, binding: &TraitBinding) -> Option<Rc<FunctionPointer>> {
         for (requirement, resolution) in binding.resolution.iter() {
             if let Some(resolution) = resolution.abstract_function_resolutions.get(abstract_function) {
                 return Some(Rc::clone(resolution))
@@ -123,7 +123,7 @@ impl FunctionInterpreter<'_> {
 
     pub fn resolve(&self, pointer: &FunctionPointer) -> Uuid {
         match &pointer.call_type {
-            FunctionCallType::Static { function_id } => *function_id,
+            FunctionCallType::Static { function } => function.function_id.clone(),
             FunctionCallType::Polymorphic { abstract_function, .. } => {
                 if let Some(result) = FunctionInterpreter::_try_resolve(abstract_function, &self.binding) {
                     return self.resolve(&result)

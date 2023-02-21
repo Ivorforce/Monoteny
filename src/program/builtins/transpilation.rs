@@ -9,7 +9,7 @@ use crate::program::allocation::Reference;
 use crate::program::builtins::core;
 use crate::program::builtins::core::Core;
 use crate::program::builtins::traits::make_trait;
-use crate::program::functions::{AbstractFunction, FunctionInterface, FunctionPointer};
+use crate::program::functions::{Function, FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::primitives;
 use crate::program::primitives::Type;

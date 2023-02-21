@@ -85,8 +85,8 @@ impl <'a> ImperativeLinker<'a> {
 
         Ok(Rc::new(FunctionImplementation {
             implementation_id: self.function.pointer_id,
-            function_id: match self.function.call_type {
-                FunctionCallType::Static { function_id } => function_id,
+            function: match &self.function.call_type {
+                FunctionCallType::Static { function } => Rc::clone(function),
                 _ => panic!()
             },
             decorators: self.decorators,

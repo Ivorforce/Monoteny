@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
 use crate::linker::scopes::Scope;
 use crate::program::builtins::primitives::{PrimitiveFunctions};
-use crate::program::functions::{AbstractFunction, FunctionInterface, FunctionPointer};
+use crate::program::functions::{Function, FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::{builtins, primitives};
 use crate::program::builtins::traits::Traits;
