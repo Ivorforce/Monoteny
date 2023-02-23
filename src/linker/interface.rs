@@ -42,18 +42,16 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
         });
     }
 
-    let interface = Rc::new(FunctionInterface {
-        parameters,
-        return_type,
-        requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
-        name: function.identifier.clone(),
-        form: if function.target_type.is_none() { FunctionForm::Global } else { FunctionForm::Member },
-    });
-
     Ok(Rc::new(FunctionPointer {
         pointer_id: Uuid::new_v4(),
-        call_type: FunctionCallType::Static { function: Function::new(Rc::clone(&interface)) },
-        interface,
+        call_type: FunctionCallType::Static,
+        target: Function::new(Rc::new(FunctionInterface {
+            parameters,
+            return_type,
+            requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
+        })),
+        name: function.identifier.clone(),
+        form: if function.target_type.is_none() { FunctionForm::Global } else { FunctionForm::Member },
     }))
 }
 
@@ -65,19 +63,16 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
     if let [OperatorArgument::Keyword(name)] = &function.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
         // Constant
 
-        let interface = Rc::new(FunctionInterface {
-            parameters: vec![],
-            return_type,
-            requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
-            name: name.clone(),
-            form: FunctionForm::Constant,
-        });
-
         let fun = Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            call_type: FunctionCallType::Static { function: Function::new(Rc::clone(&interface)) },
-
-            interface,
+            call_type: FunctionCallType::Static,
+            target: Function::new(Rc::new(FunctionInterface {
+                parameters: vec![],
+                return_type,
+                requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
+            })),
+            name: name.clone(),
+            form: FunctionForm::Constant,
         });
 
         return Ok(fun)
@@ -101,20 +96,16 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
             });
         }
 
-        let interface = Rc::new(FunctionInterface {
-            parameters,
-            return_type,
-            requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
-            name: pattern.alias.clone(),
-
-            form: FunctionForm::Global,
-        });
-
         return Ok(Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            call_type: FunctionCallType::Static { function: Function::new(Rc::clone(&interface)) },
-
-            interface,
+            call_type: FunctionCallType::Static,
+            target: Function::new(Rc::new(FunctionInterface {
+                parameters,
+                return_type,
+                requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
+            })),
+            name: pattern.alias.clone(),
+            form: FunctionForm::Global,
         }))
     }
 

@@ -5,22 +5,22 @@ use crate::program::computation_tree::*;
 use crate::program::global::FunctionImplementation;
 use crate::program::types::{TypeProto, TypeUnit};
 
-pub fn dump(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn dump(stream: &mut (dyn Write), implementation: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
     write!(stream, ":\n    \"\"\"\n    <Docstring TODO!>\n")?;
 
-    if !function.interface.parameters.is_empty() {
+    if !implementation.pointer.target.interface.parameters.is_empty() {
         write!(stream, "\n    Args:\n")?;
 
-        for (idx, parameter) in function.interface.parameters.iter().enumerate() {
+        for (idx, parameter) in implementation.pointer.target.interface.parameters.iter().enumerate() {
             write!(stream, "        {}: ", context.names.get(&parameter.target.id).unwrap())?;
             transpile_type(stream, &parameter.target.type_, context)?;
             write!(stream, "\n")?;
         }
     }
 
-    if !function.interface.return_type.unit.is_void() {
+    if !implementation.pointer.target.interface.return_type.unit.is_void() {
         write!(stream, "\n    Returns: ")?;
-        transpile_type(stream, &function.interface.return_type, context)?;
+        transpile_type(stream, &implementation.pointer.target.interface.return_type, context)?;
         write!(stream, "\n")?;
     }
 

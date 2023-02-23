@@ -49,15 +49,15 @@ impl <'a> ImperativeLinker<'a> {
         let mut conformance_delegations = HashMap::new();
         let mut scope = scope.subscope();
 
-        for requirement in self.function.interface.requirements.iter() {
-            let declaration = Trait::assume_granted(&requirement.trait_, requirement.binding.clone());
+        for requirement in self.function.target.interface.requirements.iter() {
+            let declaration = requirement.assume_granted(requirement.binding.clone());
             scope.add_implicit_trait_conformance(&declaration)?;
             conformance_delegations.insert(Rc::clone(requirement), declaration);
         }
 
         // TODO Register generics as variables so they can be referenced in the function
 
-        for parameter in self.function.interface.parameters.iter() {
+        for parameter in self.function.target.interface.parameters.iter() {
             scope.insert_singleton(scopes::Environment::Global, Reference::make(ReferenceType::Object(parameter.target.clone())), &parameter.internal_name);
         }
 
@@ -67,7 +67,7 @@ impl <'a> ImperativeLinker<'a> {
         while !self.ambiguities.is_empty() {
             if !has_changed {
                 // TODO Output which parts are ambiguous, and how, by asking the objects
-                panic!("The function {} is ambiguous.", &self.function.interface.name)
+                panic!("The function {} is ambiguous.", &self.function.name)
             }
 
             has_changed = false;
@@ -85,12 +85,8 @@ impl <'a> ImperativeLinker<'a> {
 
         Ok(Rc::new(FunctionImplementation {
             implementation_id: self.function.pointer_id,
-            function: match &self.function.call_type {
-                FunctionCallType::Static { function } => Rc::clone(function),
-                _ => panic!()
-            },
+            pointer: self.function,
             decorators: self.decorators,
-            interface: Rc::clone(&self.function.interface),
             statements,
             expression_forest: self.expressions,
             type_forest: self.types,
@@ -100,7 +96,7 @@ impl <'a> ImperativeLinker<'a> {
     }
 
     pub fn link_top_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
-        if self.function.interface.return_type.unit.is_void() {
+        if self.function.target.interface.return_type.unit.is_void() {
             if let [statement] = &body[..] {
                 if let abstract_syntax::Statement::Expression(expression ) = statement.as_ref() {
                     // Single-Statement Return
@@ -197,17 +193,17 @@ impl <'a> ImperativeLinker<'a> {
                 },
                 abstract_syntax::Statement::Return(expression) => {
                     if let Some(expression) = expression {
-                        if self.function.interface.return_type.unit.is_void() {
+                        if self.function.target.interface.return_type.unit.is_void() {
                             panic!("Return statement offers a value when the function declares void.")
                         }
 
                         let result: ExpressionID = self.link_expression(expression.as_ref(), &scope)?;
 
-                        self.types.bind(result, &self.function.interface.return_type.as_ref())?;
+                        self.types.bind(result, &self.function.target.interface.return_type.as_ref())?;
                         statements.push(Box::new(Statement::Return(Some(result))));
                     }
                     else {
-                        if !self.function.interface.return_type.unit.is_void() {
+                        if !self.function.target.interface.return_type.unit.is_void() {
                             panic!("Return statement offers no value when the function declares an object.")
                         }
 
@@ -365,18 +361,18 @@ impl <'a> ImperativeLinker<'a> {
         let mut candidates: Vec<Box<AmbiguousFunctionCandidate>> = vec![];
 
         for fun in functions.iter().map(Rc::clone) {
-            let param_keys = fun.interface.parameters.iter().map(|x| &x.external_key).collect::<Vec<&ParameterKey>>();
+            let param_keys = fun.target.interface.parameters.iter().map(|x| &x.external_key).collect::<Vec<&ParameterKey>>();
             if param_keys != argument_keys {
                 candidates_with_failed_signature.push(fun);
                 continue;
             }
 
             candidates.push(Box::new(AmbiguousFunctionCandidate {
-                param_types: fun.interface.parameters.iter()
+                param_types: fun.target.interface.parameters.iter()
                     .map(|x| x.target.type_.with_any_as_generic(&seed))
                     .collect(),
-                return_type: fun.interface.return_type.with_any_as_generic(&seed),
-                requirements: fun.interface.requirements.iter().map(|x| x.with_any_as_generic(&seed)).collect(),
+                return_type: fun.target.interface.return_type.with_any_as_generic(&seed),
+                requirements: fun.target.interface.requirements.iter().map(|x| x.with_any_as_generic(&seed)).collect(),
                 function: fun,
             }));
         }
@@ -405,7 +401,7 @@ impl <'a> ImperativeLinker<'a> {
         if candidates_with_failed_signature.len() == 1 {
             // TODO Print passed arguments like a signature, not array
             let candidate = candidates_with_failed_signature.iter().next().unwrap();
-            panic!("function {}({:?}) could not be resolved. Candidate has mismatching signature: {:?}", fn_name, argument_keys, candidate.interface)
+            panic!("function {}({:?}) could not be resolved. Candidate has mismatching signature: {:?}", fn_name, argument_keys, candidate)
         }
 
         panic!("function {} could not be resolved.", fn_name)

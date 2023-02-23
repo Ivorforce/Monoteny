@@ -45,14 +45,14 @@ impl LinkerAmbiguity for AmbiguousNumberPrimitive {
                     &HashSet::from([requirement]), &linker.types
                 )?;
                 let declaration = binding.resolution.values().next().unwrap();
-                let parse_function = &declaration.abstract_function_resolutions[
+                let parse_function = &declaration.function_binding[
                     if self.is_float { &linker.builtins.core.traits.parse_float_literal_function } else { &linker.builtins.core.traits.parse_int_literal_function }
                 ];
 
                 linker.expressions.arguments.insert(self.expression_id.clone(), vec![literal_expression_id]);
                 linker.expressions.operations.insert(
                     self.expression_id.clone(),
-                    ExpressionOperation::FunctionCall { function: Rc::clone(parse_function), argument_targets: vec![], binding }
+                    ExpressionOperation::FunctionCall { function: Rc::clone(parse_function), binding }
                 );
                 linker.types.bind(self.expression_id.clone(), type_.as_ref())?;
 
@@ -130,13 +130,8 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             let candidate = self.candidates.drain(..).next().unwrap();
             let binding = self.attempt_with_candidate(&mut linker.types, &candidate)?;
 
-            let argument_targets: Vec<Rc<ObjectReference>> = candidate.function.interface.parameters.iter()
-                .map(|x| Rc::clone(&x.target))
-                .collect();
-
             linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall {
                 function: candidate.function,
-                argument_targets,
                 binding
             });
 
@@ -154,7 +149,7 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             // TODO How so?
             let (candidate, err) = self.failed_candidates.iter().next().unwrap();
 
-            Err(LinkError::LinkError { msg: format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function.interface, err) })
+            Err(LinkError::LinkError { msg: format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function, err) })
         } else {
             // TODO Print types of arguments too, for context.
             Err(LinkError::LinkError { msg: format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, self.failed_candidates.len(), &argument_types) })

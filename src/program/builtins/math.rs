@@ -34,13 +34,22 @@ pub fn create(core: &Core) -> Math {
 
     // TODO We should also provide builtin implementations for these (call to from_literal)
 
-    let pi = FunctionPointer::new_static(FunctionInterface::new_constant("pi", &float_generic, vec![&float_requirement]));
+    let pi = FunctionPointer::new_constant(
+        "pi",
+        FunctionInterface::new_constant(&float_generic, vec![&float_requirement])
+    );
     module.add_function(&pi);
 
-    let tau = FunctionPointer::new_static(FunctionInterface::new_constant("tau", &float_generic, vec![&float_requirement]));
+    let tau = FunctionPointer::new_constant(
+        "tau",
+        FunctionInterface::new_constant(&float_generic, vec![&float_requirement])
+    );
     module.add_function(&tau);
 
-    let e = FunctionPointer::new_static(FunctionInterface::new_constant("e", &float_generic, vec![&float_requirement]));
+    let e = FunctionPointer::new_constant(
+        "e",
+        FunctionInterface::new_constant(&float_generic, vec![&float_requirement])
+    );
     module.add_function(&e);
 
     Math {

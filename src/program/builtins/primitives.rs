@@ -9,7 +9,7 @@ use crate::program::allocation::Reference;
 use crate::program::builtins::{core, traits};
 use crate::program::builtins::core::Core;
 use crate::program::builtins::traits::Traits;
-use crate::program::functions::{FunctionInterface, FunctionPointer};
+use crate::program::functions::{FunctionCallType, FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::primitives;
 use crate::program::traits::{Trait, TraitConformanceDeclaration};
@@ -101,7 +101,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         let primitive_type = *primitive_type;
 
         // Pair-Associative
-        let eq_functions = traits::make_eq_functions(&type_, &bool_type,FunctionPointer::new_static);
+        let eq_functions = traits::make_eq_functions(&type_, &bool_type);
         add_function(&eq_functions.equal_to, primitive_type, &mut eq__ops, module);
         add_function(&eq_functions.not_equal_to, primitive_type, &mut neq_ops, module);
 
@@ -119,7 +119,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
             continue;
         }
 
-        let number_functions = traits::make_number_functions(&type_, &bool_type,FunctionPointer::new_static);
+        let number_functions = traits::make_number_functions(&type_, &bool_type);
 
         // Ord
         add_function(&number_functions.greater_than, primitive_type, &mut gr__ops, module);
@@ -146,7 +146,10 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         add_function(&number_functions.positive, primitive_type, &mut pos_ops, module);
         add_function(&number_functions.negative, primitive_type, &mut neg_ops, module);
 
-        let _parse_int_literal = FunctionPointer::new_static(FunctionInterface::new_operator("parse_int_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_));
+        let _parse_int_literal = FunctionPointer::new_global(
+            "parse_int_literal",
+            FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_)
+        );
         add_function(&_parse_int_literal, primitive_type, &mut parse_int_literal, module);
         let ParseableByIntLiteral = TraitConformanceDeclaration::make(
             &traits.ConstructableByIntLiteral, HashMap::from([(*traits.ConstructableByIntLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
@@ -178,11 +181,14 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
             continue;
         }
 
-        let float_functions = traits::make_float_functions(&type_, FunctionPointer::new_static);
+        let float_functions = traits::make_float_functions(&type_);
         add_function(&float_functions.exponent, primitive_type, &mut exp_ops, module);
         add_function(&float_functions.logarithm, primitive_type, &mut log_ops, module);
 
-        let _parse_float_literal = FunctionPointer::new_static(FunctionInterface::new_operator("parse_float_literal", 1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_));
+        let _parse_float_literal = FunctionPointer::new_global(
+            "parse_float_literal",
+            FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_)
+        );
         add_function(&_parse_float_literal, primitive_type, &mut parse_float_literal, module);
         let ParseableByFloatLiteral = TraitConformanceDeclaration::make(
             &traits.ConstructableByFloatLiteral, HashMap::from([(*traits.ConstructableByFloatLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
@@ -199,13 +205,22 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         module.trait_conformance_declarations.insert(Rc::clone(&Float));
     }
 
-    let and_op = FunctionPointer::new_static(FunctionInterface::new_operator("and_f", 2, &bool_type, &bool_type));
+    let and_op = FunctionPointer::new_global(
+        "and_f",
+        FunctionInterface::new_operator(2, &bool_type, &bool_type)
+    );
     module.add_function(&and_op);
 
-    let or__op = FunctionPointer::new_static(FunctionInterface::new_operator("or_f", 2, &bool_type, &bool_type));
+    let or__op = FunctionPointer::new_global(
+        "or_f",
+        FunctionInterface::new_operator(2, &bool_type, &bool_type)
+    );
     module.add_function(&or__op);
 
-    let not_op = FunctionPointer::new_static(FunctionInterface::new_operator("not_f", 1, &bool_type, &bool_type));
+    let not_op = FunctionPointer::new_global(
+        "not_f",
+        FunctionInterface::new_operator(1, &bool_type, &bool_type)
+    );
     module.add_function(&not_op);
 
 

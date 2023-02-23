@@ -2,15 +2,7 @@
 
 def {$Number}.square() -> $Number :: self * self;
 
-def pi_ish -> $Float :: 3.14;
-
 @main
 def main() :: {
-    print("Is 3 < pi < 5:");
-    let three 'Float32 = 3;
-    let four 'Float64 = 4;
-    print(pi_ish > three and pi_ish < four);
-
-    let a 'Float32 = 2.0;
-    print(a ** 5 - 2.square());
+    print(2.square() ** 3 'Float32);
 }

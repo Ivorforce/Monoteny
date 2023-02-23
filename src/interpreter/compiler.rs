@@ -14,7 +14,7 @@ pub fn compile_function(function: &Rc<FunctionImplementation>) -> FunctionInterp
             let mut sub_interpreter = FunctionInterpreter {
                 builtins: &interpreter.builtins,
                 function_evaluators: &interpreter.function_evaluators,
-                function: &function,
+                implementation: &function,
                 binding: FunctionInterpreter::combine_bindings(&interpreter.binding, binding),
                 assignments: HashMap::new(),
             };

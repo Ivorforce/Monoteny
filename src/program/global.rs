@@ -3,17 +3,15 @@ use uuid::Uuid;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use crate::program::computation_tree::{ExpressionForest, Statement};
-use crate::program::functions::{Function, FunctionInterface};
+use crate::program::functions::{Function, FunctionInterface, FunctionPointer};
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::generics::TypeForest;
 
 pub struct FunctionImplementation {
     pub implementation_id: Uuid,
-    pub function: Rc<Function>,
+    pub pointer: Rc<FunctionPointer>,
     pub decorators: Vec<String>,
-
-    pub interface: Rc<FunctionInterface>,
 
     pub conformance_delegations: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
 

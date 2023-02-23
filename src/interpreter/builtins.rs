@@ -234,9 +234,9 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
 
     map.insert(builtins.debug.print.unwrap_id(), Box::new(|interpreter, expression_id, binding| {
         unsafe {
-            let arg_id = &interpreter.function.expression_forest.arguments[expression_id][0];
+            let arg_id = &interpreter.implementation.expression_forest.arguments[expression_id][0];
             let arg = interpreter.evaluate(arg_id).unwrap();
-            let arg_type = interpreter.function.type_forest.get_unit(arg_id).unwrap();
+            let arg_type = interpreter.implementation.type_forest.get_unit(arg_id).unwrap();
 
             // TODO Instead, introduce a ToString trait that can be called, with each getting their own function to fit it.
             //  If not implemented, dump the type instead.

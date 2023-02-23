@@ -9,10 +9,9 @@ use crate::program::allocation::Reference;
 use crate::program::builtins::core;
 use crate::program::builtins::core::Core;
 use crate::program::builtins::traits::make_trait;
-use crate::program::functions::{Function, FunctionInterface, FunctionPointer};
+use crate::program::functions::{Function, FunctionCallType, FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::primitives::Type;
 use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::{TypeProto, TypeUnit};
 
@@ -32,14 +31,16 @@ pub fn create(core: &Core) -> Transpilation {
     let Transpiler = make_trait("Transpiler", &self_id, vec![], vec![]);
     module.add_trait(&Transpiler);
 
-    let add = FunctionPointer::new_static(FunctionInterface::new_member(
+    let add = FunctionPointer::new_member(
         "add",
-        [
-            TypeProto::unit(TypeUnit::Struct(Rc::clone(&Transpiler))),
-            TypeProto::simple_struct(&core.primitives[&primitives::Type::Int8])  // TODO This should be a function reference
-        ].into_iter(),
-        self_type.clone(),
-    ));
+        FunctionInterface::new_simple(
+            [
+                TypeProto::unit(TypeUnit::Struct(Rc::clone(&Transpiler))),
+                TypeProto::simple_struct(&core.primitives[&primitives::Type::Int8])  // TODO This should be a function reference
+            ].into_iter(),
+            self_type.clone(),
+        )
+    );
     module.add_function(&add);
 
     Transpilation {

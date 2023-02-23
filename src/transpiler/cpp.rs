@@ -13,14 +13,14 @@ pub fn transpile_program(
     writeln!(header_stream, "#include <Eigen/Tensor>")?;
     write!(header_stream, "\n\n")?;
 
-    for function in program.function_implementations.values() {
-        let return_type = transpile_type(&function.interface.return_type);
+    for implementation in program.function_implementations.values() {
+        let return_type = transpile_type(&implementation.pointer.target.interface.return_type);
 
-        write!(header_stream, "{} {}(", return_type, function.interface.name)?;
+        write!(header_stream, "{} {}(", return_type, implementation.pointer.name)?;
 
-        for parameter in function.interface.parameters.iter() {
+        for parameter in implementation.pointer.target.interface.parameters.iter() {
             // External names do not exist in C. Let's just use the internal name.
-            write!(header_stream, "{} {},", transpile_type(&parameter.target.type_), function.variable_names.get(&parameter.target).unwrap())?;
+            write!(header_stream, "{} {},", transpile_type(&parameter.target.type_), implementation.variable_names.get(&parameter.target).unwrap())?;
         }
 
         write!(header_stream, ") {{\n\n}}\n\n")?;

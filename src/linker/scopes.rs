@@ -109,12 +109,12 @@ impl <'a> Scope<'a> {
     }
 
     pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Result<(), LinkError> {
-        let environment = match fun.interface.form {
+        let environment = match fun.form {
             FunctionForm::Member => Environment::Member,
             FunctionForm::Global => Environment::Global,
             FunctionForm::Constant => Environment::Global,
         };
-        let name = &fun.interface.name;
+        let name = &fun.name;
 
         let mut variables = self.references_mut(environment);
 
@@ -127,7 +127,7 @@ impl <'a> Scope<'a> {
                     ReferenceType::FunctionOverload(overload.adding_function(fun, object_ref)?)
                 );
 
-                variables.insert(fun.interface.name.clone(), variable);
+                variables.insert(fun.name.clone(), variable);
             }
             else {
                 panic!("Cannot overload with function '{}' if a variable exists in the same scope under the same name.", name);
@@ -141,7 +141,7 @@ impl <'a> Scope<'a> {
                 );
 
                 let mut variables = self.references_mut(environment);
-                variables.insert(fun.interface.name.clone(), variable);
+                variables.insert(fun.name.clone(), variable);
             }
 
             let mut variables = self.references_mut(environment);
@@ -150,7 +150,7 @@ impl <'a> Scope<'a> {
                 ReferenceType::FunctionOverload(FunctionOverload::from(fun, object_ref))
             );
 
-            variables.insert(fun.interface.name.clone(), variable);
+            variables.insert(fun.name.clone(), variable);
         }
 
         Ok(())
@@ -162,13 +162,13 @@ impl <'a> Scope<'a> {
     pub fn add_implicit_trait_conformance(&mut self, declaration: &Rc<TraitConformanceDeclaration>) -> Result<(), LinkError> {
         self.trait_conformance_declarations.add(declaration);
 
-        for (_, pointer) in declaration.abstract_function_resolutions.iter() {
+        for (_, pointer) in declaration.function_binding.iter() {
             // TODO Do we need to keep track of the object reference created by this trait conformance?
             //  For the record, it SHOULD be created - an abstract function reference can still be passed around,
             //  assigned and maybe called later.
             self.overload_function(pointer, &ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(pointer)))))?;
         }
-        for (_, declaration) in declaration.trait_requirements_conformance.resolution.iter() {
+        for (_, declaration) in declaration.trait_binding.resolution.iter() {
             self.add_implicit_trait_conformance(declaration)?;
         }
 

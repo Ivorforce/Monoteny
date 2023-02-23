@@ -78,7 +78,7 @@ impl Debug for TypeUnit {
             Any(g) => write!(fmt, "Any<{}>", g),
             MetaType => write!(fmt, "MetaType"),
             Void => write!(fmt, "Void"),
-            Function(f) => f.fmt(fmt),
+            Function(f) => write!(fmt, "{:?}", f),
         }
     }
 }

@@ -47,21 +47,21 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         todo!("Register names like the builtins do")
     }
 
-    for function in program.function_implementations.values() {
-        file_namespace.register_definition(function.implementation_id, &function.interface.name);
+    for implementation in program.function_implementations.values() {
+        file_namespace.register_definition(implementation.implementation_id, &implementation.pointer.name);
 
         let function_namespace = file_namespace.add_sublevel();
-        for (variable, name) in function.variable_names.iter() {
+        for (variable, name) in implementation.variable_names.iter() {
             function_namespace.register_definition(variable.id.clone(), name);
         }
 
-        for declaration in function.conformance_delegations.values() {
+        for declaration in implementation.conformance_delegations.values() {
             // The declaration will be a parameter later
             // TODO If two traits of the same type are registered, names will clash. We need to add aliases (later?)
             add_ids_as_name(declaration, &declaration.trait_.name, function_namespace);
         }
 
-        functions_by_id.insert(function.implementation_id, Rc::clone(function));
+        functions_by_id.insert(implementation.implementation_id, Rc::clone(implementation));
     }
 
     let mut names = global_namespace.map_names();
@@ -79,17 +79,17 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 fn add_ids_as_name(declaration: &Rc<TraitConformanceDeclaration>, name: &String, namespace: &mut namespaces::Level) {
     namespace.insert_keyword(declaration.id, name);
 
-    for declaration in declaration.trait_requirements_conformance.resolution.values() {
+    for declaration in declaration.trait_binding.resolution.values() {
         add_ids_as_name(declaration, name, namespace);
     }
 }
 
 fn add_injections_to_namespace(declaration: &Rc<TraitConformanceDeclaration>, namespace: &mut namespaces::Level) {
-    for injected_function in declaration.abstract_function_resolutions.values() {
-        namespace.register_definition(injected_function.pointer_id.clone(), &injected_function.interface.name);
+    for injected_function in declaration.function_binding.values() {
+        namespace.register_definition(injected_function.pointer_id.clone(), &injected_function.name);
     }
 
-    for declaration in declaration.trait_requirements_conformance.resolution.values() {
+    for declaration in declaration.trait_binding.resolution.values() {
         add_injections_to_namespace(declaration, namespace);
     }
 }
@@ -97,7 +97,7 @@ fn add_injections_to_namespace(declaration: &Rc<TraitConformanceDeclaration>, na
 pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
     write!(stream, "\n\ndef {}(", context.names[&function.implementation_id])?;
 
-    for (idx, parameter) in function.interface.parameters.iter().enumerate() {
+    for (idx, parameter) in function.pointer.target.interface.parameters.iter().enumerate() {
         write!(stream, "{}: ", context.names.get(&parameter.target.id).unwrap())?;
         types::transpile(stream, &parameter.target.type_, context)?;
         write!(stream, ", ")?;
@@ -109,9 +109,9 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
 
     write!(stream, ")")?;
 
-    if !function.interface.return_type.unit.is_void() {
+    if !function.pointer.target.interface.return_type.unit.is_void() {
         write!(stream, " -> ", )?;
-        types::transpile(stream, &function.interface.return_type, context)?;
+        types::transpile(stream, &function.pointer.target.interface.return_type, context)?;
     }
 
     docstrings::dump(stream, function, context)?;
@@ -122,7 +122,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
         return Ok(())
     }
 
-    for (idx, parameter) in function.interface.parameters.iter().enumerate() {
+    for (idx, parameter) in function.pointer.target.interface.parameters.iter().enumerate() {
         let variable_name = context.names.get(&parameter.target.id).unwrap();
         let external_name = variable_name;  // external names are not supported in python
 
@@ -184,7 +184,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
 
             write!(stream, "{}", variable_name)?;
         }
-        ExpressionOperation::FunctionCall { function, argument_targets, binding } => {
+        ExpressionOperation::FunctionCall { function, binding } => {
             let arguments = context.expressions.arguments.get(&expression).unwrap();
 
             if
@@ -199,17 +199,17 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
             else {
                 match &function.call_type {
                     // Can reference the static function
-                    FunctionCallType::Static { .. } => write!(stream, "{}", context.names[&function.pointer_id])?,
+                    FunctionCallType::Static => write!(stream, "{}", context.names[&function.pointer_id])?,
                     // Have to reference the function by trait
-                    FunctionCallType::Polymorphic { abstract_function } => {
-                        write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&abstract_function.function_id])?;
+                    FunctionCallType::Polymorphic { requirement, abstract_function } => {
+                        write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&function.pointer_id])?;
                     }
                 }
                 write!(stream, "(")?;
 
-                let mut arguments_left = arguments.len() + function.interface.requirements.len();
+                let mut arguments_left = arguments.len() + function.target.interface.requirements.len();
 
-                for (parameter, argument) in zip_eq(function.interface.parameters.iter(), arguments.iter()) {
+                for (parameter, argument) in zip_eq(function.target.interface.parameters.iter(), arguments.iter()) {
                     if let ParameterKey::Name(name) = &parameter.external_key {
                         write!(stream, "{}=", name)?;
                     }
@@ -223,7 +223,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                     }
                 }
 
-                for requirement in function.interface.requirements.iter() {
+                for requirement in function.target.interface.requirements.iter() {
                     let implementation = &context.functions_by_id[&function.pointer_id];
                     let declaration = &implementation.conformance_delegations[requirement];
 

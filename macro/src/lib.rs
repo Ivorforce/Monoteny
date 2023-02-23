@@ -17,7 +17,7 @@ pub fn bin_op(_item: TokenStream) -> TokenStream {
             let layout = Layout::new::<{result_type}>();
             Box::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
-                    let args = &interpreter.function.expression_forest.arguments[expression_id];
+                    let args = &interpreter.implementation.expression_forest.arguments[expression_id];
                     let l = interpreter.evaluate(&args[0]).unwrap();
                     let r = interpreter.evaluate(&args[1]).unwrap();
 
@@ -41,7 +41,7 @@ pub fn un_op(_item: TokenStream) -> TokenStream {
             let layout = Layout::new::<{type_}>();
             Box::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
-                    let args = &interpreter.function.expression_forest.arguments[expression_id];
+                    let args = &interpreter.implementation.expression_forest.arguments[expression_id];
                     let arg = interpreter.evaluate(&args[0]).unwrap();
 
                     let data = alloc(layout);
@@ -67,7 +67,7 @@ pub fn fun_op(_item: TokenStream) -> TokenStream {
             let layout = Layout::new::<{result_type}>();
             Box::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
-                    let args = &interpreter.function.expression_forest.arguments[expression_id];
+                    let args = &interpreter.implementation.expression_forest.arguments[expression_id];
                     let l = interpreter.evaluate(&args[0]).unwrap();
                     let r = interpreter.evaluate(&args[1]).unwrap();
 
@@ -90,7 +90,7 @@ pub fn parse_op(_item: TokenStream) -> TokenStream {
             let layout = Layout::new::<{type_}>();
             Box::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
-                    let args = &interpreter.function.expression_forest.arguments[expression_id];
+                    let args = &interpreter.implementation.expression_forest.arguments[expression_id];
                     let arg = interpreter.evaluate(&args[0]).unwrap();
                     let data = alloc(layout);
                     *(data as *mut {type_}) = {type_}::from_str((*(arg.data as *const String)).as_str()).unwrap();
@@ -137,7 +137,7 @@ pub fn load_float_constant(_item: TokenStream) -> TokenStream {
 
         Box::new(move |interpreter, expression_id, binding| {{
             unsafe {{
-                let return_type = interpreter.function.type_forest.get_unit(expression_id).unwrap();
+                let return_type = interpreter.implementation.type_forest.get_unit(expression_id).unwrap();
 
                 if return_type == &f32_type {{
                     let ptr = alloc(f32_layout);

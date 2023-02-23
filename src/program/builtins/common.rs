@@ -18,10 +18,16 @@ pub fn create(core: &Core) -> Common {
     let mut module = Module::new("monoteny.common".into());
     let bool_type = TypeProto::simple_struct(&core.primitives[&primitives::Type::Bool]);
 
-    let true_ = FunctionPointer::new_static(FunctionInterface::new_constant("true", &bool_type, vec![]));
+    let true_ = FunctionPointer::new_constant(
+        "true",
+        FunctionInterface::new_constant(&bool_type, vec![])
+    );
     module.add_function(&true_);
 
-    let false_ = FunctionPointer::new_static(FunctionInterface::new_constant("false", &bool_type, vec![]));
+    let false_ = FunctionPointer::new_constant(
+        "false",
+        FunctionInterface::new_constant(&bool_type, vec![])
+    );
     module.add_function(&false_);
 
     Common {

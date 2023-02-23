@@ -57,7 +57,7 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
     // Resolve function bodies
     for fun in global_linker.functions.iter() {
         let mut variable_names = HashMap::new();
-        for parameter in fun.pointer.interface.parameters.iter() {
+        for parameter in fun.pointer.target.interface.parameters.iter() {
             variable_names.insert(Rc::clone(&parameter.target), parameter.internal_name.clone());
         }
 

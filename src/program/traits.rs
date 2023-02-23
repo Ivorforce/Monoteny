@@ -22,7 +22,7 @@ pub struct Trait {
     pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 
     pub generics: HashSet<Uuid>,
-    pub abstract_functions: HashSet<Rc<Function>>
+    pub abstract_functions: HashSet<Rc<FunctionPointer>>
 }
 
 #[derive(Clone)]
@@ -39,8 +39,10 @@ pub struct TraitConformanceDeclaration {
     pub binding: HashMap<Uuid, Box<TypeProto>>,
     pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 
-    pub trait_requirements_conformance: TraitBinding,
-    pub abstract_function_resolutions: HashMap<Rc<Function>, Rc<FunctionPointer>>
+    /// Binding of requirement for types used in the trait.
+    pub trait_binding: TraitBinding,
+    /// Binding of abstract functions declared in the trait. schema: abstract_function[resolved_pointer]
+    pub function_binding: HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -136,8 +138,52 @@ impl Trait {
             binding
         })
     }
+}
 
-    pub fn assume_granted(trait_: &Rc<Trait>, binding: HashMap<Uuid, Box<TypeProto>>) -> Rc<TraitConformanceDeclaration> {
+impl TraitConformanceDeclaration {
+    pub fn make(trait_: &Rc<Trait>, binding: HashMap<Uuid, Box<TypeProto>>, function_binding: Vec<(&Rc<FunctionPointer>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
+        Rc::new(TraitConformanceDeclaration {
+            id: Uuid::new_v4(),
+            trait_: Rc::clone(trait_),
+            binding,
+            requirements: HashSet::new(),
+            trait_binding: TraitBinding::new(),
+            function_binding: function_binding.into_iter()
+                .map(|(l, r)| (Rc::clone(l), Rc::clone(r)))
+                .collect()
+        })
+    }
+
+    pub fn make_child(trait_: &Rc<Trait>, parent_conformances: Vec<&Rc<TraitConformanceDeclaration>>, function_binding: Vec<(&Rc<FunctionPointer>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
+        Rc::new(TraitConformanceDeclaration {
+            id: Uuid::new_v4(),
+            trait_: Rc::clone(trait_),
+            binding: parent_conformances.iter().next().unwrap().binding.clone(),
+            requirements: HashSet::new(),
+            trait_binding: TraitBinding {
+                resolution: parent_conformances.into_iter()
+                    .map(|d| (Rc::clone(trait_.requirements.iter().filter(|r| r.trait_ == d.trait_).next().unwrap()), Rc::clone(d)))
+                    .collect()
+            },
+            function_binding: function_binding.into_iter()
+                .map(|(l, r)| (Rc::clone(l), Rc::clone(r)))
+                .collect()
+        })
+    }
+}
+
+impl TraitConformanceRequirement {
+    pub fn with_any_as_generic(&self, seed: &Uuid) -> Rc<TraitConformanceRequirement> {
+        Rc::new(TraitConformanceRequirement {
+            id: self.id,
+            trait_: Rc::clone(&self.trait_),
+            binding: self.binding.iter().map(|(generic_id, type_) | (*generic_id, type_.with_any_as_generic(seed))).collect()
+        })
+    }
+
+    pub fn assume_granted(self: &Rc<TraitConformanceRequirement>, binding: HashMap<Uuid, Box<TypeProto>>) -> Rc<TraitConformanceDeclaration> {
+        let trait_ = &self.trait_;
+
         let mut replace_map = HashMap::new();
         for generic_id in trait_.generics.iter() {
             replace_map.insert(generic_id.clone(), binding[generic_id].clone());
@@ -151,17 +197,17 @@ impl Trait {
             // TODO Re-use existing functions, otherwise we'll have clashes in the scope
             let mapped_pointer = Rc::new(FunctionPointer {
                 pointer_id: Uuid::new_v4(),
-                call_type: FunctionCallType::Polymorphic {
-                    abstract_function: Rc::clone(abstract_fun),
-                },
-                interface: Rc::new(FunctionInterface {
-                    // TODO Mapping variables seems wrong, especially since they are hashable by ID?
-                    //  Maybe here, too, there could be a distinction between 'ID of the memory location'
-                    //  and 'ID of the pointer to the location'
-                    parameters: abstract_fun.interface.parameters.iter().map(|x| {
+                call_type: FunctionCallType::Polymorphic { requirement: Rc::clone(self), abstract_function: Rc::clone(abstract_fun) },
+                name: abstract_fun.name.clone(),
+                form: abstract_fun.form.clone(),
+                target: Function::new(Rc::new(FunctionInterface {
+                    parameters: abstract_fun.target.interface.parameters.iter().map(|x| {
                         Parameter {
                             external_key: x.external_key.clone(),
                             internal_name: x.internal_name.clone(),
+                            // TODO Mapping variables seems wrong, especially since they are hashable by ID?
+                            //  Maybe here, too, there could be a distinction between 'ID of the memory location'
+                            //  and 'ID of the pointer to the location'
                             target: Rc::new(ObjectReference {
                                 id: x.target.id,
                                 type_: x.target.type_.replacing_any(&replace_map),
@@ -169,13 +215,11 @@ impl Trait {
                             }),
                         }
                     }).collect(),
-                    return_type: abstract_fun.interface.return_type.replacing_any(&replace_map),
-                    name: abstract_fun.interface.name.clone(),
-                    form: abstract_fun.interface.form.clone(),
+                    return_type: abstract_fun.target.interface.return_type.replacing_any(&replace_map),
                     // Note: abstract functions will never have requirements, because abstract functions are not allowed
                     // any requirements beyond what the trait requires.
                     requirements: HashSet::new(),
-                }),
+                })),
             });
 
             abstract_to_mapped.insert(Rc::clone(abstract_fun), Rc::clone(&mapped_pointer));
@@ -184,57 +228,15 @@ impl Trait {
         Rc::new(TraitConformanceDeclaration {
             id: declaration_id,
             trait_: Rc::clone(trait_),
-            binding,
+            binding: binding.clone(),
             // This declaration can be treated as fulfilled within the scope
             requirements: HashSet::new(),
-            trait_requirements_conformance: TraitBinding {
+            trait_binding: TraitBinding {
                 resolution: trait_.requirements.iter().map(|requirement| {
-                    (Rc::clone(requirement), Trait::assume_granted(&requirement.trait_, requirement.binding.iter().map(|(generic_id, type_)| (*generic_id, type_.replacing_any(&replace_map))).collect()))
+                    (Rc::clone(requirement), requirement.assume_granted(requirement.binding.iter().map(|(generic_id, type_)| (*generic_id, type_.replacing_any(&replace_map))).collect()))
                 }).collect()
             },
-            abstract_function_resolutions: abstract_to_mapped
-        })
-    }
-}
-
-impl TraitConformanceDeclaration {
-    pub fn make(trait_: &Rc<Trait>, binding: HashMap<Uuid, Box<TypeProto>>, abstract_function_resolutions: Vec<(&Rc<Function>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
-        Rc::new(TraitConformanceDeclaration {
-            id: Uuid::new_v4(),
-            trait_: Rc::clone(trait_),
-            binding,
-            requirements: HashSet::new(),
-            trait_requirements_conformance: TraitBinding::new(),
-            abstract_function_resolutions: abstract_function_resolutions.into_iter()
-                .map(|(l, r)| (Rc::clone(l), Rc::clone(r)))
-                .collect()
-        })
-    }
-
-    pub fn make_child(trait_: &Rc<Trait>, parent_conformances: Vec<&Rc<TraitConformanceDeclaration>>, abstract_function_resolutions: Vec<(&Rc<Function>, &Rc<FunctionPointer>)>) -> Rc<TraitConformanceDeclaration> {
-        Rc::new(TraitConformanceDeclaration {
-            id: Uuid::new_v4(),
-            trait_: Rc::clone(trait_),
-            binding: parent_conformances.iter().next().unwrap().binding.clone(),
-            requirements: HashSet::new(),
-            trait_requirements_conformance: TraitBinding {
-                resolution: parent_conformances.into_iter()
-                    .map(|d| (Rc::clone(trait_.requirements.iter().filter(|r| r.trait_ == d.trait_).next().unwrap()), Rc::clone(d)))
-                    .collect()
-            },
-            abstract_function_resolutions: abstract_function_resolutions.into_iter()
-                .map(|(l, r)| (Rc::clone(l), Rc::clone(r)))
-                .collect()
-        })
-    }
-}
-
-impl TraitConformanceRequirement {
-    pub fn with_any_as_generic(&self, seed: &Uuid) -> Rc<TraitConformanceRequirement> {
-        Rc::new(TraitConformanceRequirement {
-            id: self.id,
-            trait_: Rc::clone(&self.trait_),
-            binding: self.binding.iter().map(|(generic_id, type_) | (*generic_id, type_.with_any_as_generic(seed))).collect()
+            function_binding: abstract_to_mapped
         })
     }
 }

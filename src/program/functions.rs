@@ -24,19 +24,32 @@ pub enum ParameterKey {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum FunctionCallType {
-    Static { function: Rc<Function> },
-    Polymorphic { abstract_function: Rc<Function> },
+    Static,
+    /// Not a real function call, rather to be delegated through the requirement's resolution.
+    Polymorphic { requirement: Rc<TraitConformanceRequirement>, abstract_function: Rc<FunctionPointer> },
 }
 
+/// A plain, static function that converts a number of parameters to a return type.
+/// The presentation (name, form etc.) are given in FunctionPointer.
+/// Could be abstract or implemented, depending on whether an implementation is provided!
 pub struct Function {
     pub function_id: Uuid,
     pub interface: Rc<FunctionInterface>,
 }
 
+/// An object that says 'Oh, I know a function!'
+/// It associates the function with a name and a form.
 pub struct FunctionPointer {
     pub pointer_id: Uuid,
+
+    /// The underlying function.
+    pub target: Rc<Function>,
     pub call_type: FunctionCallType,
-    pub interface: Rc<FunctionInterface>,
+
+    /// Name of the function.
+    pub name: String,
+    /// How the functon looks in syntax.
+    pub form: FunctionForm,
 }
 
 /// Reference to a multiplicity of functions, usually resolved when attempting to call
@@ -53,32 +66,27 @@ pub struct Parameter {
     pub target: Rc<ObjectReference>,
 }
 
+/// Machine interface of the function.
 pub struct FunctionInterface {
     /// Parameters to the function
     pub parameters: Vec<Parameter>,
     /// Type of what the function returns
     pub return_type: Box<TypeProto>,
 
-    /// Name of the function.
-    pub name: String,
-    /// How the functon looks in syntax.
-    pub form: FunctionForm,
     /// Requirements for parameters and the return type.
     pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
 }
 
 impl FunctionInterface {
-    pub fn new_constant<'a>(alphanumeric_name: &'a str, return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitConformanceRequirement>>) -> Rc<FunctionInterface> {
+    pub fn new_constant<'a>(return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitConformanceRequirement>>) -> Rc<FunctionInterface> {
         Rc::new(FunctionInterface {
-            name: String::from(alphanumeric_name),
             parameters: vec![],
-            form: FunctionForm::Constant,
             return_type: return_type.clone(),
             requirements: requirements.into_iter().map(Rc::clone).collect(),
         })
     }
 
-    pub fn new_operator<'a>(alphanumeric_name: &'a str, count: usize, parameter_type: &Box<TypeProto>, return_type: &Box<TypeProto>) -> Rc<FunctionInterface> {
+    pub fn new_operator<'a>(count: usize, parameter_type: &Box<TypeProto>, return_type: &Box<TypeProto>) -> Rc<FunctionInterface> {
         let parameters: Vec<Parameter> = (0..count)
             .map(|x| { Parameter {
                 external_key: ParameterKey::Positional,
@@ -88,15 +96,13 @@ impl FunctionInterface {
         }).collect();
 
         Rc::new(FunctionInterface {
-            name: String::from(alphanumeric_name),
             parameters,
-            form: FunctionForm::Global,
             return_type: return_type.clone(),
             requirements: HashSet::new(),
         })
     }
 
-    pub fn new_global<'a, I>(name: &'a str, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Box<TypeProto>> {
+    pub fn new_simple<'a, I>(parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Box<TypeProto>> {
         let parameters: Vec<Parameter> = parameter_types
             .map(|x| Parameter {
                 external_key: ParameterKey::Positional,
@@ -106,27 +112,7 @@ impl FunctionInterface {
             .collect();
 
         Rc::new(FunctionInterface {
-            name: String::from(name),
             parameters,
-            form: FunctionForm::Global,
-            return_type: return_type.clone(),
-            requirements: HashSet::new(),
-        })
-    }
-
-    pub fn new_member<'a, I>(name: &'a str, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Box<TypeProto>> {
-        let parameters: Vec<Parameter> = parameter_types
-            .map(|x| Parameter {
-                external_key: ParameterKey::Positional,
-                internal_name: format!("p"),  // TODO Should be numbered? idk
-                target: ObjectReference::new_immutable(x.clone()),
-            })
-            .collect();
-
-        Rc::new(FunctionInterface {
-            name: String::from(name),
-            parameters,
-            form: FunctionForm::Member,
             return_type: return_type.clone(),
             requirements: HashSet::new(),
         })
@@ -134,25 +120,39 @@ impl FunctionInterface {
 }
 
 impl FunctionPointer {
-    pub fn new_static(interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
+    pub fn new_global(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
         Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            call_type: FunctionCallType::Static { function: Function::new(Rc::clone(&interface)) },
-            interface,
+            target: Function::new(interface),
+            call_type: FunctionCallType::Static,
+            name: name.into(),
+            form: FunctionForm::Global,
         })
     }
 
-    pub fn new_polymorphic(abstract_function: Rc<Function>) -> Rc<FunctionPointer> {
+    pub fn new_member(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
         Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
-            interface: Rc::clone(&abstract_function.interface),
-            call_type: FunctionCallType::Polymorphic { abstract_function },
+            target: Function::new(interface),
+            call_type: FunctionCallType::Static,
+            name: name.into(),
+            form: FunctionForm::Member,
+        })
+    }
+
+    pub fn new_constant(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
+        Rc::new(FunctionPointer {
+            pointer_id: Uuid::new_v4(),
+            target: Function::new(interface),
+            call_type: FunctionCallType::Static,
+            name: name.into(),
+            form: FunctionForm::Constant,
         })
     }
 
     pub fn unwrap_id(&self) -> Uuid {
         match &self.call_type {
-            FunctionCallType::Static { function } => function.function_id,
+            FunctionCallType::Static => self.target.function_id,
             FunctionCallType::Polymorphic { .. } => panic!("Cannot unwrap polymorphic implementation ID"),
         }
     }
@@ -171,13 +171,13 @@ impl FunctionOverload {
     pub fn from(function: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Rc<FunctionOverload> {
         Rc::new(FunctionOverload {
             pointers: HashSet::from([Rc::clone(object_ref)]),
-            name: function.interface.name.clone(),
-            form: function.interface.form.clone(),
+            name: function.name.clone(),
+            form: function.form.clone(),
         })
     }
 
     pub fn adding_function(&self, function: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Result<Rc<FunctionOverload>, LinkError> {
-        if self.form != function.interface.form {
+        if self.form != function.form {
             return Err(LinkError::LinkError { msg: format!("Cannot overload functions and constants.") })
         }
 
@@ -227,38 +227,41 @@ impl Hash for Function {
     }
 }
 
-impl Debug for FunctionInterface {
+impl Debug for FunctionPointer {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         let mut head = 0;
+
+        write!(fmt, "--({})--> ", &self.pointer_id)?;
 
         match self.form {
             FunctionForm::Global => {}
             FunctionForm::Constant => {}
             FunctionForm::Member => {
-                write!(fmt, "{:?}.", self.parameters.get(head).unwrap().target.type_)?;
+                write!(fmt, "{{'{:?}}}.", self.target.interface.parameters.get(head).unwrap().target.type_)?;
                 head += 1;
             },
         }
 
         write!(fmt, "{}(", self.name)?;
 
-        for parameter in self.parameters.iter().skip(head) {
-            write!(fmt, "{:?} '{:?},", parameter.external_key, parameter.target.type_)?;
+        for parameter in self.target.interface.parameters.iter().skip(head) {
+            match &parameter.external_key {
+                ParameterKey::Positional => {
+                    write!(fmt, "{} '{:?},", parameter.internal_name, parameter.target.type_)?;
+                }
+                ParameterKey::Name(n) => {
+                    write!(fmt, "{}: {} '{:?},", n, parameter.internal_name, parameter.target.type_)?;
+                }
+            }
         }
 
         write!(fmt, ")")?;
 
-        if !self.return_type.unit.is_void() {
-            write!(fmt, " -> {:?}", self.return_type)?;
+        if !self.target.interface.return_type.unit.is_void() {
+            write!(fmt, " -> {:?}", self.target.interface.return_type)?;
         }
 
         Ok(())
-    }
-}
-
-impl Debug for Function {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "abstract {:?}", self.interface)
     }
 }
 

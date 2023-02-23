@@ -23,7 +23,7 @@ pub enum Statement {
 }
 
 pub enum ExpressionOperation {
-    FunctionCall { function: Rc<FunctionPointer>, argument_targets: Vec<Rc<ObjectReference>>, binding: Box<TraitBinding> },
+    FunctionCall { function: Rc<FunctionPointer>, binding: Box<TraitBinding> },
     PairwiseOperations { functions: Vec<Rc<FunctionInterface>> },
     VariableLookup(Rc<ObjectReference>),
     ArrayLiteral,
