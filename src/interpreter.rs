@@ -111,7 +111,7 @@ impl FunctionInterpreter<'_> {
         match &pointer.call_type {
             FunctionCallType::Static => pointer.target.function_id.clone(),
             FunctionCallType::Polymorphic { requirement, abstract_function } => {
-                if let Some(result) = self.binding.resolution[requirement].function_binding.get(abstract_function) {
+                if let Some(result) = self.binding.resolution.get(requirement).and_then(|x| x.function_binding.get(abstract_function)) {
                     return self.resolve(&result)
                 }
 

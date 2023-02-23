@@ -100,9 +100,9 @@ impl TraitConformanceScope {
                 continue
             }
 
-            candidates.push(Box::new(TraitBinding {
-                resolution: HashMap::from([(Rc::clone(requirement), Rc::clone(declaration))]),
-            }));
+            let mut resolution = HashMap::new();
+            requirement.insert_resolution_into(&mut resolution, declaration);
+            candidates.push(Box::new(TraitBinding { resolution }));
         }
 
         if candidates.len() == 1 {
@@ -238,6 +238,13 @@ impl TraitConformanceRequirement {
             },
             function_binding: abstract_to_mapped
         })
+    }
+
+    pub fn insert_resolution_into(self: &Rc<TraitConformanceRequirement>, resolution: &mut HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>, bind: &Rc<TraitConformanceDeclaration>) {
+        resolution.insert(Rc::clone(self), Rc::clone(bind));
+        for (requirement, bind) in bind.trait_binding.resolution.iter() {
+            requirement.insert_resolution_into(resolution, bind);
+        }
     }
 }
 
