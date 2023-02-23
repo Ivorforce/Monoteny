@@ -60,10 +60,11 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
         }
     }
 
-    todo!("Go through all trait conformance declarations somehow");
-    // for declaration in scope.trait_conformance_declarations.declarations.values().flatten() {
-    //     namespace.register_definition(declaration.id, &format!("mn.declarations.{}", &declaration.trait_.name));
-    // }
+    for module in builtins.all_modules() {
+        for declaration in module.trait_conformance_declarations.iter() {
+            namespace.register_definition(declaration.id, &format!("mn.declarations.{}", &declaration.trait_.name));
+        }
+    }
 
     namespace.register_definition(builtins.math.pi.pointer_id, &String::from("mn.pi"));
     namespace.register_definition(builtins.math.tau.pointer_id, &String::from("mn.tau"));
