@@ -8,6 +8,7 @@ use crate::program::functions::FunctionPointer;
 use crate::program::global::FunctionImplementation;
 use crate::program::Program;
 use crate::program::traits::TraitBinding;
+use crate::program::types::TypeUnit;
 
 
 pub fn preload_program(program: &Program, evaluators: &mut HashMap<Uuid, FunctionInterpreterImpl>, assignments: &mut HashMap<Uuid, Value>) {
@@ -78,6 +79,14 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: fn(&FunctionI
         unsafe {
             let arguments = interpreter.evaluate_arguments(expression_id);
             let arg = &arguments[1];
+            let arg_id = &interpreter.implementation.expression_forest.arguments[expression_id][1];
+            let arg_type = interpreter.implementation.type_forest.get_unit(arg_id).unwrap();
+
+            // TODO Once we have a Function supertype we can remove this check.
+            match arg_type {
+                TypeUnit::Function(f) => {},
+                _ => panic!("Argument to transpiler.add is not a function: {:?}", arg_type)
+            };
 
             let implementation_id = *(arg.data as *const Uuid);
             callback(&implementations[&implementation_id]);
