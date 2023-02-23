@@ -42,5 +42,5 @@ def transpile(transpiler 'Transpiler) :: {
     -- as if running using the interpreter.
 
     -- Ideally, constant folding can break it down to just print statements.
-    transpiler.add(1);
+    transpiler.add(main);
 }

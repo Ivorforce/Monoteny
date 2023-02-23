@@ -18,6 +18,8 @@ use crate::program::types::{TypeProto, TypeUnit};
 
 pub struct Transpilation {
     pub module: Rc<Module>,
+    pub any_type: Box<TypeProto>,
+
     pub Transpiler: Rc<Trait>,
     pub add: Rc<FunctionPointer>,
 }
@@ -27,6 +29,7 @@ pub fn create(core: &Core) -> Transpilation {
 
     let self_id = Uuid::new_v4();
     let self_type = TypeProto::unit(TypeUnit::Any(self_id));
+    let any_type = TypeProto::unit(TypeUnit::Any(Uuid::new_v4()));
 
     let Transpiler = make_trait("Transpiler", &self_id, vec![], vec![]);
     module.add_trait(&Transpiler);
@@ -36,7 +39,9 @@ pub fn create(core: &Core) -> Transpilation {
         FunctionInterface::new_simple(
             [
                 TypeProto::unit(TypeUnit::Struct(Rc::clone(&Transpiler))),
-                TypeProto::simple_struct(&core.primitives[&primitives::Type::Int8])  // TODO This should be a function reference
+                // TODO This should be 'any function' but there's no need to implement that until we
+                //  need function abstractions in the future otherwise.
+                any_type.clone()
             ].into_iter(),
             self_type.clone(),
         )
@@ -45,6 +50,8 @@ pub fn create(core: &Core) -> Transpilation {
 
     Transpilation {
         module: Rc::new(module),
+        any_type,
+
         Transpiler, add
     }
 }
