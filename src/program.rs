@@ -23,8 +23,8 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn find_main(&self) -> Option<&Rc<FunctionImplementation>> {
+    pub fn find_annotated(&self, annotation: &str) -> Option<&Rc<FunctionImplementation>> {
         self.function_implementations.values()
-            .find_or_first(|f| f.decorators.contains(&String::from("main")))
+            .find_or_first(|f| f.decorators.contains(&annotation.into()))
     }
 }

@@ -43,7 +43,7 @@ pub fn create(core: &Core) -> Transpilation {
                 //  need function abstractions in the future otherwise.
                 any_type.clone()
             ].into_iter(),
-            self_type.clone(),
+            TypeProto::unit(TypeUnit::Void),
         )
     );
     module.add_function(&add);

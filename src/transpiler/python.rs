@@ -9,6 +9,7 @@ use guard::guard;
 use itertools::zip_eq;
 use uuid::Uuid;
 use regex;
+use crate::interpreter;
 
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
@@ -37,6 +38,10 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     writeln!(stream, "import operator as op")?;
     writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
     writeln!(stream, "from typing import Any, Callable")?;
+
+    interpreter::run::transpile(program, builtins, |pointer| {
+        println!("Should transpile: {:?}", pointer.pointer)
+    });
 
     let mut global_namespace = builtins::create(builtins);
     let mut file_namespace = global_namespace.add_sublevel();
@@ -69,7 +74,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 
     todo!("Call the module's @transpile function");
 
-    if let Some(main_function) = program.find_main() {
+    if let Some(main_function) = program.find_annotated("main") {
         write!(stream, "\n\nif __name__ == '__main__':\n    {}()\n", names.get(&main_function.implementation_id).unwrap())?;
     }
 
