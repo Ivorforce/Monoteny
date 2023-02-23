@@ -62,7 +62,7 @@ fn main() -> Result<(), LinkError> {
             let syntax_tree = parser::parse_program(&content);
 
             let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;
-            interpreter::run_program(&computation_tree, &builtins);
+            interpreter::run::main(&computation_tree, &builtins);
         },
         Some(("check", sub_matches)) => {
             let paths = sub_matches
