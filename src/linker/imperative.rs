@@ -67,7 +67,7 @@ impl <'a> ImperativeLinker<'a> {
         while !self.ambiguities.is_empty() {
             if !has_changed {
                 // TODO Output which parts are ambiguous, and how, by asking the objects
-                panic!("The function {} is ambiguous.", &self.function.name)
+                panic!("The types of function {} are underdefined.", &self.function.name)
             }
 
             has_changed = false;
