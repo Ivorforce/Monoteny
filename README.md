@@ -12,9 +12,9 @@ tuple Cartesian(x, y, z);
 tuple Spherical(l, e, a);
 
 -- Define a function with a monadic input and a monadic output.
-def to_spherical_coordinates(xyz 'Float[Cartesian]) -> Float[Spherical] :: {
+def {'Float[Cartesian]}.to_spherical() -> Float[Spherical] :: {
   -- Destructure to x, y, z arrays, each 'Float
-  let #(x, y, z) = xyz;
+  let #(x, y, z) = self;
 
   -- Pre-compute xz_sq
   let xz_sq = x ** 2 + z ** 2;
@@ -36,7 +36,7 @@ def main() {
   let xyz 'Float32[n: 100, coord: Cartesian] = random();
   
   -- Call the function to create a multimonad 'Float32[n: 100, coord: Spherical] 
-  let lea = to_spherical_coordinates(xyz)->[coord];
+  let lea = xyz@.to_spherical()->[coord];
   
   -- Print the multimonad
   print(lea);
