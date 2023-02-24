@@ -36,7 +36,7 @@ def main() {
   let xyz 'Float32[n: 100, coord: Cartesian] = random();
   
   -- Call the function to create a multimonad 'Float32[n: 100, coord: Spherical] 
-  let lea '# = to_spherical_coordinates(xyz)->[coord];
+  let lea = to_spherical_coordinates(xyz)->[coord];
   
   -- Print the multimonad
   print(lea);
