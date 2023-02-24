@@ -12,28 +12,33 @@ tuple Cartesian(x, y, z);
 tuple Spherical(l, e, a);
 
 @main
-def cartesian_to_spherical_coordinates() :: {
+def main() {
   -- Define dimensions
   let n, coord;
   
-  -- Generate our input randomly, for demonstration's sake.
-  let xyz 'Float32[n: 100, coord: Cartesian] = random(axes=[n,  coord]);
-
-  -- Destructure to x, y, z arrays, each 'Float32[n: 100]'
-  let #(x, y, z) = xyz;
-  
-  -- Pre-compute xz_sq
-  let xz_sq = x ** 2 + z ** 2;
+  -- Generate our input randomly, for demonstration's sake. Each entry gets a different random value due to broadcasting.
+  let xyz 'Float32[n: 100, coord: Cartesian] = random();
   
   -- Create a multimonad 'Float32[n: 100, coord: Spherical] 
-  let lea = Spherical(
-    l: (xz_sq + y ** 2).sqrt(),
-    e: atan2(xz_sq.sqrt(), y),
-    a: atan2(z, x),
-  )->[coord];
+  let lea = cartesian_to_spherical_coordinates(xyz)->[coord];
   
   -- Print the multimonad
   print(lea);
+}
+
+def cartesian_to_spherical_coordinates(xyz 'Float[Cartesian]) -> Float[Spherical] :: {
+  -- Destructure to x, y, z arrays, each 'Float
+  let #(x, y, z) = xyz;
+
+  -- Pre-compute xz_sq
+  let xz_sq = x ** 2 + z ** 2;
+
+  -- Construct a monad Float[Spherical] using a constructor.
+  return Spherical(
+    l: (xz_sq + y ** 2).sqrt(),
+    e: atan2(xz_sq.sqrt(), y),
+    a: atan2(z, x),
+  );
 }
 ```
 
