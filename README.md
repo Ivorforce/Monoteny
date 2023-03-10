@@ -22,8 +22,8 @@ def {'Float[Cartesian]}.to_spherical() -> Float[Spherical] :: {
   -- Construct a monad Float[Spherical] using a generic constructor.
   return #(
     l: (xz_sq + y ** 2).sqrt(),
-    e: atan2(xz_sq.sqrt(), y),
-    a: atan2(z, x),
+    e: xz_sq.sqrt().atan2(y),
+    a: z.atan2(x),
   );
 }
 
@@ -43,6 +43,7 @@ def main() {
 }
 ```
 
+For a full practical introduction, see: [Introduction to Monoteny](https://www.craft.do/s/dYSfJhYM9TAsne).
 More code can be found in the [examples](./examples) directory.
 
 ## Philosophy
