@@ -20,7 +20,7 @@ use crate::program::{primitives, Program};
 use crate::program::allocation::Reference;
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation};
-use crate::program::traits::TraitConformanceDeclaration;
+use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::namespaces;
 use crate::transpiler::python::docstrings::transpile_type;
@@ -34,7 +34,6 @@ pub struct TranspilerContext<'a> {
 }
 
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: Rc<Builtins>) -> Result<(), std::io::Error> {
-    writeln!(stream, "import monoteny as mn")?;
     writeln!(stream, "import numpy as np")?;
     writeln!(stream, "import math")?;
     writeln!(stream, "import operator as op")?;
@@ -122,9 +121,10 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
         write!(stream, ", ")?;
     }
 
-    for declaration in function.conformance_delegations.values() {
-        write!(stream, "{}: {}, ", context.names.get(&declaration.id).unwrap(), context.names.get(&declaration.trait_.id).unwrap())?;
-    }
+    // TODO Only required when conformance isn't fully resolved
+    // for declaration in function.conformance_delegations.values() {
+    //     write!(stream, "{}: {}, ", context.names.get(&declaration.id).unwrap(), context.names.get(&declaration.trait_.id).unwrap())?;
+    // }
 
     write!(stream, ")")?;
 
@@ -231,7 +231,9 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                 }
                 write!(stream, "(")?;
 
-                let mut arguments_left = arguments.len() + function.target.interface.requirements.len();
+                // TODO Only required when we're forward-passing unresolved requirements
+                let requirements: [&Rc<TraitConformanceRequirement>; 0] = [];  // function.target.interface.requirements
+                let mut arguments_left = arguments.len() + requirements.len();
 
                 for (parameter, argument) in zip_eq(function.target.interface.parameters.iter(), arguments.iter()) {
                     if let ParameterKey::Name(name) = &parameter.external_key {
@@ -247,7 +249,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                     }
                 }
 
-                for requirement in function.target.interface.requirements.iter() {
+                for requirement in requirements {
                     let implementation = &context.functions_by_id[&function.pointer_id];
                     let declaration = &implementation.conformance_delegations[requirement];
 
