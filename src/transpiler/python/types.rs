@@ -1,4 +1,5 @@
 use std::io::Write;
+use itertools::Itertools;
 use crate::program::builtins::Builtins;
 use crate::program::primitives;
 use crate::program::traits::Trait;
@@ -38,8 +39,10 @@ pub fn transpile_primitive_value(stream: &mut (dyn Write), value: &String, type_
 }
 
 pub fn transpile_struct(stream: &mut (dyn Write), s: &Trait, context: &TranspilerContext) -> Result<(), std::io::Error> {
-    // TODO types::transpile_primitive(stream, n)?
-    if s == context.builtins.core.traits.String.as_ref() {
+    if let Some(primitive_type) = context.builtins.core.get_primitive(s) {
+        transpile_primitive(stream, primitive_type)
+    }
+    else if s == context.builtins.core.traits.String.as_ref() {
         write!(stream, "str")
     }
     else {

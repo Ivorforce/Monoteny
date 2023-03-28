@@ -36,3 +36,15 @@ pub fn create() -> Core {
         self_id,
     }
 }
+
+impl Core {
+    pub fn get_primitive(&self, trait_: &Trait) -> Option<&primitives::Type> {
+        for (primitive_type, t) in self.primitives.iter() {
+            if trait_.id == t.id {
+                return Some(primitive_type)
+            }
+        }
+
+        None
+    }
+}

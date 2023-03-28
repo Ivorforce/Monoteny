@@ -95,8 +95,9 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<F
             };
 
             let implementation_id = *(arg.data as *const Uuid);
-            (&mut *callback_cell.borrow_mut())(&implementations[&implementation_id]);
-            println!("Transpile {}", implementation_id);
+            let implementation = &implementations[&implementation_id];
+            (&mut *callback_cell.borrow_mut())(implementation);
+            todo!("We need to unfold and transpile the functions that 'implementation' uses.");
 
             return None;
         }

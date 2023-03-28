@@ -51,15 +51,7 @@ pub fn transpile_primitive_type(type_def: &primitives::Type) -> String {
 
 pub fn transpile_type(type_def: &TypeProto) -> String {
     match &type_def.unit {
-        TypeUnit::Struct(t) => {
-            // for (primitive_type, trait_) in builtins.core.primitives.iter() {
-            //     if trait_ == t {
-            //         return transpile_primitive_type(primitive_type)
-            //     }
-            // }
-
-            todo!()
-        },
+        TypeUnit::Struct(t) => todo!(),
         TypeUnit::Monad => {
             // TODO Shape
             format!("Tensor<{}, 1>", transpile_type(&type_def.arguments[0]))
