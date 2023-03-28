@@ -2,11 +2,13 @@ pub mod docstrings;
 pub mod types;
 pub mod builtins;
 
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
+use std::ops::DerefMut;
 use std::rc::Rc;
 use guard::guard;
-use itertools::zip_eq;
+use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use regex;
 use crate::interpreter;
@@ -20,8 +22,8 @@ use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation};
 use crate::program::traits::TraitConformanceDeclaration;
 use crate::program::types::{TypeProto, TypeUnit};
-use crate::transpiler::cpp::transpile_type;
 use crate::transpiler::namespaces;
+use crate::transpiler::python::docstrings::transpile_type;
 
 pub struct TranspilerContext<'a> {
     names: &'a HashMap<Uuid, String>,
@@ -31,7 +33,7 @@ pub struct TranspilerContext<'a> {
     types: &'a TypeForest,
 }
 
-pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &Builtins) -> Result<(), std::io::Error> {
+pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: Rc<Builtins>) -> Result<(), std::io::Error> {
     writeln!(stream, "import monoteny as mn")?;
     writeln!(stream, "import numpy as np")?;
     writeln!(stream, "import math")?;
@@ -39,11 +41,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
     writeln!(stream, "from typing import Any, Callable")?;
 
-    interpreter::run::transpile(program, builtins, |pointer| {
-        println!("Should transpile: {:?}", pointer.pointer)
-    });
-
-    let mut global_namespace = builtins::create(builtins);
+    let mut global_namespace = builtins::create(&builtins);
     let mut file_namespace = global_namespace.add_sublevel();
     let mut object_namespace = namespaces::Level::new();
     let mut functions_by_id = HashMap::new();
@@ -71,8 +69,24 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 
     let mut names = global_namespace.map_names();
     names.extend(object_namespace.map_names());
+    let names = Rc::new(names);
 
-    todo!("Call the module's @transpile function");
+    let stream_cell = Rc::new(RefCell::new(stream));
+
+    interpreter::run::transpile(program, &Rc::clone(&builtins), &|implementation| {
+        let context = TranspilerContext {
+            names: &names,
+            functions_by_id: &functions_by_id,
+            builtins: &builtins,
+            expressions: &implementation.expression_forest,
+            types: &implementation.type_forest
+        };
+
+        transpile_function(stream_cell.borrow_mut().deref_mut(), implementation, &context).unwrap();
+    });
+
+    let mut binding = stream_cell.borrow_mut();
+    let stream = binding.deref_mut();
 
     if let Some(main_function) = program.find_annotated("main") {
         write!(stream, "\n\nif __name__ == '__main__':\n    {}()\n", names.get(&main_function.implementation_id).unwrap())?;
@@ -204,7 +218,12 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
             else {
                 match &function.call_type {
                     // Can reference the static function
-                    FunctionCallType::Static => write!(stream, "{}", context.names[&function.pointer_id])?,
+                    FunctionCallType::Static => {
+                        guard!(let Some(name) = context.names.get(&function.pointer_id) else {
+                            panic!("Couldn't find name in python: {:?}", function)
+                        });
+                        write!(stream, "{}", name)?
+                    },
                     // Have to reference the function by trait
                     FunctionCallType::Polymorphic { requirement, abstract_function } => {
                         write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&function.pointer_id])?;
@@ -304,26 +323,26 @@ pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<Func
         return Ok(false)
     });
 
-    todo!()
-
     // TODO We can probably avoid unnecessary parentheses here and in the other operators if we ask the expression for its (python) precedence, and compare it with ours.
-    // for (collection, operator) in [
-    //     (&context.builtins.primitives.positive, "+"),
-    //     (&context.builtins.primitives.negative, "-"),
-    //
-    //     // (&HashSet::from([Rc::clone(&context.builtins.primitives.not)]), "not "),
-    // ] {
-    //     if !(collection.contains_key(function)) {
-    //         continue;
-    //     }
-    //
-    //     write!(stream, "{}", operator)?;
-    //     transpile_maybe_parenthesized_expression(stream, expression.clone(), context)?;
-    //
-    //     return Ok(true);
-    // }
-    //
-    // return Ok(false);
+    for (collection, operator) in [
+        (&context.builtins.core.primitive_fns.positive, "+"),
+        (&context.builtins.core.primitive_fns.negative, "-"),
+
+        // TODO This is not ideal
+        (&HashMap::from([(primitives::Type::Bool, Rc::clone(&context.builtins.core.primitive_fns.not))]), "not "),
+    ] {
+        // TODO values().contains is not ideal
+        if !(collection.values().contains(function)) {
+            continue;
+        }
+
+        write!(stream, "{}", operator)?;
+        transpile_maybe_parenthesized_expression(stream, expression.clone(), context)?;
+
+        return Ok(true);
+    }
+
+    return Ok(false);
 }
 
 pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
@@ -331,40 +350,40 @@ pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<Fun
         return Ok(false)
     });
 
-    todo!()
+    for (collection, operator) in [
+        // TODO This is not ideal
+        (&HashMap::from([(primitives::Type::Bool, Rc::clone(&context.builtins.core.primitive_fns.and))]), "and"),
+        (&HashMap::from([(primitives::Type::Bool, Rc::clone(&context.builtins.core.primitive_fns.or))]), "or"),
 
-    // for (collection, operator) in [
-    //     // (&HashSet::from([Rc::clone(&context.builtins.primitives.and)]), "and"),
-    //     // (&HashSet::from([Rc::clone(&context.builtins.primitives.or)]), "or"),
-    //
-    //     (&context.builtins.primitives.equal_to, "=="),
-    //     (&context.builtins.primitives.not_equal_to, "!="),
-    //
-    //     (&context.builtins.primitives.greater_than, ">"),
-    //     (&context.builtins.primitives.greater_than_or_equal_to, ">="),
-    //     (&context.builtins.primitives.lesser_than, "<"),
-    //     (&context.builtins.primitives.lesser_than_or_equal_to, "<="),
-    //
-    //     (&context.builtins.primitives.add, "+"),
-    //     (&context.builtins.primitives.subtract, "-"),
-    //     (&context.builtins.primitives.multiply, "*"),
-    //     (&context.builtins.primitives.divide, "/"),
-    //
-    //     (&context.builtins.primitives.exponent, "**"),
-    //     (&context.builtins.primitives.modulo, "%"),
-    // ] {
-    //     if !(collection.contains_key(function)) {
-    //         continue;
-    //     }
-    //
-    //     transpile_maybe_parenthesized_expression(stream, lhs.clone(), context)?;
-    //     write!(stream, " {} ", operator)?;
-    //     transpile_maybe_parenthesized_expression(stream, rhs.clone(), context)?;
-    //
-    //     return Ok(true);
-    // }
-    //
-    // return Ok(false);
+        (&context.builtins.core.primitive_fns.equal_to, "=="),
+        (&context.builtins.core.primitive_fns.not_equal_to, "!="),
+
+        (&context.builtins.core.primitive_fns.greater_than, ">"),
+        (&context.builtins.core.primitive_fns.greater_than_or_equal_to, ">="),
+        (&context.builtins.core.primitive_fns.lesser_than, "<"),
+        (&context.builtins.core.primitive_fns.lesser_than_or_equal_to, "<="),
+
+        (&context.builtins.core.primitive_fns.add, "+"),
+        (&context.builtins.core.primitive_fns.subtract, "-"),
+        (&context.builtins.core.primitive_fns.multiply, "*"),
+        (&context.builtins.core.primitive_fns.divide, "/"),
+
+        (&context.builtins.core.primitive_fns.exponent, "**"),
+        (&context.builtins.core.primitive_fns.modulo, "%"),
+    ] {
+        // TODO values().contains is not ideal
+        if !(collection.values().contains(function)) {
+            continue;
+        }
+
+        transpile_maybe_parenthesized_expression(stream, lhs.clone(), context)?;
+        write!(stream, " {} ", operator)?;
+        transpile_maybe_parenthesized_expression(stream, rhs.clone(), context)?;
+
+        return Ok(true);
+    }
+
+    return Ok(false);
 }
 
 pub fn try_transpile_literal(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<bool, std::io::Error> {
@@ -379,17 +398,19 @@ pub fn try_transpile_literal(stream: &mut (dyn Write), function: &Rc<FunctionPoi
     let is_float = regex::Regex::new("^[0-9]+\\.[0-9]*$").unwrap();
     let is_int = regex::Regex::new("^[0-9]+$").unwrap();
 
-    todo!()
-    // if context.builtins.primitives.parse_int_literal.contains_key(function) && is_int.is_match(literal) {
-    //     write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
-    //     return Ok(true);
-    // }
-    // else if context.builtins.primitives.parse_float_literal.contains_key(function) && is_float.is_match(literal) {
-    //     write!(stream, "{}({})", transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap()), literal)?;
-    //     return Ok(true);
-    // }
-    //
-    // Ok(false)
+    // TODO values().contains is not ideal
+    if context.builtins.core.primitive_fns.parse_int_literal.values().contains(function) && is_int.is_match(literal) {
+        types::transpile(stream, &context.types.resolve_binding_alias(expression_id).unwrap(), context)?;
+        write!(stream, "({})",  literal)?;
+        return Ok(true);
+    }
+    else if context.builtins.core.primitive_fns.parse_float_literal.values().contains(function) && is_float.is_match(literal) {
+        types::transpile(stream, &context.types.resolve_binding_alias(expression_id).unwrap(), context)?;
+        write!(stream, "({})", literal)?;
+        return Ok(true);
+    }
+
+    Ok(false)
 }
 
 pub fn try_transpile_keyword(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
@@ -411,23 +432,29 @@ pub fn try_transpile_constant(stream: &mut (dyn Write), function: &Rc<FunctionPo
         return Ok(false);
     };
 
-    todo!("Check if type is primitive (so it's clear that we can convert)");
-    // guard!(let TypeUnit::Primitive(_) = context.types.resolve_binding_alias(expression_id).unwrap().unit else {
-    //     return Ok(false)
-    // });
-
-    let type_string = transpile_type(&context.types.resolve_binding_alias(expression_id).unwrap());
+    if !match &context.types.resolve_binding_alias(expression_id).unwrap().unit {
+        TypeUnit::Struct(s) => {
+            // TODO values().contains is not ideal
+            context.builtins.core.primitives.values().contains(s)
+        },
+        _ => false,
+    } {
+        return Ok(false)
+    }
 
     if function == &context.builtins.math.pi {
-        write!(stream, "{}(np.pi)", type_string)?;
+        transpile_type(stream, &context.types.resolve_binding_alias(expression_id).unwrap(), context)?;
+        write!(stream, "(np.pi)")?;
         return Ok(true)
     }
-    if function == &context.builtins.math.tau {
-        write!(stream, "{}(np.pi * 2)", type_string)?;
+    else if function == &context.builtins.math.tau {
+        transpile_type(stream, &context.types.resolve_binding_alias(expression_id).unwrap(), context)?;
+        write!(stream, "(np.pi * 2)")?;
         return Ok(true)
     }
-    if function == &context.builtins.math.e {
-        write!(stream, "{}(np.e)", type_string)?;
+    else if function == &context.builtins.math.e {
+        transpile_type(stream, &context.types.resolve_binding_alias(expression_id).unwrap(), context)?;
+        write!(stream, "(np.e)")?;
         return Ok(true)
     }
 

@@ -15,7 +15,7 @@ pub fn bin_op(_item: TokenStream) -> TokenStream {
     format!("
 {{
             let layout = Layout::new::<{result_type}>();
-            Box::new(move |interpreter, expression_id, binding| {{
+            Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
                     let args = &interpreter.implementation.expression_forest.arguments[expression_id];
                     let l = interpreter.evaluate(&args[0]).unwrap();
@@ -39,7 +39,7 @@ pub fn un_op(_item: TokenStream) -> TokenStream {
 
     format!("{{
             let layout = Layout::new::<{type_}>();
-            Box::new(move |interpreter, expression_id, binding| {{
+            Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
                     let args = &interpreter.implementation.expression_forest.arguments[expression_id];
                     let arg = interpreter.evaluate(&args[0]).unwrap();
@@ -65,7 +65,7 @@ pub fn fun_op(_item: TokenStream) -> TokenStream {
     format!("
 {{
             let layout = Layout::new::<{result_type}>();
-            Box::new(move |interpreter, expression_id, binding| {{
+            Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
                     let args = &interpreter.implementation.expression_forest.arguments[expression_id];
                     let l = interpreter.evaluate(&args[0]).unwrap();
@@ -88,7 +88,7 @@ pub fn parse_op(_item: TokenStream) -> TokenStream {
 
     format!("{{
             let layout = Layout::new::<{type_}>();
-            Box::new(move |interpreter, expression_id, binding| {{
+            Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
                     let args = &interpreter.implementation.expression_forest.arguments[expression_id];
                     let arg = interpreter.evaluate(&args[0]).unwrap();
@@ -109,7 +109,7 @@ pub fn load_constant(_item: TokenStream) -> TokenStream {
 
     format!("{{
         let layout = Layout::new::<{type_}>();
-        Box::new(move |interpreter, expression_id, binding| {{
+        Rc::new(move |interpreter, expression_id, binding| {{
             unsafe {{
                 let ptr = alloc(layout);
                 *(ptr as *mut {type_}) = {value};
@@ -135,7 +135,7 @@ pub fn load_float_constant(_item: TokenStream) -> TokenStream {
         let f32_type = {f32_type}.clone();
         let f64_type = {f64_type}.clone();
 
-        Box::new(move |interpreter, expression_id, binding| {{
+        Rc::new(move |interpreter, expression_id, binding| {{
             unsafe {{
                 let return_type = interpreter.implementation.type_forest.get_unit(expression_id).unwrap();
 

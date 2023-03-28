@@ -232,7 +232,7 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
     // -------------------------------------- Common --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    map.insert(builtins.debug.print.unwrap_id(), Box::new(|interpreter, expression_id, binding| {
+    map.insert(builtins.debug.print.unwrap_id(), Rc::new(|interpreter, expression_id, binding| {
         unsafe {
             let arg_id = &interpreter.implementation.expression_forest.arguments[expression_id][0];
             let arg = interpreter.evaluate(arg_id).unwrap();
@@ -242,13 +242,13 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
             //  If not implemented, dump the type instead.
             println!("{}", match arg_type {
                 TypeUnit::Struct(s) => {
-                    if s == &interpreter.builtins.core.traits.String {
+                    if s == &interpreter.globals.builtins.core.traits.String {
                         (*(arg.data as *const String)).clone()
                     }
-                    else if s == &interpreter.builtins.core.primitives[&primitives::Type::Bool] {
+                    else if s == &interpreter.globals.builtins.core.primitives[&primitives::Type::Bool] {
                         (*(arg.data as *const bool)).to_string()
                     }
-                    else if s == &interpreter.builtins.core.primitives[&primitives::Type::Float32] {
+                    else if s == &interpreter.globals.builtins.core.primitives[&primitives::Type::Float32] {
                         (*(arg.data as *const f32)).to_string()
                     }
                     // TODO Transpile these too. Should probably make a lookup table somewhere?

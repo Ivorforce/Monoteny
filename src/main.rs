@@ -13,6 +13,7 @@ pub mod util;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::path::PathBuf;
+use std::rc::Rc;
 
 use clap::{arg, Command};
 use crate::linker::LinkError;
@@ -122,7 +123,7 @@ fn main() -> Result<(), LinkError> {
                         transpiler::python::transpile_program(
                             &mut f,
                             &computation_tree,
-                            &builtins
+                            Rc::clone(&builtins)
                         ).expect("Error when writing to file");
 
                         println!("{:?}", python_path);

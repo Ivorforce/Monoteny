@@ -1,8 +1,10 @@
 use std::alloc::{alloc, Layout};
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ops::DerefMut;
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::interpreter::{builtins, compiler, FunctionInterpreter, FunctionInterpreterImpl, Value};
+use crate::interpreter::{builtins, compiler, FunctionInterpreter, FunctionInterpreterImpl, InterpreterGlobals, Value};
 use crate::program::builtins::Builtins;
 use crate::program::functions::FunctionPointer;
 use crate::program::global::FunctionImplementation;
@@ -11,7 +13,7 @@ use crate::program::traits::TraitBinding;
 use crate::program::types::TypeUnit;
 
 
-pub fn preload_program(program: &Program, evaluators: &mut HashMap<Uuid, FunctionInterpreterImpl>, assignments: &mut HashMap<Uuid, Value>) {
+pub fn preload_program<'a>(program: &'a Program, evaluators: &mut HashMap<Uuid, FunctionInterpreterImpl<'a>>, assignments: &mut HashMap<Uuid, Value>) {
     for (function_pointer, implementation) in program.function_implementations.iter() {
         evaluators.insert(implementation.pointer.target.function_id.clone(), compiler::compile_function(implementation));
 
@@ -36,8 +38,10 @@ pub fn main(program: &Program, builtins: &Builtins) {
     preload_program(program, &mut evaluators, &mut assignments);
 
     let mut interpreter = FunctionInterpreter {
-        builtins,
-        function_evaluators: &evaluators,
+        globals: &mut InterpreterGlobals {
+            builtins,
+            function_evaluators: &mut evaluators,
+        },
         implementation: entry_function,
         binding: TraitBinding { resolution: HashMap::new() },
         assignments,
@@ -47,7 +51,7 @@ pub fn main(program: &Program, builtins: &Builtins) {
     }
 }
 
-pub fn transpile(program: &Program, builtins: &Builtins, callback: fn(&FunctionImplementation)) {
+pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<FunctionImplementation>)) {
     let entry_function = program.find_annotated("transpile").expect("No main function!");
     let mut evaluators = builtins::make_evaluators(builtins);
     let mut assignments = HashMap::new();
@@ -75,7 +79,9 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: fn(&FunctionI
         implementations.insert(implementation.implementation_id, Rc::clone(implementation));
     }
 
-    evaluators.insert(builtins.transpilation.add.target.function_id.clone(), Box::new(move |interpreter, expression_id, binding| {
+    let callback_cell = Rc::new(RefCell::new(callback));
+
+    let b: FunctionInterpreterImpl = Rc::new(move |interpreter, expression_id, binding| {
         unsafe {
             let arguments = interpreter.evaluate_arguments(expression_id);
             let arg = &arguments[1];
@@ -89,16 +95,19 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: fn(&FunctionI
             };
 
             let implementation_id = *(arg.data as *const Uuid);
-            callback(&implementations[&implementation_id]);
+            (&mut *callback_cell.borrow_mut())(&implementations[&implementation_id]);
             println!("Transpile {}", implementation_id);
 
-            return None
+            return None;
         }
-    }));
+    });
+    evaluators.insert(builtins.transpilation.add.target.function_id.clone(), b);
 
     let mut interpreter = FunctionInterpreter {
-        builtins,
-        function_evaluators: &evaluators,
+        globals: &mut InterpreterGlobals {
+            builtins,
+            function_evaluators: &mut evaluators,
+        },
         implementation: entry_function,
         binding: TraitBinding { resolution: HashMap::new() },
         assignments,
@@ -107,3 +116,5 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: fn(&FunctionI
         interpreter.run();
     }
 }
+
+

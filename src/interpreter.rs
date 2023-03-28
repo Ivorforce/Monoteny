@@ -21,7 +21,7 @@ use crate::program::primitives;
 use crate::program::traits::{TraitBinding, TraitConformanceDeclaration};
 
 
-pub type FunctionInterpreterImpl = Box<dyn Fn(&mut FunctionInterpreter, &ExpressionID, &TraitBinding) -> Option<Value>>;
+pub type FunctionInterpreterImpl<'a> = Rc<dyn Fn(&mut FunctionInterpreter, &ExpressionID, &TraitBinding) -> Option<Value> + 'a>;
 
 
 pub struct Value {
@@ -29,17 +29,20 @@ pub struct Value {
     pub data: *mut u8,
 }
 
-pub struct FunctionInterpreter<'a> {
+pub struct InterpreterGlobals<'a> {
     pub builtins: &'a Builtins,
-    pub function_evaluators: &'a HashMap<Uuid, FunctionInterpreterImpl>,
+    pub function_evaluators: &'a HashMap<Uuid, FunctionInterpreterImpl<'a>>,
+}
 
-    pub implementation: &'a FunctionImplementation,
+pub struct FunctionInterpreter<'a, 'b, 'c> {
+    pub globals: &'a mut InterpreterGlobals<'b>,
+    pub implementation: &'c FunctionImplementation,
     pub binding: TraitBinding,
 
     pub assignments: HashMap<Uuid, Value>,
 }
 
-impl FunctionInterpreter<'_> {
+impl FunctionInterpreter<'_, '_, '_> {
     pub unsafe fn assign_arguments(&mut self, arguments: Vec<Value>) {
         // TODO Shouldn't use the human interface, but rather a set order of arguments.
         for (arg, parameter) in zip_eq(arguments, self.implementation.pointer.target.interface.parameters.iter()) {
@@ -100,7 +103,7 @@ impl FunctionInterpreter<'_> {
         match &self.implementation.expression_forest.operations[expression_id] {
             ExpressionOperation::FunctionCall { function: fun, binding } => {
                 let function_id = self.resolve(fun);
-                let implementation = &self.function_evaluators.get(&function_id);
+                let implementation = self.globals.function_evaluators.get(&function_id);
 
                 guard!(let Some(implementation) = implementation else {
                     panic!("Cannot find function ({}) with interface: {:?}", function_id, fun);
