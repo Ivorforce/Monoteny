@@ -11,6 +11,7 @@ use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use regex;
+use crate::generic_unfolding::unfold;
 use crate::interpreter;
 
 use crate::program::builtins::Builtins;
@@ -20,7 +21,7 @@ use crate::program::{primitives, Program};
 use crate::program::allocation::Reference;
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation};
-use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
+use crate::program::traits::{TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::namespaces;
 use crate::transpiler::python::docstrings::transpile_type;
@@ -74,18 +75,23 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     let internal_blocks: Rc<RefCell<HashMap<Uuid, String>>> = Rc::new(RefCell::new(HashMap::new()));
 
     interpreter::run::transpile(program, &Rc::clone(&builtins), &|implementation| {
-        let context = TranspilerContext {
-            names: &names,
-            functions_by_id: &functions_by_id,
-            builtins: &builtins,
-            expressions: &implementation.expression_forest,
-            types: &implementation.type_forest
-        };
+        let unfolded_functions = unfold(implementation, &TraitBinding { resolution: Default::default() });
 
-        let mut block = Vec::new();
-        transpile_function(&mut block, implementation, &context).unwrap();
-        exported_blocks.borrow_mut().deref_mut().insert(implementation.implementation_id, String::from_utf8(block).unwrap());
-        // todo!("We need to unfold and transpile the functions that 'implementation' uses.");
+        for (i, implementation) in unfolded_functions.into_iter().enumerate() {
+            let context = TranspilerContext {
+                names: &names,
+                functions_by_id: &functions_by_id,
+                builtins: &builtins,
+                expressions: &implementation.expression_forest,
+                types: &implementation.type_forest
+            };
+
+            let mut block = Vec::new();
+            transpile_function(&mut block, &implementation, &context).unwrap();
+
+            let target = if i == 0 { &exported_blocks } else { &internal_blocks };
+            target.borrow_mut().deref_mut().insert(implementation.implementation_id, String::from_utf8(block).unwrap());
+        }
     });
 
     for block in exported_blocks.borrow_mut().deref_mut().values() {

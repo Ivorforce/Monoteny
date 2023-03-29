@@ -9,6 +9,7 @@ pub mod parser;
 pub mod program;
 pub mod transpiler;
 pub mod util;
+pub mod generic_unfolding;
 
 use std::ffi::OsStr;
 use std::fs::File;
