@@ -70,7 +70,8 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     names.extend(object_namespace.map_names());
     let names = Rc::new(names);
 
-    let stream_cell = Rc::new(RefCell::new(stream));
+    let exported_blocks: Rc<RefCell<HashMap<Uuid, String>>> = Rc::new(RefCell::new(HashMap::new()));
+    let internal_blocks: Rc<RefCell<HashMap<Uuid, String>>> = Rc::new(RefCell::new(HashMap::new()));
 
     interpreter::run::transpile(program, &Rc::clone(&builtins), &|implementation| {
         let context = TranspilerContext {
@@ -81,11 +82,29 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
             types: &implementation.type_forest
         };
 
-        transpile_function(stream_cell.borrow_mut().deref_mut(), implementation, &context).unwrap();
+        let mut block = Vec::new();
+        transpile_function(&mut block, implementation, &context).unwrap();
+        exported_blocks.borrow_mut().deref_mut().insert(implementation.implementation_id, String::from_utf8(block).unwrap());
+        // todo!("We need to unfold and transpile the functions that 'implementation' uses.");
     });
 
-    let mut binding = stream_cell.borrow_mut();
-    let stream = binding.deref_mut();
+    for block in exported_blocks.borrow_mut().deref_mut().values() {
+        write!(stream, "{}\n\n", block)?;
+    }
+
+    writeln!(stream, "# ========================== ======== ============================")?;
+    writeln!(stream, "# ========================== Internal ============================")?;
+    writeln!(stream, "# ========================== ======== ============================")?;
+
+    for block in internal_blocks.borrow_mut().deref_mut().values() {
+        write!(stream, "{}\n\n", block)?;
+    }
+
+    writeln!(stream, "\n__all__ = [")?;
+    for name in exported_blocks.borrow_mut().deref_mut().keys().map(|x| &names[x]).sorted() {
+        writeln!(stream, "    \"{}\",", name)?;
+    }
+    writeln!(stream, "]")?;
 
     if let Some(main_function) = program.find_annotated("main") {
         write!(stream, "\n\nif __name__ == '__main__':\n    {}()\n", names.get(&main_function.implementation_id).unwrap())?;
