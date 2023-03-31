@@ -23,9 +23,11 @@ pub struct Program {
     pub function_implementations: HashMap<Rc<FunctionPointer>, Rc<FunctionImplementation>>,
 }
 
-impl Program {
-    pub fn find_annotated(&self, annotation: &str) -> Option<&Rc<FunctionImplementation>> {
-        self.function_implementations.values()
-            .find_or_first(|f| f.decorators.contains(&annotation.into()))
+pub fn find_annotated<'a, I>(iterator: I, annotation: &str) -> Option<&'a Rc<FunctionImplementation>> where I: Iterator<Item=&'a Rc<FunctionImplementation>> {
+    let results = iterator.filter(|f| f.decorators.contains(&annotation.into()))
+        .collect_vec();
+    if results.len() > 1 {
+        panic!()
     }
+    results.first().copied()
 }

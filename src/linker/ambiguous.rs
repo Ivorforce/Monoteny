@@ -127,6 +127,7 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
 
         if self.candidates.len() == 1 {
             let candidate = self.candidates.drain(..).next().unwrap();
+            // TODO We can just assign linker.types to the candidate's result; it was łiterally just copied.
             let resolution = self.attempt_with_candidate(&mut linker.types, &candidate)?;
 
             linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall(FunctionCall {

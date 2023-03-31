@@ -9,7 +9,7 @@ use crate::program::functions::{Function, FunctionInterface, FunctionPointer, Pa
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::TraitResolution;
-use crate::program::types::TypeProto;
+use crate::program::types::{TypeProto, TypeUnit};
 
 
 pub struct FunctionUnfolder {
@@ -32,13 +32,19 @@ impl FunctionUnfolder {
     }
 
     pub fn unfold_anonymous(&mut self, fun: &FunctionImplementation, resolution: &TraitResolution) -> Rc<FunctionImplementation> {
+        // Map types.
+        let mut type_forest = fun.type_forest.clone();
+
         let mut type_replacement_map: HashMap<Uuid, Box<TypeProto>> = Default::default();
         for (requirement, binding) in resolution.requirement_bindings.iter() {
             type_replacement_map.extend(binding.generic_to_type.clone());
+
+            for (generic, type_) in binding.generic_to_type.iter() {
+                type_forest.bind(*generic, type_).unwrap();
+            }
         }
 
         let mut expression_forest = Box::new(ExpressionForest::new());
-        let mut type_forest = Box::new(TypeForest::new());
 
         // Map variables, to change the types.
         let variable_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = fun.variable_names.keys()
@@ -107,7 +113,7 @@ impl FunctionUnfolder {
         Rc::new(FunctionImplementation {
             implementation_id: Uuid::new_v4(),
             pointer: Rc::new(FunctionPointer {
-                pointer_id: fun.pointer.pointer_id.clone(),
+                pointer_id: Uuid::new_v4(),
                 target: Rc::new(Function {
                     function_id: Uuid::new_v4(),
                     interface: Rc::new(map_interface(&fun.pointer.target.interface, &type_replacement_map, &variable_map)),

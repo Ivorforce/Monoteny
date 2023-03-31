@@ -17,7 +17,7 @@ use crate::interpreter;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
 use crate::program::functions::{FunctionPointer, FunctionCallType, FunctionInterface, ParameterKey};
-use crate::program::{primitives, Program};
+use crate::program::{find_annotated, primitives, Program};
 use crate::program::allocation::Reference;
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation};
@@ -143,8 +143,8 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     }
     writeln!(stream, "]")?;
 
-    if let Some(main_function) = program.find_annotated("main") {
-        write!(stream, "\n\nif __name__ == \"__main__\":\n    {}()\n", names.get(&main_function.implementation_id).unwrap())?;
+    if let Some(main_function) = find_annotated(exported_symbols.iter(), "main") {
+        write!(stream, "\n\nif __name__ == \"__main__\":\n    {}()\n", names.get(&main_function.pointer.pointer_id).unwrap())?;
     }
 
     return Ok(())

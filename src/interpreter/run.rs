@@ -8,7 +8,7 @@ use crate::interpreter::{builtins, compiler, FunctionInterpreter, FunctionInterp
 use crate::program::builtins::Builtins;
 use crate::program::functions::FunctionPointer;
 use crate::program::global::FunctionImplementation;
-use crate::program::Program;
+use crate::program::{find_annotated, Program};
 use crate::program::traits::TraitResolution;
 use crate::program::types::TypeUnit;
 
@@ -31,7 +31,7 @@ pub fn preload_program<'a>(program: &'a Program, evaluators: &mut HashMap<Uuid, 
 
 
 pub fn main(program: &Program, builtins: &Builtins) {
-    let entry_function = program.find_annotated("main").expect("No main function!");
+    let entry_function = find_annotated(program.function_implementations.values(), "main").expect("No main function!");
     let mut evaluators = builtins::make_evaluators(builtins);
     let mut assignments = HashMap::new();
 
@@ -43,7 +43,7 @@ pub fn main(program: &Program, builtins: &Builtins) {
             function_evaluators: &mut evaluators,
         },
         implementation: entry_function,
-        resolution: Box::new(TraitResolution { requirement_bindings: HashMap::new(), function_binding: todo!() }),
+        resolution: Box::new(TraitResolution { requirement_bindings: HashMap::new(), function_binding: Default::default() }),
         assignments,
     };
     unsafe {
@@ -52,7 +52,7 @@ pub fn main(program: &Program, builtins: &Builtins) {
 }
 
 pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<FunctionImplementation>)) {
-    let entry_function = program.find_annotated("transpile").expect("No main function!");
+    let entry_function = find_annotated(program.function_implementations.values(), "transpile").expect("No main function!");
     let mut evaluators = builtins::make_evaluators(builtins);
     let mut assignments = HashMap::new();
 

@@ -13,11 +13,11 @@ pub type GenericAlias = Uuid;
 
 #[derive(Clone)]
 pub struct TypeForest {
-    identity_to_type: HashMap<GenericIdentity, TypeUnit>,
-    identity_to_arguments: HashMap<GenericIdentity, Vec<GenericIdentity>>,
+    pub identity_to_type: HashMap<GenericIdentity, TypeUnit>,
+    pub identity_to_arguments: HashMap<GenericIdentity, Vec<GenericIdentity>>,
 
-    alias_to_identity: HashMap<GenericAlias, GenericIdentity>,
-    identity_to_alias: HashMap<GenericIdentity, HashSet<GenericAlias>>,
+    pub alias_to_identity: HashMap<GenericAlias, GenericIdentity>,
+    pub identity_to_alias: HashMap<GenericIdentity, HashSet<GenericAlias>>,
 }
 
 impl TypeForest {
