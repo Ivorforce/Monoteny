@@ -5,11 +5,12 @@ use uuid::Uuid;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::LinkError;
 use crate::program::allocation::{ObjectReference, Reference};
+use crate::program::calls::FunctionCall;
 use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionPointer;
 use crate::program::generics::TypeForest;
 use crate::program::primitives;
-use crate::program::traits::{TraitBinding, TraitConformanceRequirement, TraitConformanceScope};
+use crate::program::traits::{TraitResolution, TraitRequirement, TraitConformanceScope, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub trait LinkerAmbiguity {
@@ -36,23 +37,21 @@ impl LinkerAmbiguity for AmbiguousNumberPrimitive {
                 linker.types.bind(literal_expression_id.clone(), TypeProto::unit(TypeUnit::Struct(Rc::clone(&linker.builtins.core.traits.String))).as_ref())?;
 
                 let trait_ = Rc::clone(if self.is_float { &linker.builtins.core.traits.ConstructableByFloatLiteral } else { &linker.builtins.core.traits.ConstructableByIntLiteral });
-                let requirement = Rc::new(TraitConformanceRequirement {
-                    id: Uuid::new_v4(),
-                    binding: HashMap::from([(*trait_.generics.iter().next().unwrap(), type_.clone())]),
+                let requirement = Box::new(TraitBinding {
+                    generic_to_type: HashMap::from([(*trait_.generics.iter().next().unwrap(), type_.clone())]),
                     trait_,
                 });
-                let binding = self.traits.satisfy_requirements(
-                    &HashSet::from([requirement]), &linker.types
+                let resolution = self.traits.satisfy_requirements(
+                    &vec![requirement], &linker.types
                 )?;
-                let declaration = binding.resolution.values().next().unwrap();
-                let parse_function = &declaration.function_binding[
+                let parse_function = &resolution.function_binding[
                     if self.is_float { &linker.builtins.core.traits.parse_float_literal_function } else { &linker.builtins.core.traits.parse_int_literal_function }
                 ];
 
                 linker.expressions.arguments.insert(self.expression_id.clone(), vec![literal_expression_id]);
                 linker.expressions.operations.insert(
                     self.expression_id.clone(),
-                    ExpressionOperation::FunctionCall { function: Rc::clone(parse_function), binding }
+                    ExpressionOperation::FunctionCall(FunctionCall { pointer: Rc::clone(parse_function), resolution })
                 );
                 linker.types.bind(self.expression_id.clone(), type_.as_ref())?;
 
@@ -67,9 +66,9 @@ pub struct AmbiguousFunctionCandidate {
     // All these are seeded already
     pub param_types: Vec<Box<TypeProto>>,
     pub return_type: Box<TypeProto>,
-    pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
-}
+    pub requirements: Vec<Box<TraitBinding>>,
 
+}
 pub struct AmbiguousFunctionCall {
     pub expression_id: ExpressionID,
     pub function_name: String,
@@ -81,7 +80,7 @@ pub struct AmbiguousFunctionCall {
 }
 
 impl AmbiguousFunctionCall {
-    fn attempt_with_candidate(&self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<Box<TraitBinding>, LinkError> {
+    fn attempt_with_candidate(&self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<Box<TraitResolution>, LinkError> {
         let param_types = &candidate.param_types;
 
         for (arg, param) in zip_eq(
@@ -128,12 +127,12 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
 
         if self.candidates.len() == 1 {
             let candidate = self.candidates.drain(..).next().unwrap();
-            let binding = self.attempt_with_candidate(&mut linker.types, &candidate)?;
+            let resolution = self.attempt_with_candidate(&mut linker.types, &candidate)?;
 
-            linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall {
-                function: candidate.function,
-                binding
-            });
+            linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall(FunctionCall {
+                pointer: candidate.function,
+                resolution
+            }));
 
             // We're done!
             return Ok(true)

@@ -9,13 +9,15 @@ use crate::program::allocation::{Mutability, ObjectReference, Reference};
 use crate::program::types::TypeProto;
 
 use crate::program::builtins::Builtins;
+use crate::program::calls::FunctionCall;
 use crate::program::functions::{FunctionPointer, FunctionInterface, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
+use crate::program::traits::{Trait, TraitResolution, TraitConformanceDeclaration, TraitRequirement};
 
 pub type ExpressionID = GenericAlias;
 
+#[derive(Clone)]
 pub enum Statement {
     VariableAssignment(Rc<ObjectReference>, ExpressionID),
     Expression(ExpressionID),
@@ -23,8 +25,8 @@ pub enum Statement {
 }
 
 pub enum ExpressionOperation {
-    FunctionCall { function: Rc<FunctionPointer>, binding: Box<TraitBinding> },
-    PairwiseOperations { functions: Vec<Rc<FunctionInterface>> },
+    FunctionCall(FunctionCall),
+    PairwiseOperations { calls: Vec<FunctionCall> },
     VariableLookup(Rc<ObjectReference>),
     ArrayLiteral,
     StringLiteral(String),

@@ -8,14 +8,14 @@ use crate::linker::scopes::Environment;
 use crate::parser::abstract_syntax;
 use crate::program::allocation::Reference;
 use crate::program::generics::GenericAlias;
-use crate::program::traits::{Trait, TraitConformanceRequirement};
+use crate::program::traits::{Trait, TraitBinding, TraitRequirement};
 use crate::program::types::{TypeProto, TypeUnit};
 
 
 pub struct TypeFactory<'a> {
     pub hierarchy: &'a scopes::Scope<'a>,
     pub generics: HashMap<String, TypeUnit>,
-    pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
+    pub requirements: HashSet<Rc<TraitRequirement>>,
 }
 
 impl <'a> TypeFactory<'a> {
@@ -45,7 +45,7 @@ impl <'a> TypeFactory<'a> {
         self.generics.get(name).unwrap()
     }
 
-    fn register_requirement(&mut self, requirement: Rc<TraitConformanceRequirement>) {
+    fn register_requirement(&mut self, requirement: Rc<TraitRequirement>) {
         self.requirements.insert(requirement);
     }
 
@@ -74,10 +74,12 @@ impl <'a> TypeFactory<'a> {
 
                             if type_name.starts_with("$") {
                                 let requirement_trait = self.resolve_trait(&String::from(&type_name[1..]));
-                                self.register_requirement(Rc::new(TraitConformanceRequirement {
+                                self.register_requirement(Rc::new(TraitRequirement {
                                     id: Uuid::new_v4(),
-                                    binding: HashMap::from([(*requirement_trait.generics.iter().next().unwrap(), type_.clone())]),
-                                    trait_: requirement_trait,
+                                    binding: TraitBinding {
+                                        generic_to_type: HashMap::from([(*requirement_trait.generics.iter().next().unwrap(), type_.clone())]),
+                                        trait_: requirement_trait,
+                                    },
                                 }));
                             }
 

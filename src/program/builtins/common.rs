@@ -4,7 +4,7 @@ use crate::program::builtins::core::Core;
 use crate::program::functions::{FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::traits::TraitConformanceRequirement;
+use crate::program::traits::TraitRequirement;
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub struct Common {

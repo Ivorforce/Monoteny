@@ -125,7 +125,7 @@ fn main() -> Result<(), LinkError> {
                         transpiler::python::transpile_program(
                             &mut f,
                             &computation_tree,
-                            Rc::clone(&builtins)
+                            &builtins
                         ).expect("Error when writing to file");
 
                         println!("{:?}", python_path);

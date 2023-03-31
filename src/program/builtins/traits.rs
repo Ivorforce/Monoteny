@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::program::functions::{Function, FunctionCallType, FunctionForm, FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::{builtins, primitives};
-use crate::program::traits::Trait;
+use crate::program::traits::{Trait, TraitBinding, TraitRequirement};
 use crate::program::types::{TypeProto, TypeUnit};
 
 
@@ -135,7 +135,13 @@ pub fn make_trait(name: &str, self_id: &Uuid, fns: Vec<&Rc<FunctionPointer>>, pa
     for parent in parents {
         assert_eq!(parent.generics.len(), 1);
         t.requirements.insert(
-            Trait::require(parent, HashMap::from([(*parent.generics.iter().next().unwrap(), self_type.clone())]))
+            Rc::new(TraitRequirement {
+                id: Uuid::new_v4(),
+                binding: TraitBinding {
+                    trait_: Rc::clone(parent),
+                    generic_to_type: HashMap::from([(*parent.generics.iter().next().unwrap(), self_type.clone())]),
+                },
+            })
         );
     }
 

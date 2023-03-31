@@ -9,7 +9,7 @@ use crate::program::builtins::core::Core;
 use crate::program::functions::{FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
+use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, TraitRequirement};
 use crate::program::types::{TypeProto, TypeUnit};
 
 
@@ -26,10 +26,12 @@ pub fn create(core: &Core) -> Math {
     let mut module = Module::new("monoteny.math".into());
 
     let float_generic = TypeProto::make_any();
-    let float_requirement = Rc::new(TraitConformanceRequirement {
+    let float_requirement = Rc::new(TraitRequirement {
         id: Uuid::new_v4(),
-        trait_: Rc::clone(&core.traits.Float),
-        binding: HashMap::from(([(*core.traits.Float.generics.iter().next().unwrap(), float_generic.clone())]))
+        binding: TraitBinding {
+            trait_: Rc::clone(&core.traits.Float),
+            generic_to_type: HashMap::from(([(*core.traits.Float.generics.iter().next().unwrap(), float_generic.clone())]))
+        }
     });
 
     // TODO We should also provide builtin implementations for these (call to from_literal)

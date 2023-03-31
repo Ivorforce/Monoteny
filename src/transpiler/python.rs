@@ -11,7 +11,7 @@ use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use regex;
-use crate::generic_unfolding::unfold;
+use crate::generic_unfolding::FunctionUnfolder;
 use crate::interpreter;
 
 use crate::program::builtins::Builtins;
@@ -21,7 +21,7 @@ use crate::program::{primitives, Program};
 use crate::program::allocation::Reference;
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation};
-use crate::program::traits::{TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement};
+use crate::program::traits::{TraitResolution, TraitConformanceDeclaration, TraitRequirement};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::namespaces;
 use crate::transpiler::python::docstrings::transpile_type;
@@ -34,111 +34,124 @@ pub struct TranspilerContext<'a> {
     types: &'a TypeForest,
 }
 
-pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: Rc<Builtins>) -> Result<(), std::io::Error> {
+pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &Rc<Builtins>) -> Result<(), std::io::Error> {
+    let mut global_namespace = builtins::create(&builtins);
+    let mut file_namespace = global_namespace.add_sublevel();
+    let mut object_namespace = namespaces::Level::new();
+    let mut functions_by_id = HashMap::new();
+
+    for implementation in program.function_implementations.values() {
+        functions_by_id.insert(implementation.implementation_id, Rc::clone(implementation));
+    }
+
+    let exported_symbols: Rc<RefCell<Vec<Rc<FunctionImplementation>>>> = Rc::new(RefCell::new(vec![]));
+    let unfolder: Rc<RefCell<FunctionUnfolder>> = Rc::new(RefCell::new(FunctionUnfolder::new()));
+
+    // Run interpreter
+
+    interpreter::run::transpile(program, &Rc::clone(&builtins), &|implementation| {
+        let unfolded_function = unfolder.borrow_mut().deref_mut().unfold_anonymous(
+            implementation,
+            &TraitResolution { requirement_bindings: Default::default(), function_binding: Default::default() }
+        );
+
+        exported_symbols.borrow_mut().deref_mut().push(unfolded_function);
+    });
+
+    // Find and unfold internal symbols
+    let mut exported_symbols_ = exported_symbols.borrow_mut();
+    let exported_symbols = exported_symbols_.deref_mut();
+    let mut unfolder_ = unfolder.borrow_mut();
+    let unfolder = unfolder_.deref_mut();
+
+    let mut internal_symbols: Vec<Rc<FunctionImplementation>> = vec![];
+    while let Some(internal_symbol) = unfolder.encountered.pop() {
+        if unfolder.resolved.contains_key(&internal_symbol) {
+            continue
+        }
+
+        guard!(let Some(implementation) = functions_by_id.get(&internal_symbol.pointer.pointer_id) else {
+            continue; // TODO This is *probably* a builtin, but we should probably check for realsies
+        });
+
+        internal_symbols.push(unfolder.resolve(
+            internal_symbol,
+            Rc::clone(implementation)
+        ));
+    }
+
+    // Register symbols
+
+    for implementation in exported_symbols.iter() {
+        // TODO Register with priority over internal symbols
+        file_namespace.register_definition(implementation.pointer.pointer_id, &implementation.pointer.name);
+    }
+
+    for implementation in internal_symbols.iter() {
+        file_namespace.register_definition(implementation.pointer.pointer_id, &implementation.pointer.name);
+    }
+
+    for implementation in exported_symbols.iter().chain(internal_symbols.iter()) {
+        let function_namespace = file_namespace.add_sublevel();
+        for (variable, name) in implementation.variable_names.iter() {
+            function_namespace.register_definition(variable.id.clone(), name);
+        }
+    }
+
+    let mut names = global_namespace.map_names();
+    names.extend(object_namespace.map_names());
+
+    // Write to stream
+
     writeln!(stream, "import numpy as np")?;
     writeln!(stream, "import math")?;
     writeln!(stream, "import operator as op")?;
     writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
     writeln!(stream, "from typing import Any, Callable")?;
 
-    let mut global_namespace = builtins::create(&builtins);
-    let mut file_namespace = global_namespace.add_sublevel();
-    let mut object_namespace = namespaces::Level::new();
-    let mut functions_by_id = HashMap::new();
+    for implementation in exported_symbols.iter() {
+        let context = TranspilerContext {
+            names: &names,
+            functions_by_id: &functions_by_id,
+            builtins: &builtins,
+            expressions: &implementation.expression_forest,
+            types: &implementation.type_forest
+        };
 
-    for trait_ in program.module.traits.iter() {
-        todo!("Register names like the builtins do")
-    }
-
-    for implementation in program.function_implementations.values() {
-        file_namespace.register_definition(implementation.implementation_id, &implementation.pointer.name);
-
-        let function_namespace = file_namespace.add_sublevel();
-        for (variable, name) in implementation.variable_names.iter() {
-            function_namespace.register_definition(variable.id.clone(), name);
-        }
-
-        for declaration in implementation.conformance_delegations.values() {
-            // The declaration will be a parameter later
-            // TODO If two traits of the same type are registered, names will clash. We need to add aliases (later?)
-            add_ids_as_name(declaration, &declaration.trait_.name, function_namespace);
-        }
-
-        functions_by_id.insert(implementation.implementation_id, Rc::clone(implementation));
-    }
-
-    let mut names = global_namespace.map_names();
-    names.extend(object_namespace.map_names());
-    let names = Rc::new(names);
-
-    let exported_blocks: Rc<RefCell<HashMap<Uuid, String>>> = Rc::new(RefCell::new(HashMap::new()));
-    let internal_blocks: Rc<RefCell<HashMap<Uuid, String>>> = Rc::new(RefCell::new(HashMap::new()));
-
-    interpreter::run::transpile(program, &Rc::clone(&builtins), &|implementation| {
-        let unfolded_functions = unfold(implementation, &TraitBinding { resolution: Default::default() });
-
-        for (i, implementation) in unfolded_functions.into_iter().enumerate() {
-            let context = TranspilerContext {
-                names: &names,
-                functions_by_id: &functions_by_id,
-                builtins: &builtins,
-                expressions: &implementation.expression_forest,
-                types: &implementation.type_forest
-            };
-
-            let mut block = Vec::new();
-            transpile_function(&mut block, &implementation, &context).unwrap();
-
-            let target = if i == 0 { &exported_blocks } else { &internal_blocks };
-            target.borrow_mut().deref_mut().insert(implementation.implementation_id, String::from_utf8(block).unwrap());
-        }
-    });
-
-    for block in exported_blocks.borrow_mut().deref_mut().values() {
-        write!(stream, "{}\n\n", block)?;
+        transpile_function(stream, implementation, &context).unwrap();
     }
 
     writeln!(stream, "# ========================== ======== ============================")?;
     writeln!(stream, "# ========================== Internal ============================")?;
     writeln!(stream, "# ========================== ======== ============================")?;
 
-    for block in internal_blocks.borrow_mut().deref_mut().values() {
-        write!(stream, "{}\n\n", block)?;
+    for implementation in internal_symbols.iter() {
+        let context = TranspilerContext {
+            names: &names,
+            functions_by_id: &functions_by_id,
+            builtins: &builtins,
+            expressions: &implementation.expression_forest,
+            types: &implementation.type_forest
+        };
+
+        transpile_function(stream, implementation, &context).unwrap();
     }
 
     writeln!(stream, "\n__all__ = [")?;
-    for name in exported_blocks.borrow_mut().deref_mut().keys().map(|x| &names[x]).sorted() {
-        writeln!(stream, "    \"{}\",", name)?;
+    for function in internal_symbols.iter() {
+        writeln!(stream, "    \"{}\",", &function.pointer.name)?;
     }
     writeln!(stream, "]")?;
 
     if let Some(main_function) = program.find_annotated("main") {
-        write!(stream, "\n\nif __name__ == '__main__':\n    {}()\n", names.get(&main_function.implementation_id).unwrap())?;
+        write!(stream, "\n\nif __name__ == \"__main__\":\n    {}()\n", names.get(&main_function.implementation_id).unwrap())?;
     }
 
     return Ok(())
 }
 
-fn add_ids_as_name(declaration: &Rc<TraitConformanceDeclaration>, name: &String, namespace: &mut namespaces::Level) {
-    namespace.insert_keyword(declaration.id, name);
-
-    for declaration in declaration.trait_binding.resolution.values() {
-        add_ids_as_name(declaration, name, namespace);
-    }
-}
-
-fn add_injections_to_namespace(declaration: &Rc<TraitConformanceDeclaration>, namespace: &mut namespaces::Level) {
-    for injected_function in declaration.function_binding.values() {
-        namespace.register_definition(injected_function.pointer_id.clone(), &injected_function.name);
-    }
-
-    for declaration in declaration.trait_binding.resolution.values() {
-        add_injections_to_namespace(declaration, namespace);
-    }
-}
-
 pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
-    write!(stream, "\n\ndef {}(", context.names[&function.implementation_id])?;
+    write!(stream, "\n\ndef {}(", context.names[&function.pointer.pointer_id])?;
 
     for (idx, parameter) in function.pointer.target.interface.parameters.iter().enumerate() {
         write!(stream, "{}: ", context.names.get(&parameter.target.id).unwrap())?;
@@ -228,39 +241,41 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
 
             write!(stream, "{}", variable_name)?;
         }
-        ExpressionOperation::FunctionCall { function, binding } => {
+        ExpressionOperation::FunctionCall(call) => {
+            let pointer = &call.pointer;
+            let resolution = &call.resolution;
             let arguments = context.expressions.arguments.get(&expression).unwrap();
 
             if
-                try_transpile_keyword(stream, function, context)?
-                || try_transpile_binary_operator(stream, function, arguments, context)?
-                || try_transpile_constant(stream, function, arguments, &expression, context)?
-                || try_transpile_unary_operator(stream, function, arguments, context)?
-                || try_transpile_literal(stream, function, arguments, &expression, context)?
+                try_transpile_keyword(stream, pointer, context)?
+                || try_transpile_binary_operator(stream, pointer, arguments, context)?
+                || try_transpile_constant(stream, pointer, arguments, &expression, context)?
+                || try_transpile_unary_operator(stream, pointer, arguments, context)?
+                || try_transpile_literal(stream, pointer, arguments, &expression, context)?
             {
                 // no-op
             }
             else {
-                match &function.call_type {
+                match &pointer.call_type {
                     // Can reference the static function
                     FunctionCallType::Static => {
-                        guard!(let Some(name) = context.names.get(&function.pointer_id) else {
-                            panic!("Couldn't find name in python: {:?}", function)
+                        guard!(let Some(name) = context.names.get(&pointer.pointer_id) else {
+                            panic!("Couldn't find name in python: {:?}", pointer)
                         });
                         write!(stream, "{}", name)?
                     },
                     // Have to reference the function by trait
                     FunctionCallType::Polymorphic { requirement, abstract_function } => {
-                        write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&function.pointer_id])?;
+                        write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&pointer.pointer_id])?;
                     }
                 }
                 write!(stream, "(")?;
 
                 // TODO Only required when we're forward-passing unresolved requirements
-                let requirements: [&Rc<TraitConformanceRequirement>; 0] = [];  // function.target.interface.requirements
+                let requirements: [&Rc<TraitRequirement>; 0] = [];  // function.target.interface.requirements
                 let mut arguments_left = arguments.len() + requirements.len();
 
-                for (parameter, argument) in zip_eq(function.target.interface.parameters.iter(), arguments.iter()) {
+                for (parameter, argument) in zip_eq(pointer.target.interface.parameters.iter(), arguments.iter()) {
                     if let ParameterKey::Name(name) = &parameter.external_key {
                         write!(stream, "{}=", name)?;
                     }
@@ -275,11 +290,11 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                 }
 
                 for requirement in requirements {
-                    let implementation = &context.functions_by_id[&function.pointer_id];
+                    let implementation = &context.functions_by_id[&pointer.pointer_id];
                     let declaration = &implementation.conformance_delegations[requirement];
 
                     let param_name = context.names.get(&declaration.id).unwrap();
-                    let arg_name = context.names.get(&binding.resolution[requirement].id).unwrap();
+                    let arg_name = context.names.get(todo!()).unwrap();
                     write!(stream, "{}={}", param_name, arg_name)?;
 
                     arguments_left -= 1;
@@ -303,7 +318,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
             // }
             // write!(stream, "]")?;
         },
-        ExpressionOperation::PairwiseOperations { functions } => {
+        ExpressionOperation::PairwiseOperations { calls } => {
             todo!()
             // // TODO Unfortunately, python's a > b > c syntax does not support non-bool results.
             // //  For true boolean results, we could actually use it for readability.

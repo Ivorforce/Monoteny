@@ -18,10 +18,10 @@ use crate::program::functions::{FunctionPointer, FunctionCallType, Function};
 use crate::program::global::FunctionImplementation;
 use crate::program::Program;
 use crate::program::primitives;
-use crate::program::traits::{TraitBinding, TraitConformanceDeclaration};
+use crate::program::traits::{TraitResolution, TraitConformanceDeclaration};
 
 
-pub type FunctionInterpreterImpl<'a> = Rc<dyn Fn(&mut FunctionInterpreter, &ExpressionID, &TraitBinding) -> Option<Value> + 'a>;
+pub type FunctionInterpreterImpl<'a> = Rc<dyn Fn(&mut FunctionInterpreter, &ExpressionID, &TraitResolution) -> Option<Value> + 'a>;
 
 
 pub struct Value {
@@ -37,7 +37,7 @@ pub struct InterpreterGlobals<'a> {
 pub struct FunctionInterpreter<'a, 'b, 'c> {
     pub globals: &'a mut InterpreterGlobals<'b>,
     pub implementation: &'c FunctionImplementation,
-    pub binding: TraitBinding,
+    pub resolution: Box<TraitResolution>,
 
     pub assignments: HashMap<Uuid, Value>,
 }
@@ -72,21 +72,23 @@ impl FunctionInterpreter<'_, '_, '_> {
         return None
     }
 
-    pub fn combine_bindings(lhs: &TraitBinding, rhs: &TraitBinding) -> TraitBinding {
-        TraitBinding {
-            resolution: lhs.resolution.iter().chain(rhs.resolution.iter())
-                .map(|(l, r)| (Rc::clone(l), Rc::clone(r)))
-                .collect()
-        }
+    pub fn combine_bindings(lhs: &TraitResolution, rhs: &TraitResolution) -> Box<TraitResolution> {
+        Box::new(TraitResolution {
+            requirement_bindings: lhs.requirement_bindings.iter().chain(rhs.requirement_bindings.iter())
+                .map(|(l, r)| (Rc::clone(l), r.clone()))
+                .collect(),
+            function_binding: todo!(),
+        })
     }
 
     pub fn resolve(&self, pointer: &FunctionPointer) -> Uuid {
         match &pointer.call_type {
             FunctionCallType::Static => pointer.target.function_id.clone(),
             FunctionCallType::Polymorphic { requirement, abstract_function } => {
-                if let Some(result) = self.binding.resolution.get(requirement).and_then(|x| x.function_binding.get(abstract_function)) {
-                    return self.resolve(&result)
-                }
+                todo!();
+                // if let Some(result) = self.resolution.requirement_bindings.get(requirement).and_then(|x| x.function_binding.get(abstract_function)) {
+                //     return self.resolve(&result)
+                // }
 
                 panic!("Failed to resolve abstract function: {:?}", &pointer)
             },
@@ -101,15 +103,15 @@ impl FunctionInterpreter<'_, '_, '_> {
         //  This would be managed by a global interpreter that is expandable dynamically. i.e. it can be re-used for interactive environments and so on.
 
         match &self.implementation.expression_forest.operations[expression_id] {
-            ExpressionOperation::FunctionCall { function: fun, binding } => {
-                let function_id = self.resolve(fun);
+            ExpressionOperation::FunctionCall(call) => {
+                let function_id = self.resolve(&call.pointer);
                 let implementation = self.globals.function_evaluators.get(&function_id);
 
                 guard!(let Some(implementation) = implementation else {
-                    panic!("Cannot find function ({}) with interface: {:?}", function_id, fun);
+                    panic!("Cannot find function ({}) with interface: {:?}", function_id, &call.pointer);
                 });
 
-                return implementation(self, expression_id, binding)
+                return implementation(self, expression_id, &call.resolution)
             }
             ExpressionOperation::PairwiseOperations { .. } => {
                 panic!()

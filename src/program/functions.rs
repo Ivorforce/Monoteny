@@ -6,7 +6,7 @@ use itertools::zip_eq;
 use uuid::Uuid;
 use crate::LinkError;
 use crate::program::allocation::{Mutability, ObjectReference, Reference};
-use crate::program::traits::{TraitConformanceDeclaration, TraitConformanceRequirement};
+use crate::program::traits::{TraitConformanceDeclaration, TraitRequirement};
 use crate::program::types::{TypeProto, TypeUnit};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -26,7 +26,7 @@ pub enum ParameterKey {
 pub enum FunctionCallType {
     Static,
     /// Not a real function call, rather to be delegated through the requirement's resolution.
-    Polymorphic { requirement: Rc<TraitConformanceRequirement>, abstract_function: Rc<FunctionPointer> },
+    Polymorphic { requirement: Rc<TraitRequirement>, abstract_function: Rc<FunctionPointer> },
 }
 
 /// A plain, static function that converts a number of parameters to a return type.
@@ -74,11 +74,11 @@ pub struct FunctionInterface {
     pub return_type: Box<TypeProto>,
 
     /// Requirements for parameters and the return type.
-    pub requirements: HashSet<Rc<TraitConformanceRequirement>>,
+    pub requirements: Vec<Rc<TraitRequirement>>,
 }
 
 impl FunctionInterface {
-    pub fn new_constant<'a>(return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitConformanceRequirement>>) -> Rc<FunctionInterface> {
+    pub fn new_constant<'a>(return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitRequirement>>) -> Rc<FunctionInterface> {
         Rc::new(FunctionInterface {
             parameters: vec![],
             return_type: return_type.clone(),
@@ -98,7 +98,7 @@ impl FunctionInterface {
         Rc::new(FunctionInterface {
             parameters,
             return_type: return_type.clone(),
-            requirements: HashSet::new(),
+            requirements: vec![],
         })
     }
 
@@ -114,7 +114,7 @@ impl FunctionInterface {
         Rc::new(FunctionInterface {
             parameters,
             return_type: return_type.clone(),
-            requirements: HashSet::new(),
+            requirements: vec![],
         })
     }
 }

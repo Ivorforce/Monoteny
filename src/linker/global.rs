@@ -13,7 +13,7 @@ use crate::linker::interface::{link_function_pointer, link_operator_pointer};
 use crate::linker::r#type::TypeFactory;
 use crate::linker::scopes::Environment;
 use crate::parser::abstract_syntax::{PatternDeclaration, Term};
-use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
+use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitRequirement, TraitConformanceScope};
 use crate::program::{primitives, Program};
 use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
 use crate::program::builtins::*;
@@ -84,7 +84,7 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
 }
 
 impl <'a> GlobalLinker<'a> {
-    pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, requirements: &HashSet<Rc<TraitConformanceRequirement>>) -> Result<(), LinkError> {
+    pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, requirements: &HashSet<Rc<TraitRequirement>>) -> Result<(), LinkError> {
         match statement {
             abstract_syntax::GlobalStatement::Pattern(pattern) => {
                 let pattern = self.link_pattern(pattern)?;

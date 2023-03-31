@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use crate::program::computation_tree::{ExpressionForest, Statement};
 use crate::program::functions::{Function, FunctionInterface, FunctionPointer};
-use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
+use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitRequirement};
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::generics::TypeForest;
 
@@ -13,7 +13,7 @@ pub struct FunctionImplementation {
     pub pointer: Rc<FunctionPointer>,
     pub decorators: Vec<String>,
 
-    pub conformance_delegations: HashMap<Rc<TraitConformanceRequirement>, Rc<TraitConformanceDeclaration>>,
+    pub conformance_delegations: HashMap<Rc<TraitRequirement>, Rc<TraitConformanceDeclaration>>,
 
     pub statements: Vec<Box<Statement>>,
     pub expression_forest: Box<ExpressionForest>,

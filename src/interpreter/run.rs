@@ -9,7 +9,7 @@ use crate::program::builtins::Builtins;
 use crate::program::functions::FunctionPointer;
 use crate::program::global::FunctionImplementation;
 use crate::program::Program;
-use crate::program::traits::TraitBinding;
+use crate::program::traits::TraitResolution;
 use crate::program::types::TypeUnit;
 
 
@@ -43,7 +43,7 @@ pub fn main(program: &Program, builtins: &Builtins) {
             function_evaluators: &mut evaluators,
         },
         implementation: entry_function,
-        binding: TraitBinding { resolution: HashMap::new() },
+        resolution: Box::new(TraitResolution { requirement_bindings: HashMap::new(), function_binding: todo!() }),
         assignments,
     };
     unsafe {
@@ -109,7 +109,7 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<F
             function_evaluators: &mut evaluators,
         },
         implementation: entry_function,
-        binding: TraitBinding { resolution: HashMap::new() },
+        resolution: Box::new(TraitResolution { requirement_bindings: Default::default(), function_binding: Default::default() }),
         assignments,
     };
     unsafe {

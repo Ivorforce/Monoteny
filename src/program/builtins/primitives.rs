@@ -12,7 +12,7 @@ use crate::program::builtins::traits::Traits;
 use crate::program::functions::{FunctionCallType, FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitConformanceDeclaration};
+use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration};
 use crate::program::types::{TypeProto, TypeUnit};
 
 
@@ -106,8 +106,10 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         add_function(&eq_functions.not_equal_to, primitive_type, &mut neq_ops, module);
 
         let Eq = TraitConformanceDeclaration::make(
-            &traits.Eq,
-            HashMap::from([(*traits.Eq.generics.iter().next().unwrap(), type_.clone())]),
+            TraitBinding {
+                trait_: Rc::clone(&traits.Eq),
+                generic_to_type: HashMap::from([(*traits.Eq.generics.iter().next().unwrap(), type_.clone())]),
+            },
             vec![
                 (&traits.Eq_functions.equal_to, &eq_functions.equal_to),
                 (&traits.Eq_functions.not_equal_to, &eq_functions.not_equal_to),
@@ -152,7 +154,11 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         );
         add_function(&_parse_int_literal, primitive_type, &mut parse_int_literal, module);
         let ParseableByIntLiteral = TraitConformanceDeclaration::make(
-            &traits.ConstructableByIntLiteral, HashMap::from([(*traits.ConstructableByIntLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
+            TraitBinding {
+                trait_: Rc::clone(&traits.ConstructableByIntLiteral),
+                generic_to_type: HashMap::from([(*traits.ConstructableByIntLiteral.generics.iter().next().unwrap(), type_.clone())])
+            },
+            vec![
                 (&traits.parse_int_literal_function, &_parse_int_literal),
             ]
         );
@@ -191,7 +197,10 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         );
         add_function(&_parse_float_literal, primitive_type, &mut parse_float_literal, module);
         let ParseableByFloatLiteral = TraitConformanceDeclaration::make(
-            &traits.ConstructableByFloatLiteral, HashMap::from([(*traits.ConstructableByFloatLiteral.generics.iter().next().unwrap(), type_.clone())]), vec![
+            TraitBinding {
+                trait_: Rc::clone(&traits.ConstructableByFloatLiteral),
+                generic_to_type: HashMap::from([(*traits.ConstructableByFloatLiteral.generics.iter().next().unwrap(), type_.clone())])
+            }, vec![
                 (&traits.parse_float_literal_function, &_parse_float_literal),
             ]
         );

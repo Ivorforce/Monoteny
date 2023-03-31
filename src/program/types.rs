@@ -5,7 +5,7 @@ use std::fmt::{Debug, Formatter, Pointer};
 use std::collections::{HashMap, HashSet};
 use std::ops::BitXor;
 use guard::guard;
-use crate::program::traits::{Trait, TraitConformanceRequirement};
+use crate::program::traits::{Trait, TraitRequirement};
 use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::functions::{FunctionOverload, FunctionPointer, FunctionInterface, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
@@ -13,13 +13,13 @@ use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::primitives;
 use crate::util::fmt::write_comma_separated_list;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TypeProto {
     pub unit: TypeUnit,
     pub arguments: Vec<Box<TypeProto>>
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum TypeUnit {
     // Used because the expression_forest wants to bind a return type for an expression.
     //  If none is bound, that would rather indicate an error.

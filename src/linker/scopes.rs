@@ -8,7 +8,7 @@ use crate::linker::precedence::PrecedenceGroup;
 use crate::linker::LinkError;
 use crate::program::allocation::{Mutability, ObjectReference, Reference, ReferenceType};
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, FunctionInterface, ParameterKey};
-use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
+use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitRequirement, TraitConformanceScope};
 use crate::program::generics::TypeForest;
 use crate::program::module::Module;
 use crate::program::types::{Pattern, PatternPart, TypeProto, TypeUnit};
@@ -151,25 +151,6 @@ impl <'a> Scope<'a> {
             );
 
             variables.insert(fun.name.clone(), variable);
-        }
-
-        Ok(())
-    }
-
-    /// Note: this function is intended only for trait conformances that arise from trait requirements.
-    /// It adds the abstract functions to this scope. If a trait conformance is declared somewhere,
-    /// the functions exist in the global scope already anyway.
-    pub fn add_implicit_trait_conformance(&mut self, declaration: &Rc<TraitConformanceDeclaration>) -> Result<(), LinkError> {
-        self.trait_conformance_declarations.add(declaration);
-
-        for (_, pointer) in declaration.function_binding.iter() {
-            // TODO Do we need to keep track of the object reference created by this trait conformance?
-            //  For the record, it SHOULD be created - an abstract function reference can still be passed around,
-            //  assigned and maybe called later.
-            self.overload_function(pointer, &ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(pointer)))))?;
-        }
-        for (_, declaration) in declaration.trait_binding.resolution.iter() {
-            self.add_implicit_trait_conformance(declaration)?;
         }
 
         Ok(())

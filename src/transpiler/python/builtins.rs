@@ -62,7 +62,7 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
 
     for module in builtins.all_modules() {
         for declaration in module.trait_conformance_declarations.iter() {
-            namespace.register_definition(declaration.id, &format!("mn.declarations.{}", &declaration.trait_.name));
+            namespace.register_definition(declaration.id, &format!("mn.declarations.{}", &declaration.binding.trait_.name));
         }
     }
 

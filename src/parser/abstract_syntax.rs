@@ -7,20 +7,24 @@ use crate::util::fmt::{write_comma_separated_list, write_space_separated_list};
 
 // =============================== Global =====================================
 
+#[derive(Eq, PartialEq)]
 pub struct Program {
     pub global_statements: Vec<Box<GlobalStatement>>
 }
 
+#[derive(Eq, PartialEq)]
 pub enum GlobalStatement {
     FunctionDeclaration(Box<Function>),
     Operator(Box<OperatorFunction>),
     Pattern(Box<PatternDeclaration>),
 }
 
+#[derive(Eq, PartialEq)]
 pub enum MemberStatement {
     FunctionDeclaration(Box<Function>),
 }
 
+#[derive(Eq, PartialEq)]
 pub struct Function {
     pub target_type: Option<Box<Expression>>,
     pub identifier: String,
@@ -32,12 +36,14 @@ pub struct Function {
     pub return_type: Option<Expression>,
 }
 
+#[derive(Eq, PartialEq)]
 pub struct KeyedParameter {
     pub key: ParameterKey,
     pub internal_name: String,
     pub param_type: Expression,
 }
 
+#[derive(Eq, PartialEq)]
 pub struct OperatorFunction {
     pub parts: Vec<Box<OperatorArgument>>,
     pub decorators: Vec<String>,
@@ -46,11 +52,13 @@ pub struct OperatorFunction {
     pub return_type: Option<Expression>,
 }
 
+#[derive(Eq, PartialEq)]
 pub enum OperatorArgument {
     Parameter(Box<Expression>),
     Keyword(String)
 }
 
+#[derive(Eq, PartialEq)]
 pub struct PatternDeclaration {
     pub precedence: String,
 
@@ -62,6 +70,7 @@ pub struct PatternDeclaration {
 
 pub type Expression = Vec<Box<Term>>;
 
+#[derive(Eq, PartialEq)]
 pub enum Statement {
     VariableDeclaration {
         mutability: Mutability,
@@ -74,6 +83,7 @@ pub enum Statement {
     Return(Option<Expression>),
 }
 
+#[derive(Eq, PartialEq)]
 pub enum Term {
     Identifier(String),
     Int(String),
@@ -84,12 +94,14 @@ pub enum Term {
     StringLiteral(String),
 }
 
+#[derive(Eq, PartialEq)]
 pub struct StructArgument {
     pub key: ParameterKey,
     pub value: Expression,
     pub type_declaration: Option<Expression>,
 }
 
+#[derive(Eq, PartialEq)]
 pub struct ArrayArgument {
     pub key: Option<Expression>,
     pub value: Expression,

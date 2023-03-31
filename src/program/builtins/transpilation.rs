@@ -12,7 +12,7 @@ use crate::program::builtins::traits::make_trait;
 use crate::program::functions::{Function, FunctionCallType, FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitConformanceRequirement};
+use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitRequirement};
 use crate::program::types::{TypeProto, TypeUnit};
 
 

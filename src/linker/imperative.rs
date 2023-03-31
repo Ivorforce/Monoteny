@@ -19,7 +19,7 @@ use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer,
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration, TraitConformanceRequirement, TraitConformanceScope};
+use crate::program::traits::{Trait, TraitResolution, TraitConformanceDeclaration, TraitRequirement, TraitConformanceScope};
 use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
@@ -50,9 +50,18 @@ impl <'a> ImperativeLinker<'a> {
         let mut scope = scope.subscope();
 
         for requirement in self.function.target.interface.requirements.iter() {
-            let declaration = requirement.assume_granted(requirement.binding.clone());
-            scope.add_implicit_trait_conformance(&declaration)?;
-            conformance_delegations.insert(Rc::clone(requirement), declaration);
+            for (requirement, declaration) in requirement.assume_granted(requirement.binding.generic_to_type.clone()) {
+                scope.trait_conformance_declarations.add(&declaration);
+
+                for (_, pointer) in declaration.trait_resolution.function_binding.iter() {
+                    // TODO Do we need to keep track of the object reference created by this trait conformance?
+                    //  For the record, it SHOULD be created - an abstract function reference can still be passed around,
+                    //  assigned and maybe called later.
+                    scope.overload_function(pointer, &ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(pointer)))))?;
+                }
+
+                conformance_delegations.insert(requirement, declaration);
+            }
         }
 
         // TODO Register generics as variables so they can be referenced in the function

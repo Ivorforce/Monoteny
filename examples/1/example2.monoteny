@@ -6,3 +6,12 @@ def {$Number}.square() -> $Number :: self * self;
 def main() :: {
     print(2.square() ** 3 'Float32);
 }
+
+@transpile
+def transpile(transpiler 'Transpiler) :: {
+    -- The idea is that if we transpile this and run it, it should yield the same output
+    -- as if running using the interpreter.
+
+    -- Ideally, constant folding can break it down to just print statements.
+    transpiler.add(main);
+}
