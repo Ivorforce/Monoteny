@@ -1,0 +1,7 @@
+def test(a: $Float) -> $Float :: {
+    match a [
+        0: 5,
+        1: 2,
+        else: 5,
+    ];
+}
