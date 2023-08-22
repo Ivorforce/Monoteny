@@ -1,19 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::rc::Rc;
-use guard::guard;
-use uuid::Uuid;
-use crate::parser::abstract_syntax::Function;
-use crate::program::allocation::{Mutability, ObjectReference, Reference};
-use crate::program::types::TypeProto;
-
-use crate::program::builtins::Builtins;
-use crate::program::calls::FunctionCall;
-use crate::program::functions::{FunctionPointer, FunctionInterface, ParameterKey};
-use crate::program::generics::{GenericAlias, TypeForest};
-use crate::program::primitives;
-use crate::program::traits::{Trait, TraitResolution, TraitConformanceDeclaration, TraitRequirement};
+use crate::program::allocation::ObjectReference;
+use crate::program::calls::MonomorphicFunction;
+use crate::program::generics::GenericAlias;
 
 pub type ExpressionID = GenericAlias;
 
@@ -25,8 +16,8 @@ pub enum Statement {
 }
 
 pub enum ExpressionOperation {
-    FunctionCall(FunctionCall),
-    PairwiseOperations { calls: Vec<FunctionCall> },
+    FunctionCall(Rc<MonomorphicFunction>),
+    PairwiseOperations { calls: Vec<Rc<MonomorphicFunction>> },
     VariableLookup(Rc<ObjectReference>),
     ArrayLiteral,
     StringLiteral(String),

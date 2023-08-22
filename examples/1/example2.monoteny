@@ -2,6 +2,16 @@
 
 def {$Number}.square() -> $Number :: self * self;
 
+declare List<Float> as Summable {
+    def {Self}.sum() :: self.reduce(+);
+}
+
+declare MyList as Collection<Float> {
+    def {Self}.count -> $Int :: self.list.count;
+}
+
+def add(element: $Float, to_list: List<super $Float>) :: to_list.push(element);
+
 @main
 def main() :: {
     print(2.square() ** 3 'Float32);

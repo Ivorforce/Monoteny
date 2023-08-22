@@ -1,19 +1,14 @@
-use uuid::Uuid;
 use std::rc::Rc;
-use std::collections::{HashMap, HashSet};
-use crate::linker::scopes::Scope;
+use std::collections::HashMap;
 use crate::program::builtins::primitives::{PrimitiveFunctions};
-use crate::program::functions::{Function, FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::{builtins, primitives};
 use crate::program::builtins::traits::Traits;
 use crate::program::traits::Trait;
-use crate::program::types::{TypeProto, TypeUnit};
 
 #[allow(non_snake_case)]
 pub struct Core {
     pub module: Rc<Module>,
-    pub self_id: Uuid,
 
     pub primitives: HashMap<primitives::Type, Rc<Trait>>,
     pub traits: Traits,
@@ -23,7 +18,6 @@ pub struct Core {
 pub fn create() -> Core {
     let mut module = Module::new("monoteny.core".into());
 
-    let self_id = Uuid::new_v4();
     let primitive_traits = builtins::primitives::create_traits(&mut module);
     let traits = builtins::traits::create(&mut module, &primitive_traits);
 
@@ -33,7 +27,6 @@ pub fn create() -> Core {
         module: Rc::new(module),
         primitives: primitive_traits,
         traits,
-        self_id,
     }
 }
 

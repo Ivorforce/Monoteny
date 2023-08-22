@@ -1,6 +1,4 @@
 use std::io::Write;
-use itertools::Itertools;
-use crate::program::builtins::Builtins;
 use crate::program::primitives;
 use crate::program::traits::Trait;
 use crate::program::types::{TypeProto, TypeUnit};

@@ -1,10 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
-use uuid::Uuid;
-use crate::program::functions::{Function, FunctionCallType, FunctionForm, FunctionInterface, FunctionPointer};
+use crate::program::functions::{FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
-use crate::program::{builtins, primitives};
-use crate::program::traits::{Trait, TraitBinding, TraitRequirement};
+use crate::program::primitives;
+use crate::program::traits::Trait;
 use crate::program::types::{TypeProto, TypeUnit};
 
 
@@ -121,33 +120,6 @@ pub fn make_number_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>)
     }
 }
 
-pub fn make_trait(name: &str, self_id: &Uuid, fns: Vec<&Rc<FunctionPointer>>, parents: Vec<&Rc<Trait>>) -> Rc<Trait> {
-    let self_type = TypeProto::unit(TypeUnit::Any(*self_id));
-
-    let mut t = Trait {
-        id: Uuid::new_v4(),
-        name: String::from(name),
-        generics: HashSet::from([*self_id]),
-        abstract_functions: fns.into_iter().map(Rc::clone).collect(),
-        requirements: HashSet::new(),
-    };
-
-    for parent in parents {
-        assert_eq!(parent.generics.len(), 1);
-        t.requirements.insert(
-            Rc::new(TraitRequirement {
-                id: Uuid::new_v4(),
-                binding: TraitBinding {
-                    trait_: Rc::clone(parent),
-                    generic_to_type: HashMap::from([(*parent.generics.iter().next().unwrap(), self_type.clone())]),
-                },
-            })
-        );
-    }
-
-    return Rc::new(t)
-}
-
 pub struct FloatFunctions {
     pub exponent: Rc<FunctionPointer>,
     pub logarithm: Rc<FunctionPointer>,
@@ -167,28 +139,32 @@ pub fn make_float_functions(type_: &Box<TypeProto>) -> FloatFunctions {
 }
 
 pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, Rc<Trait>>) -> Traits {
-    let self_id = Uuid::new_v4();
-    let self_type = TypeProto::unit(TypeUnit::Any(self_id));
     let bool_type = TypeProto::simple_struct(&primitive_traits[&primitives::Type::Bool]);
 
-    let eq_functions = make_eq_functions(&self_type, &bool_type);
-    let Eq = make_trait("Eq", &self_id, vec![
+    let mut Eq = Trait::new("Eq".into());
+    let eq_functions = make_eq_functions(&Eq.create_any_type(&"self".into()), &bool_type);
+    Eq.abstract_functions.extend([
         &eq_functions.equal_to,
         &eq_functions.not_equal_to,
-    ], vec![]);
+    ].map(Rc::clone));
+    let Eq = Rc::new(Eq);
     module.add_trait(&Eq);
 
-    let number_functions = make_number_functions(&self_type, &bool_type);
-
-    let Ord = make_trait("Ord", &self_id, vec![
+    let mut Ord = Trait::new("Ord".into());
+    let number_functions = make_number_functions(&Ord.create_any_type(&"self".into()), &bool_type);
+    Ord.abstract_functions.extend([
         &number_functions.greater_than,
         &number_functions.greater_than_or_equal_to,
         &number_functions.lesser_than,
         &number_functions.lesser_than_or_equal_to,
-    ], vec![&Eq]);
+    ].map(Rc::clone));
+    let Ord = Rc::new(Ord);
     module.add_trait(&Ord);
+    module.trait_conformance.add_simple_parent_requirement(&Ord, &Eq);
 
-    let Number = make_trait("Number", &self_id, vec![
+    let mut Number = Trait::new("Number".into());
+    let number_functions = make_number_functions(&Number.create_any_type(&"self".into()), &bool_type);
+    Number.abstract_functions.extend([
         &number_functions.add,
         &number_functions.subtract,
         &number_functions.multiply,
@@ -196,55 +172,62 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         &number_functions.positive,
         &number_functions.negative,
         &number_functions.modulo,
-    ], vec![&Ord]);
+    ].map(Rc::clone));
+    let Number = Rc::new(Number);
     module.add_trait(&Number);
+    module.trait_conformance.add_simple_parent_requirement(&Number, &Ord);
 
-
-    let String = make_trait("String", &self_id, vec![], vec![]);
+    let mut String = Trait::new("String".into());
+    let String = Rc::new(String);
     module.add_trait(&String);
 
 
+    let mut ConstructableByIntLiteral = Trait::new("ConstructableByIntLiteral".into());
     let parse_int_literal_function = FunctionPointer::new_global(
         "parse_int_literal",
         FunctionInterface::new_simple(
             [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
-            self_type.clone(),
+            ConstructableByIntLiteral.create_any_type(&"self".into()),
         )
     );
-
-    let ConstructableByIntLiteral = make_trait("ConstructableByIntLiteral", &self_id, vec![&parse_int_literal_function], vec![]);
+    ConstructableByIntLiteral.abstract_functions.extend([
+        &parse_int_literal_function
+    ].map(Rc::clone));
+    let ConstructableByIntLiteral = Rc::new(ConstructableByIntLiteral);
     module.add_trait(&ConstructableByIntLiteral);
 
 
+    let mut ConstructableByFloatLiteral = Trait::new("ConstructableByFloatLiteral".into());
     let parse_float_literal_function = FunctionPointer::new_global(
         "parse_float_literal",
         FunctionInterface::new_simple(
             [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
-            self_type.clone(),
-        )
+            ConstructableByFloatLiteral.create_any_type(&"self".into())
+        ),
     );
-
-    let ConstructableByFloatLiteral = make_trait("ConstructableByFloatLiteral", &self_id, vec![&parse_float_literal_function], vec![]);
+    ConstructableByFloatLiteral.abstract_functions.extend([
+        &parse_float_literal_function
+    ].map(Rc::clone));
+    let ConstructableByFloatLiteral = Rc::new(ConstructableByFloatLiteral);
     module.add_trait(&ConstructableByFloatLiteral);
 
 
-    let float_functions = make_float_functions(&self_type);
-
-    let Float = make_trait(
-        "Float",
-        &self_id,
-        vec![&float_functions.exponent],
-        vec![&Number, &ConstructableByFloatLiteral, &ConstructableByIntLiteral]
-    );
+    let mut Float = Trait::new("Float".into());
+    let float_functions = make_float_functions(&Float.create_any_type(&"self".into()));
+    Float.abstract_functions.extend([
+        &float_functions.exponent
+    ].map(Rc::clone));
+    let Float = Rc::new(Float);
     module.add_trait(&Float);
+    module.trait_conformance.add_simple_parent_requirement(&Float, &Number);
+    module.trait_conformance.add_simple_parent_requirement(&Float, &ConstructableByFloatLiteral);
+    module.trait_conformance.add_simple_parent_requirement(&Float, &ConstructableByIntLiteral);
 
-    let Int = make_trait(
-        "Int",
-        &self_id,
-        vec![],
-        vec![&Number, &ConstructableByIntLiteral]
-    );
+    let mut Int = Trait::new("Int".into());
+    let Int = Rc::new(Int);
     module.add_trait(&Int);
+    module.trait_conformance.add_simple_parent_requirement(&Int, &Number);
+    module.trait_conformance.add_simple_parent_requirement(&Int, &ConstructableByIntLiteral);
 
     Traits {
         Eq,

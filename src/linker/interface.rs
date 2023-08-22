@@ -1,21 +1,18 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::rc::Rc;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use crate::linker::r#type::TypeFactory;
 use crate::linker::{LinkError, scopes};
-use crate::linker::scopes::Environment;
 use crate::parser::abstract_syntax;
 use crate::parser::abstract_syntax::{Expression, OperatorArgument};
-use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionForm, FunctionPointer, FunctionCallType, FunctionInterface, ParameterKey, Parameter, Function};
-use crate::program::generics::GenericAlias;
-use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitRequirement};
-use crate::program::types::{PatternPart, TypeProto, TypeUnit};
+use crate::program::traits::TraitBinding;
+use crate::program::types::{PatternPart, TypeProto};
 
 
-pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitRequirement>>) -> Result<Rc<FunctionPointer>, LinkError> {
+pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<FunctionPointer>, LinkError> {
     let mut type_factory = TypeFactory::new(scope);
 
     let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x)).unwrap_or_else(|| Ok(TypeProto::void()))?;
@@ -23,22 +20,19 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
     let mut parameters: Vec<Parameter> = vec![];
 
     if let Some(parameter) = &function.target_type {
-        let variable = ObjectReference::new_immutable(type_factory.link_type(parameter)?);
 
         parameters.push(Parameter {
             external_key: ParameterKey::Positional,
             internal_name: String::from("self"),
-            target: Rc::clone(&variable),
+            type_: type_factory.link_type(parameter)?,
         });
     }
 
     for parameter in function.parameters.iter() {
-        let variable = ObjectReference::new_immutable(type_factory.link_type(&parameter.param_type)?);
-
         parameters.push(Parameter {
             external_key: parameter.key.clone(),
             internal_name: parameter.internal_name.clone(),
-            target: Rc::clone(&variable),
+            type_: type_factory.link_type(&parameter.param_type)?,
         });
     }
 
@@ -55,7 +49,7 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
     }))
 }
 
-pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitRequirement>>) -> Result<Rc<FunctionPointer>, LinkError> {
+pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<FunctionPointer>, LinkError> {
     let mut type_factory = TypeFactory::new(scope);
 
     let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x)).unwrap_or_else(|| Ok(TypeProto::void()))?;
@@ -87,12 +81,10 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
         let mut parameters: Vec<Parameter> = vec![];
 
         for (key, internal_name, type_expression) in arguments.into_iter() {
-            let variable = ObjectReference::new_immutable(type_factory.link_type(type_expression)?);
-
             parameters.push(Parameter {
                 external_key: key.clone(),
                 internal_name: internal_name.clone(),
-                target: Rc::clone(&variable),
+                type_: type_factory.link_type(type_expression)?,
             });
         }
 

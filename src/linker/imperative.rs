@@ -1,25 +1,23 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
 use guard::guard;
-use itertools::{Itertools, zip_eq};
+use itertools::Itertools;
 use strum::IntoEnumIterator;
-use try_map::{FallibleMapExt, FlipResultExt};
-use crate::linker;
+use try_map::FallibleMapExt;
 use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation, Statement};
 use crate::linker::{LinkError, precedence, scopes};
-use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberPrimitive, LinkerAmbiguity};
+use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberLiteral, LinkerAmbiguity};
 use crate::linker::precedence::link_patterns;
 use crate::linker::r#type::TypeFactory;
 use crate::parser::abstract_syntax;
 use crate::parser::abstract_syntax::Expression;
-use crate::program::allocation::{Mutability, ObjectReference, Reference, ReferenceType};
+use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
 use crate::program::builtins::Builtins;
-use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, FunctionCallType, FunctionInterface, ParameterKey};
+use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
-use crate::program::primitives;
-use crate::program::traits::{Trait, TraitResolution, TraitConformanceDeclaration, TraitRequirement, TraitConformanceScope};
+use crate::program::traits::{TraitGraph, TraitResolution};
 use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
@@ -46,28 +44,37 @@ impl <'a> ImperativeLinker<'a> {
     }
 
     pub fn link_function_body(mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Rc<FunctionImplementation>, LinkError> {
-        let mut conformance_delegations = HashMap::new();
         let mut scope = scope.subscope();
 
-        for requirement in self.function.target.interface.requirements.iter() {
-            for (requirement, declaration) in requirement.assume_granted(requirement.binding.generic_to_type.clone()) {
-                scope.trait_conformance_declarations.add(&declaration);
+        let granted_requirements = scope.traits.assume_granted(self.function.target.interface.requirements.iter().map(Rc::clone));
 
-                for (_, pointer) in declaration.trait_resolution.function_binding.iter() {
-                    // TODO Do we need to keep track of the object reference created by this trait conformance?
-                    //  For the record, it SHOULD be created - an abstract function reference can still be passed around,
-                    //  assigned and maybe called later.
-                    scope.overload_function(pointer, &ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(pointer)))))?;
-                }
+        // Let our scope know that our parameter types (all of type any!) conform to the requirements
+        for (binding, function_binding) in granted_requirements.iter() {
+            scope.traits.add_conformance(Rc::clone(binding), function_binding.clone()).unwrap();
+        };
 
-                conformance_delegations.insert(requirement, declaration);
+        // Add abstract function mocks to our scope to be callable.
+        for (_, conformance) in granted_requirements.iter() {
+            for pointer in conformance.values() {
+                // TODO Do we need to keep track of the object reference created by this trait conformance?
+                //  For the record, it SHOULD be created - an abstract function reference can still be passed around,
+                //  assigned and maybe called later.
+                scope.overload_function(pointer, &ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(pointer)))))?;
             }
         }
 
         // TODO Register generics as variables so they can be referenced in the function
 
+        let mut parameter_variables = vec![];
         for parameter in self.function.target.interface.parameters.iter() {
-            scope.insert_singleton(scopes::Environment::Global, Reference::make(ReferenceType::Object(parameter.target.clone())), &parameter.internal_name);
+            let parameter_variable = ObjectReference::new_immutable(parameter.type_.clone());
+            self.variable_names.insert(Rc::clone(&parameter_variable), parameter.internal_name.clone());
+            scope.insert_singleton(
+                scopes::Environment::Global,
+                Reference::make(ReferenceType::Object(Rc::clone(&parameter_variable))),
+                &parameter.internal_name
+            );
+            parameter_variables.push(parameter_variable);
         }
 
         let statements: Vec<Box<Statement>> = self.link_top_scope(body, &scope)?;
@@ -76,7 +83,7 @@ impl <'a> ImperativeLinker<'a> {
         while !self.ambiguities.is_empty() {
             if !has_changed {
                 // TODO Output which parts are ambiguous, and how, by asking the objects
-                panic!("The types of function {} are underdefined.", &self.function.name)
+                panic!("The function '{:?}' is ambiguous ({} times): \n{}\n\n", &self.function, self.ambiguities.len(), self.ambiguities.iter().map(|x| x.to_string()).join("\n"))
             }
 
             has_changed = false;
@@ -96,11 +103,12 @@ impl <'a> ImperativeLinker<'a> {
             implementation_id: self.function.pointer_id,
             pointer: self.function,
             decorators: self.decorators,
+            trait_resolution: Box::new(TraitResolution { conformance: HashMap::from_iter(granted_requirements) }),
             statements,
             expression_forest: self.expressions,
             type_forest: self.types,
+            parameter_variables,
             variable_names: self.variable_names.clone(),
-            conformance_delegations
         }))
     }
 
@@ -140,9 +148,9 @@ impl <'a> ImperativeLinker<'a> {
         }
     }
 
-    pub fn link_primitive(&mut self, value: &String, traits: TraitConformanceScope, is_float: bool) -> Result<ExpressionID, LinkError> {
+    pub fn link_primitive(&mut self, value: &String, traits: TraitGraph, is_float: bool) -> Result<ExpressionID, LinkError> {
         let expression_id = self.register_new_expression(vec![]);
-        self.register_ambiguity(Box::new(AmbiguousNumberPrimitive {
+        self.register_ambiguity(Box::new(AmbiguousNumberLiteral {
             expression_id,
             value: value.clone(),
             traits,
@@ -287,14 +295,14 @@ impl <'a> ImperativeLinker<'a> {
             abstract_syntax::Term::Int(string) => {
                 precedence::Token::Expression(self.link_primitive(
                     string,
-                    scope.trait_conformance_declarations.clone(),
+                    scope.traits.clone(),
                     false,
                 )?)
             }
             abstract_syntax::Term::Float(string) => {
                 precedence::Token::Expression(self.link_primitive(
                     string,
-                    scope.trait_conformance_declarations.clone(),
+                    scope.traits.clone(),
                     true,
                 )?)
             }
@@ -378,10 +386,10 @@ impl <'a> ImperativeLinker<'a> {
 
             candidates.push(Box::new(AmbiguousFunctionCandidate {
                 param_types: fun.target.interface.parameters.iter()
-                    .map(|x| x.target.type_.with_any_as_generic(&seed))
+                    .map(|x| x.type_.with_any_as_generic(&seed))
                     .collect(),
                 return_type: fun.target.interface.return_type.with_any_as_generic(&seed),
-                requirements: fun.target.interface.requirements.iter().map(|x| x.with_any_as_generic(&seed)).collect(),
+                requirements: fun.target.interface.requirements.iter().map(|x| x.mapping_types(&|type_| type_.with_any_as_generic(&seed))).collect(),
                 function: fun,
             }));
         }
@@ -393,7 +401,7 @@ impl <'a> ImperativeLinker<'a> {
                 expression_id,
                 function_name: fn_name.clone(),
                 arguments: argument_expressions,
-                trait_conformance_declarations: scope.trait_conformance_declarations.clone(),
+                traits: scope.traits.clone(),
                 candidates,
                 failed_candidates: vec![]
             }))?;

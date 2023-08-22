@@ -1,10 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::linker::precedence::PrecedenceGroup;
 use crate::program::allocation::ObjectReference;
 use crate::program::functions::FunctionPointer;
-use crate::program::traits::{Trait, TraitConformanceDeclaration};
+use crate::program::traits::{Trait, TraitGraph};
 use crate::program::types::{Pattern, TypeProto, TypeUnit};
 
 pub struct Module {
@@ -14,7 +13,7 @@ pub struct Module {
     pub traits: HashMap<Rc<Trait>, Rc<ObjectReference>>,
     pub functions: HashMap<Rc<FunctionPointer>, Rc<ObjectReference>>,
     pub patterns: HashSet<Rc<Pattern>>,
-    pub trait_conformance_declarations: HashSet<Rc<TraitConformanceDeclaration>>
+    pub trait_conformance: Box<TraitGraph>
 }
 
 impl Module {
@@ -25,7 +24,7 @@ impl Module {
             traits: Default::default(),
             functions: Default::default(),
             patterns: Default::default(),
-            trait_conformance_declarations: Default::default(),
+            trait_conformance: Box::new(TraitGraph::new()),
         }
     }
 

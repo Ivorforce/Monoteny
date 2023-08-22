@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use guard::guard;
@@ -7,10 +6,8 @@ use uuid::Uuid;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{scopes, LinkError};
 use crate::linker::scopes::Environment;
-use crate::parser::abstract_syntax::*;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
-use crate::program::functions::{FunctionOverload, FunctionPointer, ParameterKey};
-use crate::program::primitives;
+use crate::program::functions::{FunctionOverload, ParameterKey};
 use crate::program::types::{TypeProto, TypeUnit};
 
 #[derive(Copy, Clone, PartialEq, Eq)]

@@ -1,8 +1,5 @@
 use std::io::Write;
-use itertools::Itertools;
-use crate::program::computation_tree::*;
 use crate::program::{primitives, Program};
-use crate::program::builtins::Builtins;
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub fn transpile_program(
@@ -20,9 +17,9 @@ pub fn transpile_program(
 
         write!(header_stream, "{} {}(", return_type, implementation.pointer.name)?;
 
-        for parameter in implementation.pointer.target.interface.parameters.iter() {
+        for parameter in implementation.parameter_variables.iter() {
             // External names do not exist in C. Let's just use the internal name.
-            write!(header_stream, "{} {},", transpile_type(&parameter.target.type_), implementation.variable_names.get(&parameter.target).unwrap())?;
+            write!(header_stream, "{} {},", transpile_type(&parameter.type_), implementation.variable_names.get(parameter).unwrap())?;
         }
 
         write!(header_stream, ") {{\n\n}}\n\n")?;

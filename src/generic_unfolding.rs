@@ -1,42 +1,36 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::program::allocation::ObjectReference;
-use crate::program::calls::FunctionCall;
-use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation, Statement};
+use crate::program::calls::MonomorphicFunction;
+use crate::program::computation_tree::{ExpressionForest, ExpressionOperation, Statement};
 use crate::program::functions::{Function, FunctionInterface, FunctionPointer, Parameter};
-use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::TraitResolution;
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::types::TypeProto;
 
 
 pub struct FunctionUnfolder {
-    pub encountered: Vec<Box<FunctionCall>>,
-    pub resolved: HashMap<Box<FunctionCall>, Rc<FunctionImplementation>>,
+    pub mapped_calls: HashMap<Rc<MonomorphicFunction>, Rc<MonomorphicFunction>>,
+    pub new_mappable_calls: Vec<Rc<MonomorphicFunction>>,
 }
 
 impl FunctionUnfolder {
     pub fn new() -> FunctionUnfolder {
         FunctionUnfolder {
-            encountered: Default::default(),
-            resolved: Default::default(),
+            mapped_calls: Default::default(),
+            new_mappable_calls: Default::default(),
         }
     }
 
-    pub fn resolve(&mut self, call: Box<FunctionCall>, implementation: Rc<FunctionImplementation>) -> Rc<FunctionImplementation> {
-        let resolved = self.unfold_anonymous(&implementation, &call.resolution);
-        self.resolved.insert(call, Rc::clone(&resolved));
-        resolved
-    }
-
-    pub fn unfold_anonymous(&mut self, fun: &FunctionImplementation, resolution: &TraitResolution) -> Rc<FunctionImplementation> {
+    pub fn unfold_anonymous(&mut self, fun: &FunctionImplementation, call: &Rc<MonomorphicFunction>, should_unfold: &dyn Fn(&Rc<MonomorphicFunction>) -> bool) -> Rc<FunctionImplementation> {
         // Map types.
         let mut type_forest = fun.type_forest.clone();
 
         let mut type_replacement_map: HashMap<Uuid, Box<TypeProto>> = Default::default();
-        for (requirement, binding) in resolution.requirement_bindings.iter() {
+        for (binding, function_mapping) in call.resolution.conformance.iter() {
             type_replacement_map.extend(binding.generic_to_type.clone());
 
             for (generic, type_) in binding.generic_to_type.iter() {
@@ -61,42 +55,61 @@ impl FunctionUnfolder {
             })
         }).collect_vec();
 
-        let function_replacement_map = resolution.gather_function_bindings();
+        let mut function_replacement_map = HashMap::new();
+        for (binding, function_resolution) in fun.trait_resolution.conformance.iter() {
+            for (abstract_fun, fun_placement) in function_resolution.iter() {
+                let replacement = &call.resolution.conformance[binding][abstract_fun];
+                function_replacement_map.insert(Rc::clone(fun_placement), Rc::clone(replacement));
+            }
+        }
+        println!("Fun replacement: {:?} / {:?}  --------- {:?}", fun.pointer, call.pointer, function_replacement_map);
 
         // Find function calls in the expression forest
         for (expression_id, operation) in fun.expression_forest.operations.iter() {
             expression_forest.operations.insert(expression_id.clone(), match operation {
                 ExpressionOperation::FunctionCall(call) => {
-                    let new_pointer = function_replacement_map.get(&call.pointer).unwrap_or(&call.pointer);
-                    if !call.resolution.requirement_bindings.is_empty() {
-                        todo!("Unfold function")
-                    } else {
-                        let call = FunctionCall {
-                            pointer: Rc::clone(new_pointer),
-                            resolution: TraitResolution::new()
-                        };
+                    let replaced_pointer = function_replacement_map.get(&call.pointer).unwrap_or(&call.pointer);
+                    println!("Pre-Call: {:?}", call.pointer);
+                    let replaced_call = Rc::new(MonomorphicFunction { pointer: Rc::clone(replaced_pointer), resolution: call.resolution.clone() });
+                    println!("Replaced Call: {:?}", replaced_pointer);
 
-                        self.encountered.push(Box::new(call.clone()));
-                        ExpressionOperation::FunctionCall(call)
+                    let unfolded_call: Rc<MonomorphicFunction> = if should_unfold(&replaced_call) {
+                        match self.mapped_calls.entry(Rc::clone(call)) {
+                            Entry::Occupied(o) => Rc::clone(o.get()),
+                            Entry::Vacant(v) => {
+                                self.new_mappable_calls.push(Rc::clone(&replaced_call));
+                                Rc::clone(v.insert(map_call(&replaced_call)))
+                            },
+                        }
                     }
+                    else {
+                        replaced_call
+                    };
+                    println!("Unfolded: {:?}", unfolded_call.pointer);
+
+                    ExpressionOperation::FunctionCall(unfolded_call)
                 }
                 ExpressionOperation::PairwiseOperations { calls } => {
                     ExpressionOperation::PairwiseOperations {
                         calls: calls.iter()
                             .map(|call| {
-                                let new_pointer = function_replacement_map.get(&call.pointer).unwrap_or(&call.pointer);
+                                let replaced_pointer = function_replacement_map.get(&call.pointer).unwrap_or(&call.pointer);
+                                let replaced_call = Rc::new(MonomorphicFunction { pointer: Rc::clone(replaced_pointer), resolution: call.resolution.clone() });
 
-                                if !call.resolution.requirement_bindings.is_empty() {
-                                    todo!("Unfold function")
-                                } else {
-                                    let call = FunctionCall {
-                                        pointer: Rc::clone(new_pointer),
-                                        resolution: TraitResolution::new()
-                                    };
-
-                                    self.encountered.push(Box::new(call.clone()));
-                                    call
+                                let unfolded_call: Rc<MonomorphicFunction> = if should_unfold(&replaced_call) {
+                                    match self.mapped_calls.entry(Rc::clone(call)) {
+                                        Entry::Occupied(o) => Rc::clone(o.get()),
+                                        Entry::Vacant(v) => {
+                                            self.new_mappable_calls.push(Rc::clone(&replaced_call));
+                                            Rc::clone(v.insert(map_call(&replaced_call)))
+                                        },
+                                    }
                                 }
+                                else {
+                                    replaced_call
+                                };
+
+                                unfolded_call
                             }).collect_vec()
                     }
                 }
@@ -109,27 +122,39 @@ impl FunctionUnfolder {
         }
         expression_forest.arguments = fun.expression_forest.arguments.clone();
 
-        // Insert the finished function to the vector
         Rc::new(FunctionImplementation {
             implementation_id: Uuid::new_v4(),
-            pointer: Rc::new(FunctionPointer {
-                pointer_id: Uuid::new_v4(),
-                target: Rc::new(Function {
-                    function_id: Uuid::new_v4(),
-                    interface: Rc::new(map_interface(&fun.pointer.target.interface, &type_replacement_map, &variable_map)),
-                }),
-                call_type: fun.pointer.call_type.clone(),
-                name: fun.pointer.name.clone(),
-                form: fun.pointer.form.clone(),
-            }),
+            pointer: Rc::clone(&call.pointer),  // Re-use premapped pointer
             decorators: fun.decorators.clone(),
-            conformance_delegations: HashMap::new(),
+            trait_resolution: TraitResolution::new(),
             statements,
             expression_forest,
             type_forest,
+            parameter_variables: fun.parameter_variables.iter().map(|x| Rc::clone(&variable_map[x])).collect_vec(),
             variable_names: fun.variable_names.clone(),  // Variables don't change with unfolding
         })
     }
+}
+
+pub fn map_call(call: &Rc<MonomorphicFunction>) -> Rc<MonomorphicFunction> {
+    let mut type_replacement_map: HashMap<Uuid, Box<TypeProto>> = Default::default();
+    for (binding, function_mapping) in call.resolution.conformance.iter() {
+        type_replacement_map.extend(binding.generic_to_type.clone());
+    }
+
+    Rc::new(MonomorphicFunction {
+        pointer: Rc::new(FunctionPointer {
+            pointer_id: Uuid::new_v4(),
+            target: Rc::new(Function {
+                function_id: Uuid::new_v4(),
+                interface: Rc::new(map_interface(&call.pointer.target.interface, &type_replacement_map)),
+            }),
+            call_type: call.pointer.call_type.clone(),
+            name: call.pointer.name.clone(),
+            form: call.pointer.form.clone(),
+        }),
+        resolution: call.resolution.clone(), // TODO This should be empty now? Maybe?
+    })
 }
 
 pub fn map_variable(variable: &ObjectReference, type_replacement_map: &HashMap<Uuid, Box<TypeProto>>) -> Rc<ObjectReference> {
@@ -140,14 +165,14 @@ pub fn map_variable(variable: &ObjectReference, type_replacement_map: &HashMap<U
     })
 }
 
-pub fn map_interface(interface: &FunctionInterface, type_replacement_map: &HashMap<Uuid, Box<TypeProto>>, object_replacement_map: &HashMap<Rc<ObjectReference>, Rc<ObjectReference>>) -> FunctionInterface {
+pub fn map_interface(interface: &FunctionInterface, type_replacement_map: &HashMap<Uuid, Box<TypeProto>>) -> FunctionInterface {
     FunctionInterface {
         parameters: interface.parameters.iter().map(|x| Parameter {
             external_key: x.external_key.clone(),
             internal_name: x.internal_name.clone(),
-            target: Rc::clone(object_replacement_map.get(&x.target).unwrap_or(&x.target)),
+            type_: x.type_.replacing_any(type_replacement_map),
         }).collect(),
         return_type: interface.return_type.replacing_any(type_replacement_map),
-        requirements: vec![],  // TODO
+        requirements: todo!(),
     }
 }

@@ -1,17 +1,14 @@
 use std::collections::{HashMap, HashSet};
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
-use uuid::Uuid;
 use crate::linker::precedence::PrecedenceGroup;
 use crate::linker::LinkError;
-use crate::program::allocation::{Mutability, ObjectReference, Reference, ReferenceType};
-use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, FunctionInterface, ParameterKey};
-use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitRequirement, TraitConformanceScope};
-use crate::program::generics::TypeForest;
+use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
+use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer};
+use crate::program::traits::TraitGraph;
 use crate::program::module::Module;
-use crate::program::types::{Pattern, PatternPart, TypeProto, TypeUnit};
+use crate::program::types::{Pattern, PatternPart};
 
 // Note: While a single pool cannot own overloaded variables, multiple same-level pools (-> from imports) can.
 // When we have imports, this should be ignored until referenced, to avoid unnecessary import complications.
@@ -27,7 +24,7 @@ pub enum Environment {
 pub struct Scope<'a> {
     pub parent: Option<&'a Scope<'a>>,
 
-    pub trait_conformance_declarations: TraitConformanceScope,
+    pub traits: TraitGraph,
 
     pub patterns: HashSet<Rc<Pattern>>,
 
@@ -43,7 +40,7 @@ impl <'a> Scope<'a> {
         Scope {
             parent: None,
 
-            trait_conformance_declarations: TraitConformanceScope::new(),
+            traits: TraitGraph::new(),
             precedence_groups: vec![],
 
             patterns: HashSet::new(),
@@ -60,7 +57,7 @@ impl <'a> Scope<'a> {
         Scope {
             parent: Some(self),
 
-            trait_conformance_declarations: self.trait_conformance_declarations.clone(),
+            traits: self.traits.clone(),
             precedence_groups: self.precedence_groups.clone(),
 
             patterns: self.patterns.clone(),
@@ -97,9 +94,7 @@ impl <'a> Scope<'a> {
             );
         }
 
-        for trait_conformance_declaration in module.trait_conformance_declarations.iter() {
-            self.trait_conformance_declarations.add(trait_conformance_declaration);
-        }
+        self.traits.add_graph(&module.trait_conformance);
 
         for (function, object_ref) in module.functions.iter() {
             self.overload_function(function, object_ref)?;

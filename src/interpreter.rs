@@ -4,21 +4,17 @@ pub mod run;
 
 use std::alloc::{alloc, dealloc, Layout};
 use std::collections::HashMap;
-use std::env::var;
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 use std::rc::Rc;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use strum::IntoEnumIterator;
-use crate::parser::abstract_syntax::Expression;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statement};
-use crate::program::functions::{FunctionPointer, FunctionCallType, Function};
+use crate::program::functions::{FunctionPointer, FunctionCallType};
 use crate::program::global::FunctionImplementation;
-use crate::program::Program;
-use crate::program::primitives;
-use crate::program::traits::{TraitResolution, TraitConformanceDeclaration};
+use crate::program::traits::TraitResolution;
 
 
 pub type FunctionInterpreterImpl<'a> = Rc<dyn Fn(&mut FunctionInterpreter, &ExpressionID, &TraitResolution) -> Option<Value> + 'a>;
@@ -44,9 +40,8 @@ pub struct FunctionInterpreter<'a, 'b, 'c> {
 
 impl FunctionInterpreter<'_, '_, '_> {
     pub unsafe fn assign_arguments(&mut self, arguments: Vec<Value>) {
-        // TODO Shouldn't use the human interface, but rather a set order of arguments.
-        for (arg, parameter) in zip_eq(arguments, self.implementation.pointer.target.interface.parameters.iter()) {
-            self.assignments.insert(parameter.target.id.clone(), arg);
+        for (arg, parameter) in zip_eq(arguments, self.implementation.parameter_variables.iter()) {
+            self.assignments.insert(parameter.id.clone(), arg);
         }
     }
 
@@ -73,12 +68,13 @@ impl FunctionInterpreter<'_, '_, '_> {
     }
 
     pub fn combine_bindings(lhs: &TraitResolution, rhs: &TraitResolution) -> Box<TraitResolution> {
-        Box::new(TraitResolution {
-            requirement_bindings: lhs.requirement_bindings.iter().chain(rhs.requirement_bindings.iter())
-                .map(|(l, r)| (Rc::clone(l), r.clone()))
-                .collect(),
-            function_binding: todo!(),
-        })
+        todo!()
+        // Box::new(TraitResolution {
+        //     requirement_bindings: lhs.requirement_bindings.iter().chain(rhs.requirement_bindings.iter())
+        //         .map(|(l, r)| (Rc::clone(l), r.clone()))
+        //         .collect(),
+        //     function_binding: todo!(),
+        // })
     }
 
     pub fn resolve(&self, pointer: &FunctionPointer) -> Uuid {

@@ -1,7 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::convert::identity;
-use std::rc::Rc;
-use custom_error::custom_error;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;

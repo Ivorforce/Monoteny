@@ -1,6 +1,5 @@
 use uuid::Uuid;
 use crate::program::builtins::Builtins;
-use crate::program::functions::FunctionCallType;
 use crate::transpiler::namespaces;
 
 pub fn create(builtins: &Builtins) -> namespaces::Level {
@@ -60,11 +59,14 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
         }
     }
 
-    for module in builtins.all_modules() {
-        for declaration in module.trait_conformance_declarations.iter() {
-            namespace.register_definition(declaration.id, &format!("mn.declarations.{}", &declaration.binding.trait_.name));
-        }
-    }
+    // I don't think we need this. This is just "extend Object: Interface" - this usually is not referred to in code.
+    // for module in builtins.all_modules() {
+    //     for (trait_, mapping) in module.trait_conformance.declarations.iter() {
+    //         for (binding, mapping) in mapping.iter() {
+    //             namespace.register_definition(Uuid::new_v4(), &format!("mn.declarations.{}", &trait_.name));
+    //         }
+    //     }
+    // }
 
     namespace.register_definition(builtins.math.pi.pointer_id, &String::from("mn.pi"));
     namespace.register_definition(builtins.math.tau.pointer_id, &String::from("mn.tau"));

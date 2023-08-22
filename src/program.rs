@@ -1,10 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
 use itertools::Itertools;
 use global::{FunctionImplementation};
 use crate::program::functions::FunctionPointer;
 use crate::program::module::Module;
-use crate::program::traits::Trait;
 
 pub mod allocation;
 pub mod builtins;

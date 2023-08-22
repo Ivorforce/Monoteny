@@ -1,11 +1,9 @@
-use std::arch::x86_64::__m128;
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 use std::rc::Rc;
 use guard::guard;
 use crate::linker::precedence::PrecedenceGroup;
-use crate::linker::scopes::Environment;
 use crate::LinkError;
 use crate::program::functions::{FunctionOverload, FunctionPointer};
 use crate::program::traits::Trait;

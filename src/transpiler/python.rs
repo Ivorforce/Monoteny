@@ -3,7 +3,7 @@ pub mod types;
 pub mod builtins;
 
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::Write;
 use std::ops::DerefMut;
 use std::rc::Rc;
@@ -16,13 +16,13 @@ use crate::interpreter;
 
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
-use crate::program::functions::{FunctionPointer, FunctionCallType, FunctionInterface, ParameterKey};
+use crate::program::functions::{FunctionPointer, FunctionCallType, ParameterKey};
 use crate::program::{find_annotated, primitives, Program};
-use crate::program::allocation::Reference;
+use crate::program::calls::MonomorphicFunction;
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation};
-use crate::program::traits::{TraitResolution, TraitConformanceDeclaration, TraitRequirement};
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::traits::{TraitBinding, TraitResolution};
+use crate::program::types::TypeUnit;
 use crate::transpiler::namespaces;
 use crate::transpiler::python::docstrings::transpile_type;
 
@@ -52,7 +52,11 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     interpreter::run::transpile(program, &Rc::clone(&builtins), &|implementation| {
         let unfolded_function = unfolder.borrow_mut().deref_mut().unfold_anonymous(
             implementation,
-            &TraitResolution { requirement_bindings: Default::default(), function_binding: Default::default() }
+            &Rc::new(MonomorphicFunction {
+                pointer: Rc::clone(&implementation.pointer),  // We can re-use the pointer for now, until it needs to be mapped,
+                resolution: Box::new(TraitResolution { conformance: Default::default() }),  // Can be empty until it needs to be mapped
+            }),
+            &|f| functions_by_id.contains_key(&f.pointer.pointer_id)  // TODO If no, it's *probably* a builtin, but we should probably check for realsies
         );
 
         exported_symbols.borrow_mut().deref_mut().push(unfolded_function);
@@ -65,19 +69,17 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     let unfolder = unfolder_.deref_mut();
 
     let mut internal_symbols: Vec<Rc<FunctionImplementation>> = vec![];
-    while let Some(internal_symbol) = unfolder.encountered.pop() {
-        if unfolder.resolved.contains_key(&internal_symbol) {
-            continue
-        }
+    while let Some(used_symbol) = unfolder.new_mappable_calls.pop() {
+        let replacement_symbol = Rc::clone(&unfolder.mapped_calls[&used_symbol]);
+        let implementation = &functions_by_id[&used_symbol.pointer.pointer_id];
 
-        guard!(let Some(implementation) = functions_by_id.get(&internal_symbol.pointer.pointer_id) else {
-            continue; // TODO This is *probably* a builtin, but we should probably check for realsies
-        });
+        let unfolded_implementation = unfolder.unfold_anonymous(
+            implementation,
+            &replacement_symbol,
+            &|f| functions_by_id.contains_key(&f.pointer.pointer_id)   // TODO If no, it's *probably* a builtin, but we should probably check for realsies)
+        );
 
-        internal_symbols.push(unfolder.resolve(
-            internal_symbol,
-            Rc::clone(implementation)
-        ));
+        internal_symbols.push(unfolded_implementation);
     }
 
     // Register symbols
@@ -153,9 +155,9 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
     write!(stream, "\n\ndef {}(", context.names[&function.pointer.pointer_id])?;
 
-    for (idx, parameter) in function.pointer.target.interface.parameters.iter().enumerate() {
-        write!(stream, "{}: ", context.names.get(&parameter.target.id).unwrap())?;
-        types::transpile(stream, &parameter.target.type_, context)?;
+    for (idx, parameter) in function.parameter_variables.iter().enumerate() {
+        write!(stream, "{}: ", context.names.get(&parameter.id).unwrap())?;
+        types::transpile(stream, &parameter.type_, context)?;
         write!(stream, ", ")?;
     }
 
@@ -179,13 +181,13 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
         return Ok(())
     }
 
-    for (idx, parameter) in function.pointer.target.interface.parameters.iter().enumerate() {
-        let variable_name = context.names.get(&parameter.target.id).unwrap();
+    for (idx, parameter) in function.parameter_variables.iter().enumerate() {
+        let variable_name = context.names.get(&parameter.id).unwrap();
         let external_name = variable_name;  // external names are not supported in python
 
-        match &parameter.target.type_.unit {
+        match &parameter.type_.unit {
             TypeUnit::Monad => {
-                let unit = &parameter.target.type_.arguments[0].as_ref().unit;
+                let unit = &parameter.type_.arguments[0].as_ref().unit;
 
                 if let TypeUnit::Struct(s) = unit {
                     write!(
@@ -266,13 +268,14 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                     },
                     // Have to reference the function by trait
                     FunctionCallType::Polymorphic { requirement, abstract_function } => {
-                        write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&pointer.pointer_id])?;
+                        todo!("Polymorphic calls should have been unfolded earlier. This functionality can be restored later. {:?}", abstract_function)
+                        // write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&pointer.pointer_id])?;
                     }
                 }
                 write!(stream, "(")?;
 
                 // TODO Only required when we're forward-passing unresolved requirements
-                let requirements: [&Rc<TraitRequirement>; 0] = [];  // function.target.interface.requirements
+                let requirements: [&Rc<TraitBinding>; 0] = [];  // function.target.interface.requirements
                 let mut arguments_left = arguments.len() + requirements.len();
 
                 for (parameter, argument) in zip_eq(pointer.target.interface.parameters.iter(), arguments.iter()) {
@@ -290,17 +293,18 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                 }
 
                 for requirement in requirements {
-                    let implementation = &context.functions_by_id[&pointer.pointer_id];
-                    let declaration = &implementation.conformance_delegations[requirement];
-
-                    let param_name = context.names.get(&declaration.id).unwrap();
-                    let arg_name = context.names.get(todo!()).unwrap();
-                    write!(stream, "{}={}", param_name, arg_name)?;
-
-                    arguments_left -= 1;
-                    if arguments_left > 0 {
-                        write!(stream, ", ")?;
-                    }
+                    todo!()
+                    // let implementation = &context.functions_by_id[&pointer.pointer_id];
+                    // let declaration = &implementation.conformance_delegations[requirement];
+                    //
+                    // let param_name = context.names.get(&declaration.id).unwrap();
+                    // let arg_name = context.names.get(todo!()).unwrap();
+                    // write!(stream, "{}={}", param_name, arg_name)?;
+                    //
+                    // arguments_left -= 1;
+                    // if arguments_left > 0 {
+                    //     write!(stream, ", ")?;
+                    // }
                 }
 
                 write!(stream, ")")?;

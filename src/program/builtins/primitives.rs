@@ -1,18 +1,12 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
-use uuid::Uuid;
-use itertools::zip_eq;
 use strum::IntoEnumIterator;
-use crate::linker::scopes;
-use crate::linker::scopes::Scope;
-use crate::program::allocation::Reference;
-use crate::program::builtins::{core, traits};
-use crate::program::builtins::core::Core;
+use crate::program::builtins::traits;
 use crate::program::builtins::traits::Traits;
-use crate::program::functions::{FunctionCallType, FunctionInterface, FunctionPointer};
+use crate::program::functions::{FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitBinding, TraitConformanceDeclaration};
+use crate::program::traits::Trait;
 use crate::program::types::{TypeProto, TypeUnit};
 
 
@@ -55,7 +49,7 @@ pub fn create_traits(module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>
     let mut traits: HashMap<primitives::Type, Rc<Trait>> = Default::default();
 
     for primitive_type in primitives::Type::iter() {
-        let trait_ = Trait::new(primitive_type.identifier_string());
+        let trait_ = Rc::new(Trait::new(primitive_type.identifier_string()));
         module.add_trait(&trait_);
         traits.insert(primitive_type, trait_);
     }
@@ -105,17 +99,13 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         add_function(&eq_functions.equal_to, primitive_type, &mut eq__ops, module);
         add_function(&eq_functions.not_equal_to, primitive_type, &mut neq_ops, module);
 
-        let Eq = TraitConformanceDeclaration::make(
-            TraitBinding {
-                trait_: Rc::clone(&traits.Eq),
-                generic_to_type: HashMap::from([(*traits.Eq.generics.iter().next().unwrap(), type_.clone())]),
-            },
+        module.trait_conformance.add_conformance_manual(
+            traits.Eq.create_generic_binding(vec![(&"self".into(), type_.clone())]),
             vec![
                 (&traits.Eq_functions.equal_to, &eq_functions.equal_to),
                 (&traits.Eq_functions.not_equal_to, &eq_functions.not_equal_to),
             ]
-        );
-        module.trait_conformance_declarations.insert(Rc::clone(&Eq));
+        ).unwrap();
 
         if !primitive_type.is_number() {
             continue;
@@ -129,15 +119,15 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         add_function(&number_functions.lesser_than, primitive_type, &mut le__ops, module);
         add_function(&number_functions.lesser_than_or_equal_to, primitive_type, &mut leq_ops, module);
 
-        let Ord = TraitConformanceDeclaration::make_child(
-            &traits.Ord, vec![&Eq], vec![
+        module.trait_conformance.add_conformance_manual(
+            traits.Ord.create_generic_binding(vec![(&"self".into(), type_.clone())]),
+            vec![
                 (&traits.Number_functions.greater_than, &number_functions.greater_than),
                 (&traits.Number_functions.greater_than_or_equal_to, &number_functions.greater_than_or_equal_to),
                 (&traits.Number_functions.lesser_than, &number_functions.lesser_than),
                 (&traits.Number_functions.lesser_than_or_equal_to, &number_functions.lesser_than_or_equal_to),
             ]
-        );
-        module.trait_conformance_declarations.insert(Rc::clone(&Ord));
+        ).unwrap();
 
         // Number
         add_function(&number_functions.add, primitive_type, &mut add_ops, module);
@@ -153,19 +143,16 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
             FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_)
         );
         add_function(&_parse_int_literal, primitive_type, &mut parse_int_literal, module);
-        let ParseableByIntLiteral = TraitConformanceDeclaration::make(
-            TraitBinding {
-                trait_: Rc::clone(&traits.ConstructableByIntLiteral),
-                generic_to_type: HashMap::from([(*traits.ConstructableByIntLiteral.generics.iter().next().unwrap(), type_.clone())])
-            },
+        module.trait_conformance.add_conformance_manual(
+            traits.ConstructableByIntLiteral.create_generic_binding(vec![(&"self".into(), type_.clone())]),
             vec![
                 (&traits.parse_int_literal_function, &_parse_int_literal),
             ]
-        );
-        module.trait_conformance_declarations.insert(Rc::clone(&ParseableByIntLiteral));
+        ).unwrap();
 
-        let Number = TraitConformanceDeclaration::make_child(
-            &traits.Number, vec![&Ord], vec![
+        module.trait_conformance.add_conformance_manual(
+            traits.Number.create_generic_binding(vec![(&"self".into(), type_.clone())]),
+            vec![
                 (&traits.Number_functions.add, &number_functions.add),
                 (&traits.Number_functions.subtract, &number_functions.subtract),
                 (&traits.Number_functions.multiply, &number_functions.multiply),
@@ -174,13 +161,10 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
                 (&traits.Number_functions.positive, &number_functions.positive),
                 (&traits.Number_functions.negative, &number_functions.negative),
             ]
-        );
-        module.trait_conformance_declarations.insert(Rc::clone(&Number));
+        ).unwrap();
 
         if primitive_type.is_int() {
-            module.trait_conformance_declarations.insert(
-                TraitConformanceDeclaration::make_child(&traits.Int, vec![&Number, &ParseableByIntLiteral], vec![])
-            );
+            module.trait_conformance.add_conformance_manual(traits.Int.create_generic_binding(vec![(&"self".into(), type_.clone())]), vec![]).unwrap();
         }
 
         if !(primitive_type.is_float()) {
@@ -196,22 +180,17 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
             FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_)
         );
         add_function(&_parse_float_literal, primitive_type, &mut parse_float_literal, module);
-        let ParseableByFloatLiteral = TraitConformanceDeclaration::make(
-            TraitBinding {
-                trait_: Rc::clone(&traits.ConstructableByFloatLiteral),
-                generic_to_type: HashMap::from([(*traits.ConstructableByFloatLiteral.generics.iter().next().unwrap(), type_.clone())])
-            }, vec![
+        module.trait_conformance.add_conformance_manual(
+            traits.ConstructableByFloatLiteral.create_generic_binding(vec![(&"self".into(), type_.clone())]), vec![
                 (&traits.parse_float_literal_function, &_parse_float_literal),
             ]
-        );
-        module.trait_conformance_declarations.insert(Rc::clone(&ParseableByFloatLiteral));
+        ).unwrap();
 
-        let Float = TraitConformanceDeclaration::make_child(&traits.Float, vec![&Number, &ParseableByIntLiteral, &ParseableByFloatLiteral], vec![
+        module.trait_conformance.add_conformance_manual(
+            traits.Float.create_generic_binding(vec![(&"self".into(), type_)]), vec![
             (&traits.Float_functions.exponent, &float_functions.exponent),
             (&traits.Float_functions.logarithm, &float_functions.logarithm),
-        ]);
-
-        module.trait_conformance_declarations.insert(Rc::clone(&Float));
+        ]).unwrap();
     }
 
     let and_op = FunctionPointer::new_global(

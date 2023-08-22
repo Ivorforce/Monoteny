@@ -1,12 +1,11 @@
-use std::collections::{HashMap, HashSet};
-use std::fmt::{Debug, format, Formatter};
+use std::collections::HashSet;
+use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
-use itertools::zip_eq;
 use uuid::Uuid;
 use crate::LinkError;
-use crate::program::allocation::{Mutability, ObjectReference, Reference};
-use crate::program::traits::{TraitConformanceDeclaration, TraitRequirement};
+use crate::program::allocation::ObjectReference;
+use crate::program::traits::{TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
 
 #[derive(Clone, PartialEq, Eq)]
@@ -26,7 +25,7 @@ pub enum ParameterKey {
 pub enum FunctionCallType {
     Static,
     /// Not a real function call, rather to be delegated through the requirement's resolution.
-    Polymorphic { requirement: Rc<TraitRequirement>, abstract_function: Rc<FunctionPointer> },
+    Polymorphic { requirement: Rc<TraitBinding>, abstract_function: Rc<FunctionPointer> },
 }
 
 /// A plain, static function that converts a number of parameters to a return type.
@@ -60,10 +59,13 @@ pub struct FunctionOverload {
     pub form: FunctionForm,
 }
 
+/// A parameter as visible from the outside.
+/// They are expected to be passed in order, and will only be assigned to variables
+/// per implementation.
 pub struct Parameter {
     pub external_key: ParameterKey,
     pub internal_name: String,
-    pub target: Rc<ObjectReference>,
+    pub type_: Box<TypeProto>,
 }
 
 /// Machine interface of the function.
@@ -74,11 +76,11 @@ pub struct FunctionInterface {
     pub return_type: Box<TypeProto>,
 
     /// Requirements for parameters and the return type.
-    pub requirements: Vec<Rc<TraitRequirement>>,
+    pub requirements: HashSet<Rc<TraitBinding>>,
 }
 
 impl FunctionInterface {
-    pub fn new_constant<'a>(return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitRequirement>>) -> Rc<FunctionInterface> {
+    pub fn new_constant<'a>(return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitBinding>>) -> Rc<FunctionInterface> {
         Rc::new(FunctionInterface {
             parameters: vec![],
             return_type: return_type.clone(),
@@ -91,14 +93,14 @@ impl FunctionInterface {
             .map(|x| { Parameter {
                 external_key: ParameterKey::Positional,
                 internal_name: format!("p{}", x),
-                target: ObjectReference::new_immutable(parameter_type.clone()),
+                type_: parameter_type.clone(),
             }
         }).collect();
 
         Rc::new(FunctionInterface {
             parameters,
             return_type: return_type.clone(),
-            requirements: vec![],
+            requirements: Default::default(),
         })
     }
 
@@ -107,14 +109,14 @@ impl FunctionInterface {
             .map(|x| Parameter {
                 external_key: ParameterKey::Positional,
                 internal_name: format!("p"),  // TODO Should be numbered? idk
-                target: ObjectReference::new_immutable(x.clone()),
+                type_: x.clone(),
             })
             .collect();
 
         Rc::new(FunctionInterface {
             parameters,
             return_type: return_type.clone(),
-            requirements: vec![],
+            requirements: Default::default(),
         })
     }
 }
@@ -237,7 +239,7 @@ impl Debug for FunctionPointer {
             FunctionForm::Global => {}
             FunctionForm::Constant => {}
             FunctionForm::Member => {
-                write!(fmt, "{{'{:?}}}.", self.target.interface.parameters.get(head).unwrap().target.type_)?;
+                write!(fmt, "{{'{:?}}}.", self.target.interface.parameters.get(head).unwrap().type_)?;
                 head += 1;
             },
         }
@@ -247,10 +249,10 @@ impl Debug for FunctionPointer {
         for parameter in self.target.interface.parameters.iter().skip(head) {
             match &parameter.external_key {
                 ParameterKey::Positional => {
-                    write!(fmt, "{} '{:?},", parameter.internal_name, parameter.target.type_)?;
+                    write!(fmt, "{} '{:?},", parameter.internal_name, parameter.type_)?;
                 }
                 ParameterKey::Name(n) => {
-                    write!(fmt, "{}: {} '{:?},", n, parameter.internal_name, parameter.target.type_)?;
+                    write!(fmt, "{}: {} '{:?},", n, parameter.internal_name, parameter.type_)?;
                 }
             }
         }

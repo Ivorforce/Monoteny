@@ -1,7 +1,5 @@
 use std::io::Write;
 use crate::transpiler::python::{TranspilerContext, types};
-use crate::program::builtins::Builtins;
-use crate::program::computation_tree::*;
 use crate::program::global::FunctionImplementation;
 use crate::program::types::{TypeProto, TypeUnit};
 
@@ -11,9 +9,9 @@ pub fn dump(stream: &mut (dyn Write), implementation: &FunctionImplementation, c
     if !implementation.pointer.target.interface.parameters.is_empty() {
         write!(stream, "\n    Args:\n")?;
 
-        for (idx, parameter) in implementation.pointer.target.interface.parameters.iter().enumerate() {
-            write!(stream, "        {}: ", context.names.get(&parameter.target.id).unwrap())?;
-            transpile_type(stream, &parameter.target.type_, context)?;
+        for (idx, parameter) in implementation.parameter_variables.iter().enumerate() {
+            write!(stream, "        {}: ", context.names.get(&parameter.id).unwrap())?;
+            transpile_type(stream, &parameter.type_, context)?;
             write!(stream, "\n")?;
         }
     }

@@ -15,8 +15,6 @@ pub mod integration_tests;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::path::PathBuf;
-use std::rc::Rc;
-
 use clap::{arg, Command};
 use crate::linker::LinkError;
 

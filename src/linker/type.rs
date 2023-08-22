@@ -1,21 +1,19 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::rc::Rc;
 use uuid::Uuid;
 use crate::linker::{LinkError, scopes};
 use crate::linker::scopes::Environment;
 use crate::parser::abstract_syntax;
-use crate::program::allocation::Reference;
 use crate::program::generics::GenericAlias;
-use crate::program::traits::{Trait, TraitBinding, TraitRequirement};
+use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
 
 
 pub struct TypeFactory<'a> {
     pub hierarchy: &'a scopes::Scope<'a>,
     pub generics: HashMap<String, TypeUnit>,
-    pub requirements: HashSet<Rc<TraitRequirement>>,
+    pub requirements: HashSet<Rc<TraitBinding>>,
 }
 
 impl <'a> TypeFactory<'a> {
@@ -39,13 +37,13 @@ impl <'a> TypeFactory<'a> {
         self.hierarchy.resolve(Environment::Global, &name).unwrap().as_trait().unwrap()
     }
 
-    fn register_anonymous_generic(&mut self, name: &String) -> &TypeUnit {
+    fn register_generic(&mut self, name: &String, id: Uuid) -> &TypeUnit {
         // TODO When in functions, insert Generics instead? Or generify after typing?
-        self.generics.insert(name.clone(), TypeUnit::Any(GenericAlias::new_v4()));
+        self.generics.insert(name.clone(), TypeUnit::Any(id));
         self.generics.get(name).unwrap()
     }
 
-    fn register_requirement(&mut self, requirement: Rc<TraitRequirement>) {
+    fn register_requirement(&mut self, requirement: Rc<TraitBinding>) {
         self.requirements.insert(requirement);
     }
 
@@ -67,19 +65,17 @@ impl <'a> TypeFactory<'a> {
                     }
                     Err(error) => {
                         if type_name.starts_with("#") || type_name.starts_with("$") {
+                            let generic_id = GenericAlias::new_v4();
                             let type_ = Box::new(TypeProto {
-                                unit: self.register_anonymous_generic(type_name).clone(),
+                                unit: self.register_generic(type_name, generic_id).clone(),
                                 arguments
                             });
 
                             if type_name.starts_with("$") {
                                 let requirement_trait = self.resolve_trait(&String::from(&type_name[1..]));
-                                self.register_requirement(Rc::new(TraitRequirement {
-                                    id: Uuid::new_v4(),
-                                    binding: TraitBinding {
-                                        generic_to_type: HashMap::from([(*requirement_trait.generics.iter().next().unwrap(), type_.clone())]),
-                                        trait_: requirement_trait,
-                                    },
+                                self.register_requirement(Rc::new(TraitBinding {
+                                    generic_to_type: HashMap::from([(requirement_trait.generics["self"], type_.clone())]),
+                                    trait_: requirement_trait,
                                 }));
                             }
 

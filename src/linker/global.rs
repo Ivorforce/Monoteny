@@ -1,29 +1,21 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use guard::guard;
-use itertools::{Itertools, zip_eq};
+use itertools::Itertools;
 use uuid::Uuid;
-
-use crate::parser;
 use crate::parser::abstract_syntax;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{LinkError, scopes};
 use crate::linker::interface::{link_function_pointer, link_operator_pointer};
-use crate::linker::r#type::TypeFactory;
-use crate::linker::scopes::Environment;
-use crate::parser::abstract_syntax::{PatternDeclaration, Term};
-use crate::program::traits::{Trait, TraitConformanceDeclaration, TraitRequirement, TraitConformanceScope};
-use crate::program::{primitives, Program};
-use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
+use crate::parser::abstract_syntax::PatternDeclaration;
+use crate::program::traits::TraitBinding;
+use crate::program::Program;
 use crate::program::builtins::*;
-use crate::program::functions::{FunctionForm, FunctionPointer, FunctionCallType, FunctionInterface, ParameterKey};
+use crate::program::functions::FunctionPointer;
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation};
 use crate::program::module::Module;
 use crate::program::types::*;
-use crate::util::multimap::extend_multimap;
-
 
 struct GlobalLinker<'a> {
     functions: Vec<FunctionWithoutBody<'a>>,
@@ -57,9 +49,6 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
     // Resolve function bodies
     for fun in global_linker.functions.iter() {
         let mut variable_names = HashMap::new();
-        for parameter in fun.pointer.target.interface.parameters.iter() {
-            variable_names.insert(Rc::clone(&parameter.target), parameter.internal_name.clone());
-        }
 
         // TODO Inject traits, not pointers
         let mut resolver = Box::new(ImperativeLinker {
@@ -84,7 +73,7 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
 }
 
 impl <'a> GlobalLinker<'a> {
-    pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, requirements: &HashSet<Rc<TraitRequirement>>) -> Result<(), LinkError> {
+    pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>) -> Result<(), LinkError> {
         match statement {
             abstract_syntax::GlobalStatement::Pattern(pattern) => {
                 let pattern = self.link_pattern(pattern)?;

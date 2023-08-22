@@ -1,16 +1,13 @@
 use uuid::Uuid;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::rc::Rc;
 use std::fmt::{Debug, Formatter, Pointer};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ops::BitXor;
-use guard::guard;
-use crate::program::traits::{Trait, TraitRequirement};
-use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
-use crate::program::functions::{FunctionOverload, FunctionPointer, FunctionInterface, ParameterKey};
-use crate::program::generics::{GenericAlias, TypeForest};
-
-use crate::program::primitives;
+use crate::program::traits::{Trait};
+use crate::linker::precedence::PrecedenceGroup;
+use crate::program::functions::{FunctionPointer, ParameterKey};
+use crate::program::generics::GenericAlias;
 use crate::util::fmt::write_comma_separated_list;
 
 #[derive(Clone, PartialEq, Eq, Hash)]

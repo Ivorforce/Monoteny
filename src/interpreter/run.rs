@@ -1,12 +1,10 @@
 use std::alloc::{alloc, Layout};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ops::DerefMut;
 use std::rc::Rc;
 use uuid::Uuid;
 use crate::interpreter::{builtins, compiler, FunctionInterpreter, FunctionInterpreterImpl, InterpreterGlobals, Value};
 use crate::program::builtins::Builtins;
-use crate::program::functions::FunctionPointer;
 use crate::program::global::FunctionImplementation;
 use crate::program::{find_annotated, Program};
 use crate::program::traits::TraitResolution;
@@ -32,6 +30,9 @@ pub fn preload_program<'a>(program: &'a Program, evaluators: &mut HashMap<Uuid, 
 
 pub fn main(program: &Program, builtins: &Builtins) {
     let entry_function = find_annotated(program.function_implementations.values(), "main").expect("No main function!");
+    assert!(entry_function.pointer.target.interface.parameters.is_empty(), "@main function has parameters.");
+    assert!(entry_function.pointer.target.interface.return_type.unit.is_void(), "@main function has a return value.");
+
     let mut evaluators = builtins::make_evaluators(builtins);
     let mut assignments = HashMap::new();
 
@@ -43,7 +44,8 @@ pub fn main(program: &Program, builtins: &Builtins) {
             function_evaluators: &mut evaluators,
         },
         implementation: entry_function,
-        resolution: Box::new(TraitResolution { requirement_bindings: HashMap::new(), function_binding: Default::default() }),
+        // No parameters and return type = nothing to bind!
+        resolution: TraitResolution::new(),
         assignments,
     };
     unsafe {
@@ -58,7 +60,7 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<F
 
     preload_program(program, &mut evaluators, &mut assignments);
 
-    let transpiler_obj = &entry_function.pointer.target.interface.parameters[0].target;
+    let transpiler_obj = &entry_function.parameter_variables[0];
 
     // Set the transpiler object.
     unsafe {
@@ -109,7 +111,8 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<F
             function_evaluators: &mut evaluators,
         },
         implementation: entry_function,
-        resolution: Box::new(TraitResolution { requirement_bindings: Default::default(), function_binding: Default::default() }),
+        // TODO Technically we should bind Transpiler here, probably to some internal transpiler we make up on the spot.
+        resolution: TraitResolution::new(),
         assignments,
     };
     unsafe {

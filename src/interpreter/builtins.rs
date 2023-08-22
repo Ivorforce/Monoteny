@@ -1,14 +1,11 @@
 use std::alloc::{alloc, Layout};
 use std::collections::HashMap;
 use std::rc::Rc;
-use guard::guard;
-use itertools::Itertools;
 use monoteny_macro::{bin_op, parse_op, un_op, fun_op, load_constant, load_float_constant};
 use std::str::FromStr;
 use uuid::Uuid;
-use crate::interpreter::{FunctionInterpreter, FunctionInterpreterImpl, Value};
+use crate::interpreter::{FunctionInterpreterImpl, Value};
 use crate::program::builtins::Builtins;
-use crate::program::functions::FunctionPointer;
 use crate::program::primitives;
 use crate::program::types::TypeUnit;
 

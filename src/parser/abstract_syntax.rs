@@ -1,5 +1,4 @@
 use std::fmt::{Binary, Debug, Error, Formatter};
-use itertools::zip_eq;
 use crate::program::functions::ParameterKey;
 use crate::program::allocation::Mutability;
 use crate::program::types::PatternPart;
@@ -119,8 +118,8 @@ pub enum FunctionCallType {
 impl Mutability {
     fn variable_declaration_keyword(&self) -> &str {
         match *self {
-            Mutable => "var",
-            Immutable => "let",
+            Mutability::Mutable => "var",
+            Mutability::Immutable => "let",
         }
     }
 }
