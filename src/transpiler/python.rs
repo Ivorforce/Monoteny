@@ -18,7 +18,7 @@ use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
 use crate::program::functions::{FunctionPointer, FunctionCallType, ParameterKey};
 use crate::program::{find_annotated, primitives, Program};
-use crate::program::calls::MonomorphicFunction;
+use crate::program::calls::FunctionBinding;
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation};
 use crate::program::traits::{TraitBinding, TraitResolution};
@@ -52,7 +52,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     interpreter::run::transpile(program, &Rc::clone(&builtins), &|implementation| {
         let unfolded_function = unfolder.borrow_mut().deref_mut().unfold_anonymous(
             implementation,
-            &Rc::new(MonomorphicFunction {
+            &Rc::new(FunctionBinding {
                 pointer: Rc::clone(&implementation.pointer),  // We can re-use the pointer for now, until it needs to be mapped,
                 resolution: Box::new(TraitResolution { conformance: Default::default() }),  // Can be empty until it needs to be mapped
             }),

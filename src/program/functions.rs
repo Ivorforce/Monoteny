@@ -233,7 +233,11 @@ impl Debug for FunctionPointer {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         let mut head = 0;
 
-        write!(fmt, "--({})--> ", &self.pointer_id)?;
+        let call_type_symbol = match self.call_type {
+            FunctionCallType::Static => "|",
+            FunctionCallType::Polymorphic { .. } => "?"
+        };
+        write!(fmt, "-{}({})--> ", call_type_symbol, &self.pointer_id)?;
 
         match self.form {
             FunctionForm::Global => {}

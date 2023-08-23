@@ -4,7 +4,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::program::allocation::ObjectReference;
-use crate::program::calls::MonomorphicFunction;
+use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionForest, ExpressionOperation, Statement};
 use crate::program::functions::{Function, FunctionInterface, FunctionPointer, Parameter};
 use crate::program::global::FunctionImplementation;
@@ -13,8 +13,8 @@ use crate::program::types::TypeProto;
 
 
 pub struct FunctionUnfolder {
-    pub mapped_calls: HashMap<Rc<MonomorphicFunction>, Rc<MonomorphicFunction>>,
-    pub new_mappable_calls: Vec<Rc<MonomorphicFunction>>,
+    pub mapped_calls: HashMap<Rc<FunctionBinding>, Rc<FunctionBinding>>,
+    pub new_mappable_calls: Vec<Rc<FunctionBinding>>,
 }
 
 impl FunctionUnfolder {
@@ -25,12 +25,12 @@ impl FunctionUnfolder {
         }
     }
 
-    pub fn unfold_anonymous(&mut self, fun: &FunctionImplementation, call: &Rc<MonomorphicFunction>, should_unfold: &dyn Fn(&Rc<MonomorphicFunction>) -> bool) -> Rc<FunctionImplementation> {
+    pub fn unfold_anonymous(&mut self, fun: &FunctionImplementation, function_binding: &Rc<FunctionBinding>, should_unfold: &dyn Fn(&Rc<FunctionBinding>) -> bool) -> Rc<FunctionImplementation> {
         // Map types.
         let mut type_forest = fun.type_forest.clone();
 
         let mut type_replacement_map: HashMap<Uuid, Box<TypeProto>> = Default::default();
-        for (binding, function_mapping) in call.resolution.conformance.iter() {
+        for (binding, function_mapping) in function_binding.resolution.conformance.iter() {
             type_replacement_map.extend(binding.generic_to_type.clone());
 
             for (generic, type_) in binding.generic_to_type.iter() {
@@ -56,13 +56,13 @@ impl FunctionUnfolder {
         }).collect_vec();
 
         let mut function_replacement_map = HashMap::new();
-        for (binding, function_resolution) in fun.trait_resolution.conformance.iter() {
+        for (binding, function_resolution) in fun.assumed_requirements.conformance.iter() {
             for (abstract_fun, fun_placement) in function_resolution.iter() {
-                let replacement = &call.resolution.conformance[binding][abstract_fun];
+                let replacement = &function_binding.resolution.conformance[binding][abstract_fun];
                 function_replacement_map.insert(Rc::clone(fun_placement), Rc::clone(replacement));
             }
         }
-        println!("Fun replacement: {:?} / {:?}  --------- {:?}", fun.pointer, call.pointer, function_replacement_map);
+        println!("Fun replacement: {:?} / {:?}  --------- {:?}", fun.pointer, function_binding.pointer, function_replacement_map);
 
         // Find function calls in the expression forest
         for (expression_id, operation) in fun.expression_forest.operations.iter() {
@@ -70,10 +70,10 @@ impl FunctionUnfolder {
                 ExpressionOperation::FunctionCall(call) => {
                     let replaced_pointer = function_replacement_map.get(&call.pointer).unwrap_or(&call.pointer);
                     println!("Pre-Call: {:?}", call.pointer);
-                    let replaced_call = Rc::new(MonomorphicFunction { pointer: Rc::clone(replaced_pointer), resolution: call.resolution.clone() });
+                    let replaced_call = Rc::new(FunctionBinding { pointer: Rc::clone(replaced_pointer), resolution: call.resolution.clone() });
                     println!("Replaced Call: {:?}", replaced_pointer);
 
-                    let unfolded_call: Rc<MonomorphicFunction> = if should_unfold(&replaced_call) {
+                    let unfolded_call: Rc<FunctionBinding> = if should_unfold(&replaced_call) {
                         match self.mapped_calls.entry(Rc::clone(call)) {
                             Entry::Occupied(o) => Rc::clone(o.get()),
                             Entry::Vacant(v) => {
@@ -94,9 +94,9 @@ impl FunctionUnfolder {
                         calls: calls.iter()
                             .map(|call| {
                                 let replaced_pointer = function_replacement_map.get(&call.pointer).unwrap_or(&call.pointer);
-                                let replaced_call = Rc::new(MonomorphicFunction { pointer: Rc::clone(replaced_pointer), resolution: call.resolution.clone() });
+                                let replaced_call = Rc::new(FunctionBinding { pointer: Rc::clone(replaced_pointer), resolution: call.resolution.clone() });
 
-                                let unfolded_call: Rc<MonomorphicFunction> = if should_unfold(&replaced_call) {
+                                let unfolded_call: Rc<FunctionBinding> = if should_unfold(&replaced_call) {
                                     match self.mapped_calls.entry(Rc::clone(call)) {
                                         Entry::Occupied(o) => Rc::clone(o.get()),
                                         Entry::Vacant(v) => {
@@ -124,9 +124,9 @@ impl FunctionUnfolder {
 
         Rc::new(FunctionImplementation {
             implementation_id: Uuid::new_v4(),
-            pointer: Rc::clone(&call.pointer),  // Re-use premapped pointer
+            pointer: Rc::clone(&function_binding.pointer),  // Re-use premapped pointer
             decorators: fun.decorators.clone(),
-            trait_resolution: TraitResolution::new(),
+            assumed_requirements: TraitResolution::new(),
             statements,
             expression_forest,
             type_forest,
@@ -136,13 +136,13 @@ impl FunctionUnfolder {
     }
 }
 
-pub fn map_call(call: &Rc<MonomorphicFunction>) -> Rc<MonomorphicFunction> {
+pub fn map_call(call: &Rc<FunctionBinding>) -> Rc<FunctionBinding> {
     let mut type_replacement_map: HashMap<Uuid, Box<TypeProto>> = Default::default();
     for (binding, function_mapping) in call.resolution.conformance.iter() {
         type_replacement_map.extend(binding.generic_to_type.clone());
     }
 
-    Rc::new(MonomorphicFunction {
+    Rc::new(FunctionBinding {
         pointer: Rc::new(FunctionPointer {
             pointer_id: Uuid::new_v4(),
             target: Rc::new(Function {
@@ -173,6 +173,6 @@ pub fn map_interface(interface: &FunctionInterface, type_replacement_map: &HashM
             type_: x.type_.replacing_any(type_replacement_map),
         }).collect(),
         return_type: interface.return_type.replacing_any(type_replacement_map),
-        requirements: todo!(),
+        requirements: interface.requirements.iter().map(|x| x.mapping_types(&|x| x.replacing_any(type_replacement_map))).collect(),
     }
 }

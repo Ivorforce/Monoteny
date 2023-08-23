@@ -143,8 +143,7 @@ impl TraitGraph {
             return Err(LinkError::LinkError { msg: String::from(format!("No declaration found for trait: {}", &requirement.trait_.name)) });
         });
 
-        // TODO We resolve this binding because it might contain generics.
-        //  Is this needed?
+        // We resolve this binding because it might contain generics.
         let resolved_binding = TraitBinding {
             trait_: Rc::clone(&requirement.trait_),
             generic_to_type: requirement.generic_to_type.iter()

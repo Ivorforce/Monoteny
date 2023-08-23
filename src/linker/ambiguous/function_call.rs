@@ -1,10 +1,11 @@
 use std::fmt::{Display, Formatter, Pointer};
 use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
+use uuid::Uuid;
 use crate::linker::ambiguous::LinkerAmbiguity;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::LinkError;
-use crate::program::calls::MonomorphicFunction;
+use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionPointer;
 use crate::program::generics::TypeForest;
@@ -17,9 +18,9 @@ pub struct AmbiguousFunctionCandidate {
     pub param_types: Vec<Box<TypeProto>>,
     pub return_type: Box<TypeProto>,
     pub requirements: Vec<Rc<TraitBinding>>,
-
 }
 pub struct AmbiguousFunctionCall {
+    pub seed: Uuid,
     pub expression_id: ExpressionID,
     pub function_name: String,
     pub arguments: Vec<ExpressionID>,
@@ -42,10 +43,10 @@ impl AmbiguousFunctionCall {
         types.bind(self.expression_id.clone(), &candidate.return_type)?;
 
         let mut resolution = TraitResolution::new();
-        for requirement in candidate.requirements.iter() {
+        for requirement in self.traits.gather_deep_requirements(candidate.requirements.clone().into_iter()).iter() {
             let function_binding = self.traits
                 .satisfy_requirement(requirement, &types)?;
-            resolution.conformance.insert(Rc::clone(requirement), function_binding);
+            resolution.conformance.insert(requirement.mapping_types(&|x| x.with_generic_as_any(&self.seed)), function_binding);
         }
 
         Ok(resolution)
@@ -87,7 +88,7 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             // TODO We can just assign linker.types to the candidate's result; it was literally just copied.
             let resolution = self.attempt_with_candidate(&mut linker.types, &candidate)?;
 
-            linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(MonomorphicFunction {
+            linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                 pointer: candidate.function,
                 resolution
             })));

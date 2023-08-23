@@ -103,7 +103,7 @@ impl <'a> ImperativeLinker<'a> {
             implementation_id: self.function.pointer_id,
             pointer: self.function,
             decorators: self.decorators,
-            trait_resolution: Box::new(TraitResolution { conformance: HashMap::from_iter(granted_requirements) }),
+            assumed_requirements: Box::new(TraitResolution { conformance: HashMap::from_iter(granted_requirements) }),
             statements,
             expression_forest: self.expressions,
             type_forest: self.types,
@@ -398,6 +398,7 @@ impl <'a> ImperativeLinker<'a> {
             let expression_id = self.register_new_expression(argument_expressions.clone());
 
             self.register_ambiguity(Box::new(AmbiguousFunctionCall {
+                seed,
                 expression_id,
                 function_name: fn_name.clone(),
                 arguments: argument_expressions,

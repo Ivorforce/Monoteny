@@ -3,7 +3,7 @@ use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 use std::rc::Rc;
 use crate::program::allocation::ObjectReference;
-use crate::program::calls::MonomorphicFunction;
+use crate::program::calls::FunctionBinding;
 use crate::program::generics::GenericAlias;
 
 pub type ExpressionID = GenericAlias;
@@ -16,8 +16,8 @@ pub enum Statement {
 }
 
 pub enum ExpressionOperation {
-    FunctionCall(Rc<MonomorphicFunction>),
-    PairwiseOperations { calls: Vec<Rc<MonomorphicFunction>> },
+    FunctionCall(Rc<FunctionBinding>),
+    PairwiseOperations { calls: Vec<Rc<FunctionBinding>> },
     VariableLookup(Rc<ObjectReference>),
     ArrayLiteral,
     StringLiteral(String),

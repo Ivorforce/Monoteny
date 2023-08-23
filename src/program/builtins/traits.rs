@@ -12,6 +12,7 @@ pub struct Traits {
     pub Eq_functions: EqFunctions,
 
     pub Ord: Rc<Trait>,
+    pub Ord_functions: OrdFunctions,
 
     pub String: Rc<Trait>,
 
@@ -49,14 +50,35 @@ pub fn make_eq_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>) -> 
     }
 }
 
-pub struct NumberFunctions {
-    // Ord
+pub struct OrdFunctions {
     pub greater_than: Rc<FunctionPointer>,
     pub greater_than_or_equal_to: Rc<FunctionPointer>,
     pub lesser_than: Rc<FunctionPointer>,
     pub lesser_than_or_equal_to: Rc<FunctionPointer>,
+}
 
-    // Number
+pub fn make_ord_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>) -> OrdFunctions {
+    OrdFunctions {
+        greater_than: FunctionPointer::new_global(
+            "is_greater",
+            FunctionInterface::new_operator(2, type_, bool_type)
+        ),
+        greater_than_or_equal_to: FunctionPointer::new_global(
+            "is_greater_or_equal",
+            FunctionInterface::new_operator(2, type_, bool_type)
+        ),
+        lesser_than: FunctionPointer::new_global(
+            "is_lesser",
+            FunctionInterface::new_operator(2, type_, bool_type)
+        ),
+        lesser_than_or_equal_to: FunctionPointer::new_global(
+            "is_greater_or_equal",
+            FunctionInterface::new_operator(2, type_, bool_type)
+        ),
+    }
+}
+
+pub struct NumberFunctions {
     pub add: Rc<FunctionPointer>,
     pub subtract: Rc<FunctionPointer>,
     pub multiply: Rc<FunctionPointer>,
@@ -100,23 +122,6 @@ pub fn make_number_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>)
             "modulo",
             FunctionInterface::new_operator(2, type_, type_)
         ),
-
-        greater_than: FunctionPointer::new_global(
-            "is_greater",
-            FunctionInterface::new_operator(2, type_, bool_type)
-        ),
-        greater_than_or_equal_to: FunctionPointer::new_global(
-            "is_greater_or_equal",
-            FunctionInterface::new_operator(2, type_, bool_type)
-        ),
-        lesser_than: FunctionPointer::new_global(
-            "is_lesser",
-            FunctionInterface::new_operator(2, type_, bool_type)
-        ),
-        lesser_than_or_equal_to: FunctionPointer::new_global(
-            "is_greater_or_equal",
-            FunctionInterface::new_operator(2, type_, bool_type)
-        ),
     }
 }
 
@@ -151,12 +156,12 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.add_trait(&Eq);
 
     let mut Ord = Trait::new("Ord".into());
-    let number_functions = make_number_functions(&Ord.create_any_type(&"self".into()), &bool_type);
+    let ord_functions = make_ord_functions(&Ord.create_any_type(&"self".into()), &bool_type);
     Ord.abstract_functions.extend([
-        &number_functions.greater_than,
-        &number_functions.greater_than_or_equal_to,
-        &number_functions.lesser_than,
-        &number_functions.lesser_than_or_equal_to,
+        &ord_functions.greater_than,
+        &ord_functions.greater_than_or_equal_to,
+        &ord_functions.lesser_than,
+        &ord_functions.lesser_than_or_equal_to,
     ].map(Rc::clone));
     let Ord = Rc::new(Ord);
     module.add_trait(&Ord);
@@ -234,6 +239,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         Eq_functions: eq_functions,
 
         Ord,
+        Ord_functions: ord_functions,
 
         String,
 

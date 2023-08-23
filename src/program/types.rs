@@ -122,6 +122,16 @@ impl TypeProto {
         })
     }
 
+    pub fn with_generic_as_any(&self, seed: &Uuid) -> Box<TypeProto> {
+        Box::new(TypeProto {
+            unit: match &self.unit {
+                TypeUnit::Generic(id) => TypeUnit::Any(TypeProto::bitxor(seed, id)),
+                _ => self.unit.clone(),
+            },
+            arguments: self.arguments.iter().map(|x| x.with_generic_as_any(seed)).collect()
+        })
+    }
+
     pub fn replacing_any(&self, map: &HashMap<Uuid, Box<TypeProto>>) -> Box<TypeProto> {
         match &self.unit {
             TypeUnit::Any(id) => map.get(id)

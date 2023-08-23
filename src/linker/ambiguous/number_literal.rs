@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::linker::ambiguous::LinkerAmbiguity;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::LinkError;
-use crate::program::calls::MonomorphicFunction;
+use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::traits::{TraitGraph, TraitResolution};
 use crate::program::types::{TypeProto, TypeUnit};
@@ -45,7 +45,7 @@ impl LinkerAmbiguity for AmbiguousNumberLiteral {
                 linker.expressions.arguments.insert(self.expression_id.clone(), vec![literal_expression_id]);
                 linker.expressions.operations.insert(
                     self.expression_id.clone(),
-                    ExpressionOperation::FunctionCall(Rc::new(MonomorphicFunction {
+                    ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                         pointer: Rc::clone(parse_function),
                         resolution: Box::new(TraitResolution { conformance: HashMap::from([(requirement, function_resolution)]) } )
                     }))

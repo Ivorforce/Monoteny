@@ -13,7 +13,7 @@ pub struct FunctionImplementation {
     pub pointer: Rc<FunctionPointer>,
     pub decorators: Vec<String>,
 
-    pub trait_resolution: Box<TraitResolution>,
+    pub assumed_requirements: Box<TraitResolution>,
 
     pub statements: Vec<Box<Statement>>,
     pub expression_forest: Box<ExpressionForest>,

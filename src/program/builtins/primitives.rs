@@ -111,25 +111,25 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
             continue;
         }
 
-        let number_functions = traits::make_number_functions(&type_, &bool_type);
-
         // Ord
-        add_function(&number_functions.greater_than, primitive_type, &mut gr__ops, module);
-        add_function(&number_functions.greater_than_or_equal_to, primitive_type, &mut geq_ops, module);
-        add_function(&number_functions.lesser_than, primitive_type, &mut le__ops, module);
-        add_function(&number_functions.lesser_than_or_equal_to, primitive_type, &mut leq_ops, module);
+        let ord_functions = traits::make_ord_functions(&type_, &bool_type);
+        add_function(&ord_functions.greater_than, primitive_type, &mut gr__ops, module);
+        add_function(&ord_functions.greater_than_or_equal_to, primitive_type, &mut geq_ops, module);
+        add_function(&ord_functions.lesser_than, primitive_type, &mut le__ops, module);
+        add_function(&ord_functions.lesser_than_or_equal_to, primitive_type, &mut leq_ops, module);
 
         module.trait_conformance.add_conformance_manual(
             traits.Ord.create_generic_binding(vec![(&"self".into(), type_.clone())]),
             vec![
-                (&traits.Number_functions.greater_than, &number_functions.greater_than),
-                (&traits.Number_functions.greater_than_or_equal_to, &number_functions.greater_than_or_equal_to),
-                (&traits.Number_functions.lesser_than, &number_functions.lesser_than),
-                (&traits.Number_functions.lesser_than_or_equal_to, &number_functions.lesser_than_or_equal_to),
+                (&traits.Ord_functions.greater_than, &ord_functions.greater_than),
+                (&traits.Ord_functions.greater_than_or_equal_to, &ord_functions.greater_than_or_equal_to),
+                (&traits.Ord_functions.lesser_than, &ord_functions.lesser_than),
+                (&traits.Ord_functions.lesser_than_or_equal_to, &ord_functions.lesser_than_or_equal_to),
             ]
         ).unwrap();
 
         // Number
+        let number_functions = traits::make_number_functions(&type_, &bool_type);
         add_function(&number_functions.add, primitive_type, &mut add_ops, module);
         add_function(&number_functions.subtract, primitive_type, &mut sub_ops, module);
         add_function(&number_functions.multiply, primitive_type, &mut mul_ops, module);
