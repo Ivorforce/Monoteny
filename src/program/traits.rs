@@ -47,12 +47,15 @@ pub struct TraitGraph {
     pub requirements: HashMap<Rc<Trait>, HashSet<Rc<TraitBinding>>>,
 }
 
-/// Mapping of traits - either within a function, automatically built from requirements,
-/// or in a call, to resolve said requirements.
 #[derive(Clone, Eq, PartialEq)]
-pub struct TraitResolution {
-    /// Keys: conformance.target, values: The corresponding conformance
+pub struct RequirementsAssumption {
     pub conformance: HashMap<Rc<TraitBinding>, HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>>,
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub struct RequirementsFulfillment {
+    pub conformance: HashMap<Rc<TraitBinding>, HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>>,
+    pub any_mapping: HashMap<Uuid, Box<TypeProto>>,
 }
 
 impl TraitGraph {
@@ -253,15 +256,12 @@ impl TraitBinding {
     }
 }
 
-impl TraitResolution {
-    pub fn new() -> Box<TraitResolution> {
-        Box::new(TraitResolution {
+impl RequirementsFulfillment {
+    pub fn empty() -> Box<RequirementsFulfillment> {
+        Box::new(RequirementsFulfillment {
             conformance: Default::default(),
+            any_mapping: Default::default(),
         })
-    }
-
-    pub fn gather_type_bindings(&self) -> HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>> {
-        todo!()
     }
 }
 
@@ -299,13 +299,18 @@ impl Debug for TraitBinding {
     }
 }
 
-impl Hash for TraitResolution {
+impl Hash for RequirementsFulfillment {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for (binding, function_mapping) in self.conformance.iter().sorted_by_key(|(binding, mapping)| binding.hash(&mut DefaultHasher::new())) {
             binding.hash(state);
             for keyval in function_mapping.iter().sorted_by_key(|(src, dst)| src.pointer_id) {
                 keyval.hash(state)
             }
+        }
+
+        for (id, type_) in self.any_mapping.iter().sorted_by_key(|(id, type_)| *id) {
+            id.hash(state);
+            type_.hash(state);
         }
     }
 }

@@ -6,7 +6,7 @@ use crate::linker::imperative::ImperativeLinker;
 use crate::linker::LinkError;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
-use crate::program::traits::{TraitGraph, TraitResolution};
+use crate::program::traits::{RequirementsFulfillment, TraitGraph};
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub struct AmbiguousNumberLiteral {
@@ -40,14 +40,17 @@ impl LinkerAmbiguity for AmbiguousNumberLiteral {
                 let parse_function = &function_resolution[
                     if self.is_float { &linker.builtins.core.traits.parse_float_literal_function }
                     else { &linker.builtins.core.traits.parse_int_literal_function }
-                    ];
+                ];
 
                 linker.expressions.arguments.insert(self.expression_id.clone(), vec![literal_expression_id]);
                 linker.expressions.operations.insert(
                     self.expression_id.clone(),
                     ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                         pointer: Rc::clone(parse_function),
-                        resolution: Box::new(TraitResolution { conformance: HashMap::from([(requirement, function_resolution)]) } )
+                        requirements_fulfillment: Box::new(RequirementsFulfillment {
+                            conformance: HashMap::from([(requirement, function_resolution)]),
+                            any_mapping: HashMap::from([(trait_.generics["self"], type_.clone())])
+                        } )
                     }))
                 );
                 linker.types.bind(self.expression_id.clone(), type_.as_ref())?;

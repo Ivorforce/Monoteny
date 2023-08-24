@@ -1,9 +1,9 @@
 use std::rc::Rc;
 use crate::program::functions::FunctionPointer;
-use crate::program::traits::TraitResolution;
+use crate::program::traits::RequirementsFulfillment;
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct FunctionBinding {
     pub pointer: Rc<FunctionPointer>,
-    pub resolution: Box<TraitResolution>,
+    pub requirements_fulfillment: Box<RequirementsFulfillment>,
 }

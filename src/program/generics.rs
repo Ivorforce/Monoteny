@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::convert::identity;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
@@ -106,6 +105,15 @@ impl TypeForest {
         }
 
         return Ok(reference)
+    }
+
+    pub fn rebind(&mut self, generic: GenericAlias, t: &TypeProto) -> Result<(), LinkError> {
+        guard!(let Some(identity) = self.alias_to_identity.get(&generic) else {
+            panic!("Internal Error: Cannot rebind non existing generic ({}), aborting.", generic);
+        });
+
+        self.identity_to_type.remove(identity);
+        self.bind_identity(*identity, t)
     }
 
     //  ----- non-alias

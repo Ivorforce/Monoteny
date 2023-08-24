@@ -21,7 +21,7 @@ use crate::program::{find_annotated, primitives, Program};
 use crate::program::calls::FunctionBinding;
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation};
-use crate::program::traits::{TraitBinding, TraitResolution};
+use crate::program::traits::{RequirementsFulfillment, TraitBinding};
 use crate::program::types::TypeUnit;
 use crate::transpiler::namespaces;
 use crate::transpiler::python::docstrings::transpile_type;
@@ -53,8 +53,11 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         let unfolded_function = unfolder.borrow_mut().deref_mut().unfold_anonymous(
             implementation,
             &Rc::new(FunctionBinding {
-                pointer: Rc::clone(&implementation.pointer),  // We can re-use the pointer for now, until it needs to be mapped,
-                resolution: Box::new(TraitResolution { conformance: Default::default() }),  // Can be empty until it needs to be mapped
+                // The implementation's pointer is fine.
+                pointer: Rc::clone(&implementation.pointer),
+                // The resolution SHOULD be empty: The function is transpiled WITH its generics.
+                // Unless generics are bound in the transpile directive, which is TODO
+                requirements_fulfillment: RequirementsFulfillment::empty(),
             }),
             &|f| functions_by_id.contains_key(&f.pointer.pointer_id)  // TODO If no, it's *probably* a builtin, but we should probably check for realsies
         );
@@ -123,6 +126,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         transpile_function(stream, implementation, &context).unwrap();
     }
 
+    write!(stream, "\n\n")?;
     writeln!(stream, "# ========================== ======== ============================")?;
     writeln!(stream, "# ========================== Internal ============================")?;
     writeln!(stream, "# ========================== ======== ============================")?;
@@ -139,9 +143,9 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         transpile_function(stream, implementation, &context).unwrap();
     }
 
-    writeln!(stream, "\n__all__ = [")?;
-    for function in internal_symbols.iter() {
-        writeln!(stream, "    \"{}\",", &function.pointer.name)?;
+    writeln!(stream, "\n\n__all__ = [")?;
+    for function in exported_symbols.iter() {
+        writeln!(stream, "    \"{}\",", &names[&function.pointer.pointer_id])?;
     }
     writeln!(stream, "]")?;
 
@@ -245,7 +249,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
         }
         ExpressionOperation::FunctionCall(call) => {
             let pointer = &call.pointer;
-            let resolution = &call.resolution;
+            let resolution = &call.requirements_fulfillment;
             let arguments = context.expressions.arguments.get(&expression).unwrap();
 
             if
@@ -268,7 +272,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                     },
                     // Have to reference the function by trait
                     FunctionCallType::Polymorphic { requirement, abstract_function } => {
-                        todo!("Polymorphic calls should have been unfolded earlier. This functionality can be restored later. {:?}", abstract_function)
+                        todo!("Polymorphic calls should have been unfolded earlier. Python generics functionality can be restored later. {:?}", pointer)
                         // write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&pointer.pointer_id])?;
                     }
                 }

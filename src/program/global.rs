@@ -4,16 +4,16 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use crate::program::computation_tree::{ExpressionForest, Statement};
 use crate::program::functions::FunctionPointer;
-use crate::program::traits::TraitResolution;
 use crate::program::allocation::ObjectReference;
 use crate::program::generics::TypeForest;
+use crate::program::traits::RequirementsAssumption;
 
 pub struct FunctionImplementation {
     pub implementation_id: Uuid,
     pub pointer: Rc<FunctionPointer>,
     pub decorators: Vec<String>,
 
-    pub assumed_requirements: Box<TraitResolution>,
+    pub requirements_assumption: Box<RequirementsAssumption>,
 
     pub statements: Vec<Box<Statement>>,
     pub expression_forest: Box<ExpressionForest>,

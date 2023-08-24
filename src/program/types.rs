@@ -2,8 +2,9 @@ use uuid::Uuid;
 use std::hash::Hash;
 use std::rc::Rc;
 use std::fmt::{Debug, Formatter, Pointer};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::BitXor;
+use itertools::Itertools;
 use crate::program::traits::{Trait};
 use crate::linker::precedence::PrecedenceGroup;
 use crate::program::functions::{FunctionPointer, ParameterKey};
@@ -108,7 +109,7 @@ impl TypeProto {
         Box::new(TypeProto { unit: TypeUnit::Monad, arguments: vec![unit] })
     }
 
-    fn bitxor(lhs: &Uuid, rhs: &Uuid) -> Uuid {
+    pub fn bitxor(lhs: &Uuid, rhs: &Uuid) -> Uuid {
         Uuid::from_u128(lhs.as_u128() ^ rhs.as_u128())
     }
 
@@ -142,6 +143,21 @@ impl TypeProto {
                 arguments: self.arguments.iter().map(|x| x.replacing_any(map)).collect()
             }),
         }
+    }
+
+    pub fn collect_anys<'a, C>(collection: C) -> HashSet<Uuid> where C: Iterator<Item=&'a Box<TypeProto>> {
+        let mut anys = HashSet::new();
+        let mut todo = collection.collect_vec();
+
+        while let Some(next) = todo.pop() {
+            match &next.unit {
+                TypeUnit::Any(id) => { anys.insert(*id); },
+                _ => {}
+            };
+            todo.extend(&next.arguments);
+        }
+
+        anys
     }
 }
 

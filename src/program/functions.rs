@@ -119,6 +119,10 @@ impl FunctionInterface {
             requirements: Default::default(),
         })
     }
+
+    pub fn collect_anys(&self) -> HashSet<Uuid> {
+        TypeProto::collect_anys(self.parameters.iter().map(|x| &x.type_).chain([&self.return_type]))
+    }
 }
 
 impl FunctionPointer {

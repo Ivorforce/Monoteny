@@ -17,7 +17,7 @@ use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
-use crate::program::traits::{TraitGraph, TraitResolution};
+use crate::program::traits::{RequirementsAssumption, TraitGraph};
 use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
@@ -103,7 +103,7 @@ impl <'a> ImperativeLinker<'a> {
             implementation_id: self.function.pointer_id,
             pointer: self.function,
             decorators: self.decorators,
-            assumed_requirements: Box::new(TraitResolution { conformance: HashMap::from_iter(granted_requirements) }),
+            requirements_assumption: Box::new(RequirementsAssumption { conformance: HashMap::from_iter(granted_requirements) }),
             statements,
             expression_forest: self.expressions,
             type_forest: self.types,

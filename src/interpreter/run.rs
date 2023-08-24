@@ -7,7 +7,7 @@ use crate::interpreter::{builtins, compiler, FunctionInterpreter, FunctionInterp
 use crate::program::builtins::Builtins;
 use crate::program::global::FunctionImplementation;
 use crate::program::{find_annotated, Program};
-use crate::program::traits::TraitResolution;
+use crate::program::traits::RequirementsFulfillment;
 use crate::program::types::TypeUnit;
 
 
@@ -45,7 +45,7 @@ pub fn main(program: &Program, builtins: &Builtins) {
         },
         implementation: entry_function,
         // No parameters and return type = nothing to bind!
-        resolution: TraitResolution::new(),
+        requirements_fulfillment: RequirementsFulfillment::empty(),
         assignments,
     };
     unsafe {
@@ -112,7 +112,7 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<F
         },
         implementation: entry_function,
         // TODO Technically we should bind Transpiler here, probably to some internal transpiler we make up on the spot.
-        resolution: TraitResolution::new(),
+        requirements_fulfillment: RequirementsFulfillment::empty(),
         assignments,
     };
     unsafe {

@@ -9,8 +9,8 @@ use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionPointer;
 use crate::program::generics::TypeForest;
-use crate::program::traits::{TraitBinding, TraitGraph, TraitResolution};
-use crate::program::types::TypeProto;
+use crate::program::traits::{RequirementsFulfillment, TraitBinding, TraitGraph};
+use crate::program::types::{TypeProto, TypeUnit};
 
 pub struct AmbiguousFunctionCandidate {
     pub function: Rc<FunctionPointer>,
@@ -31,7 +31,7 @@ pub struct AmbiguousFunctionCall {
 }
 
 impl AmbiguousFunctionCall {
-    fn attempt_with_candidate(&self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<Box<TraitResolution>, LinkError> {
+    fn attempt_with_candidate(&self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<Box<RequirementsFulfillment>, LinkError> {
         let param_types = &candidate.param_types;
 
         for (arg, param) in zip_eq(
@@ -42,7 +42,13 @@ impl AmbiguousFunctionCall {
         }
         types.bind(self.expression_id.clone(), &candidate.return_type)?;
 
-        let mut resolution = TraitResolution::new();
+        // Currently, our resolution is just pointing to generics. But that's good enough!
+        let mut resolution = Box::new(RequirementsFulfillment {
+            any_mapping: candidate.function.target.interface.collect_anys().iter().map(|id| {
+                (*id, TypeProto::unit(TypeUnit::Generic(TypeProto::bitxor(id, &self.seed))))
+            }).collect(),
+            conformance: Default::default()
+        });
         for requirement in self.traits.gather_deep_requirements(candidate.requirements.clone().into_iter()).iter() {
             let function_binding = self.traits
                 .satisfy_requirement(requirement, &types)?;
@@ -90,7 +96,7 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
 
             linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                 pointer: candidate.function,
-                resolution
+                requirements_fulfillment: resolution
             })));
 
             // We're done!

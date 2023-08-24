@@ -14,10 +14,10 @@ use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statement};
 use crate::program::functions::{FunctionPointer, FunctionCallType};
 use crate::program::global::FunctionImplementation;
-use crate::program::traits::TraitResolution;
+use crate::program::traits::RequirementsFulfillment;
 
 
-pub type FunctionInterpreterImpl<'a> = Rc<dyn Fn(&mut FunctionInterpreter, &ExpressionID, &TraitResolution) -> Option<Value> + 'a>;
+pub type FunctionInterpreterImpl<'a> = Rc<dyn Fn(&mut FunctionInterpreter, &ExpressionID, &RequirementsFulfillment) -> Option<Value> + 'a>;
 
 
 pub struct Value {
@@ -33,7 +33,7 @@ pub struct InterpreterGlobals<'a> {
 pub struct FunctionInterpreter<'a, 'b, 'c> {
     pub globals: &'a mut InterpreterGlobals<'b>,
     pub implementation: &'c FunctionImplementation,
-    pub resolution: Box<TraitResolution>,
+    pub requirements_fulfillment: Box<RequirementsFulfillment>,
 
     pub assignments: HashMap<Uuid, Value>,
 }
@@ -67,7 +67,7 @@ impl FunctionInterpreter<'_, '_, '_> {
         return None
     }
 
-    pub fn combine_bindings(lhs: &TraitResolution, rhs: &TraitResolution) -> Box<TraitResolution> {
+    pub fn combine_bindings(lhs: &RequirementsFulfillment, rhs: &RequirementsFulfillment) -> Box<RequirementsFulfillment> {
         todo!()
         // Box::new(TraitResolution {
         //     requirement_bindings: lhs.requirement_bindings.iter().chain(rhs.requirement_bindings.iter())
@@ -107,7 +107,7 @@ impl FunctionInterpreter<'_, '_, '_> {
                     panic!("Cannot find function ({}) with interface: {:?}", function_id, &call.pointer);
                 });
 
-                return implementation(self, expression_id, &call.resolution)
+                return implementation(self, expression_id, &call.requirements_fulfillment)
             }
             ExpressionOperation::PairwiseOperations { .. } => {
                 panic!()
