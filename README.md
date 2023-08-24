@@ -151,10 +151,10 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
   - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
   - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
 - [ ] Modules (imports)
-  - [ ] Generic Unfolding: Compile functions with deeply resolved generics
+  - [x] Generic Unfolding: Compile functions with deeply resolved generics
   - [ ] `use` statements: Use parts of a module without changing or re-exporting it.
   - [ ] `abstract` functions: Declare functions only later.
-  - [ ] `@transpile` decorators: Functions that are called when making a transpilation target. 
+  - [x] `@transpile` decorators: Functions that are called when making a transpilation target. 
   - [ ] `@private` decorators: Functions or traits that can only be referenced using qualified syntax.
   - [ ] `inherit` statements: Use and expose another module within your module, allowing additions and overrides.
     - [ ] Partial inheritance: Use generic unfolding to use only the parts of a module /  trait that is actually needed.
