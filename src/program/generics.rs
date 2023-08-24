@@ -10,6 +10,9 @@ pub type GenericAlias = Uuid;
 
 #[derive(Clone)]
 pub struct TypeForest {
+    /// From internal identities to type units.
+    /// Cannot contain TypeUnit::Generic because then the identity's users
+    /// should have pointed to that generics' identity instead.
     pub identity_to_type: HashMap<GenericIdentity, TypeUnit>,
     pub identity_to_arguments: HashMap<GenericIdentity, Vec<GenericIdentity>>,
 
@@ -34,8 +37,8 @@ impl TypeForest {
     }
 
     pub fn bind(&mut self, generic: GenericAlias, t: &TypeProto) -> Result<(), LinkError> {
-        let generic = self._register(generic);
-        self.bind_identity(generic, t)
+        let identity = self._register(generic);
+        self.bind_identity(identity, t)
     }
 
     pub fn is_bound_to(&self, generic: &GenericAlias, t: &TypeProto) -> bool {
@@ -47,7 +50,7 @@ impl TypeForest {
         self.identity_to_type.get(identity)
     }
 
-    pub fn resolve_type(&self, type_: &Box<TypeProto>) -> Result<Box<TypeProto>, LinkError> {
+    pub fn resolve_type(&self, type_: &TypeProto) -> Result<Box<TypeProto>, LinkError> {
         match &type_.unit {
             TypeUnit::Generic(alias) => self.resolve_binding_alias(alias).map(|x| x.clone()),
             _ => Ok(Box::new(TypeProto {
@@ -114,6 +117,28 @@ impl TypeForest {
 
         self.identity_to_type.remove(identity);
         self.bind_identity(*identity, t)
+    }
+
+    pub fn bind_any_as_generic(&mut self, anys: &HashMap<GenericAlias, Box<TypeProto>>) -> Result<(), LinkError>{
+        let map: HashMap<_, _> = anys.into_iter().map(|(any, type_)| {
+            let identity = self._register(*any);
+            self.bind_identity(identity, type_)?;
+            Ok((any, identity))
+        }).try_collect()?;
+
+        let mut replace_map = HashMap::new();
+        for (other_identity, unit) in self.identity_to_type.iter() {
+            if let TypeUnit::Any(any) = unit {
+                if let Some(target_identity) = map.get(any) {
+                    replace_map.insert(*other_identity, *target_identity);
+                }
+            }
+        }
+        for (other_identity, target_identity) in replace_map {
+            self.replace_identity(other_identity, target_identity);
+        }
+
+        Ok(())
     }
 
     //  ----- non-alias
@@ -205,12 +230,8 @@ impl TypeForest {
             (None, None) => {}  // Nothing to bind
         }
 
-        // Merge rhs aliases into lhs
-        let rhs_aliases = self.identity_to_alias.remove(&rhs).unwrap();
-        for alias in rhs_aliases.iter() {
-            self.alias_to_identity.insert(alias.clone(), lhs);
-        }
-        self.identity_to_alias.get_mut(&lhs).unwrap().extend(rhs_aliases);
+        // Merge rhs aliases / arguments into lhs
+        self.replace_identity(rhs, lhs);
 
         // TODO This might fall into a trap of recursion circles
 
@@ -225,5 +246,20 @@ impl TypeForest {
         }
 
         Ok(lhs)
+    }
+
+    fn replace_identity(&mut self, source: GenericIdentity, target: GenericIdentity) {
+        // TODO This is pretty naive; maybe we also want a reverse map here too?
+        for args in self.identity_to_arguments.values_mut() {
+            if args.contains(&source) {
+                *args = args.iter().map(|x| if *x == source { target } else { *x } ).collect();
+            }
+        }
+
+        let rhs_aliases = self.identity_to_alias.remove(&source).unwrap();
+        for alias in rhs_aliases.iter() {
+            self.alias_to_identity.insert(alias.clone(), target);
+        }
+        self.identity_to_alias.get_mut(&target).unwrap().extend(rhs_aliases);
     }
 }

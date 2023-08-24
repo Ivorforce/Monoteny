@@ -10,7 +10,7 @@ use crate::program::functions::{Function, FunctionCallType, FunctionInterface, F
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment};
-use crate::program::types::TypeProto;
+use crate::program::types::{TypeProto, TypeUnit};
 
 
 pub struct FunctionUnfolder {
@@ -30,20 +30,18 @@ impl FunctionUnfolder {
         // Map types.
         let mut type_forest = fun.type_forest.clone();
 
-        let type_replacement_map = &function_binding.requirements_fulfillment.any_mapping;
-        for (any_id, type_) in function_binding.requirements_fulfillment.any_mapping.iter() {
-            type_forest.bind(*any_id, type_).unwrap();
-        }
+        let any_replacement_map = &function_binding.requirements_fulfillment.any_mapping;
+
+        // Change Anys to Generics in the type forest.
+        type_forest.bind_any_as_generic(any_replacement_map).unwrap();
 
         let mut expression_forest = Box::new(ExpressionForest::new());
 
-        println!("--- {}", fun.pointer.name);
-        // Map variables, to change the types.
+        // Map variables.
+        // TODO Some could just map Any -> Generic, but some are parameter variables. Those must expose the full type properly.
         let variable_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = fun.variable_names.keys()
             .map(|v| {
-                println!("{:?}", type_replacement_map);
-                println!("{:?}", v.type_);
-                (Rc::clone(v), map_variable(v, &type_replacement_map))
+                (Rc::clone(v), map_variable(v, &any_replacement_map))
             })
             .collect();
 
@@ -65,30 +63,26 @@ impl FunctionUnfolder {
                 function_replacement_map.insert(Rc::clone(fun_placement), Rc::clone(replacement));
             }
         }
-        println!("Fun replacement: {:?} / {:?}  --------- {:?}", fun.pointer, function_binding.pointer, function_replacement_map);
 
         // Find function calls in the expression forest
         for (expression_id, operation) in fun.expression_forest.operations.iter() {
             expression_forest.operations.insert(expression_id.clone(), match operation {
                 ExpressionOperation::FunctionCall(call) => {
                     let replaced_pointer = function_replacement_map.get(&call.pointer).unwrap_or(&call.pointer);
-                    println!("Pre-Call: {:?}", call.pointer);
                     let replaced_call = Rc::new(FunctionBinding { pointer: Rc::clone(replaced_pointer), requirements_fulfillment: call.requirements_fulfillment.clone() });
-                    println!("Replaced Call: {:?}", replaced_pointer);
 
                     let unfolded_call: Rc<FunctionBinding> = if should_unfold(&replaced_call) {
                         match self.mapped_calls.entry(Rc::clone(call)) {
                             Entry::Occupied(o) => Rc::clone(o.get()),
                             Entry::Vacant(v) => {
                                 self.new_mappable_calls.push(Rc::clone(&replaced_call));
-                                Rc::clone(v.insert(map_call(&replaced_call, &type_replacement_map, &function_replacement_map, &type_forest)))
+                                Rc::clone(v.insert(map_call(&replaced_call, &any_replacement_map, &function_replacement_map, &type_forest)))
                             },
                         }
                     }
                     else {
                         replaced_call
                     };
-                    println!("Unfolded: {:?}", unfolded_call.pointer);
 
                     ExpressionOperation::FunctionCall(unfolded_call)
                 }
@@ -104,7 +98,7 @@ impl FunctionUnfolder {
                                         Entry::Occupied(o) => Rc::clone(o.get()),
                                         Entry::Vacant(v) => {
                                             self.new_mappable_calls.push(Rc::clone(&replaced_call));
-                                            Rc::clone(v.insert(map_call(&replaced_call, &type_replacement_map, &function_replacement_map, &type_forest)))
+                                            Rc::clone(v.insert(map_call(&replaced_call, &any_replacement_map, &function_replacement_map, &type_forest)))
                                         },
                                     }
                                 }
@@ -129,6 +123,7 @@ impl FunctionUnfolder {
             implementation_id: Uuid::new_v4(),
             pointer: Rc::clone(&function_binding.pointer),  // Re-use premapped pointer
             decorators: fun.decorators.clone(),
+            // TODO Is this correct? No assumptions?
             requirements_assumption: Box::new(RequirementsAssumption { conformance: Default::default() }),
             statements,
             expression_forest,
@@ -140,8 +135,8 @@ impl FunctionUnfolder {
 }
 
 pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
-    let generic_map = call.requirements_fulfillment.any_mapping.iter().map(|(key, type_)| {
-        (*key, type_forest.resolve_type(type_).unwrap().replacing_any(replacement_map))
+    let any_replacement_map = call.requirements_fulfillment.any_mapping.iter().map(|(any_id, type_)| {
+        (*any_id, type_forest.resolve_type(type_).unwrap().replacing_any(replacement_map))
     }).collect();
 
     Rc::new(FunctionBinding {
@@ -149,14 +144,13 @@ pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<
             pointer_id: Uuid::new_v4(),
             target: Rc::new(Function {
                 function_id: Uuid::new_v4(),
-                interface: Rc::new(map_interface_types(&call.pointer.target.interface, &|x| x.replacing_any(&generic_map))),
+                interface: Rc::new(map_interface_types(&call.pointer.target.interface, &|x| x.replacing_any(&any_replacement_map))),
             }),
             // We're now a static call! (as long as the binding was complete)
             call_type: FunctionCallType::Static,
             name: call.pointer.name.clone(),
             form: call.pointer.form.clone(),
         }),
-        // TODO Do we need to map types in the requirements fulfillment?
         requirements_fulfillment: Box::new(RequirementsFulfillment {
             conformance: call.requirements_fulfillment.conformance.iter()
                 .map(|(key, mapping)| {
@@ -169,7 +163,7 @@ pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<
                     )
                 })
                 .collect(),
-            any_mapping: generic_map,
+            any_mapping: any_replacement_map,
         }),
     })
 }

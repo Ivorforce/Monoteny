@@ -73,6 +73,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 
     let mut internal_symbols: Vec<Rc<FunctionImplementation>> = vec![];
     while let Some(used_symbol) = unfolder.new_mappable_calls.pop() {
+        // TODO Use underscore names?
         let replacement_symbol = Rc::clone(&unfolder.mapped_calls[&used_symbol]);
         let implementation = &functions_by_id[&used_symbol.pointer.pointer_id];
 
