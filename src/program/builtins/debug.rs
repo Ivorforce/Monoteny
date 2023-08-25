@@ -7,6 +7,7 @@ use crate::program::types::{TypeProto, TypeUnit};
 pub struct Debug {
     pub module: Rc<Module>,
     pub print: Rc<FunctionPointer>,
+    pub panic: Rc<FunctionPointer>,
 }
 
 pub fn create() -> Debug {
@@ -24,8 +25,18 @@ pub fn create() -> Debug {
     });
     module.add_function(&print_function);
 
+    let panic_function = Rc::new(FunctionPointer {
+        pointer_id: Uuid::new_v4(),
+        target: Function::new(FunctionInterface::new_simple([].into_iter(), generic_type.clone())),
+        call_type: FunctionCallType::Static,
+        name: "panic".into(),
+        form: FunctionForm::Global,
+    });
+    module.add_function(&panic_function);
+
     Debug {
         module: Rc::new(module),
         print: print_function,
+        panic: panic_function,
     }
 }

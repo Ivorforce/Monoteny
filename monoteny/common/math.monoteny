@@ -4,3 +4,28 @@ def tau -> $Float :: 6.283185307179586;
 def e -> $Float :: 2.718281828459045;
 
 def +{$Number} -> $Number :: arg;
+
+-- The following functions are provided for ease of use in new number formats.
+-- Those that have no implementation will receive one eventually.
+-- For primitives, transpilers will usually insert a hardware implementation instead.
+
+def {$Float}.factorial() -> $Float :: panic();
+
+def sin(x '$Float) -> $Float :: panic();
+def cos(x '$Float) -> $Float :: panic();
+def tan(x '$Float) -> $Float :: panic();
+def sinh(x '$Float) -> $Float :: panic();
+def cosh(x '$Float) -> $Float :: panic();
+def tanh(x '$Float) -> $Float :: panic();
+def arcsin(x '$Float) -> $Float :: panic();
+def arccos(x '$Float) -> $Float :: panic();
+def arctan(x '$Float) -> $Float :: panic();
+def arcsinh(x '$Float) -> $Float :: panic();
+def arccosh(x '$Float) -> $Float :: panic();
+def arctanh(x '$Float) -> $Float :: panic();
+
+def ceil(x '$Float) -> $Float :: panic();
+def floor(x '$Float) -> $Float :: panic();
+def round(x '$Float) -> $Float :: panic();
+
+def abs(x '$Float) -> $Float :: panic();

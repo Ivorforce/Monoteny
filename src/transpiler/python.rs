@@ -34,6 +34,32 @@ pub struct TranspilerContext<'a> {
     types: &'a TypeForest,
 }
 
+// TODO Not optimal lol
+pub fn MATH_FUNCTIONS() -> HashMap<String, String> {
+    HashMap::from_iter([
+        ("factorial", "math.factorial"),
+
+        ("sin", "math.sin"),
+        ("cos", "math.cos"),
+        ("tan", "math.tan"),
+        ("sinh", "math.sinh"),
+        ("cosh", "math.cosh"),
+        ("tanh", "math.tanh"),
+        ("arcsin", "math.asin"),
+        ("arccos", "math.acos"),
+        ("arctan", "math.atan"),
+        ("arcsinh", "math.asinh"),
+        ("arccosh", "math.acosh"),
+        ("arctanh", "math.atanh"),
+
+        ("ceil", "math.ceil"),
+        ("floor", "math.floow"),
+        ("round", "round"),
+
+        ("abs", "abs"),
+    ].map(|(l, r)| (l.to_string(), r.to_string())))
+}
+
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &Rc<Builtins>) -> Result<(), std::io::Error> {
     let mut global_namespace = builtins::create(&builtins);
     let mut file_namespace = global_namespace.add_sublevel();
@@ -48,6 +74,19 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     let exported_symbols: Rc<RefCell<Vec<Rc<FunctionImplementation>>>> = Rc::new(RefCell::new(vec![]));
     let unfolder: Rc<RefCell<FunctionUnfolder>> = Rc::new(RefCell::new(FunctionUnfolder::new()));
 
+    fn should_unfold(f: &Rc<FunctionBinding>, functions_by_id: &HashMap<Uuid, Rc<FunctionImplementation>>, builtins: &Rc<Builtins>) -> bool {
+        if !functions_by_id.contains_key(&f.pointer.pointer_id) {
+            // TODO If no, it's *probably* a builtin, but we should probably check for realsies
+            return false;
+        }
+
+        if builtins.module_by_name["math".into()].functions.contains_key(&f.pointer) && MATH_FUNCTIONS().contains_key(&f.pointer.name) {
+            return false;
+        }
+
+        true
+    }
+
     // Run interpreter
 
     interpreter::run::transpile(program, &Rc::clone(&builtins), &|implementation| {
@@ -60,7 +99,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
                 // Unless generics are bound in the transpile directive, which is TODO
                 requirements_fulfillment: RequirementsFulfillment::empty(),
             }),
-            &|f| functions_by_id.contains_key(&f.pointer.pointer_id)  // TODO If no, it's *probably* a builtin, but we should probably check for realsies
+            &|f| should_unfold(f, &functions_by_id, builtins)
         );
 
         exported_symbols.borrow_mut().deref_mut().push(unfolded_function);
@@ -81,7 +120,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         let unfolded_implementation = unfolder.unfold_anonymous(
             implementation,
             &replacement_symbol,
-            &|f| functions_by_id.contains_key(&f.pointer.pointer_id)   // TODO If no, it's *probably* a builtin, but we should probably check for realsies)
+            &|f| should_unfold(f, &functions_by_id, builtins)
         );
 
         internal_symbols.push(unfolded_implementation);
@@ -257,9 +296,9 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
             if
                 try_transpile_keyword(stream, pointer, context)?
                 || try_transpile_binary_operator(stream, pointer, arguments, context)?
-                || try_transpile_constant(stream, pointer, arguments, &expression, context)?
                 || try_transpile_unary_operator(stream, pointer, arguments, context)?
                 || try_transpile_literal(stream, pointer, arguments, &expression, context)?
+                || try_transpile_builtin_function(stream, pointer, arguments, &expression, context)?
             {
                 // no-op
             }
@@ -476,22 +515,31 @@ pub fn try_transpile_keyword(stream: &mut (dyn Write), function: &Rc<FunctionPoi
         return Ok(true)
     }
 
+    if function == &context.builtins.debug.panic {
+        write!(stream, "exit(1)")?;
+        return Ok(true)
+    }
+
     Ok(false)
 }
 
-pub fn try_transpile_constant(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<bool, std::io::Error> {
-    if !arguments.is_empty() {
-        return Ok(false);
-    };
-
-    if !match &context.types.resolve_binding_alias(expression_id).unwrap().unit {
-        TypeUnit::Struct(s) => {
-            // TODO values().contains is not ideal
-            context.builtins.core.primitives.values().contains(s)
-        },
-        _ => false,
-    } {
+pub fn try_transpile_builtin_function(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+    if !context.builtins.module_by_name["math".into()].functions.contains_key(function) {
         return Ok(false)
+    }
+
+    if let Some(python_name) = MATH_FUNCTIONS().get(&function.name) {
+        write!(stream, "{}(", python_name)?;
+        for (idx, expression) in arguments.iter().enumerate() {
+            transpile_expression(stream, *expression, context)?;
+
+            if idx < arguments.len() - 1 {
+                write!(stream, ", ")?;
+            }
+        }
+        write!(stream, ")")?;
+
+        return Ok(true)
     }
 
     Ok(false)
