@@ -2,3 +2,5 @@ def pi -> $Float :: 3.141592653589793;
 def tau -> $Float :: 6.283185307179586;
 
 def e -> $Float :: 2.718281828459045;
+
+def +{$Number} -> $Number :: arg;

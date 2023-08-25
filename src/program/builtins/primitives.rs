@@ -135,7 +135,6 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         add_function(&number_functions.multiply, primitive_type, &mut mul_ops, module);
         add_function(&number_functions.divide, primitive_type, &mut div_ops, module);
         add_function(&number_functions.modulo, primitive_type, &mut mod_ops, module);
-        add_function(&number_functions.positive, primitive_type, &mut pos_ops, module);
         add_function(&number_functions.negative, primitive_type, &mut neg_ops, module);
 
         let _parse_int_literal = FunctionPointer::new_global(
@@ -158,7 +157,6 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
                 (&traits.Number_functions.multiply, &number_functions.multiply),
                 (&traits.Number_functions.divide, &number_functions.divide),
                 (&traits.Number_functions.modulo, &number_functions.modulo),
-                (&traits.Number_functions.positive, &number_functions.positive),
                 (&traits.Number_functions.negative, &number_functions.negative),
             ]
         ).unwrap();

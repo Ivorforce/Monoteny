@@ -86,7 +86,6 @@ pub struct NumberFunctions {
 
     pub modulo: Rc<FunctionPointer>,
 
-    pub positive: Rc<FunctionPointer>,
     pub negative: Rc<FunctionPointer>,
 }
 
@@ -109,10 +108,6 @@ pub fn make_number_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>)
             FunctionInterface::new_operator(2, type_, type_)
         ),
 
-        positive: FunctionPointer::new_global(
-            "positive",
-            FunctionInterface::new_operator(1, type_, type_)
-        ),
         negative: FunctionPointer::new_global(
             "negative",
             FunctionInterface::new_operator(1, type_, type_)
@@ -174,7 +169,6 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         &number_functions.subtract,
         &number_functions.multiply,
         &number_functions.divide,
-        &number_functions.positive,
         &number_functions.negative,
         &number_functions.modulo,
     ].map(Rc::clone));
