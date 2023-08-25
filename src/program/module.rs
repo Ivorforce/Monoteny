@@ -35,11 +35,13 @@ impl Module {
         }
     }
 
-    pub fn add_trait(&mut self, trait_: &Rc<Trait>) {
+    pub fn add_trait(&mut self, trait_: &Rc<Trait>) -> Rc<ObjectReference> {
+        let reference = ObjectReference::new_immutable(TypeProto::meta(TypeProto::unit(TypeUnit::Struct(Rc::clone(trait_)))));
         self.traits.insert(
             Rc::clone(trait_),
-            ObjectReference::new_immutable(TypeProto::meta(TypeProto::unit(TypeUnit::Struct(Rc::clone(trait_)))))
+            Rc::clone(&reference)
         );
+        reference
     }
 
     pub fn add_function(&mut self, function: &Rc<FunctionPointer>) {

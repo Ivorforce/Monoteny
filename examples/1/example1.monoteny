@@ -6,6 +6,9 @@ pattern floor_div(MultiplicationPrecedence) :: {lhs} /_ {rhs};
 -- Define a function floor_div(lhs '$Float, rhs: $Float) using the pattern we set before.
 def {$Float} /_ {$Float} -> $Float :: lhs / rhs;
 
+trait Test {
+}
+
 -- Define a function on numbers.
 def {$Number}.square() -> $Number :: self * self;
 

@@ -1,19 +1,18 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use itertools::Itertools;
 use uuid::Uuid;
 use crate::parser::abstract_syntax;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{LinkError, scopes};
 use crate::linker::interface::{link_function_pointer, link_operator_pointer};
+use crate::linker::scopes::Environment;
 use crate::parser::abstract_syntax::PatternDeclaration;
-use crate::program::traits::TraitBinding;
-use crate::program::Program;
+use crate::program::allocation::{Reference, ReferenceType};
+use crate::program::traits::{Trait, TraitBinding};
 use crate::program::builtins::*;
 use crate::program::functions::FunctionPointer;
 use crate::program::generics::TypeForest;
-use crate::program::global::{FunctionImplementation};
 use crate::program::module::Module;
 use crate::program::types::*;
 
@@ -106,6 +105,17 @@ impl <'a> GlobalLinker<'a> {
                 // Create a variable for the function
                 self.module.add_function(&fun);
                 self.global_variables.overload_function(&fun, &self.module.functions[&fun])?;
+            }
+            abstract_syntax::GlobalStatement::Trait(syntax) => {
+                let trait_ = Rc::new(Trait::new(syntax.name.clone()));
+                let reference = self.module.add_trait(&trait_);
+
+                self.global_variables.insert_singleton(
+                    Environment::Global,
+                    Reference::make(ReferenceType::Object(reference)),
+                    &trait_.name.clone()
+                );
+
             }
         }
 

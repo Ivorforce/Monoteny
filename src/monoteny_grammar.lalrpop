@@ -25,6 +25,7 @@ match {
     "let", "var", "upd",
     "def", "pattern",
     "if",
+    "trait",
     _
 }
 
@@ -62,6 +63,7 @@ pub GlobalStatement: Box<GlobalStatement> = {
     Function => Box::new(GlobalStatement::FunctionDeclaration(<>)),
     Pattern => Box::new(GlobalStatement::Pattern(<>)),
     OperatorFunction => Box::new(GlobalStatement::Operator(<>)),
+    Trait => Box::new(GlobalStatement::Trait(<>)),
 };
 
 Pattern: Box<PatternDeclaration> = {
@@ -111,6 +113,9 @@ NameValuePair: (ParameterKey, String) = {
     <value: Identifier> => (ParameterKey::Positional, value),
 }
 
+Trait: Box<TraitDefinition> = {
+    "trait" <name: Identifier> "{" "}" => Box::new(TraitDefinition { name }),
+}
 
 // =============================== Statement =====================================
 

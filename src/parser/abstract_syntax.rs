@@ -16,6 +16,7 @@ pub enum GlobalStatement {
     FunctionDeclaration(Box<Function>),
     Operator(Box<OperatorFunction>),
     Pattern(Box<PatternDeclaration>),
+    Trait(Box<TraitDefinition>),
 }
 
 #[derive(Eq, PartialEq)]
@@ -63,6 +64,11 @@ pub struct PatternDeclaration {
 
     pub alias: String,
     pub parts: Vec<Box<PatternPart>>,
+}
+
+#[derive(Eq, PartialEq)]
+pub struct TraitDefinition {
+    pub name: String,
 }
 
 // =============================== Code =====================================
@@ -140,6 +146,7 @@ impl Debug for GlobalStatement {
             FunctionDeclaration(function) => write!(fmt, "{:?}", function),
             Pattern(pattern) => write!(fmt, "{:?}", pattern),
             Operator(operator) => write!(fmt, "{:?}", operator),
+            Trait(trait_) => write!(fmt, "{:?}", trait_),
         }
     }
 }
@@ -189,6 +196,13 @@ impl Debug for PatternDeclaration {
         write!(fmt, "pattern {}({}) :: ", &self.alias, self.precedence)?;
         write_space_separated_list(fmt, &self.parts)?;
         write!(fmt, ";")?;
+        Ok(())
+    }
+}
+
+impl Debug for TraitDefinition {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "trait {} {{}} :: ", self.name)?;
         Ok(())
     }
 }
