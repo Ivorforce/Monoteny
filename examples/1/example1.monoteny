@@ -23,7 +23,7 @@ def main() :: {
     print("Test: ");
 
     -- 'value' is not bound yet. It could be any $Float!
-    let value = 2.2.square() * e;
+    let value = 2.2.square() * log(e);
 
     -- Bind 'value' implicitly by binding b to Float32.
     var b 'Float32 = square(value:) + pi_ish;

@@ -132,8 +132,8 @@ pub fn make_float_functions(type_: &Box<TypeProto>) -> FloatFunctions {
             FunctionInterface::new_operator(2, type_, type_)
         ),
         logarithm: FunctionPointer::new_global(
-            "logarithm",
-            FunctionInterface::new_operator(2, type_, type_)
+            "log",
+            FunctionInterface::new_operator(1, type_, type_)
         ),
     }
 }
@@ -214,7 +214,8 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     let mut Float = Trait::new("Float".into());
     let float_functions = make_float_functions(&Float.create_any_type(&"self".into()));
     Float.abstract_functions.extend([
-        &float_functions.exponent
+        &float_functions.exponent,
+        &float_functions.logarithm
     ].map(Rc::clone));
     let Float = Rc::new(Float);
     module.add_trait(&Float);
