@@ -6,9 +6,10 @@ pub mod precedence;
 pub mod r#type;
 pub mod interface;
 
+pub use crate::linker::global::link_file;
+
 use custom_error::custom_error;
 use crate::parser::abstract_syntax;
-use crate::linker::global::link_file;
 use crate::program::builtins::Builtins;
 use crate::program::Program;
 
@@ -20,5 +21,7 @@ custom_error!{pub LinkError
 
 
 pub fn link_program(syntax: abstract_syntax::Program, scope: &scopes::Scope, builtins: &Builtins) -> Result<Program, LinkError> {
-    link_file(syntax, scope, builtins)
+    Ok(Program {
+        module: link_file(syntax, scope, builtins)?,
+    })
 }

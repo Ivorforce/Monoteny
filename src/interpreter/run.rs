@@ -12,7 +12,7 @@ use crate::program::types::TypeUnit;
 
 
 pub fn preload_program<'a>(program: &'a Program, evaluators: &mut HashMap<Uuid, FunctionInterpreterImpl<'a>>, assignments: &mut HashMap<Uuid, Value>) {
-    for (function_pointer, implementation) in program.function_implementations.iter() {
+    for (function_pointer, implementation) in program.module.function_implementations.iter() {
         evaluators.insert(implementation.pointer.target.function_id.clone(), compiler::compile_function(implementation));
 
         unsafe {
@@ -29,7 +29,7 @@ pub fn preload_program<'a>(program: &'a Program, evaluators: &mut HashMap<Uuid, 
 
 
 pub fn main(program: &Program, builtins: &Builtins) {
-    let entry_function = find_annotated(program.function_implementations.values(), "main").expect("No main function!");
+    let entry_function = find_annotated(program.module.function_implementations.values(), "main").expect("No main function!");
     assert!(entry_function.pointer.target.interface.parameters.is_empty(), "@main function has parameters.");
     assert!(entry_function.pointer.target.interface.return_type.unit.is_void(), "@main function has a return value.");
 
@@ -54,7 +54,7 @@ pub fn main(program: &Program, builtins: &Builtins) {
 }
 
 pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<FunctionImplementation>)) {
-    let entry_function = find_annotated(program.function_implementations.values(), "transpile").expect("No main function!");
+    let entry_function = find_annotated(program.module.function_implementations.values(), "transpile").expect("No main function!");
     let mut evaluators = builtins::make_evaluators(builtins);
     let mut assignments = HashMap::new();
 
@@ -77,7 +77,7 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<F
     }
 
     let mut implementations = HashMap::new();
-    for implementation in program.function_implementations.values() {
+    for implementation in program.module.function_implementations.values() {
         implementations.insert(implementation.implementation_id, Rc::clone(implementation));
     }
 

@@ -12,7 +12,7 @@ pub fn transpile_program(
     writeln!(header_stream, "#include <Eigen/Tensor>")?;
     write!(header_stream, "\n\n")?;
 
-    for implementation in program.function_implementations.values() {
+    for implementation in program.module.function_implementations.values() {
         let return_type = transpile_type(&implementation.pointer.target.interface.return_type);
 
         write!(header_stream, "{} {}(", return_type, implementation.pointer.name)?;

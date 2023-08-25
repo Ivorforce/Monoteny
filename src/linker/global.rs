@@ -30,7 +30,7 @@ struct FunctionWithoutBody<'a> {
     body: &'a Vec<Box<abstract_syntax::Statement>>,
 }
 
-pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builtins: &Builtins) -> Result<Program, LinkError> {
+pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builtins: &Builtins) -> Result<Rc<Module>, LinkError> {
     let mut global_linker = GlobalLinker {
         functions: Vec::new(),
         module: Module::new("main".into()),  // TODO Give it a name!
@@ -44,7 +44,6 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
     }
 
     let global_variable_scope = &global_linker.global_variables;
-    let mut implementations: HashMap<Rc<FunctionPointer>, Rc<FunctionImplementation>> = HashMap::new();
 
     // Resolve function bodies
     for fun in global_linker.functions.iter() {
@@ -63,13 +62,10 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
 
         let implementation = resolver.link_function_body(fun.body, &global_variable_scope)?;
 
-        implementations.insert(Rc::clone(&fun.pointer), Rc::clone(&implementation));
+        global_linker.module.function_implementations.insert(Rc::clone(&fun.pointer), Rc::clone(&implementation));
     }
 
-    Ok(Program {
-        function_implementations: implementations,
-        module: global_linker.module,
-    })
+    Ok(Rc::new(global_linker.module))
 }
 
 impl <'a> GlobalLinker<'a> {

@@ -40,7 +40,8 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     let mut object_namespace = namespaces::Level::new();
     let mut functions_by_id = HashMap::new();
 
-    for implementation in program.function_implementations.values() {
+    for implementation in program.module.function_implementations.values()
+        .chain(builtins.module_by_name.values().flat_map(|module| module.function_implementations.values())) {
         functions_by_id.insert(implementation.implementation_id, Rc::clone(implementation));
     }
 
@@ -491,22 +492,6 @@ pub fn try_transpile_constant(stream: &mut (dyn Write), function: &Rc<FunctionPo
         _ => false,
     } {
         return Ok(false)
-    }
-
-    if function == &context.builtins.math.pi {
-        transpile_type(stream, &context.types.resolve_binding_alias(expression_id).unwrap(), context)?;
-        write!(stream, "(np.pi)")?;
-        return Ok(true)
-    }
-    else if function == &context.builtins.math.tau {
-        transpile_type(stream, &context.types.resolve_binding_alias(expression_id).unwrap(), context)?;
-        write!(stream, "(np.pi * 2)")?;
-        return Ok(true)
-    }
-    else if function == &context.builtins.math.e {
-        transpile_type(stream, &context.types.resolve_binding_alias(expression_id).unwrap(), context)?;
-        write!(stream, "(np.e)")?;
-        return Ok(true)
     }
 
     Ok(false)

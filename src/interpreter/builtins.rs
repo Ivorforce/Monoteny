@@ -1,7 +1,7 @@
 use std::alloc::{alloc, Layout};
 use std::collections::HashMap;
 use std::rc::Rc;
-use monoteny_macro::{bin_op, parse_op, un_op, fun_op, load_constant, load_float_constant};
+use monoteny_macro::{bin_op, parse_op, un_op, fun_op, load_constant};
 use std::str::FromStr;
 use uuid::Uuid;
 use crate::interpreter::{FunctionInterpreterImpl, Value};
@@ -274,10 +274,6 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
 
     map.insert(builtins.common.true_.unwrap_id(), load_constant!(bool true));
     map.insert(builtins.common.false_.unwrap_id(), load_constant!(bool false));
-
-    map.insert(builtins.math.e.unwrap_id(), load_float_constant!(2.71828 f32_type f64_type));
-    map.insert(builtins.math.pi.unwrap_id(), load_float_constant!(3.14159265 f32_type f64_type));
-    map.insert(builtins.math.tau.unwrap_id(), load_float_constant!(1.57079633 f32_type f64_type));
 
     map
 }

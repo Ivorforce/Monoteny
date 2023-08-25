@@ -18,8 +18,7 @@ pub mod module;
 pub mod calls;
 
 pub struct Program {
-    pub module: Module,
-    pub function_implementations: HashMap<Rc<FunctionPointer>, Rc<FunctionImplementation>>,
+    pub module: Rc<Module>,
 }
 
 pub fn find_annotated<'a, I>(iterator: I, annotation: &str) -> Option<&'a Rc<FunctionImplementation>> where I: Iterator<Item=&'a Rc<FunctionImplementation>> {

@@ -10,10 +10,10 @@ def main():
     <Docstring TODO!>
     """
     print("Test: ")
-    value = (square_3(float32(2.2))) * (float32(np.e))
-    b = (square_0(value=value)) + (pi_ish_0())
-    b = (floor_div((square_2(b)) ** (-(float32(2.2))), value)) + (float32(np.pi * 2))
-    c = pi_ish_1()
+    value = (square_2(float32(2.2))) * (e())
+    b = (square_0(value=value)) + (pi_ish_1())
+    b = (floor_div((square_3(b)) ** (-(float32(2.2))), value)) + (tau())
+    c = pi_ish_0()
     print(((b < (float32(2))) and (not (value > (float32(2))))) and (True))
 
 
@@ -46,6 +46,24 @@ def square_1(self: float32, ) -> float32:
     return self * self
 
 
+def pi_ish_0() -> int32:
+    """
+    <Docstring TODO!>
+
+    Returns: int32
+    """
+    return int32(3)
+
+
+def pi_ish_1() -> float32:
+    """
+    <Docstring TODO!>
+
+    Returns: float32
+    """
+    return float32(3.14)
+
+
 def square_2(self: float32, ) -> float32:
     """
     <Docstring TODO!>
@@ -71,13 +89,22 @@ def floor_div(lhs: float32, rhs: float32, ) -> float32:
     return lhs / rhs
 
 
-def pi_ish_0() -> float32:
+def tau() -> float32:
     """
     <Docstring TODO!>
 
     Returns: float32
     """
-    return float32(3.14)
+    return float32(6.283185307179586)
+
+
+def e() -> float32:
+    """
+    <Docstring TODO!>
+
+    Returns: float32
+    """
+    return float32(2.718281828459045)
 
 
 def square_3(self: float32, ) -> float32:
@@ -90,15 +117,6 @@ def square_3(self: float32, ) -> float32:
     Returns: float32
     """
     return self * self
-
-
-def pi_ish_1() -> int32:
-    """
-    <Docstring TODO!>
-
-    Returns: int32
-    """
-    return int32(3)
 
 
 __all__ = [

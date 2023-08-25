@@ -9,9 +9,8 @@ def main():
     """
     <Docstring TODO!>
     """
-    print("Test: ")
-    print(square_1(int32(3)))
-    print(square_0(float32(3.2)))
+    print(square_0(int32(3)))
+    print(square_1(float32(3.2)))
 
 
 # ========================== ======== ============================
@@ -19,11 +18,27 @@ def main():
 # ========================== ======== ============================
 
 
-def square_0(self: float32, ) -> float32:
+def square_0(self: int32, ) -> int32:
+    """
+    <Docstring TODO!>
+
+    Args:
+        self: int32
+
+    Returns: int32
+    """
     return self * self
 
 
-def square_1(self: int32, ) -> int32:
+def square_1(self: float32, ) -> float32:
+    """
+    <Docstring TODO!>
+
+    Args:
+        self: float32
+
+    Returns: float32
+    """
     return self * self
 
 
