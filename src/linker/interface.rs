@@ -20,7 +20,6 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
     let mut parameters: Vec<Parameter> = vec![];
 
     if let Some(parameter) = &function.target_type {
-
         parameters.push(Parameter {
             external_key: ParameterKey::Positional,
             internal_name: String::from("self"),

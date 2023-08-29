@@ -11,7 +11,7 @@ use crate::program::types::{TypeProto, TypeUnit};
 
 
 pub struct TypeFactory<'a> {
-    pub hierarchy: &'a scopes::Scope<'a>,
+    pub scope: &'a scopes::Scope<'a>,
     pub generics: HashMap<String, TypeUnit>,
     pub requirements: HashSet<Rc<TraitBinding>>,
 }
@@ -19,7 +19,7 @@ pub struct TypeFactory<'a> {
 impl <'a> TypeFactory<'a> {
     pub fn new(hierarchy: &'a scopes::Scope<'a>) -> TypeFactory<'a> {
         TypeFactory {
-            hierarchy,
+            scope: hierarchy,
             generics: HashMap::new(),
             requirements: HashSet::new(),
         }
@@ -30,11 +30,11 @@ impl <'a> TypeFactory<'a> {
             return Ok(generic)
         }
 
-        self.hierarchy.resolve(Environment::Global, &name)?.as_metatype()
+        self.scope.resolve(Environment::Global, &name)?.as_metatype()
     }
 
     fn resolve_trait(&mut self, name: &String) -> Rc<Trait> {
-        self.hierarchy.resolve(Environment::Global, &name).unwrap().as_trait().unwrap()
+        self.scope.resolve(Environment::Global, &name).unwrap().as_trait().unwrap()
     }
 
     fn register_generic(&mut self, name: &String, id: Uuid) -> &TypeUnit {
@@ -72,7 +72,12 @@ impl <'a> TypeFactory<'a> {
                             });
 
                             if type_name.starts_with("$") {
-                                let requirement_trait = self.resolve_trait(&String::from(&type_name[1..]));
+                                let type_name = match type_name.find("#") {
+                                    None => { String::from(&type_name[1..]) }
+                                    Some(hash_start_index) => { String::from(&type_name[1..hash_start_index]) }
+                                };
+
+                                let requirement_trait = self.resolve_trait(&type_name);
                                 self.register_requirement(Rc::new(TraitBinding {
                                     generic_to_type: HashMap::from([(requirement_trait.generics["self"], type_.clone())]),
                                     trait_: requirement_trait,

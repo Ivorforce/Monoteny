@@ -62,6 +62,7 @@ pub struct FunctionOverload {
 /// A parameter as visible from the outside.
 /// They are expected to be passed in order, and will only be assigned to variables
 /// per implementation.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Parameter {
     pub external_key: ParameterKey,
     pub internal_name: String,
@@ -69,6 +70,7 @@ pub struct Parameter {
 }
 
 /// Machine interface of the function.
+#[derive(Clone, PartialEq, Eq)]
 pub struct FunctionInterface {
     /// Parameters to the function
     pub parameters: Vec<Parameter>,
@@ -161,6 +163,15 @@ impl FunctionPointer {
             FunctionCallType::Static => self.target.function_id,
             FunctionCallType::Polymorphic { .. } => panic!("Cannot unwrap polymorphic implementation ID"),
         }
+    }
+
+    pub fn can_match(&self, other: &FunctionPointer) -> bool {
+        if &self.name != &other.name { return false; }
+        if &self.call_type != &other.call_type { return false; }
+        if &self.form != &other.form { return false; }
+        if &self.target.interface != &other.target.interface { return false; }
+
+        true
     }
 }
 

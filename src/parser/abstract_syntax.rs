@@ -17,6 +17,7 @@ pub enum GlobalStatement {
     Operator(Box<OperatorFunction>),
     Pattern(Box<PatternDeclaration>),
     Trait(Box<TraitDefinition>),
+    Conformance(Box<TraitConformanceDeclaration>),
 }
 
 #[derive(Eq, PartialEq)]
@@ -69,13 +70,16 @@ pub struct PatternDeclaration {
 #[derive(Eq, PartialEq)]
 pub struct TraitDefinition {
     pub name: String,
-    pub statements: Vec<Box<TraitStatement>>,
+    pub statements: Vec<Box<GlobalStatement>>,
 }
 
 #[derive(Eq, PartialEq)]
-pub enum TraitStatement {
-    FunctionDeclaration(Box<Function>),
+pub struct TraitConformanceDeclaration {
+    pub target: String,
+    pub trait_: String,
+    pub statements: Vec<Box<GlobalStatement>>,
 }
+
 
 // =============================== Code =====================================
 
@@ -153,6 +157,7 @@ impl Debug for GlobalStatement {
             Pattern(pattern) => write!(fmt, "{:?}", pattern),
             Operator(operator) => write!(fmt, "{:?}", operator),
             Trait(trait_) => write!(fmt, "{:?}", trait_),
+            Conformance(conformance) => write!(fmt, "{:?}", conformance),
         }
     }
 }
@@ -208,7 +213,15 @@ impl Debug for PatternDeclaration {
 
 impl Debug for TraitDefinition {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "trait {} {{}} :: ", self.name)?;
+        write!(fmt, "trait {} {{", self.name)?;
+
+        Ok(())
+    }
+}
+
+impl Debug for TraitConformanceDeclaration {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "declare {} is {} {{}} :: ", self.target, self.trait_)?;
         Ok(())
     }
 }

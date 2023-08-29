@@ -13,7 +13,7 @@ match {
     r"--[^\n\r]*[\n\r]*" => { }, // line comment
 } else {
     // so i heard u like regex
-    r"([$#])?[a-zA-Z_]\w*" => _Identifier,
+    r"[a-zA-Z_$#][\w$#]*" => _Identifier,
     r"[!+\-*/&%=><|.^?][!+\-*/&%=><|.^?_]*" => _OperatorIdentifier,
     r"[0-9]+" => _Int,
     r"[0-9]+\.[0-9]+" => _Float,
@@ -23,8 +23,8 @@ match {
     ";", ",", ":", "::", "->",
     "=",
     "let", "var", "upd",
-    "def", "pattern",
-    "if",
+    "def", "pattern", "declare",
+    "if", "is",
     "trait",
     _
 }
@@ -64,6 +64,7 @@ pub GlobalStatement: Box<GlobalStatement> = {
     Pattern => Box::new(GlobalStatement::Pattern(<>)),
     OperatorFunction => Box::new(GlobalStatement::Operator(<>)),
     Trait => Box::new(GlobalStatement::Trait(<>)),
+    Conformance => Box::new(GlobalStatement::Conformance(<>)),
 };
 
 Pattern: Box<PatternDeclaration> = {
@@ -116,11 +117,11 @@ NameValuePair: (ParameterKey, String) = {
 // =============================== Trait =====================================
 
 Trait: Box<TraitDefinition> = {
-    "trait" <name: Identifier> "{" <statements: (<TraitStatement> ";")*> "}" => Box::new(TraitDefinition { <> }),
+    "trait" <name: Identifier> "{" <statements: (<GlobalStatement> ";")*> "}" => Box::new(TraitDefinition { <> }),
 }
 
-TraitStatement: Box<TraitStatement> = {
-    Function => Box::new(TraitStatement::FunctionDeclaration(<>)),
+Conformance: Box<TraitConformanceDeclaration> = {
+    "declare" <target: Identifier> "is" <trait_: Identifier> "{" <statements: (<GlobalStatement> ";")*> "}" => Box::new(TraitConformanceDeclaration { <> }),
 }
 
 // =============================== Statement =====================================

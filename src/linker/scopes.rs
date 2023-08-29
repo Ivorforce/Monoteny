@@ -104,12 +104,8 @@ impl <'a> Scope<'a> {
     }
 
     pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Result<(), LinkError> {
-        let environment = match fun.form {
-            FunctionForm::Member => Environment::Member,
-            FunctionForm::Global => Environment::Global,
-            FunctionForm::Constant => Environment::Global,
-        };
         let name = &fun.name;
+        let environment = Environment::from_form(&fun.form);
 
         let mut variables = self.references_mut(environment);
 
@@ -247,5 +243,15 @@ impl <'a> Scope<'a> {
         }
 
         panic!("Precedence group could not be resolved: {}", name)
+    }
+}
+
+impl Environment {
+    pub fn from_form(form: &FunctionForm) -> Environment {
+        match form {
+            FunctionForm::Member => Environment::Member,
+            FunctionForm::Global => Environment::Global,
+            FunctionForm::Constant => Environment::Global,
+        }
     }
 }

@@ -1,0 +1,37 @@
+trait Animal {
+    def {Self}.talk();
+};
+
+trait Cat {};
+
+declare Cat is Animal {
+    def {Self}.talk() :: {
+        print("Meow");
+    };
+};
+
+trait Dog {};
+
+declare Dog is Animal {
+    def {Self}.talk() :: {
+        print("Bark");
+    };
+};
+
+def converse(lhs '$Animal#lhs, rhs '$Animal#rhs) :: {
+    lhs.talk();
+    rhs.talk();
+};
+
+@main
+def main() :: {
+    let cat = Cat.new();
+    let dog = Dog.new();
+    converse(cat, dog);
+    converse(dog, cat);
+};
+
+@transpile
+def transpile(transpiler 'Transpiler) :: {
+    transpiler.add(main);
+};
