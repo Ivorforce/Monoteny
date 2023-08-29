@@ -26,14 +26,14 @@ pub enum MemberStatement {
 
 #[derive(Eq, PartialEq)]
 pub struct Function {
+    pub decorators: Vec<String>,
+
     pub target_type: Option<Box<Expression>>,
     pub identifier: String,
     pub parameters: Vec<Box<KeyedParameter>>,
-
-    pub decorators: Vec<String>,
-
-    pub body: Vec<Box<Statement>>,
     pub return_type: Option<Expression>,
+
+    pub body: Option<Vec<Box<Statement>>>,
 }
 
 #[derive(Eq, PartialEq)]
@@ -48,7 +48,7 @@ pub struct OperatorFunction {
     pub parts: Vec<Box<OperatorArgument>>,
     pub decorators: Vec<String>,
 
-    pub body: Vec<Box<Statement>>,
+    pub body: Option<Vec<Box<Statement>>>,
     pub return_type: Option<Expression>,
 }
 
@@ -69,6 +69,12 @@ pub struct PatternDeclaration {
 #[derive(Eq, PartialEq)]
 pub struct TraitDefinition {
     pub name: String,
+    pub statements: Vec<Box<TraitStatement>>,
+}
+
+#[derive(Eq, PartialEq)]
+pub enum TraitStatement {
+    FunctionDeclaration(Box<Function>),
 }
 
 // =============================== Code =====================================

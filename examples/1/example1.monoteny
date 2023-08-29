@@ -6,8 +6,9 @@ pattern floor_div(MultiplicationPrecedence) :: {lhs} /_ {rhs};
 -- Define a function floor_div(lhs '$Float, rhs: $Float) using the pattern we set before.
 def {$Float} /_ {$Float} -> $Float :: lhs / rhs;
 
-trait Test {
-}
+trait Cat {
+    def meow();
+};
 
 -- Define a function on numbers.
 def {$Number}.square() -> $Number :: self * self;
@@ -37,7 +38,7 @@ def main() :: {
 
     -- Print boolean
     print(b < 2 and not (value > 2) and true);
-}
+};
 
 @transpile
 def transpile(transpiler 'Transpiler) :: {
@@ -46,4 +47,4 @@ def transpile(transpiler 'Transpiler) :: {
 
     -- Ideally, constant folding can break it down to just print statements.
     transpiler.add(main);
-}
+};

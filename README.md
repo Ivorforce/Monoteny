@@ -148,6 +148,7 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
       - [x] `let`: Assign new variables
       - [x] `upd`: Change existing variables
       - [ ] `cnf`: Refutably assert equality to existing variables
+    - [ ] Generic: Any used generics will automatically generify the object
   - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
   - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
 - [ ] Modules (imports)

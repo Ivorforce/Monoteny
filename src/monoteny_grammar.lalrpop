@@ -56,7 +56,7 @@ Float: String = {
 
 
 pub Program: Program = {
-    <stmts: GlobalStatement*> => Program { global_statements: stmts }
+    <stmts: (<GlobalStatement> ";")*> => Program { global_statements: stmts }
 };
 
 pub GlobalStatement: Box<GlobalStatement> = {
@@ -67,7 +67,7 @@ pub GlobalStatement: Box<GlobalStatement> = {
 };
 
 Pattern: Box<PatternDeclaration> = {
-    "pattern" <alias: Identifier> "(" <precedence: Identifier> ")" "::" <parts: PatternPart+> ";" => Box::new(PatternDeclaration { <> }),
+    "pattern" <alias: Identifier> "(" <precedence: Identifier> ")" "::" <parts: PatternPart+> => Box::new(PatternDeclaration { <> }),
 }
 
 PatternPart: Box<PatternPart> = {
@@ -76,11 +76,11 @@ PatternPart: Box<PatternPart> = {
 }
 
 Function: Box<Function> = {
-    <decorators: Decorator*> "def" <target_type: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(Function { <> }),
+    <decorators: Decorator*> "def" <target_type: (<ContextualParameter> ".")?> <identifier: Identifier> "(" <parameters: OptionalFinalSeparatorList<KeyedParameter, ",">> ")" <return_type: ("->" <Expression>)?> <body: ("::" <FunctionBody>)?> => Box::new(Function { <> }),
 }
 
 OperatorFunction: Box<OperatorFunction> = {
-    <decorators: Decorator*> "def" <parts: OperatorArgument+> <return_type: ("->" <Expression>)?> "::" <body: FunctionBody> => Box::new(OperatorFunction { <> }),
+    <decorators: Decorator*> "def" <parts: OperatorArgument+> <return_type: ("->" <Expression>)?> <body: ("::" <FunctionBody>)?> => Box::new(OperatorFunction { <> }),
 }
 
 Decorator: String = {
@@ -98,7 +98,7 @@ ContextualParameter: Box<Expression> = {
 
 FunctionBody: Vec<Box<Statement>> = {
     "{" <(<Statement> ";")*> "}",
-    <Expression> ";" => vec![Box::new(Statement::Return(Some(<>)))],
+    <Expression> => vec![Box::new(Statement::Return(Some(<>)))],
 }
 
 KeyedParameter: Box<KeyedParameter> = {
@@ -113,8 +113,14 @@ NameValuePair: (ParameterKey, String) = {
     <value: Identifier> => (ParameterKey::Positional, value),
 }
 
+// =============================== Trait =====================================
+
 Trait: Box<TraitDefinition> = {
-    "trait" <name: Identifier> "{" "}" => Box::new(TraitDefinition { name }),
+    "trait" <name: Identifier> "{" <statements: (<TraitStatement> ";")*> "}" => Box::new(TraitDefinition { <> }),
+}
+
+TraitStatement: Box<TraitStatement> = {
+    Function => Box::new(TraitStatement::FunctionDeclaration(<>)),
 }
 
 // =============================== Statement =====================================

@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use guard::guard;
 use uuid::Uuid;
 use crate::parser::abstract_syntax;
 use crate::program::computation_tree::*;
@@ -7,7 +8,6 @@ use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{LinkError, scopes};
 use crate::linker::interface::{link_function_pointer, link_operator_pointer};
 use crate::linker::scopes::Environment;
-use crate::parser::abstract_syntax::PatternDeclaration;
 use crate::program::allocation::{Reference, ReferenceType};
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::builtins::*;
@@ -77,11 +77,14 @@ impl <'a> GlobalLinker<'a> {
             abstract_syntax::GlobalStatement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
                 let fun = link_function_pointer(&syntax, &scope, requirements)?;
+                guard!(let Some(body) = &syntax.body else {
+                    return Err(LinkError::LinkError { msg: format!("Function {} needs a body.", fun.name) });
+                });
 
                 self.functions.push(FunctionWithoutBody {
                     pointer: Rc::clone(&fun),
                     decorators: syntax.decorators.clone(),
-                    body: &syntax.body,
+                    body,
                 });
 
                 // Create a variable for the function
@@ -95,11 +98,14 @@ impl <'a> GlobalLinker<'a> {
             abstract_syntax::GlobalStatement::Operator(syntax) => {
                 let scope = &self.global_variables;
                 let fun = link_operator_pointer(&syntax, &scope, requirements)?;
+                guard!(let Some(body) = &syntax.body else {
+                    return Err(LinkError::LinkError { msg: format!("Function {} needs a body.", fun.name) });
+                });
 
                 self.functions.push(FunctionWithoutBody {
                     pointer: Rc::clone(&fun),
                     decorators: syntax.decorators.clone(),
-                    body: &syntax.body,
+                    body,
                 });
 
                 // Create a variable for the function
@@ -107,7 +113,13 @@ impl <'a> GlobalLinker<'a> {
                 self.global_variables.overload_function(&fun, &self.module.functions[&fun])?;
             }
             abstract_syntax::GlobalStatement::Trait(syntax) => {
-                let trait_ = Rc::new(Trait::new(syntax.name.clone()));
+                let mut trait_ = Trait::new(syntax.name.clone());
+
+                for statement in syntax.statements.iter() {
+                    self.link_trait_statement(statement, &mut trait_, requirements)?;
+                }
+
+                let trait_ = Rc::new(trait_);
                 let reference = self.module.add_trait(&trait_);
 
                 self.global_variables.insert_singleton(
@@ -122,7 +134,23 @@ impl <'a> GlobalLinker<'a> {
         Ok(())
     }
 
-    pub fn link_pattern(&mut self, syntax: &PatternDeclaration) -> Result<Rc<Pattern>, LinkError> {
+    pub fn link_trait_statement(&mut self, statement: &'a abstract_syntax::TraitStatement, trait_: &mut Trait, requirements: &HashSet<Rc<TraitBinding>>) -> Result<(), LinkError> {
+        match statement {
+            abstract_syntax::TraitStatement::FunctionDeclaration(syntax) => {
+                let scope = &self.global_variables;
+                let fun = link_function_pointer(&syntax, &scope, requirements)?;
+                if !syntax.body.is_none() {
+                    return Err(LinkError::LinkError { msg: format!("Abstract function {} cannot have a body.", fun.name) });
+                };
+
+                trait_.abstract_functions.insert(fun);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn link_pattern(&mut self, syntax: &abstract_syntax::PatternDeclaration) -> Result<Rc<Pattern>, LinkError> {
         let precedence_group = self.global_variables.resolve_precedence_group(&syntax.precedence);
 
         Ok(Rc::new(Pattern {
