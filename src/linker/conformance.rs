@@ -6,14 +6,11 @@ use crate::generic_unfolding::map_interface_types;
 use crate::linker::{LinkError, scopes};
 use crate::linker::global::FunctionWithoutBody;
 use crate::linker::interface::link_function_pointer;
-use crate::linker::scopes::Scope;
 use crate::parser::abstract_syntax;
-use crate::program::allocation::ObjectReference;
 use crate::program::builtins::Builtins;
-use crate::program::functions::{Function, FunctionCallType, FunctionForm, FunctionPointer};
+use crate::program::functions::{Function, FunctionPointer};
 use crate::program::module::Module;
-use crate::program::traits::{Trait, TraitBinding};
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::traits::TraitBinding;
 
 pub struct ConformanceLinker<'a> {
     pub binding: Rc<TraitBinding>,
@@ -51,7 +48,7 @@ impl <'a> ConformanceLinker<'a> {
         let mut unmatched_implementations = self.functions.iter().map(|f| Rc::clone(&f.pointer)).collect_vec();
 
         for abstract_function in self.binding.trait_.abstract_functions.iter() {
-            let expected_interface = Rc::new(map_interface_types(&abstract_function.target.interface, &|type_| type_.replacing_any(&self.binding.generic_to_type)));
+            let expected_interface = Rc::new(map_interface_types(&abstract_function.target.interface, &|type_| type_.replacing_generics(&self.binding.generic_to_type)));
             let mut expected_pointer = Rc::new(FunctionPointer {
                 pointer_id: Default::default(),
                 target: Rc::new(Function { function_id: Default::default(), interface: expected_interface }),

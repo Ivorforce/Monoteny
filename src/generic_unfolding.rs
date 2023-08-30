@@ -26,27 +26,27 @@ impl FunctionUnfolder {
         }
     }
 
-    pub fn unfold_anonymous(&mut self, fun: &FunctionImplementation, function_binding: &Rc<FunctionBinding>, should_unfold: &dyn Fn(&Rc<FunctionBinding>) -> bool) -> Rc<FunctionImplementation> {
+    pub fn unfold_anonymous(&mut self, implementation: &FunctionImplementation, function_binding: &Rc<FunctionBinding>, should_unfold: &dyn Fn(&Rc<FunctionBinding>) -> bool) -> Rc<FunctionImplementation> {
         // Map types.
-        let mut type_forest = fun.type_forest.clone();
+        let mut type_forest = implementation.type_forest.clone();
 
-        let any_replacement_map = &function_binding.requirements_fulfillment.any_mapping;
+        let generic_replacement_map = &function_binding.requirements_fulfillment.generic_mapping;
 
         // Change Anys to Generics in the type forest.
-        type_forest.bind_any_as_generic(any_replacement_map).unwrap();
+        type_forest.bind_any_as_generic(generic_replacement_map).unwrap();
 
         let mut expression_forest = Box::new(ExpressionForest::new());
 
         // Map variables.
         // TODO Some could just map Any -> Generic, but some are parameter variables. Those must expose the full type properly.
-        let variable_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = fun.variable_names.keys()
+        let variable_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = implementation.variable_names.keys()
             .map(|v| {
-                (Rc::clone(v), map_variable(v, &any_replacement_map))
+                (Rc::clone(v), map_variable(v, &generic_replacement_map))
             })
             .collect();
 
         // Map statements. Expressions are mapped elsewhere, so this should be easy.
-        let statements = fun.statements.iter().map(|x| {
+        let statements = implementation.statements.iter().map(|x| {
             Box::new(match x.as_ref() {
                 Statement::VariableAssignment(v, e) => {
                     Statement::VariableAssignment(Rc::clone(&variable_map[v]), e.clone())
@@ -56,16 +56,16 @@ impl FunctionUnfolder {
         }).collect_vec();
 
         let mut function_replacement_map = HashMap::new();
-        for (binding, function_resolution) in fun.requirements_assumption.conformance.iter() {
+        for (binding, function_resolution) in implementation.requirements_assumption.conformance.iter() {
             for (abstract_fun, fun_placement) in function_resolution.iter() {
-                let binds = &function_binding.requirements_fulfillment.conformance[binding];
+                let binds = &function_binding.requirements_fulfillment.conformance[&binding.mapping_types(&|type_| type_.unfreezing_any_to_generics())];
                 let replacement = &binds[abstract_fun];
                 function_replacement_map.insert(Rc::clone(fun_placement), Rc::clone(replacement));
             }
         }
 
         // Find function calls in the expression forest
-        for (expression_id, operation) in fun.expression_forest.operations.iter() {
+        for (expression_id, operation) in implementation.expression_forest.operations.iter() {
             expression_forest.operations.insert(expression_id.clone(), match operation {
                 ExpressionOperation::FunctionCall(call) => {
                     let replaced_pointer = function_replacement_map.get(&call.pointer).unwrap_or(&call.pointer);
@@ -76,7 +76,7 @@ impl FunctionUnfolder {
                             Entry::Occupied(o) => Rc::clone(o.get()),
                             Entry::Vacant(v) => {
                                 self.new_mappable_calls.push(Rc::clone(&replaced_call));
-                                Rc::clone(v.insert(map_call(&replaced_call, &any_replacement_map, &function_replacement_map, &type_forest)))
+                                Rc::clone(v.insert(map_call(&replaced_call, &generic_replacement_map, &function_replacement_map, &type_forest)))
                             },
                         }
                     }
@@ -98,7 +98,7 @@ impl FunctionUnfolder {
                                         Entry::Occupied(o) => Rc::clone(o.get()),
                                         Entry::Vacant(v) => {
                                             self.new_mappable_calls.push(Rc::clone(&replaced_call));
-                                            Rc::clone(v.insert(map_call(&replaced_call, &any_replacement_map, &function_replacement_map, &type_forest)))
+                                            Rc::clone(v.insert(map_call(&replaced_call, &generic_replacement_map, &function_replacement_map, &type_forest)))
                                         },
                                     }
                                 }
@@ -117,26 +117,26 @@ impl FunctionUnfolder {
                 ExpressionOperation::StringLiteral(s) => ExpressionOperation::StringLiteral(s.clone()),
             });
         }
-        expression_forest.arguments = fun.expression_forest.arguments.clone();
+        expression_forest.arguments = implementation.expression_forest.arguments.clone();
 
         Rc::new(FunctionImplementation {
             implementation_id: Uuid::new_v4(),
             pointer: Rc::clone(&function_binding.pointer),  // Re-use premapped pointer
-            decorators: fun.decorators.clone(),
+            decorators: implementation.decorators.clone(),
             // TODO Is this correct? No assumptions?
             requirements_assumption: Box::new(RequirementsAssumption { conformance: Default::default() }),
             statements,
             expression_forest,
             type_forest,
-            parameter_variables: fun.parameter_variables.iter().map(|x| Rc::clone(&variable_map[x])).collect_vec(),
-            variable_names: fun.variable_names.clone(),  // Variables don't change with unfolding
+            parameter_variables: implementation.parameter_variables.iter().map(|x| Rc::clone(&variable_map[x])).collect_vec(),
+            variable_names: implementation.variable_names.clone(),  // Variables don't change with unfolding
         })
     }
 }
 
 pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
-    let any_replacement_map = call.requirements_fulfillment.any_mapping.iter().map(|(any_id, type_)| {
-        (*any_id, type_forest.resolve_type(type_).unwrap().replacing_any(replacement_map))
+    let generic_replacement_map = call.requirements_fulfillment.generic_mapping.iter().map(|(any_id, type_)| {
+        (*any_id, type_forest.resolve_type(type_).unwrap().replacing_anys(replacement_map))
     }).collect();
 
     Rc::new(FunctionBinding {
@@ -144,7 +144,7 @@ pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<
             pointer_id: Uuid::new_v4(),
             target: Rc::new(Function {
                 function_id: Uuid::new_v4(),
-                interface: Rc::new(map_interface_types(&call.pointer.target.interface, &|x| x.replacing_any(&any_replacement_map))),
+                interface: Rc::new(map_interface_types(&call.pointer.target.interface, &|x| x.replacing_generics(&generic_replacement_map))),
             }),
             // We're now a static call! (as long as the binding was complete)
             call_type: FunctionCallType::Static,
@@ -163,7 +163,7 @@ pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<
                     )
                 })
                 .collect(),
-            any_mapping: any_replacement_map,
+            generic_mapping: generic_replacement_map,
         }),
     })
 }
@@ -171,7 +171,7 @@ pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<
 pub fn map_variable(variable: &ObjectReference, type_replacement_map: &HashMap<Uuid, Box<TypeProto>>) -> Rc<ObjectReference> {
     Rc::new(ObjectReference {
         id: variable.id.clone(),
-        type_: variable.type_.replacing_any(type_replacement_map),
+        type_: variable.type_.replacing_anys(type_replacement_map),
         mutability: variable.mutability.clone(),
     })
 }

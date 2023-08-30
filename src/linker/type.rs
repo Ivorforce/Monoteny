@@ -38,8 +38,7 @@ impl <'a> TypeFactory<'a> {
     }
 
     fn register_generic(&mut self, name: &String, id: Uuid) -> &TypeUnit {
-        // TODO When in functions, insert Generics instead? Or generify after typing?
-        self.generics.insert(name.clone(), TypeUnit::Any(id));
+        self.generics.insert(name.clone(), TypeUnit::Generic(id));
         self.generics.get(name).unwrap()
     }
 

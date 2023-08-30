@@ -24,39 +24,39 @@ impl Display for AmbiguousNumberLiteral {
 
 impl LinkerAmbiguity for AmbiguousNumberLiteral {
     fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<bool, LinkError> {
-        match linker.types.resolve_binding_alias(&self.expression_id) {
-            Err(_) => Ok(false),  // Not done yet
-            Ok(type_) => {
-                let literal_expression_id = linker.register_new_expression(vec![]);
-                linker.expressions.operations.insert(
-                    literal_expression_id.clone(),
-                    ExpressionOperation::StringLiteral(self.value.clone())
-                );
-                linker.types.bind(literal_expression_id.clone(), TypeProto::unit(TypeUnit::Struct(Rc::clone(&linker.builtins.core.traits.String))).as_ref())?;
-
-                let trait_ = Rc::clone(if self.is_float { &linker.builtins.core.traits.ConstructableByFloatLiteral } else { &linker.builtins.core.traits.ConstructableByIntLiteral });
-                let requirement = trait_.create_generic_binding(vec![(&"self".into(), type_.clone())]);
-                let function_resolution = self.traits.satisfy_requirement(&requirement, &linker.types)?;
-                let parse_function = &function_resolution[
-                    if self.is_float { &linker.builtins.core.traits.parse_float_literal_function }
-                    else { &linker.builtins.core.traits.parse_int_literal_function }
-                ];
-
-                linker.expressions.arguments.insert(self.expression_id.clone(), vec![literal_expression_id]);
-                linker.expressions.operations.insert(
-                    self.expression_id.clone(),
-                    ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
-                        pointer: Rc::clone(parse_function),
-                        requirements_fulfillment: Box::new(RequirementsFulfillment {
-                            conformance: HashMap::from([(requirement, function_resolution)]),
-                            any_mapping: HashMap::from([(trait_.generics["self"], type_.clone())])
-                        } )
-                    }))
-                );
-                linker.types.bind(self.expression_id.clone(), type_.as_ref())?;
-
-                Ok(true)
-            }
+        let type_ = linker.types.resolve_binding_alias(&self.expression_id)?;
+        if TypeProto::contains_generics([&type_].into_iter()) {
+            return Ok(false)  // Yet ambiguous
         }
+
+        let literal_expression_id = linker.register_new_expression(vec![]);
+        linker.expressions.operations.insert(
+            literal_expression_id.clone(),
+            ExpressionOperation::StringLiteral(self.value.clone())
+        );
+        linker.types.bind(literal_expression_id.clone(), TypeProto::unit(TypeUnit::Struct(Rc::clone(&linker.builtins.core.traits.String))).as_ref())?;
+
+        let trait_ = Rc::clone(if self.is_float { &linker.builtins.core.traits.ConstructableByFloatLiteral } else { &linker.builtins.core.traits.ConstructableByIntLiteral });
+        let requirement = trait_.create_generic_binding(vec![(&"self".into(), type_.clone())]);
+        let function_resolution = self.traits.satisfy_requirement(&requirement, &linker.types)?;
+        let parse_function = &function_resolution[
+            if self.is_float { &linker.builtins.core.traits.parse_float_literal_function }
+            else { &linker.builtins.core.traits.parse_int_literal_function }
+        ];
+
+        linker.expressions.arguments.insert(self.expression_id.clone(), vec![literal_expression_id]);
+        linker.expressions.operations.insert(
+            self.expression_id.clone(),
+            ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
+                pointer: Rc::clone(parse_function),
+                requirements_fulfillment: Box::new(RequirementsFulfillment {
+                    conformance: HashMap::from([(requirement, function_resolution)]),
+                    generic_mapping: HashMap::from([(trait_.generics["self"], type_.clone())])
+                } )
+            }))
+        );
+        linker.types.bind(self.expression_id.clone(), type_.as_ref())?;
+
+        Ok(true)
     }
 }

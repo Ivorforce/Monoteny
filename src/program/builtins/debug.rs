@@ -14,7 +14,7 @@ pub fn create() -> Debug {
     let mut module = Module::new("monoteny.debug".into());
 
     let generic_id = Uuid::new_v4();
-    let generic_type = TypeProto::unit(TypeUnit::Any(generic_id));
+    let generic_type = TypeProto::unit(TypeUnit::Generic(generic_id));
 
     let print_function = Rc::new(FunctionPointer {
         pointer_id: Uuid::new_v4(),

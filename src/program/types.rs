@@ -82,10 +82,6 @@ impl Debug for TypeUnit {
 }
 
 impl TypeProto {
-    pub fn make_any() -> Box<TypeProto> {
-        TypeProto::unit(TypeUnit::Any(Uuid::new_v4()))
-    }
-
     pub fn void() -> Box<TypeProto> {
         TypeProto::unit(TypeUnit::Void)
     }
@@ -113,51 +109,87 @@ impl TypeProto {
         Uuid::from_u128(lhs.as_u128() ^ rhs.as_u128())
     }
 
-    pub fn with_any_as_generic(&self, seed: &Uuid) -> Box<TypeProto> {
+    pub fn freezing_generics_to_any(&self) -> Box<TypeProto> {
         Box::new(TypeProto {
             unit: match &self.unit {
-                TypeUnit::Any(id) => TypeUnit::Generic(TypeProto::bitxor(seed, id)),
+                TypeUnit::Generic(id) => TypeUnit::Any(*id),
                 _ => self.unit.clone(),
             },
-            arguments: self.arguments.iter().map(|x| x.with_any_as_generic(seed)).collect()
+            arguments: self.arguments.iter().map(|x| x.freezing_generics_to_any()).collect()
         })
     }
 
-    pub fn with_generic_as_any(&self, seed: &Uuid) -> Box<TypeProto> {
+    pub fn unfreezing_any_to_generics(&self) -> Box<TypeProto> {
         Box::new(TypeProto {
             unit: match &self.unit {
-                TypeUnit::Generic(id) => TypeUnit::Any(TypeProto::bitxor(seed, id)),
+                TypeUnit::Any(id) => TypeUnit::Generic(*id),
                 _ => self.unit.clone(),
             },
-            arguments: self.arguments.iter().map(|x| x.with_generic_as_any(seed)).collect()
+            arguments: self.arguments.iter().map(|x| x.unfreezing_any_to_generics()).collect()
         })
     }
 
-    pub fn replacing_any(&self, map: &HashMap<Uuid, Box<TypeProto>>) -> Box<TypeProto> {
+    pub fn seeding_generics(&self, seed: &Uuid) -> Box<TypeProto> {
+        Box::new(TypeProto {
+            unit: match &self.unit {
+                TypeUnit::Generic(id) => TypeUnit::Generic(TypeProto::bitxor(seed, id)),
+                _ => self.unit.clone(),
+            },
+            arguments: self.arguments.iter().map(|x| x.seeding_generics(seed)).collect()
+        })
+    }
+
+    pub fn replacing_generics(&self, map: &HashMap<Uuid, Box<TypeProto>>) -> Box<TypeProto> {
+        match &self.unit {
+            TypeUnit::Generic(id) => map.get(id)
+                .map(|x| x.clone())
+                .unwrap_or_else(|| Box::new(self.clone())),
+            _ => Box::new(TypeProto {
+                unit: self.unit.clone(),
+                arguments: self.arguments.iter().map(|x| x.replacing_generics(map)).collect()
+            }),
+        }
+    }
+
+    pub fn replacing_anys(&self, map: &HashMap<Uuid, Box<TypeProto>>) -> Box<TypeProto> {
         match &self.unit {
             TypeUnit::Any(id) => map.get(id)
                 .map(|x| x.clone())
                 .unwrap_or_else(|| Box::new(self.clone())),
             _ => Box::new(TypeProto {
                 unit: self.unit.clone(),
-                arguments: self.arguments.iter().map(|x| x.replacing_any(map)).collect()
+                arguments: self.arguments.iter().map(|x| x.replacing_generics(map)).collect()
             }),
         }
     }
 
-    pub fn collect_anys<'a, C>(collection: C) -> HashSet<Uuid> where C: Iterator<Item=&'a Box<TypeProto>> {
+    pub fn collect_generics<'a, C>(collection: C) -> HashSet<Uuid> where C: Iterator<Item=&'a Box<TypeProto>> {
         let mut anys = HashSet::new();
         let mut todo = collection.collect_vec();
 
         while let Some(next) = todo.pop() {
             match &next.unit {
-                TypeUnit::Any(id) => { anys.insert(*id); },
+                TypeUnit::Generic(id) => { anys.insert(*id); },
                 _ => {}
             };
             todo.extend(&next.arguments);
         }
 
         anys
+    }
+
+    pub fn contains_generics<'a, C>(collection: C) -> bool where C: Iterator<Item=&'a Box<TypeProto>> {
+        let mut todo = collection.collect_vec();
+
+        while let Some(next) = todo.pop() {
+            match &next.unit {
+                TypeUnit::Generic(_) => { return true },
+                _ => {}
+            };
+            todo.extend(&next.arguments);
+        }
+
+        return false
     }
 }
 

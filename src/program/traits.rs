@@ -55,7 +55,7 @@ pub struct RequirementsAssumption {
 #[derive(Clone, Eq, PartialEq)]
 pub struct RequirementsFulfillment {
     pub conformance: HashMap<Rc<TraitBinding>, HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>>,
-    pub any_mapping: HashMap<Uuid, Box<TypeProto>>,
+    pub generic_mapping: HashMap<Uuid, Box<TypeProto>>,
 }
 
 impl TraitGraph {
@@ -86,7 +86,7 @@ impl TraitGraph {
             let resolved_requirement = Rc::new(TraitBinding {
                 trait_: Rc::clone(&requirement.trait_),
                 generic_to_type: requirement.generic_to_type.iter()
-                    .map(|(key, value)| (*key, value.replacing_any(&conformance.generic_to_type)))
+                    .map(|(key, value)| (*key, value.replacing_generics(&conformance.generic_to_type)))
                     .collect(),
             });
             if !self.declarations.get(&resolved_requirement.trait_).unwrap_or(&Default::default()).contains_key(&resolved_requirement) {
@@ -135,7 +135,7 @@ impl TraitGraph {
     pub fn add_simple_parent_requirement(&mut self, sub_trait: &Rc<Trait>, parent_trait: &Rc<Trait>) {
         self.add_requirement(
             Rc::clone(sub_trait),
-            parent_trait.create_generic_binding(vec![(&"self".into(), sub_trait.create_any_type(&"self".into()))])
+            parent_trait.create_generic_binding(vec![(&"self".into(), sub_trait.create_generic_type(&"self".into()))])
         );
     }
 
@@ -147,12 +147,10 @@ impl TraitGraph {
         });
 
         // We resolve this binding because it might contain generics.
-        let resolved_binding = TraitBinding {
-            trait_: Rc::clone(&requirement.trait_),
-            generic_to_type: requirement.generic_to_type.iter()
-                .map(|(generic_id, type_)| Ok((*generic_id, mapping.resolve_type(type_)?)))
-                .try_collect()?,
-        };
+        let resolved_binding = requirement.try_mapping_types(&|type_| mapping.resolve_type(type_))?;
+        if !resolved_binding.collect_generics().is_empty() {
+            return Err(LinkError::Ambiguous);
+        }
 
         if let Some(declaration) = relevant_declarations.get(&resolved_binding) {
             // The trait is declared explicitly!
@@ -172,7 +170,7 @@ impl TraitGraph {
                 rest.extend(
                     self.requirements.get(&binding.trait_)
                         .unwrap_or(&Default::default()).iter()
-                        .map(|x| x.mapping_types(&|type_| type_.replacing_any(&binding.generic_to_type))))
+                        .map(|x| x.mapping_types(&|type_| type_.replacing_generics(&binding.generic_to_type))))
             }
         }
         ordered.reverse();
@@ -186,26 +184,23 @@ impl TraitGraph {
         for trait_binding in deep_requirements.iter() {
             let mut binding_resolution = HashMap::new();
 
-            // Add requirement's implied abstract functions to scope
             for abstract_fun in trait_binding.trait_.abstract_functions.iter() {
-                // TODO Re-use existing functions, otherwise we'll have clashes in the scope
                 let mapped_pointer = Rc::new(FunctionPointer {
                     pointer_id: Uuid::new_v4(),
-                    call_type: FunctionCallType::Polymorphic { requirement: Rc::clone(&trait_binding), abstract_function: Rc::clone(abstract_fun) },
+                    call_type: FunctionCallType::Polymorphic {
+                        requirement: Rc::clone(&trait_binding),
+                        abstract_function: Rc::clone(abstract_fun)
+                    },
                     name: abstract_fun.name.clone(),
                     form: abstract_fun.form.clone(),
                     target: Function::new(Rc::new(FunctionInterface {
                         parameters: abstract_fun.target.interface.parameters.iter().map(|x| {
-                            Parameter {
-                                external_key: x.external_key.clone(),
-                                internal_name: x.internal_name.clone(),
-                                type_: x.type_.replacing_any(&&trait_binding.generic_to_type),
-                            }
+                            x.mapping_type(&|type_| type_.replacing_generics(&trait_binding.generic_to_type))
                         }).collect(),
-                        return_type: abstract_fun.target.interface.return_type.replacing_any(&&trait_binding.generic_to_type),
-                        // Note: abstract functions will never have requirements, because abstract functions are not allowed
-                        // any requirements beyond what the trait requires.
-                        requirements: Default::default(),
+                        return_type: abstract_fun.target.interface.return_type.replacing_generics(&trait_binding.generic_to_type),
+                        requirements: abstract_fun.target.interface.requirements.iter().map(|req| {
+                            req.mapping_types(&|type_| type_.replacing_generics(&trait_binding.generic_to_type))
+                        }).collect(),
                     })),
                 });
 
@@ -232,8 +227,8 @@ impl Trait {
         }
     }
 
-    pub fn create_any_type(self: &Trait, generic_name: &String) -> Box<TypeProto> {
-        TypeProto::unit(TypeUnit::Any(self.generics[generic_name]))
+    pub fn create_generic_type(self: &Trait, generic_name: &String) -> Box<TypeProto> {
+        TypeProto::unit(TypeUnit::Generic(self.generics[generic_name]))
     }
 
     pub fn create_generic_binding(self: &Rc<Trait>, generic_to_type: Vec<(&String, Box<TypeProto>)>) -> Rc<TraitBinding> {
@@ -254,13 +249,24 @@ impl TraitBinding {
             generic_to_type: self.generic_to_type.iter().map(|(generic_id, type_) | (*generic_id, map(type_))).collect()
         })
     }
+
+    pub fn try_mapping_types<B>(&self, map: &dyn Fn(&Box<TypeProto>) -> Result<Box<TypeProto>, B>) -> Result<Rc<TraitBinding>, B> {
+        Ok(Rc::new(TraitBinding {
+            trait_: Rc::clone(&self.trait_),
+            generic_to_type: self.generic_to_type.iter().map(|(generic_id, type_) | Ok((*generic_id, map(type_)?))).try_collect()?
+        }))
+    }
+
+    pub fn collect_generics(&self) -> HashSet<GenericAlias> {
+        TypeProto::collect_generics(self.generic_to_type.values())
+    }
 }
 
 impl RequirementsFulfillment {
     pub fn empty() -> Box<RequirementsFulfillment> {
         Box::new(RequirementsFulfillment {
             conformance: Default::default(),
-            any_mapping: Default::default(),
+            generic_mapping: Default::default(),
         })
     }
 }
@@ -308,7 +314,7 @@ impl Hash for RequirementsFulfillment {
             }
         }
 
-        for (id, type_) in self.any_mapping.iter().sorted_by_key(|(id, type_)| *id) {
+        for (id, type_) in self.generic_mapping.iter().sorted_by_key(|(id, type_)| *id) {
             id.hash(state);
             type_.hash(state);
         }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Pointer};
 use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
@@ -43,19 +44,21 @@ impl AmbiguousFunctionCall {
         types.bind(self.expression_id.clone(), &candidate.return_type)?;
 
         // Currently, our resolution is just pointing to generics. But that's good enough!
-        let mut resolution = Box::new(RequirementsFulfillment {
-            any_mapping: candidate.function.target.interface.collect_anys().iter().map(|id| {
-                (*id, TypeProto::unit(TypeUnit::Generic(TypeProto::bitxor(id, &self.seed))))
-            }).collect(),
-            conformance: Default::default()
-        });
+        let mut conformance = HashMap::new();
+        // TODO We should only use deep requirements once we actually use this candidate.
+        //  The deep ones are guaranteed to exist if the original requirements can be satisfied.
         for requirement in self.traits.gather_deep_requirements(candidate.requirements.clone().into_iter()).iter() {
             let function_binding = self.traits
                 .satisfy_requirement(requirement, &types)?;
-            resolution.conformance.insert(requirement.mapping_types(&|x| x.with_generic_as_any(&self.seed)), function_binding);
+            conformance.insert(requirement.mapping_types(&|x| x.seeding_generics(&self.seed)), function_binding);
         }
 
-        Ok(resolution)
+        Ok(Box::new(RequirementsFulfillment {
+            generic_mapping: candidate.function.target.interface.collect_generics().iter().map(|id| {
+                (*id, TypeProto::unit(TypeUnit::Generic(TypeProto::bitxor(id, &self.seed))))
+            }).collect(),
+            conformance
+        }))
     }
 }
 

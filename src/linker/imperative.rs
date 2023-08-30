@@ -46,7 +46,10 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_function_body(mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Rc<FunctionImplementation>, LinkError> {
         let mut scope = scope.subscope();
 
-        let granted_requirements = scope.traits.assume_granted(self.function.target.interface.requirements.iter().map(Rc::clone));
+        let granted_requirements = scope.traits.assume_granted(
+            self.function.target.interface.requirements.iter()
+                .map(|req| req.mapping_types(&|x| x.freezing_generics_to_any()))
+        );
 
         // Let our scope know that our parameter types (all of type any!) conform to the requirements
         for (binding, function_binding) in granted_requirements.iter() {
@@ -63,11 +66,12 @@ impl <'a> ImperativeLinker<'a> {
             }
         }
 
-        // TODO Register generics as variables so they can be referenced in the function
+        // TODO Register generic types as variables so they can be referenced in the function
 
+        // Register parameters as variables.
         let mut parameter_variables = vec![];
         for parameter in self.function.target.interface.parameters.iter() {
-            let parameter_variable = ObjectReference::new_immutable(parameter.type_.clone());
+            let parameter_variable = ObjectReference::new_immutable(parameter.type_.freezing_generics_to_any().clone());
             self.variable_names.insert(Rc::clone(&parameter_variable), parameter.internal_name.clone());
             scope.insert_singleton(
                 scopes::Environment::Global,
@@ -215,8 +219,8 @@ impl <'a> ImperativeLinker<'a> {
                         }
 
                         let result: ExpressionID = self.link_expression(expression.as_ref(), &scope)?;
+                        self.types.bind(result, &self.function.target.interface.return_type.freezing_generics_to_any().as_ref())?;
 
-                        self.types.bind(result, &self.function.target.interface.return_type.as_ref())?;
                         statements.push(Box::new(Statement::Return(Some(result))));
                     }
                     else {
@@ -386,10 +390,10 @@ impl <'a> ImperativeLinker<'a> {
 
             candidates.push(Box::new(AmbiguousFunctionCandidate {
                 param_types: fun.target.interface.parameters.iter()
-                    .map(|x| x.type_.with_any_as_generic(&seed))
+                    .map(|x| x.type_.seeding_generics(&seed))
                     .collect(),
-                return_type: fun.target.interface.return_type.with_any_as_generic(&seed),
-                requirements: fun.target.interface.requirements.iter().map(|x| x.mapping_types(&|type_| type_.with_any_as_generic(&seed))).collect(),
+                return_type: fun.target.interface.return_type.seeding_generics(&seed),
+                requirements: fun.target.interface.requirements.iter().map(|x| x.mapping_types(&|type_| type_.seeding_generics(&seed))).collect(),
                 function: fun,
             }));
         }

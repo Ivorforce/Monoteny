@@ -66,7 +66,7 @@ impl TypeForest {
         });
 
         guard!(let Some(binding) = self.identity_to_type.get(identity) else {
-            return Err(LinkError::Ambiguous)
+            return Ok(Box::new(*TypeProto::unit(TypeUnit::Generic(*alias))))
         });
 
         return Ok(Box::new(TypeProto {
@@ -135,7 +135,7 @@ impl TypeForest {
             }
         }
         for (other_identity, target_identity) in replace_map {
-            self.replace_identity(other_identity, target_identity);
+            self.relink_identity(other_identity, target_identity);
         }
 
         Ok(())
@@ -151,8 +151,6 @@ impl TypeForest {
         let new = Uuid::new_v4();
         self.alias_to_identity.insert(alias, new.clone());
         self.identity_to_alias.insert(new.clone(), HashSet::from([alias.clone()]));
-        // Generics have no arguments
-        self.identity_to_arguments.insert(new.clone(), vec![]);
         return new
     }
 
@@ -212,6 +210,9 @@ impl TypeForest {
     }
 
     fn merge_identities(&mut self, lhs: GenericIdentity, rhs: GenericIdentity) -> Result<GenericIdentity, LinkError> {
+        // Merge rhs aliases / arguments into lhs
+        self.relink_identity(rhs, lhs);
+
         // Merge types
         // TODO This might be faster if we first check whether it's better to merge into lhs or into rhs.
         match (self.identity_to_type.remove(&lhs), self.identity_to_type.remove(&rhs)) {
@@ -220,35 +221,34 @@ impl TypeForest {
                     return Err(LinkError::LinkError { msg: format!("Cannot merge types: {:?} and {:?}", lhs_type, rhs_type) })
                 }
                 self.identity_to_type.insert(lhs.clone(), lhs_type);
+
+                let lhs_args: Vec<GenericIdentity> = self.identity_to_arguments.get(&lhs).unwrap().iter().map(Clone::clone).collect();
+
+                // TODO This might fall into a trap of recursion circles
+                // Merge arguments
+                for (arg, r_arg) in zip_eq(
+                    lhs_args,
+                    self.identity_to_arguments.remove(&rhs).unwrap()
+                ) {
+                    self.merge_identities(arg, r_arg)?;
+                }
             }
             (Some(lhs_type), None) => {
                 self.identity_to_type.insert(lhs.clone(), lhs_type);
             }
             (None, Some(rhs_type)) => {
                 self.identity_to_type.insert(lhs.clone(), rhs_type);
+                let rhs_args = self.identity_to_arguments.remove(&rhs).unwrap();
+                self.identity_to_arguments.insert(lhs, rhs_args);
             }
             (None, None) => {}  // Nothing to bind
         }
 
-        // Merge rhs aliases / arguments into lhs
-        self.replace_identity(rhs, lhs);
-
-        // TODO This might fall into a trap of recursion circles
-
-        let lhs_args: Vec<GenericIdentity> = self.identity_to_arguments.get(&lhs).unwrap().iter().map(Clone::clone).collect();
-
-        // Merge arguments
-        for (arg, r_arg) in zip_eq(
-            lhs_args,
-            self.identity_to_arguments.remove(&rhs).unwrap()
-        ) {
-            self.merge_identities(arg, r_arg)?;
-        }
 
         Ok(lhs)
     }
 
-    fn replace_identity(&mut self, source: GenericIdentity, target: GenericIdentity) {
+    fn relink_identity(&mut self, source: GenericIdentity, target: GenericIdentity) {
         // TODO This is pretty naive; maybe we also want a reverse map here too?
         for args in self.identity_to_arguments.values_mut() {
             if args.contains(&source) {

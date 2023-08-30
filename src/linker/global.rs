@@ -105,8 +105,8 @@ impl <'a> GlobalLinker<'a> {
             abstract_syntax::GlobalStatement::Trait(syntax) => {
                 let mut trait_ = Trait::new(syntax.name.clone());
 
-                let self_type = trait_.create_any_type(&"self".into());
-                let self_type_reference = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(self_type))));
+                let self_type = trait_.create_generic_type(&"self".into());
+                let self_type_reference = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(self_type.clone()))));
 
                 let mut scope = self.global_variables.subscope();
                 scope.insert_singleton(Environment::Global, self_type_reference, &"Self".into());
@@ -133,19 +133,20 @@ impl <'a> GlobalLinker<'a> {
                 let target = self.global_variables.resolve(Environment::Global, &syntax.target).unwrap().as_trait().unwrap();
                 let trait_ = self.global_variables.resolve(Environment::Global, &syntax.trait_).unwrap().as_trait().unwrap();
 
-                let self_type = target.create_any_type(&"self".into());
+                let self_type = target.create_generic_type(&"self".into());
                 let self_type_reference = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(self_type.clone()))));
+                let self_binding = trait_.create_generic_binding(vec![(&"self".into(), self_type)]);
 
                 let mut scope = self.global_variables.subscope();
                 scope.insert_singleton(Environment::Global, self_type_reference, &"Self".into());
 
                 let mut linker = ConformanceLinker {
-                    binding: trait_.create_generic_binding(vec![(&"self".into(), self_type)]),
+                    binding: self_binding,
                     builtins: self.builtins,
                     functions: vec![],
                 };
                 for statement in syntax.statements.iter() {
-                    linker.link_statement(statement, requirements, &scope)?;
+                    linker.link_statement(statement, &requirements, &scope)?;
                 }
 
                 // TODO To be order independent, we should finalize after sorting...

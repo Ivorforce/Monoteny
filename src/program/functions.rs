@@ -122,8 +122,8 @@ impl FunctionInterface {
         })
     }
 
-    pub fn collect_anys(&self) -> HashSet<Uuid> {
-        TypeProto::collect_anys(self.parameters.iter().map(|x| &x.type_).chain([&self.return_type]))
+    pub fn collect_generics(&self) -> HashSet<Uuid> {
+        TypeProto::collect_generics(self.parameters.iter().map(|x| &x.type_).chain([&self.return_type]))
     }
 }
 
@@ -213,6 +213,16 @@ impl FunctionOverload {
             TypeUnit::Function(f) => Rc::clone(f),
             _ => panic!("Function overload has a non-function!")
         }).collect()
+    }
+}
+
+impl Parameter {
+    pub fn mapping_type(&self,  map: &dyn Fn(&Box<TypeProto>) -> Box<TypeProto>) -> Parameter {
+        Parameter {
+            external_key: self.external_key.clone(),
+            internal_name: self.internal_name.clone(),
+            type_: map(&self.type_),
+        }
     }
 }
 

@@ -24,7 +24,6 @@ use crate::program::global::{FunctionImplementation};
 use crate::program::traits::{RequirementsFulfillment, TraitBinding};
 use crate::program::types::TypeUnit;
 use crate::transpiler::namespaces;
-use crate::transpiler::python::docstrings::transpile_type;
 
 pub struct TranspilerContext<'a> {
     names: &'a HashMap<Uuid, String>,

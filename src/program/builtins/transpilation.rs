@@ -18,7 +18,7 @@ pub struct Transpilation {
 pub fn create(core: &Core) -> Transpilation {
     let mut module = Module::new("monoteny.transpiler".into());
 
-    let any_type = TypeProto::unit(TypeUnit::Any(Uuid::new_v4()));
+    let any_type = TypeProto::unit(TypeUnit::Generic(Uuid::new_v4()));
 
     let mut Transpiler = Trait::new("Transpiler".into());
     let Transpiler = Rc::new(Transpiler);
