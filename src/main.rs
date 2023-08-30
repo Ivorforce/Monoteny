@@ -42,7 +42,7 @@ fn cli() -> Command<'static> {
                 .about("Transpile a file into another language.")
                 .arg_required_else_help(true)
                 .arg(arg!(<INPUT> "file to transpile").value_parser(clap::value_parser!(PathBuf)).long("input").short('i'))
-                .arg(arg!(<OUTPUT> "output file path").value_parser(clap::value_parser!(PathBuf)).long("output").short('o'))
+                .arg(arg!(<OUTPUT> "output file path").required(false).value_parser(clap::value_parser!(PathBuf)).long("output").short('o'))
                 .arg(arg!(<ALL> "output using all available transpilers").required(false).takes_value(false).long("all"))
                 .arg(arg!(<NOFOLD> "don't use constant folding to shorten the code at compile time").required(false).takes_value(false).long("nofold"))
         )
@@ -95,7 +95,10 @@ fn main() -> Result<(), LinkError> {
         },
         Some(("transpile", sub_matches)) => {
             let input_path = sub_matches.get_one::<PathBuf>("INPUT").unwrap();
-            let output_path = sub_matches.get_one::<PathBuf>("OUTPUT").unwrap();
+            let output_path = match sub_matches.contains_id("OUTPUT") {
+                true => sub_matches.get_one::<PathBuf>("OUTPUT").unwrap().clone(),
+                false => input_path.with_extension(""),
+            };
             let should_output_all = sub_matches.is_present("ALL");
             let should_constant_fold = !sub_matches.is_present("NOFOLD");
 
