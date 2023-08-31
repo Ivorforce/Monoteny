@@ -47,8 +47,7 @@ pub struct TraitConformance {
 /// It caches conformance for subtraits so that lookup is fast.
 #[derive(Clone, Eq, PartialEq)]
 pub struct TraitGraph {
-    /// For each trait, all of its declarations are listed here.
-    /// `mapped_function = map[trait][declaration][abstract_function]`
+    /// All known conformances.
     pub conformance: HashMap<Rc<TraitBinding>, Rc<TraitConformance>>,
     /// For each trait, what other traits does it require?
     /// This causes cascading requirements on functions etc.
