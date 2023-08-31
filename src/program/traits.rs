@@ -49,7 +49,7 @@ pub struct TraitConformance {
 pub struct TraitGraph {
     /// For each trait, all of its declarations are listed here.
     /// `mapped_function = map[trait][declaration][abstract_function]`
-    pub declarations: HashMap<Rc<Trait>, HashMap<Rc<TraitBinding>, Rc<TraitConformance>>>,
+    pub conformance: HashMap<Rc<TraitBinding>, Rc<TraitConformance>>,
     /// For each trait, what other traits does it require?
     /// This causes cascading requirements on functions etc.
     pub requirements: HashMap<Rc<Trait>, HashSet<Rc<TraitBinding>>>,
@@ -69,23 +69,14 @@ pub struct RequirementsFulfillment {
 impl TraitGraph {
     pub fn new() -> TraitGraph {
         TraitGraph {
-            declarations: Default::default(),
+            conformance: Default::default(),
             requirements: Default::default(),
         }
     }
 
     pub fn add_graph(&mut self, graph: &TraitGraph) {
-        for (trait_, declarations) in graph.declarations.iter() {
-            match self.declarations.entry(Rc::clone(trait_)) {
-                Entry::Occupied(o) => {
-                    o.into_mut().extend(declarations.clone());
-                }
-                Entry::Vacant(v) => {
-                    v.insert(declarations.clone());
-                }
-            }
-        }
-
+        // TODO Check for conflicting conformance
+        self.conformance.extend(graph.conformance.clone());
         self.requirements.extend(graph.requirements.clone())
     }
 
@@ -98,23 +89,12 @@ impl TraitGraph {
                     .map(|(key, value)| (*key, value.replacing_generics(&conformance.binding.generic_to_type)))
                     .collect(),
             });
-            if !self.declarations.get(&resolved_requirement.trait_).unwrap_or(&Default::default()).contains_key(&resolved_requirement) {
+            if !self.conformance.contains_key(&resolved_requirement) {
                 return Err(LinkError::LinkError { msg: String::from(format!("{:?} cannot be declared without first declaring its requirement: {:?}", conformance.binding, requirement)) });
             }
         }
 
-        match self.declarations.get_mut(&conformance.binding.trait_) {
-            None => {
-                // New entry
-                self.declarations.insert(Rc::clone(&conformance.binding.trait_), HashMap::from([
-                    (Rc::clone(&conformance.binding), conformance)
-                ]));
-            }
-            Some(map) => {
-                // Expand entry
-                map.insert(Rc::clone(&conformance.binding), conformance);
-            }
-        };
+        self.conformance.insert(Rc::clone(&conformance.binding), conformance);
 
         Ok(())
     }
@@ -153,22 +133,18 @@ impl TraitGraph {
     pub fn satisfy_requirement(&self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<Rc<TraitConformance>, LinkError> {
         // TODO What if requirement is e.g. Float<Float>? Is Float declared on itself?
 
-        guard!(let Some(relevant_declarations) = self.declarations.get(&requirement.trait_) else {
-            return Err(LinkError::LinkError { msg: String::from(format!("No declaration found for trait: {}", &requirement.trait_.name)) });
-        });
-
         // We resolve this binding because it might contain generics.
         let resolved_binding = requirement.try_mapping_types(&|type_| mapping.resolve_type(type_))?;
         if !resolved_binding.collect_generics().is_empty() {
             return Err(LinkError::Ambiguous);
         }
 
-        if let Some(declaration) = relevant_declarations.get(&resolved_binding) {
+        if let Some(declaration) = self.conformance.get(&resolved_binding) {
             // The trait is declared explicitly!
             return Ok(declaration.clone());
         }
 
-        println!("{:?}", self.declarations);
+        println!("{:?}", self.conformance);
         return Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding)) });
     }
 
