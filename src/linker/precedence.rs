@@ -81,7 +81,15 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                         tokens.remove(i - 1);
                     }
                     Some(Token::Expression(expression)) => {
-                        return Err(LinkError::LinkError { msg: String::from("Object calls are not yet supported.") })
+                        let overload = scope.resolve(Environment::Member, &"call_as_function".into())?.as_function_overload()?;
+                        tokens[i] = Token::Expression(linker.link_function_call(
+                            &overload.functions(),
+                            &overload.name,
+                            [&ParameterKey::Positional].into_iter().chain(keys).map(Clone::clone).collect(),
+                            [expression].into_iter().chain(values).map(Clone::clone).collect(),
+                            scope
+                        )?);
+                        tokens.remove(i - 1);
                     }
                     _ => {
                         if values.len() == 1 && keys.iter().next().unwrap() == &ParameterKey::Positional {
@@ -89,7 +97,6 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                         }
                         else {
                             return Err(LinkError::LinkError { msg: String ::from("Anonymous struct literals are not yet supported.") })
-
                         }
                     }
                 }

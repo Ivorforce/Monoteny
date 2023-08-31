@@ -117,7 +117,7 @@ NameValuePair: (ParameterKey, String) = {
 // =============================== Trait =====================================
 
 Trait: Box<TraitDefinition> = {
-    "trait" <name: Identifier> "{" <statements: (<GlobalStatement> ";")*> "}" => Box::new(TraitDefinition { <> }),
+    <decorators: Decorator*> "trait" <name: Identifier> "{" <statements: (<GlobalStatement> ";")*> "}" => Box::new(TraitDefinition { <> }),
 }
 
 Conformance: Box<TraitConformanceDeclaration> = {

@@ -10,7 +10,7 @@ use crate::parser::abstract_syntax;
 use crate::program::builtins::Builtins;
 use crate::program::functions::{Function, FunctionPointer};
 use crate::program::module::Module;
-use crate::program::traits::TraitBinding;
+use crate::program::traits::{TraitBinding, TraitConformance};
 
 pub struct ConformanceLinker<'a> {
     pub binding: Rc<TraitBinding>,
@@ -43,7 +43,7 @@ impl <'a> ConformanceLinker<'a> {
         Ok(())
     }
 
-    pub fn finalize(&self, module: &mut Module) -> Result<(), LinkError> {
+    pub fn finalize(&self, module: &mut Module, scope: &mut scopes::Scope) -> Result<(), LinkError> {
         let mut function_bindings = HashMap::new();
         let mut unmatched_implementations = self.functions.iter().map(|f| Rc::clone(&f.pointer)).collect_vec();
 
@@ -80,6 +80,8 @@ impl <'a> ConformanceLinker<'a> {
             return Err(LinkError::LinkError { msg: format!("Unrecognized functions for declaration {:?}: {:?}.", self.binding, unmatched_implementations) });
         }
 
-        module.trait_conformance.add_conformance(Rc::clone(&self.binding), function_bindings)
+        let conformance = TraitConformance::new(Rc::clone(&self.binding), function_bindings.clone());
+        module.trait_conformance.add_conformance(Rc::clone(&conformance))?;
+        scope.traits.add_conformance(conformance)
     }
 }

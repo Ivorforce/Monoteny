@@ -9,7 +9,7 @@ use crate::program::computation_tree::{ExpressionForest, ExpressionOperation, St
 use crate::program::functions::{Function, FunctionCallType, FunctionInterface, FunctionPointer, Parameter};
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
-use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment};
+use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, TraitConformance};
 use crate::program::types::{TypeProto, TypeUnit};
 
 
@@ -56,9 +56,9 @@ impl FunctionUnfolder {
         }).collect_vec();
 
         let mut function_replacement_map = HashMap::new();
-        for (binding, function_resolution) in implementation.requirements_assumption.conformance.iter() {
-            for (abstract_fun, fun_placement) in function_resolution.iter() {
-                let binds = &function_binding.requirements_fulfillment.conformance[&binding.mapping_types(&|type_| type_.unfreezing_any_to_generics())];
+        for conformance in implementation.requirements_assumption.conformance.values() {
+            for (abstract_fun, fun_placement) in conformance.function_mapping.iter() {
+                let binds = &function_binding.requirements_fulfillment.conformance[&conformance.binding.mapping_types(&|type_| type_.unfreezing_any_to_generics())].function_mapping;
                 let replacement = &binds[abstract_fun];
                 function_replacement_map.insert(Rc::clone(fun_placement), Rc::clone(replacement));
             }
@@ -153,14 +153,16 @@ pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<
         }),
         requirements_fulfillment: Box::new(RequirementsFulfillment {
             conformance: call.requirements_fulfillment.conformance.iter()
-                .map(|(key, mapping)| {
-                    (Rc::clone(key), mapping.iter()
-                        .map(
-                            |(abstract_fun, fulfillment_fun)|
-                            (Rc::clone(abstract_fun), Rc::clone(function_replacement_map.get(fulfillment_fun).unwrap_or_else(|| fulfillment_fun)))
-                        )
-                        .collect()
-                    )
+                .map(|(key, conformance)| {
+                    (Rc::clone(key), TraitConformance::new(
+                        Rc::clone(key),
+                        conformance.function_mapping.iter()
+                            .map(
+                                |(abstract_fun, fulfillment_fun)|
+                                (Rc::clone(abstract_fun), Rc::clone(function_replacement_map.get(fulfillment_fun).unwrap_or_else(|| fulfillment_fun)))
+                            )
+                            .collect()
+                    ))
                 })
                 .collect(),
             generic_mapping: generic_replacement_map,

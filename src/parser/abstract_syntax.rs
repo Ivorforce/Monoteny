@@ -69,6 +69,8 @@ pub struct PatternDeclaration {
 
 #[derive(Eq, PartialEq)]
 pub struct TraitDefinition {
+    pub decorators: Vec<String>,
+
     pub name: String,
     pub statements: Vec<Box<GlobalStatement>>,
 }

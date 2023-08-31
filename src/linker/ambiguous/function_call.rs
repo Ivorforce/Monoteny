@@ -20,6 +20,7 @@ pub struct AmbiguousFunctionCandidate {
     pub return_type: Box<TypeProto>,
     pub requirements: Vec<Rc<TraitBinding>>,
 }
+
 pub struct AmbiguousFunctionCall {
     pub seed: Uuid,
     pub expression_id: ExpressionID,

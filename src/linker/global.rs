@@ -11,9 +11,9 @@ use crate::linker::interface::{link_function_pointer, link_operator_pointer};
 use crate::linker::scopes::Environment;
 use crate::linker::traits::TraitLinker;
 use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
-use crate::program::traits::{Trait, TraitBinding};
+use crate::program::traits::{Trait, TraitBinding, TraitConformance};
 use crate::program::builtins::*;
-use crate::program::functions::FunctionPointer;
+use crate::program::functions::{Function, FunctionCallType, FunctionForm, FunctionInterface, FunctionPointer};
 use crate::program::generics::TypeForest;
 use crate::program::module::Module;
 use crate::program::types::*;
@@ -105,11 +105,12 @@ impl <'a> GlobalLinker<'a> {
             abstract_syntax::GlobalStatement::Trait(syntax) => {
                 let mut trait_ = Trait::new(syntax.name.clone());
 
-                let self_type = trait_.create_generic_type(&"self".into());
-                let self_type_reference = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(self_type.clone()))));
+                let generic_self_type = trait_.create_generic_type(&"self".into());
+                // TODO module.add_trait also adds a reference; should we use the same?
+                let generic_self_type_ref = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(generic_self_type.clone()))));
 
                 let mut scope = self.global_variables.subscope();
-                scope.insert_singleton(Environment::Global, self_type_reference, &"Self".into());
+                scope.insert_singleton(Environment::Global, generic_self_type_ref, &"Self".into());
 
                 let mut linker = TraitLinker {
                     trait_: &mut trait_,
@@ -120,25 +121,47 @@ impl <'a> GlobalLinker<'a> {
                 }
 
                 let trait_ = Rc::new(trait_);
-                let reference = self.module.add_trait(&trait_);
+                let meta_type_reference = self.module.add_trait(&trait_);
+
+                if syntax.decorators.contains(&"struct".into()) {
+                    if !trait_.abstract_functions.is_empty() {
+                        panic!("Abstract trait {} cannot be annotated with @struct", trait_.name);
+                    }
+
+                    let struct_type = TypeProto::unit(TypeUnit::Struct(Rc::clone(&trait_)));
+                    let conformance_binding = trait_.create_generic_binding(vec![(&"self".into(), struct_type.clone())]);
+
+                    let conformance = TraitConformance::pure(conformance_binding.clone());
+                    self.module.trait_conformance.add_conformance(Rc::clone(&conformance))?;
+                    self.global_variables.traits.add_conformance(conformance)?;
+
+                    let new_function = Rc::new(FunctionPointer {
+                        pointer_id: Uuid::new_v4(),
+                        target: Function::new(FunctionInterface::new_simple([TypeProto::meta(struct_type.clone())].into_iter(), struct_type)),
+                        call_type: FunctionCallType::Static,
+                        name: "call_as_function".into(),
+                        form: FunctionForm::Member,
+                    });
+                    self.module.add_function(&new_function);
+                    self.global_variables.overload_function(&new_function, &self.module.functions[&new_function])?;
+                }
 
                 self.global_variables.insert_singleton(
                     Environment::Global,
-                    Reference::make(ReferenceType::Object(reference)),
+                    Reference::make(ReferenceType::Object(meta_type_reference)),
                     &trait_.name.clone()
                 );
-
             }
             abstract_syntax::GlobalStatement::Conformance(syntax) => {
                 let target = self.global_variables.resolve(Environment::Global, &syntax.target).unwrap().as_trait().unwrap();
                 let trait_ = self.global_variables.resolve(Environment::Global, &syntax.trait_).unwrap().as_trait().unwrap();
 
-                let self_type = target.create_generic_type(&"self".into());
-                let self_type_reference = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(self_type.clone()))));
-                let self_binding = trait_.create_generic_binding(vec![(&"self".into(), self_type)]);
+                let generic_self_type = target.create_generic_type(&"self".into());
+                let generic_self_type_ref = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(generic_self_type.clone()))));
+                let self_binding = trait_.create_generic_binding(vec![(&"self".into(), generic_self_type)]);
 
                 let mut scope = self.global_variables.subscope();
-                scope.insert_singleton(Environment::Global, self_type_reference, &"Self".into());
+                scope.insert_singleton(Environment::Global, generic_self_type_ref, &"Self".into());
 
                 let mut linker = ConformanceLinker {
                     binding: self_binding,
@@ -151,7 +174,7 @@ impl <'a> GlobalLinker<'a> {
 
                 // TODO To be order independent, we should finalize after sorting...
                 //  ... Or check inconsistencies only at the very end.
-                linker.finalize(&mut self.module)?;
+                linker.finalize(&mut self.module, &mut self.global_variables)?;
                 for function in linker.functions {
                     self.add_function(function)?;
                 }

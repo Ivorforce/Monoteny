@@ -2,6 +2,7 @@ trait Animal {
     def {Self}.talk();
 };
 
+@struct
 trait Cat {};
 
 declare Cat is Animal {
@@ -10,6 +11,7 @@ declare Cat is Animal {
     };
 };
 
+@struct
 trait Dog {};
 
 declare Dog is Animal {
@@ -25,8 +27,8 @@ def converse(lhs '$Animal#lhs, rhs '$Animal#rhs) :: {
 
 @main
 def main() :: {
-    let cat = Cat.new();
-    let dog = Dog.new();
+    let cat = Cat();
+    let dog = Dog();
     converse(cat, dog);
     converse(dog, cat);
 };

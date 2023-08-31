@@ -35,6 +35,13 @@ pub struct TraitBinding {
     pub generic_to_type: HashMap<Uuid, Box<TypeProto>>,
 }
 
+/// How a trait binding is fulfilled.
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct TraitConformance {
+    pub binding: Rc<TraitBinding>,
+    pub function_mapping: HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>,
+}
+
 /// A sum of knowledge about trait conformance.
 /// You can query this to find out if some binding can be cast to some other binding.
 /// It caches conformance for subtraits so that lookup is fast.
@@ -42,19 +49,20 @@ pub struct TraitBinding {
 pub struct TraitGraph {
     /// For each trait, all of its declarations are listed here.
     /// `mapped_function = map[trait][declaration][abstract_function]`
-    pub declarations: HashMap<Rc<Trait>, HashMap<Rc<TraitBinding>, HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>>>,
+    pub declarations: HashMap<Rc<Trait>, HashMap<Rc<TraitBinding>, Rc<TraitConformance>>>,
     /// For each trait, what other traits does it require?
+    /// This causes cascading requirements on functions etc.
     pub requirements: HashMap<Rc<Trait>, HashSet<Rc<TraitBinding>>>,
 }
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct RequirementsAssumption {
-    pub conformance: HashMap<Rc<TraitBinding>, HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>>,
+    pub conformance: HashMap<Rc<TraitBinding>, Rc<TraitConformance>>,
 }
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct RequirementsFulfillment {
-    pub conformance: HashMap<Rc<TraitBinding>, HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>>,
+    pub conformance: HashMap<Rc<TraitBinding>, Rc<TraitConformance>>,
     pub generic_mapping: HashMap<Uuid, Box<TypeProto>>,
 }
 
@@ -81,42 +89,45 @@ impl TraitGraph {
         self.requirements.extend(graph.requirements.clone())
     }
 
-    pub fn add_conformance(&mut self, conformance: Rc<TraitBinding>, function_bindings: HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>) -> Result<(), LinkError> {
-        for requirement in self.requirements.get(&conformance.trait_).unwrap_or(&Default::default()) {
+    pub fn add_conformance(&mut self, conformance: Rc<TraitConformance>) -> Result<(), LinkError> {
+        // Check if all the requirements are satisfied
+        for requirement in self.requirements.get(&conformance.binding.trait_).unwrap_or(&Default::default()) {
             let resolved_requirement = Rc::new(TraitBinding {
                 trait_: Rc::clone(&requirement.trait_),
                 generic_to_type: requirement.generic_to_type.iter()
-                    .map(|(key, value)| (*key, value.replacing_generics(&conformance.generic_to_type)))
+                    .map(|(key, value)| (*key, value.replacing_generics(&conformance.binding.generic_to_type)))
                     .collect(),
             });
             if !self.declarations.get(&resolved_requirement.trait_).unwrap_or(&Default::default()).contains_key(&resolved_requirement) {
-                return Err(LinkError::LinkError { msg: String::from(format!("{:?} cannot be declared without first declaring its requirement: {:?}", conformance, requirement)) });
+                return Err(LinkError::LinkError { msg: String::from(format!("{:?} cannot be declared without first declaring its requirement: {:?}", conformance.binding, requirement)) });
             }
         }
 
-        match self.declarations.get_mut(&conformance.trait_) {
+        match self.declarations.get_mut(&conformance.binding.trait_) {
             None => {
                 // New entry
-                self.declarations.insert(Rc::clone(&conformance.trait_), HashMap::from([
-                    (Rc::clone(&conformance), function_bindings)
+                self.declarations.insert(Rc::clone(&conformance.binding.trait_), HashMap::from([
+                    (Rc::clone(&conformance.binding), conformance)
                 ]));
             }
             Some(map) => {
                 // Expand entry
-                map.insert(Rc::clone(&conformance), function_bindings);
+                map.insert(Rc::clone(&conformance.binding), conformance);
             }
         };
 
         Ok(())
     }
 
-    pub fn add_conformance_manual(&mut self, conformance: Rc<TraitBinding>, function_bindings: Vec<(&Rc<FunctionPointer>, &Rc<FunctionPointer>)>) -> Result<(), LinkError> {
+    pub fn add_conformance_manual(&mut self, binding: Rc<TraitBinding>, function_bindings: Vec<(&Rc<FunctionPointer>, &Rc<FunctionPointer>)>) -> Result<(), LinkError> {
         self.add_conformance(
-            conformance,
-            HashMap::from_iter(
-                function_bindings.into_iter().map(
-                    |(x, y)|
-                    (Rc::clone(x), Rc::clone(y)))
+            TraitConformance::new(
+                binding,
+                HashMap::from_iter(
+                    function_bindings.into_iter().map(
+                        |(x, y)|
+                            (Rc::clone(x), Rc::clone(y)))
+                )
             )
         )
     }
@@ -139,7 +150,7 @@ impl TraitGraph {
         );
     }
 
-    pub fn satisfy_requirement(&self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>, LinkError> {
+    pub fn satisfy_requirement(&self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<Rc<TraitConformance>, LinkError> {
         // TODO What if requirement is e.g. Float<Float>? Is Float declared on itself?
 
         guard!(let Some(relevant_declarations) = self.declarations.get(&requirement.trait_) else {
@@ -157,7 +168,8 @@ impl TraitGraph {
             return Ok(declaration.clone());
         }
 
-        return Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", requirement)) });
+        println!("{:?}", self.declarations);
+        return Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding)) });
     }
 
     pub fn gather_deep_requirements<C>(&self, bindings: C) -> Vec<Rc<TraitBinding>> where C: Iterator<Item=Rc<TraitBinding>> {
@@ -177,7 +189,7 @@ impl TraitGraph {
         ordered
     }
 
-    pub fn assume_granted<C>(&self, bindings: C) -> Vec<(Rc<TraitBinding>, HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>)> where C: Iterator<Item=Rc<TraitBinding>> {
+    pub fn assume_granted<C>(&self, bindings: C) -> Vec<Rc<TraitConformance>> where C: Iterator<Item=Rc<TraitBinding>> {
         let deep_requirements = self.gather_deep_requirements(bindings);
         let mut resolutions = vec![];
 
@@ -210,7 +222,9 @@ impl TraitGraph {
                 );
             }
 
-            resolutions.push((Rc::clone(trait_binding), binding_resolution));
+            resolutions.push(
+                TraitConformance::new(Rc::clone(trait_binding), binding_resolution)
+            );
         }
 
         resolutions
@@ -262,6 +276,23 @@ impl TraitBinding {
     }
 }
 
+impl TraitConformance {
+    pub fn new(binding: Rc<TraitBinding>, function_mapping: HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>,) -> Rc<TraitConformance> {
+        Rc::new(TraitConformance {
+            binding,
+            function_mapping,
+        })
+    }
+
+    pub fn pure(binding: Rc<TraitBinding>) -> Rc<TraitConformance> {
+        if !binding.trait_.abstract_functions.is_empty() {
+            panic!()
+        }
+
+        TraitConformance::new(binding, Default::default())
+    }
+}
+
 impl RequirementsFulfillment {
     pub fn empty() -> Box<RequirementsFulfillment> {
         Box::new(RequirementsFulfillment {
@@ -295,6 +326,16 @@ impl Hash for TraitBinding {
     }
 }
 
+impl Debug for Trait {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "{}<", self.name)?;
+        write_keyval(fmt, &self.generics)?;
+        write!(fmt, ">")?;
+
+        Ok(())
+    }
+}
+
 impl Debug for TraitBinding {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "{}<", self.trait_.name)?;
@@ -307,9 +348,9 @@ impl Debug for TraitBinding {
 
 impl Hash for RequirementsFulfillment {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        for (binding, function_mapping) in self.conformance.iter().sorted_by_key(|(binding, mapping)| binding.hash(&mut DefaultHasher::new())) {
+        for (binding, conformance) in self.conformance.iter().sorted_by_key(|(binding, mapping)| binding.hash(&mut DefaultHasher::new())) {
             binding.hash(state);
-            for keyval in function_mapping.iter().sorted_by_key(|(src, dst)| src.pointer_id) {
+            for keyval in conformance.function_mapping.iter().sorted_by_key(|(src, dst)| src.pointer_id) {
                 keyval.hash(state)
             }
         }

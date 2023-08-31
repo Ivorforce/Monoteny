@@ -17,7 +17,7 @@ use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
-use crate::program::traits::{RequirementsAssumption, TraitGraph};
+use crate::program::traits::{RequirementsAssumption, TraitConformance, TraitGraph};
 use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
@@ -52,13 +52,13 @@ impl <'a> ImperativeLinker<'a> {
         );
 
         // Let our scope know that our parameter types (all of type any!) conform to the requirements
-        for (binding, function_binding) in granted_requirements.iter() {
-            scope.traits.add_conformance(Rc::clone(binding), function_binding.clone()).unwrap();
+        for conformance in granted_requirements.iter() {
+            scope.traits.add_conformance(Rc::clone(conformance)).unwrap();
         };
 
         // Add abstract function mocks to our scope to be callable.
-        for (_, conformance) in granted_requirements.iter() {
-            for pointer in conformance.values() {
+        for conformance in granted_requirements.iter() {
+            for pointer in conformance.function_mapping.values() {
                 // TODO Do we need to keep track of the object reference created by this trait conformance?
                 //  For the record, it SHOULD be created - an abstract function reference can still be passed around,
                 //  assigned and maybe called later.
@@ -107,7 +107,7 @@ impl <'a> ImperativeLinker<'a> {
             implementation_id: self.function.pointer_id,
             pointer: self.function,
             decorators: self.decorators,
-            requirements_assumption: Box::new(RequirementsAssumption { conformance: HashMap::from_iter(granted_requirements) }),
+            requirements_assumption: Box::new(RequirementsAssumption { conformance: HashMap::from_iter(granted_requirements.into_iter().map(|c| (Rc::clone(&c.binding), c))) }),
             statements,
             expression_forest: self.expressions,
             type_forest: self.types,
