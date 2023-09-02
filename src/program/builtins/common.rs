@@ -1,35 +1,33 @@
+use std::collections::HashMap;
 use std::rc::Rc;
-use crate::program::builtins::core::Core;
 use crate::program::functions::{FunctionInterface, FunctionPointer};
+use crate::program::global::BuiltinFunctionHint;
 use crate::program::module::Module;
 use crate::program::primitives;
+use crate::program::traits::Trait;
 use crate::program::types::TypeProto;
 
-pub struct Common {
-    pub module: Rc<Module>,
-    pub true_: Rc<FunctionPointer>,
-    pub false_: Rc<FunctionPointer>,
-}
 
-
-pub fn create(core: &Core) -> Common {
-    let mut module = Module::new("monoteny.common".into());
-    let bool_type = TypeProto::simple_struct(&core.primitives[&primitives::Type::Bool]);
+pub fn create_functions(module: &mut Module, primitive_types: &HashMap<primitives::Type, Rc<Trait>>) {
+    let bool_type = TypeProto::simple_struct(&primitive_types[&primitives::Type::Bool]);
 
     let true_ = FunctionPointer::new_constant(
         "true",
         FunctionInterface::new_constant(&bool_type, vec![])
     );
     module.add_function(&true_);
+    module.builtin_hints.insert(
+        Rc::clone(&true_),
+        BuiltinFunctionHint::True,
+    );
 
     let false_ = FunctionPointer::new_constant(
         "false",
         FunctionInterface::new_constant(&bool_type, vec![])
     );
     module.add_function(&false_);
-
-    Common {
-        module: Rc::new(module),
-        true_, false_
-    }
+    module.builtin_hints.insert(
+        Rc::clone(&false_),
+        BuiltinFunctionHint::False,
+    );
 }

@@ -1,5 +1,6 @@
 use uuid::Uuid;
 use crate::program::builtins::Builtins;
+use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
 use crate::transpiler::namespaces;
 
 pub fn create(builtins: &Builtins) -> namespaces::Level {
@@ -34,16 +35,24 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
 
     // The operators can normally be referenced as operators (which the transpiler does do).
     // However, if a reference is required, we need to resort to another strategy.
-    for (name, functions) in [
-        ("op.add", &builtins.core.primitive_fns.add),
-        ("op.sub", &builtins.core.primitive_fns.subtract),
-        ("op.mul", &builtins.core.primitive_fns.multiply),
-        // TODO This is not true for int types, there it has to be floordiv
-        ("op.truediv", &builtins.core.primitive_fns.divide),
-        ("math.log", &builtins.core.primitive_fns.logarithm),
-    ]{
-        for fun in functions.values() {
-            namespace.insert_keyword(fun.pointer_id, &String::from(name));
+    for (fun, hint) in builtins.core.module.builtin_hints.iter() {
+        match hint {
+            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Add, type_ } => {
+                namespace.insert_keyword(fun.pointer_id, &String::from("op.add"));
+            }
+            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Subtract, type_ } => {
+                namespace.insert_keyword(fun.pointer_id, &String::from("op.sub"));
+            }
+            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Multiply, type_ } => {
+                namespace.insert_keyword(fun.pointer_id, &String::from("op.mul"));
+            }
+            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Divide, type_ } => {
+                namespace.insert_keyword(fun.pointer_id, &String::from("op.truediv"));
+            }
+            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Log, type_ } => {
+                namespace.insert_keyword(fun.pointer_id, &String::from("math.log"));
+            }
+            _ => {}
         }
     }
 

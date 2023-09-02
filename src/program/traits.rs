@@ -48,10 +48,14 @@ pub struct TraitConformance {
 #[derive(Clone, Eq, PartialEq)]
 pub struct TraitGraph {
     /// All known conformances.
-    pub conformance: HashMap<Rc<TraitBinding>, Rc<TraitConformance>>,
+    pub conformance: HashMap<Rc<TraitBinding>, Option<Rc<TraitConformance>>>,
     /// For each trait, what other traits does it require?
     /// This causes cascading requirements on functions etc.
     pub requirements: HashMap<Rc<Trait>, HashSet<Rc<TraitBinding>>>,
+    /// A list of conformance declarations that allow for dynamic conformance.
+    /// All these use generics in the conformance, which are provided by the requirements.
+    /// To use the conformance, these generics should be replaced by the matching bindings.
+    pub conformance_rules: HashMap<Rc<Trait>, Vec<(HashSet<Rc<TraitBinding>>, Rc<TraitConformance>)>>,
 }
 
 #[derive(Clone, Eq, PartialEq)]
@@ -70,6 +74,7 @@ impl TraitGraph {
         TraitGraph {
             conformance: Default::default(),
             requirements: Default::default(),
+            conformance_rules: Default::default(),
         }
     }
 
@@ -93,7 +98,7 @@ impl TraitGraph {
             }
         }
 
-        self.conformance.insert(Rc::clone(&conformance.binding), conformance);
+        self.conformance.insert(Rc::clone(&conformance.binding), Some(conformance));
 
         Ok(())
     }
@@ -109,6 +114,17 @@ impl TraitGraph {
                 )
             )
         )
+    }
+
+    pub fn add_conformance_rule(&mut self, requirements: HashSet<Rc<TraitBinding>>, conformance: Rc<TraitConformance>) {
+        match self.conformance_rules.entry(Rc::clone(&conformance.binding.trait_)) {
+            Entry::Occupied(e) => {
+                e.into_mut().push((requirements, conformance));
+            }
+            Entry::Vacant(e) => {
+                e.insert(vec![(requirements, conformance)]);
+            }
+        };
     }
 
     pub fn add_requirement(&mut self, trait_: Rc<Trait>, requirement: Rc<TraitBinding>) {
@@ -129,7 +145,7 @@ impl TraitGraph {
         );
     }
 
-    pub fn satisfy_requirement(&self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<Rc<TraitConformance>, LinkError> {
+    pub fn satisfy_requirement(&mut self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<Rc<TraitConformance>, LinkError> {
         // TODO What if requirement is e.g. Float<Float>? Is Float declared on itself?
 
         // We resolve this binding because it might contain generics.
@@ -138,13 +154,50 @@ impl TraitGraph {
             return Err(LinkError::Ambiguous);
         }
 
-        if let Some(declaration) = self.conformance.get(&resolved_binding) {
-            // The trait is declared explicitly!
-            return Ok(declaration.clone());
+        if let Some(state) = self.conformance.get(&resolved_binding) {
+            // In cache
+            return match state {
+                None => Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding)) }),
+                Some(declaration) => Ok(declaration.clone()),
+            };
         }
 
-        println!("{:?}", self.conformance);
-        return Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding)) });
+        guard!(let Some(relevant_declarations) = self.conformance_rules.get(&resolved_binding.trait_) else {
+            return Err(LinkError::LinkError { msg: String::from(format!("No declarations found for trait: {:?}", resolved_binding.trait_)) });
+        });
+
+        // Recalculate
+        // TODO clone is a bit much, but we need it to be memory safe
+        for (requirements, offered_conformance) in relevant_declarations.clone().iter() {
+            guard!(let Some(generics_map) = TraitBinding::merge(&offered_conformance.binding, &resolved_binding) else {
+                continue;
+            });
+            let resolved_requirements = requirements.iter().map(|x| x.mapping_types(&|type_| type_.replacing_generics(&generics_map))).collect();
+
+            if self.test_requirements(&resolved_requirements, mapping) {
+                let resolved_conformance = TraitConformance::new(
+                    resolved_binding.clone(),
+                    // TODO Do we need to map the functions?
+                    offered_conformance.function_mapping.clone(),
+                );
+                // TODO There may be more than one conflicting solution
+                self.conformance.insert(resolved_binding, Some(Rc::clone(&offered_conformance)));
+                return Ok(Rc::clone(offered_conformance));
+            }
+        }
+
+        self.conformance.insert(Rc::clone(&resolved_binding), None);
+        Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding)) })
+    }
+
+    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, mapping: &TypeForest) -> bool {
+        for requirement in requirements.iter() {
+            if let Err(e) = self.satisfy_requirement(&requirement, mapping) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     pub fn gather_deep_requirements<C>(&self, bindings: C) -> Vec<Rc<TraitBinding>> where C: Iterator<Item=Rc<TraitBinding>> {
@@ -248,6 +301,26 @@ impl TraitBinding {
 
     pub fn collect_generics(&self) -> HashSet<GenericAlias> {
         TypeProto::collect_generics(self.generic_to_type.values())
+    }
+
+    /// Merge the two bindings. This will return None if the merger fails.
+    /// If it succeeds, it returns a map of generic to type that was resolved during the merger.
+    pub fn merge(lhs: &TraitBinding, rhs: &TraitBinding) -> Option<HashMap<Uuid, Box<TypeProto>>> {
+        if lhs.trait_ != rhs.trait_ || lhs.generic_to_type.keys().collect::<HashSet<_>>() != rhs.generic_to_type.keys().collect() {
+            return None
+        }
+
+        let mut types = TypeForest::new();
+        for (key, type_) in lhs.generic_to_type.iter() {
+            types.bind(*key, type_).ok()?;
+        }
+        for (key, type_) in rhs.generic_to_type.iter() {
+            types.bind(*key, type_).ok()?;
+        }
+        Some(
+            lhs.collect_generics().union(&rhs.collect_generics()).into_iter()
+                .map(|g| (*g, types.resolve_binding_alias(g).unwrap())).collect()
+        )
     }
 }
 

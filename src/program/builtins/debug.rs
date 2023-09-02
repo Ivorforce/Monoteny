@@ -1,6 +1,7 @@
 use std::rc::Rc;
 use uuid::Uuid;
 use crate::program::functions::{Function, FunctionCallType, FunctionForm, FunctionInterface, FunctionPointer};
+use crate::program::global::BuiltinFunctionHint;
 use crate::program::module::Module;
 use crate::program::types::{TypeProto, TypeUnit};
 
@@ -24,6 +25,7 @@ pub fn create() -> Debug {
         form: FunctionForm::Global,
     });
     module.add_function(&print_function);
+    module.builtin_hints.insert(Rc::clone(&print_function), BuiltinFunctionHint::Print);
 
     let panic_function = Rc::new(FunctionPointer {
         pointer_id: Uuid::new_v4(),
@@ -33,6 +35,7 @@ pub fn create() -> Debug {
         form: FunctionForm::Global,
     });
     module.add_function(&panic_function);
+    module.builtin_hints.insert(Rc::clone(&panic_function), BuiltinFunctionHint::Panic);
 
     Debug {
         module: Rc::new(module),

@@ -10,7 +10,7 @@ use crate::program::functions::{Function, FunctionCallType, FunctionInterface, F
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, TraitConformance};
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::types::TypeProto;
 
 
 pub struct FunctionUnfolder {
@@ -38,7 +38,9 @@ impl FunctionUnfolder {
         let mut expression_forest = Box::new(ExpressionForest::new());
 
         // Map variables.
-        // TODO Some could just map Any -> Generic, but some are parameter variables. Those must expose the full type properly.
+        // TODO For fully internal variables, it would be enough to set the type to the Any's corresponding Generic,
+        //  because those have been bound in the type forest. For variables featured in the interface, however, the
+        //  type must be properly resolved. So we might as well map all variables to resolved types.
         let variable_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = implementation.variable_names.keys()
             .map(|v| {
                 (Rc::clone(v), map_variable(v, &generic_replacement_map))
@@ -72,7 +74,7 @@ impl FunctionUnfolder {
                     let replaced_call = Rc::new(FunctionBinding { pointer: Rc::clone(replaced_pointer), requirements_fulfillment: call.requirements_fulfillment.clone() });
 
                     let unfolded_call: Rc<FunctionBinding> = if should_unfold(&replaced_call) {
-                        match self.mapped_calls.entry(Rc::clone(call)) {
+                        match self.mapped_calls.entry(Rc::clone(&replaced_call)) {
                             Entry::Occupied(o) => Rc::clone(o.get()),
                             Entry::Vacant(v) => {
                                 self.new_mappable_calls.push(Rc::clone(&replaced_call));
@@ -111,7 +113,8 @@ impl FunctionUnfolder {
                     }
                 }
                 ExpressionOperation::VariableLookup(v) => {
-                    ExpressionOperation::VariableLookup(Rc::clone(&variable_map[v]))
+                    // If we cannot find a replacement, it's a static variable. Unless we have a bug.
+                    ExpressionOperation::VariableLookup(Rc::clone(variable_map.get(v).unwrap_or(v)))
                 }
                 ExpressionOperation::ArrayLiteral => ExpressionOperation::ArrayLiteral,
                 ExpressionOperation::StringLiteral(s) => ExpressionOperation::StringLiteral(s.clone()),

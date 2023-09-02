@@ -17,18 +17,20 @@ use crate::interpreter;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
 use crate::program::functions::{FunctionPointer, FunctionCallType, ParameterKey};
-use crate::program::{find_annotated, primitives, Program};
+use crate::program::{find_annotated, Program};
 use crate::program::calls::FunctionBinding;
 use crate::program::generics::TypeForest;
-use crate::program::global::{FunctionImplementation};
+use crate::program::global::{BuiltinFunctionHint, FunctionImplementation, PrimitiveOperation};
 use crate::program::traits::{RequirementsFulfillment, TraitBinding};
 use crate::program::types::TypeUnit;
+use crate::transpiler::cpp::transpile_type;
 use crate::transpiler::namespaces;
 
 pub struct TranspilerContext<'a> {
     names: &'a HashMap<Uuid, String>,
     functions_by_id: &'a HashMap<Uuid, Rc<FunctionImplementation>>,
     builtins: &'a Builtins,
+    builtin_hints: &'a HashMap<Uuid, BuiltinFunctionHint>,
     expressions: &'a ExpressionForest,
     types: &'a TypeForest,
 }
@@ -52,7 +54,7 @@ pub fn MATH_FUNCTIONS() -> HashMap<String, String> {
         ("arctanh", "math.atanh"),
 
         ("ceil", "math.ceil"),
-        ("floor", "math.floow"),
+        ("floor", "math.floor"),
         ("round", "round"),
 
         ("abs", "abs"),
@@ -64,22 +66,28 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     let mut file_namespace = global_namespace.add_sublevel();
     let mut object_namespace = namespaces::Level::new();
     let mut functions_by_id = HashMap::new();
+    let mut builtin_hints_by_id = HashMap::new();
 
-    for implementation in program.module.function_implementations.values()
-        .chain(builtins.module_by_name.values().flat_map(|module| module.function_implementations.values())) {
-        functions_by_id.insert(implementation.implementation_id, Rc::clone(implementation));
+    for module in [&program.module].into_iter().chain(builtins.all_modules()) {
+        for implementation in module.function_implementations.values() {
+            functions_by_id.insert(implementation.implementation_id, Rc::clone(implementation));
+        }
+        for (pointer, hint) in module.builtin_hints.iter() {
+            builtin_hints_by_id.insert(pointer.pointer_id, hint.clone());
+        }
     }
 
     let exported_symbols: Rc<RefCell<Vec<Rc<FunctionImplementation>>>> = Rc::new(RefCell::new(vec![]));
     let unfolder: Rc<RefCell<FunctionUnfolder>> = Rc::new(RefCell::new(FunctionUnfolder::new()));
 
-    fn should_unfold(f: &Rc<FunctionBinding>, functions_by_id: &HashMap<Uuid, Rc<FunctionImplementation>>, builtins: &Rc<Builtins>) -> bool {
-        if !functions_by_id.contains_key(&f.pointer.pointer_id) {
-            // TODO If no, it's *probably* a builtin, but we should probably check for realsies
+    fn should_unfold(f: &Rc<FunctionBinding>, primitives: &HashMap<Uuid, BuiltinFunctionHint>, builtins: &Rc<Builtins>) -> bool {
+        if primitives.contains_key(&f.pointer.pointer_id) {
+            // We need to inject these
             return false;
         }
 
         if builtins.module_by_name["math".into()].functions.contains_key(&f.pointer) && MATH_FUNCTIONS().contains_key(&f.pointer.name) {
+            // We want to inject / override these
             return false;
         }
 
@@ -98,7 +106,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
                 // Unless generics are bound in the transpile directive, which is TODO
                 requirements_fulfillment: RequirementsFulfillment::empty(),
             }),
-            &|f| should_unfold(f, &functions_by_id, builtins)
+            &|f| should_unfold(f, &builtin_hints_by_id, builtins)
         );
 
         exported_symbols.borrow_mut().deref_mut().push(unfolded_function);
@@ -113,13 +121,14 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     let mut internal_symbols: Vec<Rc<FunctionImplementation>> = vec![];
     while let Some(used_symbol) = unfolder.new_mappable_calls.pop() {
         // TODO Use underscore names?
+        println!("{:?}", used_symbol.pointer);
         let replacement_symbol = Rc::clone(&unfolder.mapped_calls[&used_symbol]);
         let implementation = &functions_by_id[&used_symbol.pointer.pointer_id];
 
         let unfolded_implementation = unfolder.unfold_anonymous(
             implementation,
             &replacement_symbol,
-            &|f| should_unfold(f, &functions_by_id, builtins)
+            &|f| should_unfold(f, &builtin_hints_by_id, builtins)
         );
 
         internal_symbols.push(unfolded_implementation);
@@ -159,6 +168,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
             names: &names,
             functions_by_id: &functions_by_id,
             builtins: &builtins,
+            builtin_hints: &builtin_hints_by_id,
             expressions: &implementation.expression_forest,
             types: &implementation.type_forest
         };
@@ -176,6 +186,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
             names: &names,
             functions_by_id: &functions_by_id,
             builtins: &builtins,
+            builtin_hints: &builtin_hints_by_id,
             expressions: &implementation.expression_forest,
             types: &implementation.type_forest
         };
@@ -293,11 +304,8 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
             let arguments = context.expressions.arguments.get(&expression).unwrap();
 
             if
-                try_transpile_keyword(stream, pointer, context)?
-                || try_transpile_binary_operator(stream, pointer, arguments, context)?
-                || try_transpile_unary_operator(stream, pointer, arguments, context)?
-                || try_transpile_literal(stream, pointer, arguments, &expression, context)?
-                || try_transpile_builtin_function(stream, pointer, arguments, &expression, context)?
+                try_transpile_optimization(stream, pointer, arguments, &expression, context)?
+                || try_transpile_builtin(stream, pointer, &expression, arguments, context)?
             {
                 // no-op
             }
@@ -408,121 +416,66 @@ pub fn escape_string(string: &String) -> String {
     return string
 }
 
-pub fn try_transpile_unary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+pub fn try_transpile_builtin(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+    guard!(let Some(hint) = context.builtin_hints.get(&function.pointer_id) else {
+        return Ok(false);
+    });
+
+    match hint {
+        BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
+            match operation {
+                PrimitiveOperation::And => transpile_binary_operator(stream, "and", arguments, context)?,
+                PrimitiveOperation::Or => transpile_binary_operator(stream, "or", arguments, context)?,
+                PrimitiveOperation::Not => transpile_unary_operator(stream, "not ", arguments, context)?,
+                PrimitiveOperation::Negative => transpile_unary_operator(stream, "-", arguments, context)?,
+                PrimitiveOperation::Add => transpile_binary_operator(stream, "+", arguments, context)?,
+                PrimitiveOperation::Subtract => transpile_binary_operator(stream, "-", arguments, context)?,
+                PrimitiveOperation::Multiply => transpile_binary_operator(stream, "*", arguments, context)?,
+                // TODO This should be truediv for ints
+                PrimitiveOperation::Divide => transpile_binary_operator(stream, "/", arguments, context)?,
+                PrimitiveOperation::Modulo => transpile_binary_operator(stream, "%", arguments, context)?,
+                PrimitiveOperation::Exp => transpile_binary_operator(stream, "**", arguments, context)?,
+                PrimitiveOperation::Log => transpile_single_arg_function_call(stream, "math.log", arguments, expression_id, context)?,
+                PrimitiveOperation::EqualTo => transpile_binary_operator(stream, "==", arguments, context)?,
+                PrimitiveOperation::NotEqualTo => transpile_binary_operator(stream, "!=", arguments, context)?,
+                PrimitiveOperation::GreaterThan => transpile_binary_operator(stream, ">", arguments, context)?,
+                PrimitiveOperation::LesserThan => transpile_binary_operator(stream, "<", arguments, context)?,
+                PrimitiveOperation::GreaterThanOrEqual => transpile_binary_operator(stream, ">=", arguments, context)?,
+                PrimitiveOperation::LesserThanOrEqual => transpile_binary_operator(stream, "<=", arguments, context)?,
+                PrimitiveOperation::ParseIntString => transpile_parse_function(stream, "^[0-9]+$", arguments, expression_id, context)?,
+                PrimitiveOperation::ParseFloatString => transpile_parse_function(stream, "^[0-9]+\\.[0-9]*$", arguments, expression_id, context)?,
+            }
+        }
+        BuiltinFunctionHint::Constructor => todo!(),
+        BuiltinFunctionHint::True => write!(stream, "True")?,
+        BuiltinFunctionHint::False => write!(stream, "False")?,
+        BuiltinFunctionHint::Print => transpile_single_arg_function_call(stream, "print", arguments, expression_id, context)?,
+        BuiltinFunctionHint::Panic => write!(stream, "exit(1)")?,
+    }
+
+    return Ok(true)
+}
+
+pub fn transpile_unary_operator(stream: &mut (dyn Write), operator: &str, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<(), std::io::Error> {
     guard!(let [expression] = arguments[..] else {
-        return Ok(false)
+        panic!("Unary operator got {} arguments: {}", arguments.len(), operator);
     });
 
-    // TODO We can probably avoid unnecessary parentheses here and in the other operators if we ask the expression for its (python) precedence, and compare it with ours.
-    for (collection, operator) in [
-        (&context.builtins.core.primitive_fns.positive, "+"),
-        (&context.builtins.core.primitive_fns.negative, "-"),
-
-        // TODO This is not ideal
-        (&HashMap::from([(primitives::Type::Bool, Rc::clone(&context.builtins.core.primitive_fns.not))]), "not "),
-    ] {
-        // TODO values().contains is not ideal
-        if !(collection.values().contains(function)) {
-            continue;
-        }
-
-        write!(stream, "{}", operator)?;
-        transpile_maybe_parenthesized_expression(stream, expression.clone(), context)?;
-
-        return Ok(true);
-    }
-
-    return Ok(false);
+    write!(stream, "{}", operator)?;
+    transpile_maybe_parenthesized_expression(stream, expression.clone(), context)
 }
 
-pub fn try_transpile_binary_operator(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+pub fn transpile_binary_operator(stream: &mut (dyn Write), operator: &str, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<(), std::io::Error> {
     guard!(let [lhs, rhs] = arguments[..] else {
-        return Ok(false)
+        panic!("Binary operator got {} arguments: {}", arguments.len(), operator);
     });
 
-    for (collection, operator) in [
-        // TODO This is not ideal
-        (&HashMap::from([(primitives::Type::Bool, Rc::clone(&context.builtins.core.primitive_fns.and))]), "and"),
-        (&HashMap::from([(primitives::Type::Bool, Rc::clone(&context.builtins.core.primitive_fns.or))]), "or"),
-
-        (&context.builtins.core.primitive_fns.equal_to, "=="),
-        (&context.builtins.core.primitive_fns.not_equal_to, "!="),
-
-        (&context.builtins.core.primitive_fns.greater_than, ">"),
-        (&context.builtins.core.primitive_fns.greater_than_or_equal_to, ">="),
-        (&context.builtins.core.primitive_fns.lesser_than, "<"),
-        (&context.builtins.core.primitive_fns.lesser_than_or_equal_to, "<="),
-
-        (&context.builtins.core.primitive_fns.add, "+"),
-        (&context.builtins.core.primitive_fns.subtract, "-"),
-        (&context.builtins.core.primitive_fns.multiply, "*"),
-        (&context.builtins.core.primitive_fns.divide, "/"),
-
-        (&context.builtins.core.primitive_fns.exponent, "**"),
-        (&context.builtins.core.primitive_fns.modulo, "%"),
-    ] {
-        // TODO values().contains is not ideal
-        if !(collection.values().contains(function)) {
-            continue;
-        }
-
-        transpile_maybe_parenthesized_expression(stream, lhs.clone(), context)?;
-        write!(stream, " {} ", operator)?;
-        transpile_maybe_parenthesized_expression(stream, rhs.clone(), context)?;
-
-        return Ok(true);
-    }
-
-    return Ok(false);
+    transpile_maybe_parenthesized_expression(stream, lhs.clone(), context)?;
+    write!(stream, " {} ", operator)?;
+    transpile_maybe_parenthesized_expression(stream, rhs.clone(), context)
 }
 
-pub fn try_transpile_literal(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<bool, std::io::Error> {
-    guard!(let [argument] = &arguments[..] else {
-        return Ok(false)
-    });
-
-    guard!(let ExpressionOperation::StringLiteral(literal) = &context.expressions.operations[argument] else {
-        return Ok(false)
-    });
-
-    let is_float = regex::Regex::new("^[0-9]+\\.[0-9]*$").unwrap();
-    let is_int = regex::Regex::new("^[0-9]+$").unwrap();
-
-    // TODO values().contains is not ideal
-    if context.builtins.core.primitive_fns.parse_int_literal.values().contains(function) && is_int.is_match(literal) {
-        types::transpile(stream, &context.types.resolve_binding_alias(expression_id).unwrap(), context)?;
-        write!(stream, "({})",  literal)?;
-        return Ok(true);
-    }
-    else if context.builtins.core.primitive_fns.parse_float_literal.values().contains(function) && is_float.is_match(literal) {
-        types::transpile(stream, &context.types.resolve_binding_alias(expression_id).unwrap(), context)?;
-        write!(stream, "({})", literal)?;
-        return Ok(true);
-    }
-
-    Ok(false)
-}
-
-pub fn try_transpile_keyword(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
-    if function == &context.builtins.common.true_ {
-        write!(stream, "True")?;
-        return Ok(true)
-    }
-
-    if function == &context.builtins.common.false_ {
-        write!(stream, "False")?;
-        return Ok(true)
-    }
-
-    if function == &context.builtins.debug.panic {
-        write!(stream, "exit(1)")?;
-        return Ok(true)
-    }
-
-    Ok(false)
-}
-
-pub fn try_transpile_builtin_function(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+pub fn try_transpile_optimization(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<bool, std::io::Error> {
     if !context.builtins.module_by_name["math".into()].functions.contains_key(function) {
         return Ok(false)
     }
@@ -542,6 +495,35 @@ pub fn try_transpile_builtin_function(stream: &mut (dyn Write), function: &Rc<Fu
     }
 
     Ok(false)
+}
+
+pub fn transpile_parse_function(stream: &mut (dyn Write), supported_regex: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<(), std::io::Error> {
+    guard!(let [argument_expression_id] = arguments[..] else {
+        panic!("Parse function got {} arguments", arguments.len());
+    });
+
+    types::transpile(stream, &context.types.resolve_binding_alias(expression_id).unwrap(), context)?;
+
+    if let ExpressionOperation::StringLiteral(literal) = &context.expressions.operations[&argument_expression_id] {
+        let is_supported_literal = regex::Regex::new(supported_regex).unwrap();
+        if is_supported_literal.is_match(literal) {
+            return write!(stream, "({})",  literal)
+        }
+    }
+
+    write!(stream, "(", )?;
+    transpile_expression(stream, argument_expression_id, context)?;
+    write!(stream, ")", )
+}
+
+pub fn transpile_single_arg_function_call(stream: &mut (dyn Write), function_name: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<(), std::io::Error> {
+    guard!(let [argument_expression_id] = arguments[..] else {
+        panic!("{} function got {} arguments", function_name, arguments.len());
+    });
+
+    write!(stream, "{}(", function_name)?;
+    transpile_expression(stream, argument_expression_id, context)?;
+    write!(stream, ")", )
 }
 
 pub fn is_simple(operation: &ExpressionOperation) -> bool {

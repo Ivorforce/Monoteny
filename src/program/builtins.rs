@@ -18,8 +18,6 @@ pub struct Builtins {
     pub core: core::Core,
     pub precedence_groups: precedence::PrecedenceGroups,
 
-    pub common: common::Common,
-
     pub debug: debug::Debug,
     pub transpilation: transpilation::Transpilation,
 
@@ -29,7 +27,6 @@ pub struct Builtins {
 pub fn create_builtins() -> Rc<Builtins> {
     let core = core::create();
     let mut builtins = Builtins {
-        common: common::create(&core),
         debug: debug::create(),
         transpilation: transpilation::create(&core),
         core,
@@ -49,7 +46,6 @@ impl Builtins {
         self.module_by_name.values().chain([
             &self.core.module,
             &self.precedence_groups.module,
-            &self.common.module,
             &self.debug.module,
             &self.transpilation.module,
         ]).collect_vec()

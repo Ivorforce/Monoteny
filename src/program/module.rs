@@ -7,7 +7,7 @@ use crate::linker::LinkError;
 use crate::program::allocation::ObjectReference;
 use crate::program::builtins::Builtins;
 use crate::program::functions::FunctionPointer;
-use crate::program::global::FunctionImplementation;
+use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::traits::{Trait, TraitGraph};
 use crate::program::types::{Pattern, TypeProto, TypeUnit};
 
@@ -20,6 +20,7 @@ pub struct Module {
     pub patterns: HashSet<Rc<Pattern>>,
     pub trait_conformance: Box<TraitGraph>,
     pub function_implementations: HashMap<Rc<FunctionPointer>, Rc<FunctionImplementation>>,
+    pub builtin_hints: HashMap<Rc<FunctionPointer>, BuiltinFunctionHint>,
 }
 
 impl Module {
@@ -32,6 +33,7 @@ impl Module {
             patterns: Default::default(),
             trait_conformance: Box::new(TraitGraph::new()),
             function_implementations: Default::default(),
+            builtin_hints: Default::default(),
         }
     }
 

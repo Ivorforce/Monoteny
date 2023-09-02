@@ -6,6 +6,7 @@ use crate::program::computation_tree::{ExpressionForest, Statement};
 use crate::program::functions::FunctionPointer;
 use crate::program::allocation::ObjectReference;
 use crate::program::generics::TypeForest;
+use crate::program::primitives;
 use crate::program::traits::RequirementsAssumption;
 
 pub struct FunctionImplementation {
@@ -21,6 +22,31 @@ pub struct FunctionImplementation {
 
     pub parameter_variables: Vec<Rc<ObjectReference>>,
     pub variable_names: HashMap<Rc<ObjectReference>, String>,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum BuiltinFunctionHint {
+    PrimitiveOperation { operation: PrimitiveOperation, type_: primitives::Type },
+    Constructor,
+    True,
+    False,
+    Print,
+    Panic,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum PrimitiveOperation {
+    And, Or, Not,
+    Negative,
+    Add, Subtract,
+    Multiply, Divide,
+    Modulo,
+    Exp, Log,
+    EqualTo, NotEqualTo,
+    GreaterThan, LesserThan,
+    GreaterThanOrEqual, LesserThanOrEqual,
+    ParseIntString,
+    ParseFloatString,
 }
 
 impl PartialEq for FunctionImplementation {

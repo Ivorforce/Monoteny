@@ -15,6 +15,7 @@ use crate::program::traits::{Trait, TraitBinding, TraitConformance};
 use crate::program::builtins::*;
 use crate::program::functions::{Function, FunctionCallType, FunctionForm, FunctionInterface, FunctionPointer};
 use crate::program::generics::TypeForest;
+use crate::program::global::BuiltinFunctionHint;
 use crate::program::module::Module;
 use crate::program::types::*;
 
@@ -123,10 +124,8 @@ impl <'a> GlobalLinker<'a> {
                 let trait_ = Rc::new(trait_);
                 let meta_type_reference = self.module.add_trait(&trait_);
 
-                if syntax.decorators.contains(&"struct".into()) {
-                    if !trait_.abstract_functions.is_empty() {
-                        panic!("Abstract trait {} cannot be annotated with @struct", trait_.name);
-                    }
+                if trait_.abstract_functions.is_empty() {
+                    // Can be instantiated as a struct!
 
                     let struct_type = TypeProto::unit(TypeUnit::Struct(Rc::clone(&trait_)));
                     let conformance_binding = trait_.create_generic_binding(vec![(&"self".into(), struct_type.clone())]);
@@ -143,6 +142,7 @@ impl <'a> GlobalLinker<'a> {
                         form: FunctionForm::Member,
                     });
                     self.module.add_function(&new_function);
+                    self.module.builtin_hints.insert(Rc::clone(&new_function), BuiltinFunctionHint::Constructor);
                     self.global_variables.overload_function(&new_function, &self.module.functions[&new_function])?;
                 }
 
@@ -156,15 +156,15 @@ impl <'a> GlobalLinker<'a> {
                 let target = self.global_variables.resolve(Environment::Global, &syntax.target).unwrap().as_trait().unwrap();
                 let trait_ = self.global_variables.resolve(Environment::Global, &syntax.trait_).unwrap().as_trait().unwrap();
 
-                let generic_self_type = target.create_generic_type(&"self".into());
+                let generic_self_type = TypeProto::unit(TypeUnit::Generic(Uuid::new_v4()));
                 let generic_self_type_ref = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(generic_self_type.clone()))));
-                let self_binding = trait_.create_generic_binding(vec![(&"self".into(), generic_self_type)]);
+                let self_binding = trait_.create_generic_binding(vec![(&"self".into(), generic_self_type.clone())]);
+                let requirement = target.create_generic_binding(vec![(&"self".into(), generic_self_type)]);
 
                 let mut scope = self.global_variables.subscope();
                 scope.insert_singleton(Environment::Global, generic_self_type_ref, &"Self".into());
 
                 let mut linker = ConformanceLinker {
-                    binding: self_binding,
                     builtins: self.builtins,
                     functions: vec![],
                 };
@@ -174,7 +174,7 @@ impl <'a> GlobalLinker<'a> {
 
                 // TODO To be order independent, we should finalize after sorting...
                 //  ... Or check inconsistencies only at the very end.
-                linker.finalize(&mut self.module, &mut self.global_variables)?;
+                linker.finalize(self_binding, HashSet::from([requirement]), &mut self.module, &mut self.global_variables)?;
                 for function in linker.functions {
                     self.add_function(function)?;
                 }

@@ -33,7 +33,7 @@ pub struct AmbiguousFunctionCall {
 }
 
 impl AmbiguousFunctionCall {
-    fn attempt_with_candidate(&self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<Box<RequirementsFulfillment>, LinkError> {
+    fn attempt_with_candidate(&mut self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<Box<RequirementsFulfillment>, LinkError> {
         let param_types = &candidate.param_types;
 
         for (arg, param) in zip_eq(

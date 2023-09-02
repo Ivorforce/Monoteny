@@ -1,6 +1,5 @@
 use std::rc::Rc;
 use std::collections::HashMap;
-use crate::program::builtins::primitives::{PrimitiveFunctions};
 use crate::program::module::Module;
 use crate::program::{builtins, primitives};
 use crate::program::builtins::traits::Traits;
@@ -12,7 +11,6 @@ pub struct Core {
 
     pub primitives: HashMap<primitives::Type, Rc<Trait>>,
     pub traits: Traits,
-    pub primitive_fns: PrimitiveFunctions,
 }
 
 pub fn create() -> Core {
@@ -20,10 +18,10 @@ pub fn create() -> Core {
 
     let primitive_traits = builtins::primitives::create_traits(&mut module);
     let traits = builtins::traits::create(&mut module, &primitive_traits);
+    builtins::primitives::create_functions(&mut module, &traits, &primitive_traits);
+    builtins::common::create_functions(&mut module, &primitive_traits);
 
     Core {
-        primitive_fns: builtins::primitives::create_functions(&mut module, &traits, &primitive_traits),
-
         module: Rc::new(module),
         primitives: primitive_traits,
         traits,

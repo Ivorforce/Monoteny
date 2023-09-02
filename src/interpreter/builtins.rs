@@ -6,6 +6,7 @@ use std::str::FromStr;
 use uuid::Uuid;
 use crate::interpreter::{FunctionInterpreterImpl, Value};
 use crate::program::builtins::Builtins;
+use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
 use crate::program::primitives;
 use crate::program::types::TypeUnit;
 
@@ -19,211 +20,18 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
     // -------------------------------------- Math --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    // -------------------------------------- Add --------------------------------------
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::UInt8].unwrap_id(), bin_op!(u8 + u8));
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::UInt16].unwrap_id(), bin_op!(u16 + u16));
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::UInt32].unwrap_id(), bin_op!(u32 + u32));
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::UInt64].unwrap_id(), bin_op!(u64 + u64));
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::UInt128].unwrap_id(), bin_op!(u128 + u128));
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::Int8].unwrap_id(), bin_op!(i8 + i8));
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::Int16].unwrap_id(), bin_op!(i16 + i16));
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::Int32].unwrap_id(), bin_op!(i32 + i32));
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::Int64].unwrap_id(), bin_op!(i64 + i64));
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::Int128].unwrap_id(), bin_op!(i128 + i128));
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::Float32].unwrap_id(), bin_op!(f32 + f32));
-    map.insert(builtins.core.primitive_fns.add[&primitives::Type::Float64].unwrap_id(), bin_op!(f64 + f64));
-
-    // -------------------------------------- Subtract --------------------------------------
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::UInt8].unwrap_id(), bin_op!(u8 - u8));
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::UInt16].unwrap_id(), bin_op!(u16 - u16));
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::UInt32].unwrap_id(), bin_op!(u32 - u32));
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::UInt64].unwrap_id(), bin_op!(u64 - u64));
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::UInt128].unwrap_id(), bin_op!(u128 - u128));
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::Int8].unwrap_id(), bin_op!(i8 - i8));
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::Int16].unwrap_id(), bin_op!(i16 - i16));
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::Int32].unwrap_id(), bin_op!(i32 - i32));
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::Int64].unwrap_id(), bin_op!(i64 - i64));
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::Int128].unwrap_id(), bin_op!(i128 - i128));
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::Float32].unwrap_id(), bin_op!(f32 - f32));
-    map.insert(builtins.core.primitive_fns.subtract[&primitives::Type::Float64].unwrap_id(), bin_op!(f64 - f64));
-
-    // -------------------------------------- Divide --------------------------------------
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::UInt8].unwrap_id(), bin_op!(u8 / u8));
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::UInt16].unwrap_id(), bin_op!(u16 / u16));
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::UInt32].unwrap_id(), bin_op!(u32 / u32));
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::UInt64].unwrap_id(), bin_op!(u64 / u64));
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::UInt128].unwrap_id(), bin_op!(u128 / u128));
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::Int8].unwrap_id(), bin_op!(i8 / i8));
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::Int16].unwrap_id(), bin_op!(i16 / i16));
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::Int32].unwrap_id(), bin_op!(i32 / i32));
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::Int64].unwrap_id(), bin_op!(i64 / i64));
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::Int128].unwrap_id(), bin_op!(i128 / i128));
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::Float32].unwrap_id(), bin_op!(f32 / f32));
-    map.insert(builtins.core.primitive_fns.divide[&primitives::Type::Float64].unwrap_id(), bin_op!(f64 / f64));
-
-    // -------------------------------------- Multiply --------------------------------------
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::UInt8].unwrap_id(), bin_op!(u8 * u8));
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::UInt16].unwrap_id(), bin_op!(u16 * u16));
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::UInt32].unwrap_id(), bin_op!(u32 * u32));
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::UInt64].unwrap_id(), bin_op!(u64 * u64));
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::UInt128].unwrap_id(), bin_op!(u128 * u128));
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::Int8].unwrap_id(), bin_op!(i8 * i8));
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::Int16].unwrap_id(), bin_op!(i16 * i16));
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::Int32].unwrap_id(), bin_op!(i32 * i32));
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::Int64].unwrap_id(), bin_op!(i64 * i64));
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::Int128].unwrap_id(), bin_op!(i128 * i128));
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::Float32].unwrap_id(), bin_op!(f32 * f32));
-    map.insert(builtins.core.primitive_fns.multiply[&primitives::Type::Float64].unwrap_id(), bin_op!(f64 * f64));
-
-    // -------------------------------------- Multiply --------------------------------------
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::UInt8].unwrap_id(), bin_op!(u8 % u8));
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::UInt16].unwrap_id(), bin_op!(u16 % u16));
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::UInt32].unwrap_id(), bin_op!(u32 % u32));
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::UInt64].unwrap_id(), bin_op!(u64 % u64));
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::UInt128].unwrap_id(), bin_op!(u128 % u128));
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::Int8].unwrap_id(), bin_op!(i8 % i8));
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::Int16].unwrap_id(), bin_op!(i16 % i16));
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::Int32].unwrap_id(), bin_op!(i32 % i32));
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::Int64].unwrap_id(), bin_op!(i64 % i64));
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::Int128].unwrap_id(), bin_op!(i128 % i128));
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::Float32].unwrap_id(), bin_op!(f32 % f32));
-    map.insert(builtins.core.primitive_fns.modulo[&primitives::Type::Float64].unwrap_id(), bin_op!(f64 % f64));
-
-    // -------------------------------------- Floats --------------------------------------
-    map.insert(builtins.core.primitive_fns.exponent[&primitives::Type::Float32].unwrap_id(), fun_op!(f32 powf f32));
-    map.insert(builtins.core.primitive_fns.exponent[&primitives::Type::Float64].unwrap_id(), fun_op!(f64 powf f64));
-    map.insert(builtins.core.primitive_fns.logarithm[&primitives::Type::Float32].unwrap_id(), fun_op!(f32 log f32));
-    map.insert(builtins.core.primitive_fns.logarithm[&primitives::Type::Float64].unwrap_id(), fun_op!(f64 log f64));
-
-    // -------------------------------------- Positive --------------------------------------
-    // TODO Either remove positive op, or solve it as no-op. Either way, rust has no 'positive' op.
-
-    // -------------------------------------- Negative --------------------------------------
-    map.insert(builtins.core.primitive_fns.negative[&primitives::Type::Int8].unwrap_id(), un_op!(i8 -));
-    map.insert(builtins.core.primitive_fns.negative[&primitives::Type::Int16].unwrap_id(), un_op!(i16 -));
-    map.insert(builtins.core.primitive_fns.negative[&primitives::Type::Int32].unwrap_id(), un_op!(i32 -));
-    map.insert(builtins.core.primitive_fns.negative[&primitives::Type::Int64].unwrap_id(), un_op!(i64 -));
-    map.insert(builtins.core.primitive_fns.negative[&primitives::Type::Int128].unwrap_id(), un_op!(i128 -));
-    map.insert(builtins.core.primitive_fns.negative[&primitives::Type::Float32].unwrap_id(), un_op!(f32 -));
-    map.insert(builtins.core.primitive_fns.negative[&primitives::Type::Float64].unwrap_id(), un_op!(f64 -));
-
-    // -------------------------------------- ------ --------------------------------------
-    // -------------------------------------- Parsing --------------------------------------
-    // -------------------------------------- ------ --------------------------------------
-
-    // -------------------------------------- Parse Int Literal --------------------------------------
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::UInt8].unwrap_id(), parse_op!(u8));
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::UInt16].unwrap_id(), parse_op!(u16));
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::UInt32].unwrap_id(), parse_op!(u32));
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::UInt64].unwrap_id(), parse_op!(u64));
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::UInt128].unwrap_id(), parse_op!(u128));
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::Int8].unwrap_id(), parse_op!(i8));
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::Int16].unwrap_id(), parse_op!(i16));
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::Int32].unwrap_id(), parse_op!(i32));
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::Int64].unwrap_id(), parse_op!(i64));
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::Int128].unwrap_id(), parse_op!(i128));
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::Float32].unwrap_id(), parse_op!(f32));
-    map.insert(builtins.core.primitive_fns.parse_int_literal[&primitives::Type::Float64].unwrap_id(), parse_op!(f64));
-
-    // -------------------------------------- Parse Float Literal --------------------------------------
-    map.insert(builtins.core.primitive_fns.parse_float_literal[&primitives::Type::Float32].unwrap_id(), parse_op!(f32));
-    map.insert(builtins.core.primitive_fns.parse_float_literal[&primitives::Type::Float64].unwrap_id(), parse_op!(f64));
-
-
-    // -------------------------------------- ------ --------------------------------------
-    // -------------------------------------- Boolean --------------------------------------
-    // -------------------------------------- ------ --------------------------------------
-
-    // -------------------------------------- Bool -> Bool --------------------------------------
-    map.insert(builtins.core.primitive_fns.and.unwrap_id(), bin_op!(bool && bool));
-    map.insert(builtins.core.primitive_fns.or.unwrap_id(), bin_op!(bool || bool));
-    map.insert(builtins.core.primitive_fns.not.unwrap_id(), un_op!(bool !));
-
-    // -------------------------------------- Equals --------------------------------------
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::Bool].unwrap_id(), bin_op!(bool == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::UInt8].unwrap_id(), bin_op!(u8 == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::UInt16].unwrap_id(), bin_op!(u16 == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::UInt32].unwrap_id(), bin_op!(u32 == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::UInt64].unwrap_id(), bin_op!(u64 == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::UInt128].unwrap_id(), bin_op!(u128 == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::Int8].unwrap_id(), bin_op!(i8 == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::Int16].unwrap_id(), bin_op!(i16 == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::Int32].unwrap_id(), bin_op!(i32 == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::Int64].unwrap_id(), bin_op!(i64 == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::Int128].unwrap_id(), bin_op!(i128 == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::Float32].unwrap_id(), bin_op!(f32 == bool));
-    map.insert(builtins.core.primitive_fns.equal_to[&primitives::Type::Float64].unwrap_id(), bin_op!(f64 == bool));
-
-    // -------------------------------------- Not Equals --------------------------------------
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::Bool].unwrap_id(), bin_op!(bool != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::UInt8].unwrap_id(), bin_op!(u8 != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::UInt16].unwrap_id(), bin_op!(u16 != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::UInt32].unwrap_id(), bin_op!(u32 != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::UInt64].unwrap_id(), bin_op!(u64 != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::UInt128].unwrap_id(), bin_op!(u128 != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::Int8].unwrap_id(), bin_op!(i8 != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::Int16].unwrap_id(), bin_op!(i16 != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::Int32].unwrap_id(), bin_op!(i32 != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::Int64].unwrap_id(), bin_op!(i64 != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::Int128].unwrap_id(), bin_op!(i128 != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::Float32].unwrap_id(), bin_op!(f32 != bool));
-    map.insert(builtins.core.primitive_fns.not_equal_to[&primitives::Type::Float64].unwrap_id(), bin_op!(f64 != bool));
-
-    // -------------------------------------- Greater Than --------------------------------------
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::UInt8].unwrap_id(), bin_op!(u8 > bool));
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::UInt16].unwrap_id(), bin_op!(u16 > bool));
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::UInt32].unwrap_id(), bin_op!(u32 > bool));
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::UInt64].unwrap_id(), bin_op!(u64 > bool));
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::UInt128].unwrap_id(), bin_op!(u128 > bool));
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::Int8].unwrap_id(), bin_op!(i8 > bool));
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::Int16].unwrap_id(), bin_op!(i16 > bool));
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::Int32].unwrap_id(), bin_op!(i32 > bool));
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::Int64].unwrap_id(), bin_op!(i64 > bool));
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::Int128].unwrap_id(), bin_op!(i128 > bool));
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::Float32].unwrap_id(), bin_op!(f32 > bool));
-    map.insert(builtins.core.primitive_fns.greater_than[&primitives::Type::Float64].unwrap_id(), bin_op!(f64 > bool));
-
-    // -------------------------------------- Greater Than Or Equal To --------------------------------------
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::UInt8].unwrap_id(), bin_op!(u8 >= bool));
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::UInt16].unwrap_id(), bin_op!(u16 >= bool));
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::UInt32].unwrap_id(), bin_op!(u32 >= bool));
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::UInt64].unwrap_id(), bin_op!(u64 >= bool));
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::UInt128].unwrap_id(), bin_op!(u128 >= bool));
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::Int8].unwrap_id(), bin_op!(i8 >= bool));
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::Int16].unwrap_id(), bin_op!(i16 >= bool));
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::Int32].unwrap_id(), bin_op!(i32 >= bool));
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::Int64].unwrap_id(), bin_op!(i64 >= bool));
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::Int128].unwrap_id(), bin_op!(i128 >= bool));
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::Float32].unwrap_id(), bin_op!(f32 >= bool));
-    map.insert(builtins.core.primitive_fns.greater_than_or_equal_to[&primitives::Type::Float64].unwrap_id(), bin_op!(f64 >= bool));
-
-    // -------------------------------------- Lesser Than --------------------------------------
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::UInt8].unwrap_id(), bin_op!(u8 < bool));
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::UInt16].unwrap_id(), bin_op!(u16 < bool));
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::UInt32].unwrap_id(), bin_op!(u32 < bool));
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::UInt64].unwrap_id(), bin_op!(u64 < bool));
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::UInt128].unwrap_id(), bin_op!(u128 < bool));
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::Int8].unwrap_id(), bin_op!(i8 < bool));
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::Int16].unwrap_id(), bin_op!(i16 < bool));
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::Int32].unwrap_id(), bin_op!(i32 < bool));
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::Int64].unwrap_id(), bin_op!(i64 < bool));
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::Int128].unwrap_id(), bin_op!(i128 < bool));
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::Float32].unwrap_id(), bin_op!(f32 < bool));
-    map.insert(builtins.core.primitive_fns.lesser_than[&primitives::Type::Float64].unwrap_id(), bin_op!(f64 < bool));
-
-    // -------------------------------------- Lesser Than --------------------------------------
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::UInt8].unwrap_id(), bin_op!(u8 <= bool));
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::UInt16].unwrap_id(), bin_op!(u16 <= bool));
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::UInt32].unwrap_id(), bin_op!(u32 <= bool));
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::UInt64].unwrap_id(), bin_op!(u64 <= bool));
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::UInt128].unwrap_id(), bin_op!(u128 <= bool));
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::Int8].unwrap_id(), bin_op!(i8 <= bool));
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::Int16].unwrap_id(), bin_op!(i16 <= bool));
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::Int32].unwrap_id(), bin_op!(i32 <= bool));
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::Int64].unwrap_id(), bin_op!(i64 <= bool));
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::Int128].unwrap_id(), bin_op!(i128 <= bool));
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::Float32].unwrap_id(), bin_op!(f32 <= bool));
-    map.insert(builtins.core.primitive_fns.lesser_than_or_equal_to[&primitives::Type::Float64].unwrap_id(), bin_op!(f64 <= bool));
+    for (ptr, builtin_hint) in builtins.core.module.builtin_hints.iter() {
+        map.insert(ptr.unwrap_id(), match builtin_hint {
+            BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
+                create_primitive_op(type_.clone(), operation.clone())
+            }
+            BuiltinFunctionHint::Constructor => todo!(),
+            BuiltinFunctionHint::True => load_constant!(bool true),
+            BuiltinFunctionHint::False => load_constant!(bool false),
+            BuiltinFunctionHint::Print => todo!(),
+            BuiltinFunctionHint::Panic => todo!(),
+        });
+    }
 
     // -------------------------------------- ------ --------------------------------------
     // -------------------------------------- Common --------------------------------------
@@ -272,8 +80,199 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
         }
     }));
 
-    map.insert(builtins.common.true_.unwrap_id(), load_constant!(bool true));
-    map.insert(builtins.common.false_.unwrap_id(), load_constant!(bool false));
-
     map
+}
+
+pub fn create_primitive_op<'a>(type_: primitives::Type, operation: PrimitiveOperation) -> FunctionInterpreterImpl<'a> {
+    match (type_, operation) {
+        // -------------------------------------- Bool --------------------------------------
+        (primitives::Type::Bool, PrimitiveOperation::And) => bin_op!(bool && bool),
+        (primitives::Type::Bool, PrimitiveOperation::Or) => bin_op!(bool || bool),
+        (primitives::Type::Bool, PrimitiveOperation::Not) => un_op!(bool !),
+
+        // -------------------------------------- Comparison --------------------------------------
+        (primitives::Type::Bool, PrimitiveOperation::EqualTo) => bin_op!(bool == bool),
+        (primitives::Type::UInt8, PrimitiveOperation::EqualTo) => bin_op!(u8 == bool),
+        (primitives::Type::UInt16, PrimitiveOperation::EqualTo) => bin_op!(u16 == bool),
+        (primitives::Type::UInt32, PrimitiveOperation::EqualTo) => bin_op!(u32 == bool),
+        (primitives::Type::UInt64, PrimitiveOperation::EqualTo) => bin_op!(u64 == bool),
+        (primitives::Type::UInt128, PrimitiveOperation::EqualTo) => bin_op!(u128 == bool),
+        (primitives::Type::Int8, PrimitiveOperation::EqualTo) => bin_op!(i8 == bool),
+        (primitives::Type::Int16, PrimitiveOperation::EqualTo) => bin_op!(i16 == bool),
+        (primitives::Type::Int32, PrimitiveOperation::EqualTo) => bin_op!(i32 == bool),
+        (primitives::Type::Int64, PrimitiveOperation::EqualTo) => bin_op!(i64 == bool),
+        (primitives::Type::Int128, PrimitiveOperation::EqualTo) => bin_op!(i128 == bool),
+        (primitives::Type::Float32, PrimitiveOperation::EqualTo) => bin_op!(f32 == bool),
+        (primitives::Type::Float64, PrimitiveOperation::EqualTo) => bin_op!(f64 == bool),
+
+        (primitives::Type::Bool, PrimitiveOperation::NotEqualTo) => bin_op!(bool != bool),
+        (primitives::Type::UInt8, PrimitiveOperation::NotEqualTo) => bin_op!(u8 != bool),
+        (primitives::Type::UInt16, PrimitiveOperation::NotEqualTo) => bin_op!(u16 != bool),
+        (primitives::Type::UInt32, PrimitiveOperation::NotEqualTo) => bin_op!(u32 != bool),
+        (primitives::Type::UInt64, PrimitiveOperation::NotEqualTo) => bin_op!(u64 != bool),
+        (primitives::Type::UInt128, PrimitiveOperation::NotEqualTo) => bin_op!(u128 != bool),
+        (primitives::Type::Int8, PrimitiveOperation::NotEqualTo) => bin_op!(i8 != bool),
+        (primitives::Type::Int16, PrimitiveOperation::NotEqualTo) => bin_op!(i16 != bool),
+        (primitives::Type::Int32, PrimitiveOperation::NotEqualTo) => bin_op!(i32 != bool),
+        (primitives::Type::Int64, PrimitiveOperation::NotEqualTo) => bin_op!(i64 != bool),
+        (primitives::Type::Int128, PrimitiveOperation::NotEqualTo) => bin_op!(i128 != bool),
+        (primitives::Type::Float32, PrimitiveOperation::NotEqualTo) => bin_op!(f32 != bool),
+        (primitives::Type::Float64, PrimitiveOperation::NotEqualTo) => bin_op!(f64 != bool),
+
+        (primitives::Type::UInt8, PrimitiveOperation::GreaterThan) => bin_op!(u8 > bool),
+        (primitives::Type::UInt16, PrimitiveOperation::GreaterThan) => bin_op!(u16 > bool),
+        (primitives::Type::UInt32, PrimitiveOperation::GreaterThan) => bin_op!(u32 > bool),
+        (primitives::Type::UInt64, PrimitiveOperation::GreaterThan) => bin_op!(u64 > bool),
+        (primitives::Type::UInt128, PrimitiveOperation::GreaterThan) => bin_op!(u128 > bool),
+        (primitives::Type::Int8, PrimitiveOperation::GreaterThan) => bin_op!(i8 > bool),
+        (primitives::Type::Int16, PrimitiveOperation::GreaterThan) => bin_op!(i16 > bool),
+        (primitives::Type::Int32, PrimitiveOperation::GreaterThan) => bin_op!(i32 > bool),
+        (primitives::Type::Int64, PrimitiveOperation::GreaterThan) => bin_op!(i64 > bool),
+        (primitives::Type::Int128, PrimitiveOperation::GreaterThan) => bin_op!(i128 > bool),
+        (primitives::Type::Float32, PrimitiveOperation::GreaterThan) => bin_op!(f32 > bool),
+        (primitives::Type::Float64, PrimitiveOperation::GreaterThan) => bin_op!(f64 > bool),
+
+        (primitives::Type::UInt8, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(u8 >= bool),
+        (primitives::Type::UInt16, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(u16 >= bool),
+        (primitives::Type::UInt32, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(u32 >= bool),
+        (primitives::Type::UInt64, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(u64 >= bool),
+        (primitives::Type::UInt128, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(u128 >= bool),
+        (primitives::Type::Int8, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(i8 >= bool),
+        (primitives::Type::Int16, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(i16 >= bool),
+        (primitives::Type::Int32, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(i32 >= bool),
+        (primitives::Type::Int64, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(i64 >= bool),
+        (primitives::Type::Int128, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(i128 >= bool),
+        (primitives::Type::Float32, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(f32 >= bool),
+        (primitives::Type::Float64, PrimitiveOperation::GreaterThanOrEqual) => bin_op!(f64 >= bool),
+
+        (primitives::Type::UInt8, PrimitiveOperation::LesserThan) => bin_op!(u8 < bool),
+        (primitives::Type::UInt16, PrimitiveOperation::LesserThan) => bin_op!(u16 < bool),
+        (primitives::Type::UInt32, PrimitiveOperation::LesserThan) => bin_op!(u32 < bool),
+        (primitives::Type::UInt64, PrimitiveOperation::LesserThan) => bin_op!(u64 < bool),
+        (primitives::Type::UInt128, PrimitiveOperation::LesserThan) => bin_op!(u128 < bool),
+        (primitives::Type::Int8, PrimitiveOperation::LesserThan) => bin_op!(i8 < bool),
+        (primitives::Type::Int16, PrimitiveOperation::LesserThan) => bin_op!(i16 < bool),
+        (primitives::Type::Int32, PrimitiveOperation::LesserThan) => bin_op!(i32 < bool),
+        (primitives::Type::Int64, PrimitiveOperation::LesserThan) => bin_op!(i64 < bool),
+        (primitives::Type::Int128, PrimitiveOperation::LesserThan) => bin_op!(i128 < bool),
+        (primitives::Type::Float32, PrimitiveOperation::LesserThan) => bin_op!(f32 < bool),
+        (primitives::Type::Float64, PrimitiveOperation::LesserThan) => bin_op!(f64 < bool),
+
+        (primitives::Type::UInt8, PrimitiveOperation::LesserThanOrEqual) => bin_op!(u8 <= bool),
+        (primitives::Type::UInt16, PrimitiveOperation::LesserThanOrEqual) => bin_op!(u16 <= bool),
+        (primitives::Type::UInt32, PrimitiveOperation::LesserThanOrEqual) => bin_op!(u32 <= bool),
+        (primitives::Type::UInt64, PrimitiveOperation::LesserThanOrEqual) => bin_op!(u64 <= bool),
+        (primitives::Type::UInt128, PrimitiveOperation::LesserThanOrEqual) => bin_op!(u128 <= bool),
+        (primitives::Type::Int8, PrimitiveOperation::LesserThanOrEqual) => bin_op!(i8 <= bool),
+        (primitives::Type::Int16, PrimitiveOperation::LesserThanOrEqual) => bin_op!(i16 <= bool),
+        (primitives::Type::Int32, PrimitiveOperation::LesserThanOrEqual) => bin_op!(i32 <= bool),
+        (primitives::Type::Int64, PrimitiveOperation::LesserThanOrEqual) => bin_op!(i64 <= bool),
+        (primitives::Type::Int128, PrimitiveOperation::LesserThanOrEqual) => bin_op!(i128 <= bool),
+        (primitives::Type::Float32, PrimitiveOperation::LesserThanOrEqual) => bin_op!(f32 <= bool),
+        (primitives::Type::Float64, PrimitiveOperation::LesserThanOrEqual) => bin_op!(f64 <= bool),
+
+        // -------------------------------------- Math --------------------------------------
+        (primitives::Type::UInt8, PrimitiveOperation::Add) => bin_op!(u8 + u8),
+        (primitives::Type::UInt16, PrimitiveOperation::Add) => bin_op!(u16 + u16),
+        (primitives::Type::UInt32, PrimitiveOperation::Add) => bin_op!(u32 + u32),
+        (primitives::Type::UInt64, PrimitiveOperation::Add) => bin_op!(u64 + u64),
+        (primitives::Type::UInt128, PrimitiveOperation::Add) => bin_op!(u128 + u128),
+        (primitives::Type::Int8, PrimitiveOperation::Add) => bin_op!(i8 + i8),
+        (primitives::Type::Int16, PrimitiveOperation::Add) => bin_op!(i16 + i16),
+        (primitives::Type::Int32, PrimitiveOperation::Add) => bin_op!(i32 + i32),
+        (primitives::Type::Int64, PrimitiveOperation::Add) => bin_op!(i64 + i64),
+        (primitives::Type::Int128, PrimitiveOperation::Add) => bin_op!(i128 + i128),
+        (primitives::Type::Float32, PrimitiveOperation::Add) => bin_op!(f32 + f32),
+        (primitives::Type::Float64, PrimitiveOperation::Add) => bin_op!(f64 + f64),
+
+        (primitives::Type::UInt8, PrimitiveOperation::Subtract) => bin_op!(u8 - u8),
+        (primitives::Type::UInt16, PrimitiveOperation::Subtract) => bin_op!(u16 - u16),
+        (primitives::Type::UInt32, PrimitiveOperation::Subtract) => bin_op!(u32 - u32),
+        (primitives::Type::UInt64, PrimitiveOperation::Subtract) => bin_op!(u64 - u64),
+        (primitives::Type::UInt128, PrimitiveOperation::Subtract) => bin_op!(u128 - u128),
+        (primitives::Type::Int8, PrimitiveOperation::Subtract) => bin_op!(i8 - i8),
+        (primitives::Type::Int16, PrimitiveOperation::Subtract) => bin_op!(i16 - i16),
+        (primitives::Type::Int32, PrimitiveOperation::Subtract) => bin_op!(i32 - i32),
+        (primitives::Type::Int64, PrimitiveOperation::Subtract) => bin_op!(i64 - i64),
+        (primitives::Type::Int128, PrimitiveOperation::Subtract) => bin_op!(i128 - i128),
+        (primitives::Type::Float32, PrimitiveOperation::Subtract) => bin_op!(f32 - f32),
+        (primitives::Type::Float64, PrimitiveOperation::Subtract) => bin_op!(f64 - f64),
+
+        (primitives::Type::UInt8, PrimitiveOperation::Divide) => bin_op!(u8 / u8),
+        (primitives::Type::UInt16, PrimitiveOperation::Divide) => bin_op!(u16 / u16),
+        (primitives::Type::UInt32, PrimitiveOperation::Divide) => bin_op!(u32 / u32),
+        (primitives::Type::UInt64, PrimitiveOperation::Divide) => bin_op!(u64 / u64),
+        (primitives::Type::UInt128, PrimitiveOperation::Divide) => bin_op!(u128 / u128),
+        (primitives::Type::Int8, PrimitiveOperation::Divide) => bin_op!(i8 / i8),
+        (primitives::Type::Int16, PrimitiveOperation::Divide) => bin_op!(i16 / i16),
+        (primitives::Type::Int32, PrimitiveOperation::Divide) => bin_op!(i32 / i32),
+        (primitives::Type::Int64, PrimitiveOperation::Divide) => bin_op!(i64 / i64),
+        (primitives::Type::Int128, PrimitiveOperation::Divide) => bin_op!(i128 / i128),
+        (primitives::Type::Float32, PrimitiveOperation::Divide) => bin_op!(f32 / f32),
+        (primitives::Type::Float64, PrimitiveOperation::Divide) => bin_op!(f64 / f64),
+
+        (primitives::Type::UInt8, PrimitiveOperation::Multiply) => bin_op!(u8 * u8),
+        (primitives::Type::UInt16, PrimitiveOperation::Multiply) => bin_op!(u16 * u16),
+        (primitives::Type::UInt32, PrimitiveOperation::Multiply) => bin_op!(u32 * u32),
+        (primitives::Type::UInt64, PrimitiveOperation::Multiply) => bin_op!(u64 * u64),
+        (primitives::Type::UInt128, PrimitiveOperation::Multiply) => bin_op!(u128 * u128),
+        (primitives::Type::Int8, PrimitiveOperation::Multiply) => bin_op!(i8 * i8),
+        (primitives::Type::Int16, PrimitiveOperation::Multiply) => bin_op!(i16 * i16),
+        (primitives::Type::Int32, PrimitiveOperation::Multiply) => bin_op!(i32 * i32),
+        (primitives::Type::Int64, PrimitiveOperation::Multiply) => bin_op!(i64 * i64),
+        (primitives::Type::Int128, PrimitiveOperation::Multiply) => bin_op!(i128 * i128),
+        (primitives::Type::Float32, PrimitiveOperation::Multiply) => bin_op!(f32 * f32),
+        (primitives::Type::Float64, PrimitiveOperation::Multiply) => bin_op!(f64 * f64),
+
+        (primitives::Type::UInt8, PrimitiveOperation::Modulo) => bin_op!(u8 % u8),
+        (primitives::Type::UInt16, PrimitiveOperation::Modulo) => bin_op!(u16 % u16),
+        (primitives::Type::UInt32, PrimitiveOperation::Modulo) => bin_op!(u32 % u32),
+        (primitives::Type::UInt64, PrimitiveOperation::Modulo) => bin_op!(u64 % u64),
+        (primitives::Type::UInt128, PrimitiveOperation::Modulo) => bin_op!(u128 % u128),
+        (primitives::Type::Int8, PrimitiveOperation::Modulo) => bin_op!(i8 % i8),
+        (primitives::Type::Int16, PrimitiveOperation::Modulo) => bin_op!(i16 % i16),
+        (primitives::Type::Int32, PrimitiveOperation::Modulo) => bin_op!(i32 % i32),
+        (primitives::Type::Int64, PrimitiveOperation::Modulo) => bin_op!(i64 % i64),
+        (primitives::Type::Int128, PrimitiveOperation::Modulo) => bin_op!(i128 % i128),
+        (primitives::Type::Float32, PrimitiveOperation::Modulo) => bin_op!(f32 % f32),
+        (primitives::Type::Float64, PrimitiveOperation::Modulo) => bin_op!(f64 % f64),
+
+        (primitives::Type::Float32, PrimitiveOperation::Log) => fun_op!(f32 log f32),
+        (primitives::Type::Float64, PrimitiveOperation::Log) => fun_op!(f64 log f64),
+        (primitives::Type::Float32, PrimitiveOperation::Exp) => fun_op!(f32 powf f32),
+        (primitives::Type::Float64, PrimitiveOperation::Exp) => fun_op!(f64 powf f64),
+
+        // TODO For unsigneds, this shouldn't exist. But it does exist in $Number for now.
+        (primitives::Type::UInt8, PrimitiveOperation::Negative) => un_op!(i8 -),
+        (primitives::Type::UInt16, PrimitiveOperation::Negative) => un_op!(i16 -),
+        (primitives::Type::UInt32, PrimitiveOperation::Negative) => un_op!(i32 -),
+        (primitives::Type::UInt64, PrimitiveOperation::Negative) => un_op!(i64 -),
+        (primitives::Type::UInt128, PrimitiveOperation::Negative) => un_op!(i128 -),
+        (primitives::Type::Int8, PrimitiveOperation::Negative) => un_op!(i8 -),
+        (primitives::Type::Int16, PrimitiveOperation::Negative) => un_op!(i16 -),
+        (primitives::Type::Int32, PrimitiveOperation::Negative) => un_op!(i32 -),
+        (primitives::Type::Int64, PrimitiveOperation::Negative) => un_op!(i64 -),
+        (primitives::Type::Int128, PrimitiveOperation::Negative) => un_op!(i128 -),
+        (primitives::Type::Float32, PrimitiveOperation::Negative) => un_op!(f32 -),
+        (primitives::Type::Float64, PrimitiveOperation::Negative) => un_op!(f64 -),
+
+        (primitives::Type::UInt8, PrimitiveOperation::ParseIntString) => parse_op!(u8),
+        (primitives::Type::UInt16, PrimitiveOperation::ParseIntString) => parse_op!(u16),
+        (primitives::Type::UInt32, PrimitiveOperation::ParseIntString) => parse_op!(u32),
+        (primitives::Type::UInt64, PrimitiveOperation::ParseIntString) => parse_op!(u64),
+        (primitives::Type::UInt128, PrimitiveOperation::ParseIntString) => parse_op!(u128),
+        (primitives::Type::Int8, PrimitiveOperation::ParseIntString) => parse_op!(i8),
+        (primitives::Type::Int16, PrimitiveOperation::ParseIntString) => parse_op!(i16),
+        (primitives::Type::Int32, PrimitiveOperation::ParseIntString) => parse_op!(i32),
+        (primitives::Type::Int64, PrimitiveOperation::ParseIntString) => parse_op!(i64),
+        (primitives::Type::Int128, PrimitiveOperation::ParseIntString) => parse_op!(i128),
+        (primitives::Type::Float32, PrimitiveOperation::ParseIntString) => parse_op!(f32),
+        (primitives::Type::Float64, PrimitiveOperation::ParseIntString) => parse_op!(f64),
+
+        // -------------------------------------- Parse --------------------------------------
+        (primitives::Type::Float32, PrimitiveOperation::ParseFloatString) => parse_op!(f32),
+        (primitives::Type::Float64, PrimitiveOperation::ParseFloatString) => parse_op!(f64),
+
+        _ => panic!("Unsupported primitive operation: {:?} on {:?}", operation, type_),
+    }
 }
