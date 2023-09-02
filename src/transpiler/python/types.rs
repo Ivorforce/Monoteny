@@ -2,9 +2,9 @@ use std::io::Write;
 use crate::program::primitives;
 use crate::program::traits::Trait;
 use crate::program::types::{TypeProto, TypeUnit};
-use crate::transpiler::python::TranspilerContext;
+use crate::transpiler::python::FunctionContext;
 
-pub fn transpile(stream: &mut (dyn Write), type_def: &TypeProto, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile(stream: &mut (dyn Write), type_def: &TypeProto, context: &FunctionContext) -> Result<(), std::io::Error> {
     match &type_def.unit {
         TypeUnit::Struct(s) => transpile_struct(stream, s, context)?,
         TypeUnit::Monad => write!(stream, "np.ndarray")?,
@@ -36,7 +36,7 @@ pub fn transpile_primitive_value(stream: &mut (dyn Write), value: &String, type_
     })
 }
 
-pub fn transpile_struct(stream: &mut (dyn Write), s: &Trait, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile_struct(stream: &mut (dyn Write), s: &Trait, context: &FunctionContext) -> Result<(), std::io::Error> {
     if let Some(primitive_type) = context.builtins.core.get_primitive(s) {
         transpile_primitive(stream, primitive_type)
     }

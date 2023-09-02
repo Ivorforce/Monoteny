@@ -1,9 +1,11 @@
 pub mod docstrings;
 pub mod types;
 pub mod builtins;
+pub mod class;
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::collections::hash_map::Entry;
 use std::io::Write;
 use std::ops::DerefMut;
 use std::rc::Rc;
@@ -22,17 +24,19 @@ use crate::program::calls::FunctionBinding;
 use crate::program::generics::TypeForest;
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation, PrimitiveOperation};
 use crate::program::traits::{RequirementsFulfillment, TraitBinding};
-use crate::program::types::TypeUnit;
+use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::cpp::transpile_type;
 use crate::transpiler::namespaces;
+use crate::transpiler::python::class::{ClassContext, transpile_class};
 
-pub struct TranspilerContext<'a> {
+pub struct FunctionContext<'a> {
     names: &'a HashMap<Uuid, String>,
     functions_by_id: &'a HashMap<Uuid, Rc<FunctionImplementation>>,
     builtins: &'a Builtins,
     builtin_hints: &'a HashMap<Uuid, BuiltinFunctionHint>,
     expressions: &'a ExpressionForest,
     types: &'a TypeForest,
+    struct_ids: &'a HashMap<Box<TypeProto>, Uuid>,
 }
 
 // TODO Not optimal lol
@@ -121,7 +125,6 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     let mut internal_symbols: Vec<Rc<FunctionImplementation>> = vec![];
     while let Some(used_symbol) = unfolder.new_mappable_calls.pop() {
         // TODO Use underscore names?
-        println!("{:?}", used_symbol.pointer);
         let replacement_symbol = Rc::clone(&unfolder.mapped_calls[&used_symbol]);
         let implementation = &functions_by_id[&used_symbol.pointer.pointer_id];
 
@@ -135,6 +138,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     }
 
     // Register symbols
+    let mut exported_structs = HashMap::new();
 
     for implementation in exported_symbols.iter() {
         // TODO Register with priority over internal symbols
@@ -150,6 +154,19 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         for (variable, name) in implementation.variable_names.iter() {
             function_namespace.register_definition(variable.id.clone(), name);
         }
+        for (expression_id, operation) in implementation.expression_forest.operations.iter() {
+            if let ExpressionOperation::FunctionCall(fun) = operation {
+                if let Some(BuiltinFunctionHint::Constructor) = builtin_hints_by_id.get(&fun.pointer.pointer_id) {
+                    let type_ = implementation.type_forest.resolve_binding_alias(expression_id).unwrap();
+                    if let Entry::Vacant(entry) = exported_structs.entry(type_) {
+                        let id = Uuid::new_v4();
+                        entry.insert(id);
+                        // TODO Find proper names
+                        file_namespace.register_definition(id, &"AClass".into());
+                    }
+                }
+            }
+        }
     }
 
     let mut names = global_namespace.map_names();
@@ -163,14 +180,27 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
     writeln!(stream, "from typing import Any, Callable")?;
 
+    for (struct_type, id) in exported_structs.iter() {
+        let context = ClassContext {
+            names: &names,
+            functions_by_id: &functions_by_id,
+            builtins: &builtins,
+            builtin_hints: &builtin_hints_by_id,
+            struct_ids: &exported_structs,
+        };
+
+        transpile_class(stream, struct_type, &context)?;
+    }
+
     for implementation in exported_symbols.iter() {
-        let context = TranspilerContext {
+        let context = FunctionContext {
             names: &names,
             functions_by_id: &functions_by_id,
             builtins: &builtins,
             builtin_hints: &builtin_hints_by_id,
             expressions: &implementation.expression_forest,
-            types: &implementation.type_forest
+            types: &implementation.type_forest,
+            struct_ids: &exported_structs,
         };
 
         transpile_function(stream, implementation, &context).unwrap();
@@ -182,13 +212,14 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     writeln!(stream, "# ========================== ======== ============================")?;
 
     for implementation in internal_symbols.iter() {
-        let context = TranspilerContext {
+        let context = FunctionContext {
             names: &names,
             functions_by_id: &functions_by_id,
             builtins: &builtins,
             builtin_hints: &builtin_hints_by_id,
             expressions: &implementation.expression_forest,
-            types: &implementation.type_forest
+            types: &implementation.type_forest,
+            struct_ids: &exported_structs,
         };
 
         transpile_function(stream, implementation, &context).unwrap();
@@ -207,7 +238,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     return Ok(())
 }
 
-pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &FunctionContext) -> Result<(), std::io::Error> {
     write!(stream, "\n\ndef {}(", context.names[&function.pointer.pointer_id])?;
 
     for (idx, parameter) in function.parameter_variables.iter().enumerate() {
@@ -288,7 +319,7 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
     Ok(())
 }
 
-pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, context: &FunctionContext) -> Result<(), std::io::Error> {
     match &context.expressions.operations.get(&expression).unwrap() {
         ExpressionOperation::StringLiteral(string) => {
             write!(stream, "\"{}\"", escape_string(&string))?;
@@ -397,7 +428,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
     Ok(())
 }
 
-pub fn transpile_maybe_parenthesized_expression(stream: &mut (dyn Write), expression: ExpressionID, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile_maybe_parenthesized_expression(stream: &mut (dyn Write), expression: ExpressionID, context: &FunctionContext) -> Result<(), std::io::Error> {
     if is_simple(&context.expressions.operations.get(&expression).unwrap()) {
         transpile_expression(stream, expression, context)?;
     }
@@ -416,7 +447,7 @@ pub fn escape_string(string: &String) -> String {
     return string
 }
 
-pub fn try_transpile_builtin(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+pub fn try_transpile_builtin(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Result<bool, std::io::Error> {
     guard!(let Some(hint) = context.builtin_hints.get(&function.pointer_id) else {
         return Ok(false);
     });
@@ -446,7 +477,12 @@ pub fn try_transpile_builtin(stream: &mut (dyn Write), function: &Rc<FunctionPoi
                 PrimitiveOperation::ParseFloatString => transpile_parse_function(stream, "^[0-9]+\\.[0-9]*$", arguments, expression_id, context)?,
             }
         }
-        BuiltinFunctionHint::Constructor => todo!(),
+        BuiltinFunctionHint::Constructor => {
+            let struct_type = context.types.resolve_binding_alias(expression_id).unwrap();
+            let struct_id = context.struct_ids[&struct_type];
+            // TODO need to pass in parameters once they exist
+            write!(stream, "{}()", context.names[&struct_id])?
+        },
         BuiltinFunctionHint::True => write!(stream, "True")?,
         BuiltinFunctionHint::False => write!(stream, "False")?,
         BuiltinFunctionHint::Print => transpile_single_arg_function_call(stream, "print", arguments, expression_id, context)?,
@@ -456,7 +492,7 @@ pub fn try_transpile_builtin(stream: &mut (dyn Write), function: &Rc<FunctionPoi
     return Ok(true)
 }
 
-pub fn transpile_unary_operator(stream: &mut (dyn Write), operator: &str, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile_unary_operator(stream: &mut (dyn Write), operator: &str, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Result<(), std::io::Error> {
     guard!(let [expression] = arguments[..] else {
         panic!("Unary operator got {} arguments: {}", arguments.len(), operator);
     });
@@ -465,7 +501,7 @@ pub fn transpile_unary_operator(stream: &mut (dyn Write), operator: &str, argume
     transpile_maybe_parenthesized_expression(stream, expression.clone(), context)
 }
 
-pub fn transpile_binary_operator(stream: &mut (dyn Write), operator: &str, arguments: &Vec<ExpressionID>, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile_binary_operator(stream: &mut (dyn Write), operator: &str, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Result<(), std::io::Error> {
     guard!(let [lhs, rhs] = arguments[..] else {
         panic!("Binary operator got {} arguments: {}", arguments.len(), operator);
     });
@@ -475,7 +511,7 @@ pub fn transpile_binary_operator(stream: &mut (dyn Write), operator: &str, argum
     transpile_maybe_parenthesized_expression(stream, rhs.clone(), context)
 }
 
-pub fn try_transpile_optimization(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<bool, std::io::Error> {
+pub fn try_transpile_optimization(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Result<bool, std::io::Error> {
     if !context.builtins.module_by_name["math".into()].functions.contains_key(function) {
         return Ok(false)
     }
@@ -497,7 +533,7 @@ pub fn try_transpile_optimization(stream: &mut (dyn Write), function: &Rc<Functi
     Ok(false)
 }
 
-pub fn transpile_parse_function(stream: &mut (dyn Write), supported_regex: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile_parse_function(stream: &mut (dyn Write), supported_regex: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Result<(), std::io::Error> {
     guard!(let [argument_expression_id] = arguments[..] else {
         panic!("Parse function got {} arguments", arguments.len());
     });
@@ -516,7 +552,7 @@ pub fn transpile_parse_function(stream: &mut (dyn Write), supported_regex: &str,
     write!(stream, ")", )
 }
 
-pub fn transpile_single_arg_function_call(stream: &mut (dyn Write), function_name: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile_single_arg_function_call(stream: &mut (dyn Write), function_name: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Result<(), std::io::Error> {
     guard!(let [argument_expression_id] = arguments[..] else {
         panic!("{} function got {} arguments", function_name, arguments.len());
     });

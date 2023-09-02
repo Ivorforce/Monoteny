@@ -1,9 +1,9 @@
 use std::io::Write;
-use crate::transpiler::python::{TranspilerContext, types};
+use crate::transpiler::python::{FunctionContext, types};
 use crate::program::global::FunctionImplementation;
 use crate::program::types::{TypeProto, TypeUnit};
 
-pub fn dump(stream: &mut (dyn Write), implementation: &FunctionImplementation, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn dump(stream: &mut (dyn Write), implementation: &FunctionImplementation, context: &FunctionContext) -> Result<(), std::io::Error> {
     write!(stream, ":\n    \"\"\"\n    <Docstring TODO!>\n")?;
 
     if !implementation.pointer.target.interface.parameters.is_empty() {
@@ -27,7 +27,7 @@ pub fn dump(stream: &mut (dyn Write), implementation: &FunctionImplementation, c
     Ok(())
 }
 
-pub fn transpile_type(stream: &mut (dyn Write), type_def: &TypeProto, context: &TranspilerContext) -> Result<(), std::io::Error> {
+pub fn transpile_type(stream: &mut (dyn Write), type_def: &TypeProto, context: &FunctionContext) -> Result<(), std::io::Error> {
     match &type_def.unit {
         TypeUnit::Struct(s) => types::transpile_struct(stream, s, context)?,
         TypeUnit::Monad => {
