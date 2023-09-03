@@ -25,7 +25,6 @@ use crate::program::generics::TypeForest;
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation, PrimitiveOperation};
 use crate::program::traits::{RequirementsFulfillment, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
-use crate::transpiler::cpp::transpile_type;
 use crate::transpiler::namespaces;
 use crate::transpiler::python::class::{ClassContext, transpile_class};
 
@@ -66,9 +65,13 @@ pub fn MATH_FUNCTIONS() -> HashMap<String, String> {
 }
 
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &Rc<Builtins>) -> Result<(), std::io::Error> {
-    let mut global_namespace = builtins::create(&builtins);
+    let mut struct_ids = HashMap::new();
+
+    let mut global_namespace = builtins::create(&builtins, &mut struct_ids);
+    let builtin_structs: HashSet<_> = struct_ids.keys().map(Clone::clone).collect();
     let mut file_namespace = global_namespace.add_sublevel();
-    let mut object_namespace = namespaces::Level::new();
+    let mut object_namespace = namespaces::Level::new();  // TODO Keywords can't be in object namespace either
+
     let mut functions_by_id = HashMap::new();
     let mut builtin_hints_by_id = HashMap::new();
 
@@ -137,9 +140,6 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         internal_symbols.push(unfolded_implementation);
     }
 
-    // Register symbols
-    let mut exported_structs = HashMap::new();
-
     for implementation in exported_symbols.iter() {
         // TODO Register with priority over internal symbols
         file_namespace.register_definition(implementation.pointer.pointer_id, &implementation.pointer.name);
@@ -158,7 +158,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
             if let ExpressionOperation::FunctionCall(fun) = operation {
                 if let Some(BuiltinFunctionHint::Constructor) = builtin_hints_by_id.get(&fun.pointer.pointer_id) {
                     let type_ = implementation.type_forest.resolve_binding_alias(expression_id).unwrap();
-                    if let Entry::Vacant(entry) = exported_structs.entry(type_) {
+                    if let Entry::Vacant(entry) = struct_ids.entry(type_) {
                         let id = Uuid::new_v4();
                         entry.insert(id);
                         // TODO Find proper names
@@ -180,13 +180,17 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     writeln!(stream, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
     writeln!(stream, "from typing import Any, Callable")?;
 
-    for (struct_type, id) in exported_structs.iter() {
+    for (struct_type, id) in struct_ids.iter() {
+        if builtin_structs.contains(struct_type) {
+            continue
+        }
+
         let context = ClassContext {
             names: &names,
             functions_by_id: &functions_by_id,
             builtins: &builtins,
             builtin_hints: &builtin_hints_by_id,
-            struct_ids: &exported_structs,
+            struct_ids: &struct_ids,
         };
 
         transpile_class(stream, struct_type, &context)?;
@@ -200,7 +204,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
             builtin_hints: &builtin_hints_by_id,
             expressions: &implementation.expression_forest,
             types: &implementation.type_forest,
-            struct_ids: &exported_structs,
+            struct_ids: &struct_ids,
         };
 
         transpile_function(stream, implementation, &context).unwrap();
@@ -219,7 +223,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
             builtin_hints: &builtin_hints_by_id,
             expressions: &implementation.expression_forest,
             types: &implementation.type_forest,
-            struct_ids: &exported_structs,
+            struct_ids: &struct_ids,
         };
 
         transpile_function(stream, implementation, &context).unwrap();
@@ -273,15 +277,15 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
 
         match &parameter.type_.unit {
             TypeUnit::Monad => {
-                let unit = &parameter.type_.arguments[0].as_ref().unit;
+                let type_ = &parameter.type_.arguments[0].as_ref();
 
-                if let TypeUnit::Struct(s) = unit {
+                if let TypeUnit::Struct(s) = &type_.unit {
                     write!(
                         stream, "    {} = np.asarray({}, dtype=",
                         variable_name,
                         external_name
                     )?;
-                    types::transpile_struct(stream, s, context)?;
+                    types::transpile(stream, type_, context)?;
                     write!(stream, ")\n")?;
                 }
                 else {

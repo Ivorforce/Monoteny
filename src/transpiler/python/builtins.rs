@@ -1,9 +1,13 @@
+use std::collections::HashMap;
+use std::rc::Rc;
 use uuid::Uuid;
 use crate::program::builtins::Builtins;
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
+use crate::program::primitives;
+use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::namespaces;
 
-pub fn create(builtins: &Builtins) -> namespaces::Level {
+pub fn create(builtins: &Builtins, type_ids: &mut HashMap<Box<TypeProto>, Uuid>) -> namespaces::Level {
     let mut namespace = namespaces::Level::new();
 
     for keyword in [
@@ -22,11 +26,6 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
     }
 
     for type_name in [
-        // Pretend these are built-in; actually we're borrowing from numpy with an import.
-        "int8", "int16", "int32", "int64", "int128",
-        "uint8", "uint16", "uint32", "uint64", "uint128",
-        "float32", "float64",
-        // This is actually built-in but we don't want to accidentally shadow it.
         "bool",
         "np", "op",
     ] {
@@ -66,6 +65,26 @@ pub fn create(builtins: &Builtins) -> namespaces::Level {
         for fun in trait_.abstract_functions.iter() {
             trait_namespace.register_definition(fun.target.function_id, &fun.name);
         }
+    }
+
+    for (struct_, name) in [
+        (&builtins.core.traits.String, "str"),
+        (&builtins.core.primitives[&primitives::Type::Int8], "int8"),
+        (&builtins.core.primitives[&primitives::Type::Int16], "int16"),
+        (&builtins.core.primitives[&primitives::Type::Int32], "int32"),
+        (&builtins.core.primitives[&primitives::Type::Int64], "int64"),
+        (&builtins.core.primitives[&primitives::Type::Int128], "int128"),
+        (&builtins.core.primitives[&primitives::Type::UInt8], "uint8"),
+        (&builtins.core.primitives[&primitives::Type::UInt16], "uint16"),
+        (&builtins.core.primitives[&primitives::Type::UInt32], "uint32"),
+        (&builtins.core.primitives[&primitives::Type::UInt64], "uint64"),
+        (&builtins.core.primitives[&primitives::Type::UInt128], "uint128"),
+        (&builtins.core.primitives[&primitives::Type::Float32], "float32"),
+        (&builtins.core.primitives[&primitives::Type::Float64], "float64"),
+    ].into_iter() {
+        let id = Uuid::new_v4();
+        type_ids.insert(TypeProto::unit(TypeUnit::Struct(Rc::clone(struct_))), id);
+        namespace.insert_keyword(id, &name.to_string());
     }
 
     // I don't think we need this. This is just "extend Object: Interface" - this usually is not referred to in code.

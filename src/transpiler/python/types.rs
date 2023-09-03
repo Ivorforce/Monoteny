@@ -6,7 +6,7 @@ use crate::transpiler::python::FunctionContext;
 
 pub fn transpile(stream: &mut (dyn Write), type_def: &TypeProto, context: &FunctionContext) -> Result<(), std::io::Error> {
     match &type_def.unit {
-        TypeUnit::Struct(s) => transpile_struct(stream, s, context)?,
+        TypeUnit::Struct(s) => write!(stream, "{}", &context.names[&context.struct_ids[type_def]])?,
         TypeUnit::Monad => write!(stream, "np.ndarray")?,
         TypeUnit::Generic(_) => todo!(),
         TypeUnit::Any(_) => todo!(),
@@ -34,18 +34,6 @@ pub fn transpile_primitive_value(stream: &mut (dyn Write), value: &String, type_
         primitives::Type::Float64 => write!(stream, "float64({})", value)?,
         _ => panic!(),
     })
-}
-
-pub fn transpile_struct(stream: &mut (dyn Write), s: &Trait, context: &FunctionContext) -> Result<(), std::io::Error> {
-    if let Some(primitive_type) = context.builtins.core.get_primitive(s) {
-        transpile_primitive(stream, primitive_type)
-    }
-    else if s == context.builtins.core.traits.String.as_ref() {
-        write!(stream, "str")
-    }
-    else {
-        write!(stream, "{}", s.name)
-    }
 }
 
 pub fn transpile_primitive(stream: &mut (dyn Write), type_def: &primitives::Type) -> Result<(), std::io::Error> {

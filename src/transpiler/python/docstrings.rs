@@ -29,7 +29,7 @@ pub fn dump(stream: &mut (dyn Write), implementation: &FunctionImplementation, c
 
 pub fn transpile_type(stream: &mut (dyn Write), type_def: &TypeProto, context: &FunctionContext) -> Result<(), std::io::Error> {
     match &type_def.unit {
-        TypeUnit::Struct(s) => types::transpile_struct(stream, s, context)?,
+        TypeUnit::Struct(s) => write!(stream, "{}", &context.names[&context.struct_ids[type_def]])?,
         TypeUnit::Monad => {
             transpile_type(stream, &type_def.arguments[0], context)?;
             write!(stream, "[?]")?;
