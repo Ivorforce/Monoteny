@@ -158,11 +158,19 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
             if let ExpressionOperation::FunctionCall(fun) = operation {
                 if let Some(BuiltinFunctionHint::Constructor) = builtin_hints_by_id.get(&fun.pointer.pointer_id) {
                     let type_ = implementation.type_forest.resolve_binding_alias(expression_id).unwrap();
-                    if let Entry::Vacant(entry) = struct_ids.entry(type_) {
+                    if let Entry::Vacant(entry) = struct_ids.entry(type_.clone()) {
+                        // TODO If we have generics, we should include their bindings in the name somehow.
+                        //  Eg. ArrayFloat. Probably only if it's exactly one. Otherwise, we need to be ok with
+                        //  just the auto-renames.
+                        let name = match &type_.unit {
+                            TypeUnit::Struct(struct_) => &struct_.name,
+                            // Technically only the name is unsupported here, but later we'd need to actually construct it too.
+                            _ => panic!("Unsupported Constructor Type")
+                        };
                         let id = Uuid::new_v4();
                         entry.insert(id);
                         // TODO Find proper names
-                        file_namespace.register_definition(id, &"AClass".into());
+                        file_namespace.register_definition(id, name);
                     }
                 }
             }
