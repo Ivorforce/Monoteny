@@ -125,13 +125,19 @@ impl <'a> ImperativeLinker<'a> {
     }
 
     pub fn link_top_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
-        if self.function.interface.return_type.unit.is_void() {
-            if let [statement] = &body[..] {
-                if let abstract_syntax::Statement::Expression(expression ) = statement.as_ref() {
-                    // Single-Statement Return
-                    return Ok(vec![
-                        Box::new(Statement::Return(Some(self.link_expression(expression, &scope)?)))
-                    ])
+        if let [statement] = &body[..] {
+            if let abstract_syntax::Statement::Expression(expression ) = statement.as_ref() {
+                // TODO Could be either single line function or { line }.
+                //  Once we have support for {}, we can check for real.
+                let expression_id = self.link_expression(expression, &scope)?;
+                // Can be either void or a type, but either way should match the expression
+                self.types.bind(expression_id, &self.function.interface.return_type.freezing_generics_to_any())?;
+
+                if self.function.interface.return_type.unit.is_void() {
+                    return Ok(vec![Box::new(Statement::Expression(expression_id))])
+                }
+                else {
+                    return Ok(vec![Box::new(Statement::Return(Some(expression_id)))])
                 }
             }
         }

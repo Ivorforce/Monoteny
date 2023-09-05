@@ -99,7 +99,7 @@ ContextualParameter: Box<Expression> = {
 
 FunctionBody: Vec<Box<Statement>> = {
     "{" <(<Statement> ";")*> "}",
-    <Expression> => vec![Box::new(Statement::Return(Some(<>)))],
+    <Expression> => vec![Box::new(Statement::Expression(<>))],
 }
 
 KeyedParameter: Box<KeyedParameter> = {

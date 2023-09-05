@@ -5,17 +5,13 @@ trait Animal {
 trait Cat {};
 
 declare Cat is Animal {
-    def {Self}.talk() :: {
-        print("Meow");
-    };
+    def {Self}.talk() :: print("Meow");
 };
 
 trait Dog {};
 
 declare Dog is Animal {
-    def {Self}.talk() :: {
-        print("Bark");
-    };
+    def {Self}.talk() :: print("Bark");
 };
 
 def converse(lhs '$Animal#lhs, rhs '$Animal#rhs) :: {
