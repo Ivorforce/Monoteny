@@ -143,35 +143,35 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
 
     let mut Eq = Trait::new("Eq".into());
     let eq_functions = make_eq_functions(&Eq.create_generic_type(&"self".into()), &bool_type);
-    Eq.abstract_functions.extend([
+    Eq.insert_functions([
         &eq_functions.equal_to,
         &eq_functions.not_equal_to,
-    ].map(Rc::clone));
+    ].into_iter());
     let Eq = Rc::new(Eq);
     module.add_trait(&Eq);
 
     let mut Ord = Trait::new("Ord".into());
     let ord_functions = make_ord_functions(&Ord.create_generic_type(&"self".into()), &bool_type);
-    Ord.abstract_functions.extend([
+    Ord.insert_functions([
         &ord_functions.greater_than,
         &ord_functions.greater_than_or_equal_to,
         &ord_functions.lesser_than,
         &ord_functions.lesser_than_or_equal_to,
-    ].map(Rc::clone));
+    ].into_iter());
     let Ord = Rc::new(Ord);
     module.add_trait(&Ord);
     module.trait_conformance.add_simple_parent_requirement(&Ord, &Eq);
 
     let mut Number = Trait::new("Number".into());
     let number_functions = make_number_functions(&Number.create_generic_type(&"self".into()), &bool_type);
-    Number.abstract_functions.extend([
+    Number.insert_functions([
         &number_functions.add,
         &number_functions.subtract,
         &number_functions.multiply,
         &number_functions.divide,
         &number_functions.negative,
         &number_functions.modulo,
-    ].map(Rc::clone));
+    ].into_iter());
     let Number = Rc::new(Number);
     module.add_trait(&Number);
     module.trait_conformance.add_simple_parent_requirement(&Number, &Ord);
@@ -189,9 +189,9 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
             ConstructableByIntLiteral.create_generic_type(&"self".into()),
         )
     );
-    ConstructableByIntLiteral.abstract_functions.extend([
+    ConstructableByIntLiteral.insert_functions([
         &parse_int_literal_function
-    ].map(Rc::clone));
+    ].into_iter());
     let ConstructableByIntLiteral = Rc::new(ConstructableByIntLiteral);
     module.add_trait(&ConstructableByIntLiteral);
 
@@ -204,19 +204,19 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
             ConstructableByFloatLiteral.create_generic_type(&"self".into())
         ),
     );
-    ConstructableByFloatLiteral.abstract_functions.extend([
+    ConstructableByFloatLiteral.insert_functions([
         &parse_float_literal_function
-    ].map(Rc::clone));
+    ].into_iter());
     let ConstructableByFloatLiteral = Rc::new(ConstructableByFloatLiteral);
     module.add_trait(&ConstructableByFloatLiteral);
 
 
     let mut Float = Trait::new("Float".into());
     let float_functions = make_float_functions(&Float.create_generic_type(&"self".into()));
-    Float.abstract_functions.extend([
+    Float.insert_functions([
         &float_functions.exponent,
         &float_functions.logarithm
-    ].map(Rc::clone));
+    ].into_iter());
     let Float = Rc::new(Float);
     module.add_trait(&Float);
     module.trait_conformance.add_simple_parent_requirement(&Float, &Number);

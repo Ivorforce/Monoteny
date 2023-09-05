@@ -14,14 +14,14 @@ use crate::parser::abstract_syntax;
 use crate::parser::abstract_syntax::Expression;
 use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
 use crate::program::builtins::Builtins;
-use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer, ParameterKey};
+use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
-use crate::program::traits::{RequirementsAssumption, TraitConformance, TraitGraph};
+use crate::program::traits::{RequirementsAssumption, TraitGraph};
 use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
-    pub function: Rc<FunctionPointer>,
+    pub function: Rc<FunctionHead>,
     pub decorators: Vec<String>,
 
     pub builtins: &'a Builtins,
@@ -47,7 +47,7 @@ impl <'a> ImperativeLinker<'a> {
         let mut scope = scope.subscope();
 
         let granted_requirements = scope.traits.assume_granted(
-            self.function.target.interface.requirements.iter()
+            self.function.interface.requirements.iter()
                 .map(|req| req.mapping_types(&|x| x.freezing_generics_to_any()))
         );
 
@@ -58,11 +58,19 @@ impl <'a> ImperativeLinker<'a> {
 
         // Add abstract function mocks to our scope to be callable.
         for conformance in granted_requirements.iter() {
-            for pointer in conformance.function_mapping.values() {
+            for (abstract_function, function) in conformance.function_mapping.iter() {
                 // TODO Do we need to keep track of the object reference created by this trait conformance?
                 //  For the record, it SHOULD be created - an abstract function reference can still be passed around,
                 //  assigned and maybe called later.
-                scope.overload_function(pointer, &ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(pointer)))))?;
+                let ptr = &conformance.binding.trait_.abstract_functions[abstract_function];
+                scope.overload_function(
+                    &Rc::new(FunctionPointer {
+                        target: Rc::clone(function),
+                        name: ptr.name.clone(),
+                        form: ptr.form.clone(),
+                    }),
+                    &ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(&function))))
+                )?;
             }
         }
 
@@ -70,7 +78,7 @@ impl <'a> ImperativeLinker<'a> {
 
         // Register parameters as variables.
         let mut parameter_variables = vec![];
-        for parameter in self.function.target.interface.parameters.iter() {
+        for parameter in self.function.interface.parameters.iter() {
             let parameter_variable = ObjectReference::new_immutable(parameter.type_.freezing_generics_to_any().clone());
             self.variable_names.insert(Rc::clone(&parameter_variable), parameter.internal_name.clone());
             scope.insert_singleton(
@@ -104,8 +112,8 @@ impl <'a> ImperativeLinker<'a> {
         }
 
         Ok(Rc::new(FunctionImplementation {
-            implementation_id: self.function.pointer_id,
-            pointer: self.function,
+            function_id: self.function.function_id,
+            head: self.function,
             decorators: self.decorators,
             requirements_assumption: Box::new(RequirementsAssumption { conformance: HashMap::from_iter(granted_requirements.into_iter().map(|c| (Rc::clone(&c.binding), c))) }),
             statements,
@@ -117,7 +125,7 @@ impl <'a> ImperativeLinker<'a> {
     }
 
     pub fn link_top_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
-        if self.function.target.interface.return_type.unit.is_void() {
+        if self.function.interface.return_type.unit.is_void() {
             if let [statement] = &body[..] {
                 if let abstract_syntax::Statement::Expression(expression ) = statement.as_ref() {
                     // Single-Statement Return
@@ -214,17 +222,17 @@ impl <'a> ImperativeLinker<'a> {
                 },
                 abstract_syntax::Statement::Return(expression) => {
                     if let Some(expression) = expression {
-                        if self.function.target.interface.return_type.unit.is_void() {
+                        if self.function.interface.return_type.unit.is_void() {
                             panic!("Return statement offers a value when the function declares void.")
                         }
 
                         let result: ExpressionID = self.link_expression(expression.as_ref(), &scope)?;
-                        self.types.bind(result, &self.function.target.interface.return_type.freezing_generics_to_any().as_ref())?;
+                        self.types.bind(result, &self.function.interface.return_type.freezing_generics_to_any().as_ref())?;
 
                         statements.push(Box::new(Statement::Return(Some(result))));
                     }
                     else {
-                        if !self.function.target.interface.return_type.unit.is_void() {
+                        if !self.function.interface.return_type.unit.is_void() {
                             panic!("Return statement offers no value when the function declares an object.")
                         }
 
@@ -372,7 +380,7 @@ impl <'a> ImperativeLinker<'a> {
         todo!()
     }
 
-    pub fn link_function_call(&mut self, functions: &Vec<Rc<FunctionPointer>>, fn_name: &String, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
+    pub fn link_function_call(&mut self, functions: &Vec<Rc<FunctionHead>>, fn_name: &String, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
         // TODO Check if any arguments are void before anything else
         let seed = Uuid::new_v4();
 
@@ -382,18 +390,18 @@ impl <'a> ImperativeLinker<'a> {
         let mut candidates: Vec<Box<AmbiguousFunctionCandidate>> = vec![];
 
         for fun in functions.iter().map(Rc::clone) {
-            let param_keys = fun.target.interface.parameters.iter().map(|x| &x.external_key).collect::<Vec<&ParameterKey>>();
+            let param_keys = fun.interface.parameters.iter().map(|x| &x.external_key).collect::<Vec<&ParameterKey>>();
             if param_keys != argument_keys {
                 candidates_with_failed_signature.push(fun);
                 continue;
             }
 
             candidates.push(Box::new(AmbiguousFunctionCandidate {
-                param_types: fun.target.interface.parameters.iter()
+                param_types: fun.interface.parameters.iter()
                     .map(|x| x.type_.seeding_generics(&seed))
                     .collect(),
-                return_type: fun.target.interface.return_type.seeding_generics(&seed),
-                requirements: fun.target.interface.requirements.iter().map(|x| x.mapping_types(&|type_| type_.seeding_generics(&seed))).collect(),
+                return_type: fun.interface.return_type.seeding_generics(&seed),
+                requirements: fun.interface.requirements.iter().map(|x| x.mapping_types(&|type_| type_.seeding_generics(&seed))).collect(),
                 function: fun,
             }));
         }

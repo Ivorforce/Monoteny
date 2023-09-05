@@ -134,7 +134,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
             match overload.pointers.len() {
                 1 => {
                     let ref_ = overload.pointers.iter().next().unwrap();
-                    let function = ref_.as_function_pointer()?;
+                    let function = ref_.as_function_head()?;
 
                     tokens[i] = Token::Expression(linker.link_unambiguous_expression(
                         vec![],

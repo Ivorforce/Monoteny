@@ -96,8 +96,8 @@ impl <'a> Scope<'a> {
 
         self.traits.add_graph(&module.trait_conformance);
 
-        for (function, object_ref) in module.functions.iter() {
-            self.overload_function(function, object_ref)?;
+        for (function, object_ref) in module.functions_references.iter() {
+            self.overload_function(module.function_pointers.get(function).unwrap(), object_ref)?;
         }
 
         Ok(())

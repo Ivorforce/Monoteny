@@ -17,7 +17,7 @@ pub fn create_functions(module: &mut Module, primitive_types: &HashMap<primitive
     );
     module.add_function(&true_);
     module.builtin_hints.insert(
-        Rc::clone(&true_),
+        Rc::clone(&true_.target),
         BuiltinFunctionHint::True,
     );
 
@@ -27,7 +27,7 @@ pub fn create_functions(module: &mut Module, primitive_types: &HashMap<primitive
     );
     module.add_function(&false_);
     module.builtin_hints.insert(
-        Rc::clone(&false_),
+        Rc::clone(&false_.target),
         BuiltinFunctionHint::False,
     );
 }

@@ -37,7 +37,7 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
     // -------------------------------------- Common --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    map.insert(builtins.debug.print.unwrap_id(), Rc::new(|interpreter, expression_id, binding| {
+    map.insert(builtins.debug.print.target.unwrap_id(), Rc::new(|interpreter, expression_id, binding| {
         unsafe {
             let arg_id = &interpreter.implementation.expression_forest.arguments[expression_id][0];
             let arg = interpreter.evaluate(arg_id).unwrap();

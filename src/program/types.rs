@@ -7,7 +7,7 @@ use std::ops::BitXor;
 use itertools::Itertools;
 use crate::program::traits::{Trait};
 use crate::linker::precedence::PrecedenceGroup;
-use crate::program::functions::{FunctionPointer, ParameterKey};
+use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::GenericAlias;
 use crate::util::fmt::write_comma_separated_list;
 
@@ -30,7 +30,7 @@ pub enum TypeUnit {
     Generic(GenericAlias),  // some type that isn't bound yet
     Monad,  // Bound to a monad with arguments [unit, dimensions...]
     Struct(Rc<Trait>),  // Bound to a plain instance of some trait
-    Function(Rc<FunctionPointer>),  // Bound to a function / reference to a function.
+    Function(Rc<FunctionHead>),  // Bound to a function / reference to a function.
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]

@@ -2,12 +2,11 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
-use uuid::Uuid;
 use crate::linker::r#type::TypeFactory;
 use crate::linker::{LinkError, scopes};
 use crate::parser::abstract_syntax;
 use crate::parser::abstract_syntax::{Expression, OperatorArgument};
-use crate::program::functions::{FunctionForm, FunctionPointer, FunctionCallType, FunctionInterface, ParameterKey, Parameter, Function};
+use crate::program::functions::{FunctionForm, FunctionPointer, FunctionType, FunctionInterface, ParameterKey, Parameter, FunctionHead};
 use crate::program::traits::TraitBinding;
 use crate::program::types::{PatternPart, TypeProto};
 
@@ -36,13 +35,14 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
     }
 
     Ok(Rc::new(FunctionPointer {
-        pointer_id: Uuid::new_v4(),
-        call_type: FunctionCallType::Static,
-        target: Function::new(Rc::new(FunctionInterface {
-            parameters,
-            return_type,
-            requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
-        })),
+        target: FunctionHead::new(
+            Rc::new(FunctionInterface {
+                parameters,
+                return_type,
+                requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
+            }),
+            FunctionType::Static
+        ),
         name: function.identifier.clone(),
         form: if function.target_type.is_none() { FunctionForm::Global } else { FunctionForm::Member },
     }))
@@ -57,13 +57,14 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
         // Constant
 
         let fun = Rc::new(FunctionPointer {
-            pointer_id: Uuid::new_v4(),
-            call_type: FunctionCallType::Static,
-            target: Function::new(Rc::new(FunctionInterface {
-                parameters: vec![],
-                return_type,
-                requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
-            })),
+            target: FunctionHead::new(
+                Rc::new(FunctionInterface {
+                    parameters: vec![],
+                    return_type,
+                    requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
+                }),
+                FunctionType::Static
+            ),
             name: name.clone(),
             form: FunctionForm::Constant,
         });
@@ -88,13 +89,14 @@ pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope
         }
 
         return Ok(Rc::new(FunctionPointer {
-            pointer_id: Uuid::new_v4(),
-            call_type: FunctionCallType::Static,
-            target: Function::new(Rc::new(FunctionInterface {
-                parameters,
-                return_type,
-                requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
-            })),
+            target: FunctionHead::new(
+                Rc::new(FunctionInterface {
+                    parameters,
+                    return_type,
+                    requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
+                }),
+                FunctionType::Static
+            ),
             name: pattern.alias.clone(),
             form: FunctionForm::Global,
         }))

@@ -40,15 +40,15 @@ impl LinkerAmbiguity for AmbiguousNumberLiteral {
         let requirement = trait_.create_generic_binding(vec![(&"self".into(), type_.clone())]);
         let conformance = self.traits.satisfy_requirement(&requirement, &linker.types)?;
         let parse_function = &conformance.function_mapping[
-            if self.is_float { &linker.builtins.core.traits.parse_float_literal_function }
-            else { &linker.builtins.core.traits.parse_int_literal_function }
+            if self.is_float { &linker.builtins.core.traits.parse_float_literal_function.target }
+            else { &linker.builtins.core.traits.parse_int_literal_function.target }
         ];
 
         linker.expressions.arguments.insert(self.expression_id.clone(), vec![literal_expression_id]);
         linker.expressions.operations.insert(
             self.expression_id.clone(),
             ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
-                pointer: Rc::clone(parse_function),
+                function: Rc::clone(parse_function),
                 requirements_fulfillment: Box::new(RequirementsFulfillment {
                     conformance: HashMap::from([(requirement, conformance)]),
                     generic_mapping: HashMap::from([(trait_.generics["self"], type_.clone())])

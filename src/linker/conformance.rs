@@ -2,13 +2,14 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
+use uuid::Uuid;
 use crate::generic_unfolding::map_interface_types;
 use crate::linker::{LinkError, scopes};
 use crate::linker::global::FunctionWithoutBody;
 use crate::linker::interface::link_function_pointer;
 use crate::parser::abstract_syntax;
 use crate::program::builtins::Builtins;
-use crate::program::functions::{Function, FunctionPointer};
+use crate::program::functions::{FunctionHead, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::traits::{TraitBinding, TraitConformance};
 
@@ -45,18 +46,20 @@ impl <'a> ConformanceLinker<'a> {
         let mut function_bindings = HashMap::new();
         let mut unmatched_implementations = self.functions.iter().map(|f| Rc::clone(&f.pointer)).collect_vec();
 
-        for abstract_function in binding.trait_.abstract_functions.iter() {
+        for abstract_function in binding.trait_.abstract_functions.values() {
             let expected_interface = Rc::new(map_interface_types(&abstract_function.target.interface, &|type_| type_.replacing_generics(&binding.generic_to_type)));
             let expected_pointer = Rc::new(FunctionPointer {
-                pointer_id: Default::default(),
-                target: Rc::new(Function { function_id: Default::default(), interface: expected_interface }),
-                call_type: abstract_function.call_type.clone(),
+                target: Rc::new(FunctionHead {
+                    function_id: Uuid::new_v4(),
+                    function_type: abstract_function.target.function_type.clone(),
+                    interface: expected_interface,
+                }),
                 name: abstract_function.name.clone(),
                 form: abstract_function.form.clone(),
             });
 
             let matching_implementations = unmatched_implementations.iter().enumerate()
-                .filter(|(i, pointer)| pointer.can_match(&expected_pointer))
+                .filter(|(i, ptr)| ptr.can_match_strict(&expected_pointer))
                 .map(|(i, interface)| i)
                 .collect_vec();
 
@@ -68,8 +71,8 @@ impl <'a> ConformanceLinker<'a> {
             }
             else {
                 function_bindings.insert(
-                    Rc::clone(abstract_function),
-                    unmatched_implementations.remove(matching_implementations[0])
+                    Rc::clone(&abstract_function.target),
+                    Rc::clone(&unmatched_implementations.remove(matching_implementations[0]).target)
                 );
             }
         }

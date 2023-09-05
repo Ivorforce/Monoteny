@@ -1,12 +1,12 @@
 use std::io::Write;
-use crate::transpiler::python::{FunctionContext, types};
+use crate::transpiler::python::FunctionContext;
 use crate::program::global::FunctionImplementation;
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub fn dump(stream: &mut (dyn Write), implementation: &FunctionImplementation, context: &FunctionContext) -> Result<(), std::io::Error> {
     write!(stream, ":\n    \"\"\"\n    <Docstring TODO!>\n")?;
 
-    if !implementation.pointer.target.interface.parameters.is_empty() {
+    if !implementation.head.interface.parameters.is_empty() {
         write!(stream, "\n    Args:\n")?;
 
         for (idx, parameter) in implementation.parameter_variables.iter().enumerate() {
@@ -16,9 +16,9 @@ pub fn dump(stream: &mut (dyn Write), implementation: &FunctionImplementation, c
         }
     }
 
-    if !implementation.pointer.target.interface.return_type.unit.is_void() {
+    if !implementation.head.interface.return_type.unit.is_void() {
         write!(stream, "\n    Returns: ")?;
-        transpile_type(stream, &implementation.pointer.target.interface.return_type, context)?;
+        transpile_type(stream, &implementation.head.interface.return_type, context)?;
         write!(stream, "\n")?;
     }
 

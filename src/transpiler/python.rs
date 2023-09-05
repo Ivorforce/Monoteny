@@ -18,7 +18,7 @@ use crate::interpreter;
 
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
-use crate::program::functions::{FunctionPointer, FunctionCallType, ParameterKey};
+use crate::program::functions::{FunctionHead, FunctionType, ParameterKey};
 use crate::program::{find_annotated, Program};
 use crate::program::calls::FunctionBinding;
 use crate::program::generics::TypeForest;
@@ -33,36 +33,39 @@ pub struct FunctionContext<'a> {
     functions_by_id: &'a HashMap<Uuid, Rc<FunctionImplementation>>,
     builtins: &'a Builtins,
     builtin_hints: &'a HashMap<Uuid, BuiltinFunctionHint>,
+    transpilation_hints: &'a HashMap<Uuid, TranspilationHint>,
     expressions: &'a ExpressionForest,
     types: &'a TypeForest,
     struct_ids: &'a HashMap<Box<TypeProto>, Uuid>,
 }
 
-// TODO Not optimal lol
-pub fn MATH_FUNCTIONS() -> HashMap<String, String> {
-    HashMap::from_iter([
-        ("factorial", "math.factorial"),
-
-        ("sin", "math.sin"),
-        ("cos", "math.cos"),
-        ("tan", "math.tan"),
-        ("sinh", "math.sinh"),
-        ("cosh", "math.cosh"),
-        ("tanh", "math.tanh"),
-        ("arcsin", "math.asin"),
-        ("arccos", "math.acos"),
-        ("arctan", "math.atan"),
-        ("arcsinh", "math.asinh"),
-        ("arccosh", "math.acosh"),
-        ("arctanh", "math.atanh"),
-
-        ("ceil", "math.ceil"),
-        ("floor", "math.floor"),
-        ("round", "round"),
-
-        ("abs", "abs"),
-    ].map(|(l, r)| (l.to_string(), r.to_string())))
+#[derive(PartialEq, Eq, Clone)]
+enum TranspilationHint {
+    CallProvided(String)
 }
+
+const MATH_REPLACEMENTS: [(&str, &str); 17] = [
+    ("factorial", "math.factorial"),
+
+    ("sin", "math.sin"),
+    ("cos", "math.cos"),
+    ("tan", "math.tan"),
+    ("sinh", "math.sinh"),
+    ("cosh", "math.cosh"),
+    ("tanh", "math.tanh"),
+    ("arcsin", "math.asin"),
+    ("arccos", "math.acos"),
+    ("arctan", "math.atan"),
+    ("arcsinh", "math.asinh"),
+    ("arccosh", "math.acosh"),
+    ("arctanh", "math.atanh"),
+
+    ("ceil", "math.ceil"),
+    ("floor", "math.floor"),
+    ("round", "round"),
+
+    ("abs", "abs"),
+];
 
 pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: &Rc<Builtins>) -> Result<(), std::io::Error> {
     let mut struct_ids = HashMap::new();
@@ -74,26 +77,42 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 
     let mut functions_by_id = HashMap::new();
     let mut builtin_hints_by_id = HashMap::new();
+    let mut transpilation_hints_by_id: HashMap<Uuid, TranspilationHint> = HashMap::new();
+    let mut pointer_by_id = HashMap::new();
 
     for module in [&program.module].into_iter().chain(builtins.all_modules()) {
         for implementation in module.function_implementations.values() {
-            functions_by_id.insert(implementation.implementation_id, Rc::clone(implementation));
+            functions_by_id.insert(implementation.function_id, Rc::clone(implementation));
         }
-        for (pointer, hint) in module.builtin_hints.iter() {
-            builtin_hints_by_id.insert(pointer.pointer_id, hint.clone());
+        for (head, hint) in module.builtin_hints.iter() {
+            builtin_hints_by_id.insert(head.function_id, hint.clone());
+        }
+        for pointer in module.function_pointers.values() {
+            pointer_by_id.insert(pointer.target.function_id, Rc::clone(pointer));
+        }
+    }
+
+    let math_replacements: HashMap<_, _> = MATH_REPLACEMENTS.iter()
+        .map(|(src, dst)| (src.to_string(), dst.to_string()))
+        .collect();
+    for ptr in builtins.module_by_name["math".into()].function_pointers.values() {
+        if let Some(fn_name) = math_replacements.get(&ptr.name) {
+            let id: Uuid = ptr.target.function_id;
+            let hint: TranspilationHint = TranspilationHint::CallProvided(fn_name.clone());
+            transpilation_hints_by_id.insert(id, hint);
         }
     }
 
     let exported_symbols: Rc<RefCell<Vec<Rc<FunctionImplementation>>>> = Rc::new(RefCell::new(vec![]));
     let unfolder: Rc<RefCell<FunctionUnfolder>> = Rc::new(RefCell::new(FunctionUnfolder::new()));
 
-    fn should_unfold(f: &Rc<FunctionBinding>, primitives: &HashMap<Uuid, BuiltinFunctionHint>, builtins: &Rc<Builtins>) -> bool {
-        if primitives.contains_key(&f.pointer.pointer_id) {
+    fn should_unfold(f: &Rc<FunctionBinding>, primitives: &HashMap<Uuid, BuiltinFunctionHint>, transpilation_hints_by_id: &HashMap<Uuid, TranspilationHint>) -> bool {
+        if primitives.contains_key(&f.function.function_id) {
             // We need to inject these
             return false;
         }
 
-        if builtins.module_by_name["math".into()].functions.contains_key(&f.pointer) && MATH_FUNCTIONS().contains_key(&f.pointer.name) {
+        if transpilation_hints_by_id.contains_key(&f.function.function_id) {
             // We want to inject / override these
             return false;
         }
@@ -104,16 +123,22 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     // Run interpreter
 
     interpreter::run::transpile(program, &Rc::clone(&builtins), &|implementation| {
+        if implementation.head.interface.collect_generics().len() > 0 {
+            // We'll need to somehow transpile requirements as protocols and generics as generics.
+            // That's for later!
+            panic!("Transpiling generic functions is not supported yet: {:?}", implementation.head);
+        }
+
         let unfolded_function = unfolder.borrow_mut().deref_mut().unfold_anonymous(
             implementation,
             &Rc::new(FunctionBinding {
                 // The implementation's pointer is fine.
-                pointer: Rc::clone(&implementation.pointer),
+                function: Rc::clone(&implementation.head),
                 // The resolution SHOULD be empty: The function is transpiled WITH its generics.
                 // Unless generics are bound in the transpile directive, which is TODO
                 requirements_fulfillment: RequirementsFulfillment::empty(),
             }),
-            &|f| should_unfold(f, &builtin_hints_by_id, builtins)
+            &|f| should_unfold(f, &builtin_hints_by_id, &transpilation_hints_by_id)
         );
 
         exported_symbols.borrow_mut().deref_mut().push(unfolded_function);
@@ -129,12 +154,12 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
     while let Some(used_symbol) = unfolder.new_mappable_calls.pop() {
         // TODO Use underscore names?
         let replacement_symbol = Rc::clone(&unfolder.mapped_calls[&used_symbol]);
-        let implementation = &functions_by_id[&used_symbol.pointer.pointer_id];
+        let implementation = &functions_by_id[&used_symbol.function.function_id];
 
         let unfolded_implementation = unfolder.unfold_anonymous(
             implementation,
             &replacement_symbol,
-            &|f| should_unfold(f, &builtin_hints_by_id, builtins)
+            &|f| should_unfold(f, &builtin_hints_by_id, &transpilation_hints_by_id)
         );
 
         internal_symbols.push(unfolded_implementation);
@@ -142,11 +167,15 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 
     for implementation in exported_symbols.iter() {
         // TODO Register with priority over internal symbols
-        file_namespace.register_definition(implementation.pointer.pointer_id, &implementation.pointer.name);
+        // TODO Pointers (i.e. function name and form) were collected with heads
+        //  earlier, but after unfolding we have different heads. We should find
+        //  _one_ fitting pointer for each head (although there may be more than one?)
+        //  and use its function name.
+        file_namespace.register_definition(implementation.head.function_id, &"fun".into());
     }
 
     for implementation in internal_symbols.iter() {
-        file_namespace.register_definition(implementation.pointer.pointer_id, &implementation.pointer.name);
+        file_namespace.register_definition(implementation.head.function_id, &"fun".into());
     }
 
     for implementation in exported_symbols.iter().chain(internal_symbols.iter()) {
@@ -156,7 +185,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         }
         for (expression_id, operation) in implementation.expression_forest.operations.iter() {
             if let ExpressionOperation::FunctionCall(fun) = operation {
-                if let Some(BuiltinFunctionHint::Constructor) = builtin_hints_by_id.get(&fun.pointer.pointer_id) {
+                if let Some(BuiltinFunctionHint::Constructor) = builtin_hints_by_id.get(&fun.function.function_id) {
                     let type_ = implementation.type_forest.resolve_binding_alias(expression_id).unwrap();
                     if let Entry::Vacant(entry) = struct_ids.entry(type_.clone()) {
                         // TODO If we have generics, we should include their bindings in the name somehow.
@@ -210,6 +239,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
             functions_by_id: &functions_by_id,
             builtins: &builtins,
             builtin_hints: &builtin_hints_by_id,
+            transpilation_hints: &transpilation_hints_by_id,
             expressions: &implementation.expression_forest,
             types: &implementation.type_forest,
             struct_ids: &struct_ids,
@@ -229,6 +259,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
             functions_by_id: &functions_by_id,
             builtins: &builtins,
             builtin_hints: &builtin_hints_by_id,
+            transpilation_hints: &transpilation_hints_by_id,
             expressions: &implementation.expression_forest,
             types: &implementation.type_forest,
             struct_ids: &struct_ids,
@@ -239,19 +270,19 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 
     writeln!(stream, "\n\n__all__ = [")?;
     for function in exported_symbols.iter() {
-        writeln!(stream, "    \"{}\",", &names[&function.pointer.pointer_id])?;
+        writeln!(stream, "    \"{}\",", &names[&function.head.function_id])?;
     }
     writeln!(stream, "]")?;
 
     if let Some(main_function) = find_annotated(exported_symbols.iter(), "main") {
-        write!(stream, "\n\nif __name__ == \"__main__\":\n    {}()\n", names.get(&main_function.pointer.pointer_id).unwrap())?;
+        write!(stream, "\n\nif __name__ == \"__main__\":\n    {}()\n", names.get(&main_function.head.function_id).unwrap())?;
     }
 
     return Ok(())
 }
 
 pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplementation, context: &FunctionContext) -> Result<(), std::io::Error> {
-    write!(stream, "\n\ndef {}(", context.names[&function.pointer.pointer_id])?;
+    write!(stream, "\n\ndef {}(", context.names[&function.head.function_id])?;
 
     for (idx, parameter) in function.parameter_variables.iter().enumerate() {
         write!(stream, "{}: ", context.names.get(&parameter.id).unwrap())?;
@@ -266,9 +297,9 @@ pub fn transpile_function(stream: &mut (dyn Write), function: &FunctionImplement
 
     write!(stream, ")")?;
 
-    if !function.pointer.target.interface.return_type.unit.is_void() {
+    if !function.head.interface.return_type.unit.is_void() {
         write!(stream, " -> ", )?;
-        types::transpile(stream, &function.pointer.target.interface.return_type, context)?;
+        types::transpile(stream, &function.head.interface.return_type, context)?;
     }
 
     docstrings::dump(stream, function, context)?;
@@ -342,28 +373,28 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
             write!(stream, "{}", variable_name)?;
         }
         ExpressionOperation::FunctionCall(call) => {
-            let pointer = &call.pointer;
+            let function = &call.function;
             let resolution = &call.requirements_fulfillment;
             let arguments = context.expressions.arguments.get(&expression).unwrap();
 
             if
-                try_transpile_optimization(stream, pointer, arguments, &expression, context)?
-                || try_transpile_builtin(stream, pointer, &expression, arguments, context)?
+                try_transpile_optimization(stream, function, arguments, &expression, context)?
+                || try_transpile_builtin(stream, function, &expression, arguments, context)?
             {
                 // no-op
             }
             else {
-                match &pointer.call_type {
+                match &function.function_type {
                     // Can reference the static function
-                    FunctionCallType::Static => {
-                        guard!(let Some(name) = context.names.get(&pointer.pointer_id) else {
-                            panic!("Couldn't find name in python: {:?}", pointer)
+                    FunctionType::Static => {
+                        guard!(let Some(name) = context.names.get(&function.function_id) else {
+                            panic!("Couldn't find name in python: {:?}", function)
                         });
                         write!(stream, "{}", name)?
                     },
                     // Have to reference the function by trait
-                    FunctionCallType::Polymorphic { requirement, abstract_function } => {
-                        todo!("Polymorphic calls should have been unfolded earlier. Python generics functionality can be restored later. {:?}", pointer)
+                    FunctionType::Polymorphic { requirement, abstract_function } => {
+                        todo!("Polymorphic calls should have been unfolded earlier. Python generics functionality can be restored later. {:?}", function)
                         // write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&pointer.pointer_id])?;
                     }
                 }
@@ -373,7 +404,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                 let requirements: [&Rc<TraitBinding>; 0] = [];  // function.target.interface.requirements
                 let mut arguments_left = arguments.len() + requirements.len();
 
-                for (parameter, argument) in zip_eq(pointer.target.interface.parameters.iter(), arguments.iter()) {
+                for (parameter, argument) in zip_eq(function.interface.parameters.iter(), arguments.iter()) {
                     if let ParameterKey::Name(name) = &parameter.external_key {
                         write!(stream, "{}=", name)?;
                     }
@@ -459,8 +490,8 @@ pub fn escape_string(string: &String) -> String {
     return string
 }
 
-pub fn try_transpile_builtin(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Result<bool, std::io::Error> {
-    guard!(let Some(hint) = context.builtin_hints.get(&function.pointer_id) else {
+pub fn try_transpile_builtin(stream: &mut (dyn Write), function: &Rc<FunctionHead>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Result<bool, std::io::Error> {
+    guard!(let Some(hint) = context.builtin_hints.get(&function.function_id) else {
         return Ok(false);
     });
 
@@ -523,21 +554,25 @@ pub fn transpile_binary_operator(stream: &mut (dyn Write), operator: &str, argum
     transpile_maybe_parenthesized_expression(stream, rhs.clone(), context)
 }
 
-pub fn try_transpile_optimization(stream: &mut (dyn Write), function: &Rc<FunctionPointer>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Result<bool, std::io::Error> {
-    if !context.builtins.module_by_name["math".into()].functions.contains_key(function) {
+pub fn try_transpile_optimization(stream: &mut (dyn Write), function: &Rc<FunctionHead>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Result<bool, std::io::Error> {
+    if !context.builtins.module_by_name["math".into()].functions_references.contains_key(function) {
         return Ok(false)
     }
 
-    if let Some(python_name) = MATH_FUNCTIONS().get(&function.name) {
-        write!(stream, "{}(", python_name)?;
-        for (idx, expression) in arguments.iter().enumerate() {
-            transpile_expression(stream, *expression, context)?;
+    if let Some(transpilation_hint) = context.transpilation_hints.get(&function.function_id) {
+        match transpilation_hint {
+            TranspilationHint::CallProvided(python_name) => {
+                write!(stream, "{}(", python_name)?;
+                for (idx, expression) in arguments.iter().enumerate() {
+                    transpile_expression(stream, *expression, context)?;
 
-            if idx < arguments.len() - 1 {
-                write!(stream, ", ")?;
+                    if idx < arguments.len() - 1 {
+                        write!(stream, ", ")?;
+                    }
+                }
+                write!(stream, ")")?;
             }
         }
-        write!(stream, ")")?;
 
         return Ok(true)
     }

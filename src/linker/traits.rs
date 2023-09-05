@@ -4,7 +4,6 @@ use crate::linker::{LinkError, scopes};
 use crate::linker::interface::link_function_pointer;
 use crate::parser::abstract_syntax;
 use crate::program::builtins::Builtins;
-use crate::program::module::Module;
 use crate::program::traits::{Trait, TraitBinding};
 
 pub struct TraitLinker<'a> {
@@ -22,7 +21,7 @@ impl <'a> TraitLinker<'a> {
                     return Err(LinkError::LinkError { msg: format!("Abstract function {} cannot have a body.", fun.name) });
                 };
 
-                self.trait_.abstract_functions.insert(fun);
+                self.trait_.insert_function(fun);
             }
             _ => {
                 return Err(LinkError::LinkError { msg: format!("Statement {:?} not valid in a trait context.", statement) });

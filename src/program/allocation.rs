@@ -5,7 +5,7 @@ use std::rc::Rc;
 use guard::guard;
 use crate::linker::precedence::PrecedenceGroup;
 use crate::LinkError;
-use crate::program::functions::{FunctionOverload, FunctionPointer};
+use crate::program::functions::{FunctionHead, FunctionOverload};
 use crate::program::traits::Trait;
 use crate::program::types::{TypeProto, TypeUnit};
 
@@ -109,7 +109,7 @@ impl ObjectReference {
         })
     }
 
-    pub fn as_function_pointer(&self) -> Result<&Rc<FunctionPointer>, LinkError> {
+    pub fn as_function_head(&self) -> Result<&Rc<FunctionHead>, LinkError> {
         match &self.type_.unit {
             TypeUnit::Function(f) => Ok(f),
             _ => Err(LinkError::LinkError { msg: format!("Object is not a function in this context.") })

@@ -8,13 +8,13 @@ use crate::linker::imperative::ImperativeLinker;
 use crate::linker::LinkError;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
-use crate::program::functions::FunctionPointer;
+use crate::program::functions::{FunctionType, FunctionHead};
 use crate::program::generics::TypeForest;
 use crate::program::traits::{RequirementsFulfillment, TraitBinding, TraitGraph};
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub struct AmbiguousFunctionCandidate {
-    pub function: Rc<FunctionPointer>,
+    pub function: Rc<FunctionHead>,
     // All these are seeded already
     pub param_types: Vec<Box<TypeProto>>,
     pub return_type: Box<TypeProto>,
@@ -54,12 +54,16 @@ impl AmbiguousFunctionCall {
             conformance.insert(requirement.mapping_types(&|x| x.seeding_generics(&self.seed)), function_binding);
         }
 
-        Ok(Box::new(RequirementsFulfillment {
-            generic_mapping: candidate.function.target.interface.collect_generics().iter().map(|id| {
-                (*id, TypeProto::unit(TypeUnit::Generic(TypeProto::bitxor(id, &self.seed))))
-            }).collect(),
-            conformance
-        }))
+        let mut generic_mapping: HashMap<_, _> = candidate.function.interface.collect_generics().iter().map(|id| {
+            (*id, TypeProto::unit(TypeUnit::Generic(TypeProto::bitxor(id, &self.seed))))
+        }).collect();
+        if let FunctionType::Polymorphic { requirement, abstract_function } = &candidate.function.function_type {
+            // Requirements that are already fulfilled / will be fulfilled by replacing the function.
+            // They still need to be mapped when replaced! But they don't exist anymore in the generic function.
+            generic_mapping.extend(requirement.generic_to_type.clone());
+        }
+
+        Ok(Box::new(RequirementsFulfillment { generic_mapping, conformance }))
     }
 }
 
@@ -97,9 +101,10 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             let candidate = self.candidates.drain(..).next().unwrap();
             // TODO We can just assign linker.types to the candidate's result; it was literally just copied.
             let resolution = self.attempt_with_candidate(&mut linker.types, &candidate)?;
+            println!("Function call to {:?} with generic map: {:?}", candidate.function, resolution.generic_mapping);
 
             linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
-                pointer: candidate.function,
+                function: Rc::clone(&candidate.function),
                 requirements_fulfillment: resolution
             })));
 

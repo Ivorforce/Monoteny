@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::rc::Rc;
+use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionForest, ExpressionOperation, Statement};
-use crate::program::functions::{Function, FunctionCallType, FunctionInterface, FunctionPointer, Parameter};
+use crate::program::functions::{FunctionHead, FunctionType, FunctionInterface, Parameter};
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, TraitConformance};
@@ -27,6 +28,7 @@ impl FunctionUnfolder {
     }
 
     pub fn unfold_anonymous(&mut self, implementation: &FunctionImplementation, function_binding: &Rc<FunctionBinding>, should_unfold: &dyn Fn(&Rc<FunctionBinding>) -> bool) -> Rc<FunctionImplementation> {
+        println!("Unfold {:?}", implementation.head);
         // Map types.
         let mut type_forest = implementation.type_forest.clone();
 
@@ -66,12 +68,22 @@ impl FunctionUnfolder {
             }
         }
 
+        let map_function_call: fn(&Rc<FunctionBinding>, &HashMap<Rc<FunctionHead>, Rc<FunctionHead>>) -> Rc<FunctionBinding> = |call, function_replacement_map| {
+            guard!(let Some(replacement_pointer) = function_replacement_map.get(&call.function) else {
+                return Rc::clone(call)
+            });
+
+            Rc::new(FunctionBinding {
+                function: Rc::clone(replacement_pointer),
+                requirements_fulfillment: call.requirements_fulfillment.clone(),
+            })
+        };
+
         // Find function calls in the expression forest
         for (expression_id, operation) in implementation.expression_forest.operations.iter() {
             expression_forest.operations.insert(expression_id.clone(), match operation {
                 ExpressionOperation::FunctionCall(call) => {
-                    let replaced_pointer = function_replacement_map.get(&call.pointer).unwrap_or(&call.pointer);
-                    let replaced_call = Rc::new(FunctionBinding { pointer: Rc::clone(replaced_pointer), requirements_fulfillment: call.requirements_fulfillment.clone() });
+                    let replaced_call = map_function_call(call, &function_replacement_map);
 
                     let unfolded_call: Rc<FunctionBinding> = if should_unfold(&replaced_call) {
                         match self.mapped_calls.entry(Rc::clone(&replaced_call)) {
@@ -92,8 +104,7 @@ impl FunctionUnfolder {
                     ExpressionOperation::PairwiseOperations {
                         calls: calls.iter()
                             .map(|call| {
-                                let replaced_pointer = function_replacement_map.get(&call.pointer).unwrap_or(&call.pointer);
-                                let replaced_call = Rc::new(FunctionBinding { pointer: Rc::clone(replaced_pointer), requirements_fulfillment: call.requirements_fulfillment.clone() });
+                                let replaced_call = map_function_call(call, &function_replacement_map);
 
                                 let unfolded_call: Rc<FunctionBinding> = if should_unfold(&replaced_call) {
                                     match self.mapped_calls.entry(Rc::clone(call)) {
@@ -123,10 +134,12 @@ impl FunctionUnfolder {
         expression_forest.arguments = implementation.expression_forest.arguments.clone();
 
         Rc::new(FunctionImplementation {
-            implementation_id: Uuid::new_v4(),
-            pointer: Rc::clone(&function_binding.pointer),  // Re-use premapped pointer
+            function_id: Uuid::new_v4(),
+            head: Rc::clone(&function_binding.function),  // Re-use premapped pointer
             decorators: implementation.decorators.clone(),
-            // TODO Is this correct? No assumptions?
+            // TODO This is correct only if all requirements have been fulfilled.
+            //  If unfolding was requested on a partially generic function, we continue to
+            //  have some requirements.
             requirements_assumption: Box::new(RequirementsAssumption { conformance: Default::default() }),
             statements,
             expression_forest,
@@ -137,22 +150,20 @@ impl FunctionUnfolder {
     }
 }
 
-pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
-    let generic_replacement_map = call.requirements_fulfillment.generic_mapping.iter().map(|(any_id, type_)| {
+pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, Rc<FunctionHead>>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
+    println!("Map {:?}", call.function);
+    let mut generic_replacement_map: HashMap<Uuid, Box<TypeProto>> = call.requirements_fulfillment.generic_mapping.iter().map(|(any_id, type_)| {
         (*any_id, type_forest.resolve_type(type_).unwrap().replacing_anys(replacement_map))
     }).collect();
+    println!("{:?}", call.requirements_fulfillment.generic_mapping);
+    println!("--> {:?}", generic_replacement_map);
 
     Rc::new(FunctionBinding {
-        pointer: Rc::new(FunctionPointer {
-            pointer_id: Uuid::new_v4(),
-            target: Rc::new(Function {
-                function_id: Uuid::new_v4(),
-                interface: Rc::new(map_interface_types(&call.pointer.target.interface, &|x| x.replacing_generics(&generic_replacement_map))),
-            }),
-            // We're now a static call! (as long as the binding was complete)
-            call_type: FunctionCallType::Static,
-            name: call.pointer.name.clone(),
-            form: call.pointer.form.clone(),
+        function: Rc::new(FunctionHead {
+            function_id: Uuid::new_v4(),
+            interface: Rc::new(map_interface_types(&call.function.interface, &|x| x.replacing_generics(&generic_replacement_map))),
+            // We're now a static call! (as long as the binding was complete, todo)
+            function_type: FunctionType::Static
         }),
         requirements_fulfillment: Box::new(RequirementsFulfillment {
             conformance: call.requirements_fulfillment.conformance.iter()

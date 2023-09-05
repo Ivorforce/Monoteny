@@ -13,7 +13,7 @@ use crate::linker::traits::TraitLinker;
 use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance};
 use crate::program::builtins::*;
-use crate::program::functions::{Function, FunctionCallType, FunctionForm, FunctionInterface, FunctionPointer};
+use crate::program::functions::{FunctionHead, FunctionType, FunctionForm, FunctionInterface, FunctionPointer};
 use crate::program::generics::TypeForest;
 use crate::program::global::BuiltinFunctionHint;
 use crate::program::module::Module;
@@ -53,7 +53,7 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
 
         // TODO Inject traits, not pointers
         let mut resolver = Box::new(ImperativeLinker {
-            function: Rc::clone(&fun.pointer),
+            function: Rc::clone(&fun.pointer.target),
             decorators: fun.decorators.clone(),
             builtins,
             types: Box::new(TypeForest::new()),
@@ -64,7 +64,7 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
 
         let implementation = resolver.link_function_body(fun.body, &global_variable_scope)?;
 
-        global_linker.module.function_implementations.insert(Rc::clone(&fun.pointer), Rc::clone(&implementation));
+        global_linker.module.function_implementations.insert(Rc::clone(&fun.pointer.target), Rc::clone(&implementation));
     }
 
     Ok(Rc::new(global_linker.module))
@@ -135,15 +135,16 @@ impl <'a> GlobalLinker<'a> {
                     self.global_variables.traits.add_conformance(conformance)?;
 
                     let new_function = Rc::new(FunctionPointer {
-                        pointer_id: Uuid::new_v4(),
-                        target: Function::new(FunctionInterface::new_simple([TypeProto::meta(struct_type.clone())].into_iter(), struct_type)),
-                        call_type: FunctionCallType::Static,
+                        target: FunctionHead::new(
+                            FunctionInterface::new_simple([TypeProto::meta(struct_type.clone())].into_iter(), struct_type),
+                            FunctionType::Static
+                        ),
                         name: "call_as_function".into(),
                         form: FunctionForm::Member,
                     });
                     self.module.add_function(&new_function);
-                    self.module.builtin_hints.insert(Rc::clone(&new_function), BuiltinFunctionHint::Constructor);
-                    self.global_variables.overload_function(&new_function, &self.module.functions[&new_function])?;
+                    self.module.builtin_hints.insert(Rc::clone(&new_function.target), BuiltinFunctionHint::Constructor);
+                    self.global_variables.overload_function(&new_function, &self.module.functions_references[&new_function.target])?;
                 }
 
                 self.global_variables.insert_singleton(
@@ -156,6 +157,8 @@ impl <'a> GlobalLinker<'a> {
                 let target = self.global_variables.resolve(Environment::Global, &syntax.target).unwrap().as_trait().unwrap();
                 let trait_ = self.global_variables.resolve(Environment::Global, &syntax.trait_).unwrap().as_trait().unwrap();
 
+                // We make a new type because it's a generic that will be later fulfilled.
+                // Once we have support for it, the conformance may contain more generics.
                 let generic_self_type = TypeProto::unit(TypeUnit::Generic(Uuid::new_v4()));
                 let generic_self_type_ref = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(generic_self_type.clone()))));
                 let self_binding = trait_.create_generic_binding(vec![(&"self".into(), generic_self_type.clone())]);
@@ -198,7 +201,7 @@ impl <'a> GlobalLinker<'a> {
     pub fn add_function(&mut self, fun: FunctionWithoutBody<'a>) -> Result<(), LinkError> {
         // Create a variable for the function
         self.module.add_function(&fun.pointer);
-        self.global_variables.overload_function(&fun.pointer, &self.module.functions[&fun.pointer])?;
+        self.global_variables.overload_function(&fun.pointer, &self.module.functions_references[&fun.pointer.target])?;
 
         self.functions.push(fun);
 

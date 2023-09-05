@@ -13,14 +13,14 @@ use crate::program::types::TypeUnit;
 
 pub fn preload_program<'a>(program: &'a Program, evaluators: &mut HashMap<Uuid, FunctionInterpreterImpl<'a>>, assignments: &mut HashMap<Uuid, Value>) {
     for (function_pointer, implementation) in program.module.function_implementations.iter() {
-        evaluators.insert(implementation.pointer.target.function_id.clone(), compiler::compile_function(implementation));
+        evaluators.insert(implementation.head.function_id.clone(), compiler::compile_function(implementation));
 
         unsafe {
             let fn_layout = Layout::new::<Uuid>();
             let ptr = alloc(fn_layout);
-            *(ptr as *mut Uuid) = implementation.implementation_id;
+            *(ptr as *mut Uuid) = implementation.function_id;
             assignments.insert(
-                program.module.functions[function_pointer].id,
+                program.module.functions_references[function_pointer].id,
                 Value { data: ptr, layout: fn_layout }
             );
         }
@@ -30,8 +30,8 @@ pub fn preload_program<'a>(program: &'a Program, evaluators: &mut HashMap<Uuid, 
 
 pub fn main(program: &Program, builtins: &Builtins) {
     let entry_function = find_annotated(program.module.function_implementations.values(), "main").expect("No main function!");
-    assert!(entry_function.pointer.target.interface.parameters.is_empty(), "@main function has parameters.");
-    assert!(entry_function.pointer.target.interface.return_type.unit.is_void(), "@main function has a return value.");
+    assert!(entry_function.head.interface.parameters.is_empty(), "@main function has parameters.");
+    assert!(entry_function.head.interface.return_type.unit.is_void(), "@main function has a return value.");
 
     let mut evaluators = builtins::make_evaluators(builtins);
     let mut assignments = HashMap::new();
@@ -78,7 +78,7 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<F
 
     let mut implementations = HashMap::new();
     for implementation in program.module.function_implementations.values() {
-        implementations.insert(implementation.implementation_id, Rc::clone(implementation));
+        implementations.insert(implementation.function_id, Rc::clone(implementation));
     }
 
     let callback_cell = Rc::new(RefCell::new(callback));

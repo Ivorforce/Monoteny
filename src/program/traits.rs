@@ -7,7 +7,7 @@ use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::linker::LinkError;
-use crate::program::functions::{Function, FunctionPointer, FunctionCallType, FunctionInterface, Parameter};
+use crate::program::functions::{FunctionHead, FunctionPointer, FunctionType, FunctionInterface};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::util::fmt::write_keyval;
@@ -19,7 +19,7 @@ pub struct Trait {
     pub name: String,
 
     // Functions required by this trait specifically.
-    pub abstract_functions: HashSet<Rc<FunctionPointer>>,
+    pub abstract_functions: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
     // Generics declared by this trait, by name (via its declaration).
     // May be used in abstract functions and requirements.
     pub generics: HashMap<String, GenericAlias>,
@@ -39,7 +39,7 @@ pub struct TraitBinding {
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct TraitConformance {
     pub binding: Rc<TraitBinding>,
-    pub function_mapping: HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>,
+    pub function_mapping: HashMap<Rc<FunctionHead>, Rc<FunctionHead>>,
 }
 
 /// A sum of knowledge about trait conformance.
@@ -103,7 +103,7 @@ impl TraitGraph {
         Ok(())
     }
 
-    pub fn add_conformance_manual(&mut self, binding: Rc<TraitBinding>, function_bindings: Vec<(&Rc<FunctionPointer>, &Rc<FunctionPointer>)>) -> Result<(), LinkError> {
+    pub fn add_conformance_manual(&mut self, binding: Rc<TraitBinding>, function_bindings: Vec<(&Rc<FunctionHead>, &Rc<FunctionHead>)>) -> Result<(), LinkError> {
         self.add_conformance(
             TraitConformance::new(
                 binding,
@@ -181,8 +181,8 @@ impl TraitGraph {
                     offered_conformance.function_mapping.clone(),
                 );
                 // TODO There may be more than one conflicting solution
-                self.conformance.insert(resolved_binding, Some(Rc::clone(&offered_conformance)));
-                return Ok(Rc::clone(offered_conformance));
+                self.conformance.insert(resolved_binding, Some(Rc::clone(&resolved_conformance)));
+                return Ok(Rc::clone(&resolved_conformance));
             }
         }
 
@@ -224,29 +224,29 @@ impl TraitGraph {
         for trait_binding in deep_requirements.iter() {
             let mut binding_resolution = HashMap::new();
 
-            for abstract_fun in trait_binding.trait_.abstract_functions.iter() {
+            for abstract_fun in trait_binding.trait_.abstract_functions.values() {
                 let mapped_pointer = Rc::new(FunctionPointer {
-                    pointer_id: Uuid::new_v4(),
-                    call_type: FunctionCallType::Polymorphic {
-                        requirement: Rc::clone(&trait_binding),
-                        abstract_function: Rc::clone(abstract_fun)
-                    },
                     name: abstract_fun.name.clone(),
                     form: abstract_fun.form.clone(),
-                    target: Function::new(Rc::new(FunctionInterface {
-                        parameters: abstract_fun.target.interface.parameters.iter().map(|x| {
-                            x.mapping_type(&|type_| type_.replacing_generics(&trait_binding.generic_to_type))
-                        }).collect(),
-                        return_type: abstract_fun.target.interface.return_type.replacing_generics(&trait_binding.generic_to_type),
-                        requirements: abstract_fun.target.interface.requirements.iter().map(|req| {
-                            req.mapping_types(&|type_| type_.replacing_generics(&trait_binding.generic_to_type))
-                        }).collect(),
-                    })),
+                    target: FunctionHead::new(
+                        Rc::new(FunctionInterface {
+                            parameters: abstract_fun.target.interface.parameters.iter().map(|x| {
+                                x.mapping_type(&|type_| type_.replacing_generics(&trait_binding.generic_to_type))
+                            }).collect(),
+                            return_type: abstract_fun.target.interface.return_type.replacing_generics(&trait_binding.generic_to_type),
+                            requirements: abstract_fun.target.interface.requirements.iter().map(|req| {
+                                req.mapping_types(&|type_| type_.replacing_generics(&trait_binding.generic_to_type))
+                            }).collect(),
+                        }),
+                        FunctionType::Polymorphic {
+                            requirement: Rc::clone(&trait_binding),
+                            abstract_function: Rc::clone(abstract_fun)
+                        }
+                    ),
                 });
-
                 binding_resolution.insert(
-                    Rc::clone(abstract_fun),
-                    Rc::clone(&mapped_pointer)
+                    Rc::clone(&abstract_fun.target),
+                    Rc::clone(&mapped_pointer.target)
                 );
             }
 
@@ -281,6 +281,16 @@ impl Trait {
                     .map(|(generic_name, type_)| (self.generics[generic_name], type_))
             ),
         })
+    }
+
+    pub fn insert_function(&mut self, function: Rc<FunctionPointer>) {
+        self.abstract_functions.insert(Rc::clone(&function.target), function);
+    }
+
+    pub fn insert_functions<'a, I>(&mut self, functions: I) where I: Iterator<Item=&'a Rc<FunctionPointer>> {
+        for ptr in functions {
+            self.insert_function(Rc::clone(ptr))
+        }
     }
 }
 
@@ -325,7 +335,7 @@ impl TraitBinding {
 }
 
 impl TraitConformance {
-    pub fn new(binding: Rc<TraitBinding>, function_mapping: HashMap<Rc<FunctionPointer>, Rc<FunctionPointer>>,) -> Rc<TraitConformance> {
+    pub fn new(binding: Rc<TraitBinding>, function_mapping: HashMap<Rc<FunctionHead>, Rc<FunctionHead>>,) -> Rc<TraitConformance> {
         Rc::new(TraitConformance {
             binding,
             function_mapping,
@@ -398,7 +408,7 @@ impl Hash for RequirementsFulfillment {
     fn hash<H: Hasher>(&self, state: &mut H) {
         for (binding, conformance) in self.conformance.iter().sorted_by_key(|(binding, mapping)| binding.hash(&mut DefaultHasher::new())) {
             binding.hash(state);
-            for keyval in conformance.function_mapping.iter().sorted_by_key(|(src, dst)| src.pointer_id) {
+            for keyval in conformance.function_mapping.iter().sorted_by_key(|(src, dst)| src.function_id) {
                 keyval.hash(state)
             }
         }

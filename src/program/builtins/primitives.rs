@@ -28,7 +28,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
     let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module| {
         module.add_function(&function);
         module.builtin_hints.insert(
-            Rc::clone(&function),
+            Rc::clone(&function.target),
             BuiltinFunctionHint::PrimitiveOperation { type_: primitive_type, operation }
         );
     };
@@ -45,8 +45,8 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         module.trait_conformance.add_conformance_manual(
             traits.Eq.create_generic_binding(vec![(&"self".into(), type_.clone())]),
             vec![
-                (&traits.Eq_functions.equal_to, &eq_functions.equal_to),
-                (&traits.Eq_functions.not_equal_to, &eq_functions.not_equal_to),
+                (&traits.Eq_functions.equal_to.target, &eq_functions.equal_to.target),
+                (&traits.Eq_functions.not_equal_to.target, &eq_functions.not_equal_to.target),
             ]
         ).unwrap();
 
@@ -64,10 +64,10 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         module.trait_conformance.add_conformance_manual(
             traits.Ord.create_generic_binding(vec![(&"self".into(), type_.clone())]),
             vec![
-                (&traits.Ord_functions.greater_than, &ord_functions.greater_than),
-                (&traits.Ord_functions.greater_than_or_equal_to, &ord_functions.greater_than_or_equal_to),
-                (&traits.Ord_functions.lesser_than, &ord_functions.lesser_than),
-                (&traits.Ord_functions.lesser_than_or_equal_to, &ord_functions.lesser_than_or_equal_to),
+                (&traits.Ord_functions.greater_than.target, &ord_functions.greater_than.target),
+                (&traits.Ord_functions.greater_than_or_equal_to.target, &ord_functions.greater_than_or_equal_to.target),
+                (&traits.Ord_functions.lesser_than.target, &ord_functions.lesser_than.target),
+                (&traits.Ord_functions.lesser_than_or_equal_to.target, &ord_functions.lesser_than_or_equal_to.target),
             ]
         ).unwrap();
 
@@ -88,20 +88,20 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         module.trait_conformance.add_conformance_manual(
             traits.ConstructableByIntLiteral.create_generic_binding(vec![(&"self".into(), type_.clone())]),
             vec![
-                (&traits.parse_int_literal_function, &_parse_int_literal),
+                (&traits.parse_int_literal_function.target, &_parse_int_literal.target),
             ]
         ).unwrap();
 
         module.trait_conformance.add_conformance_manual(
             traits.Number.create_generic_binding(vec![(&"self".into(), type_.clone())]),
             vec![
-                (&traits.Number_functions.add, &number_functions.add),
-                (&traits.Number_functions.subtract, &number_functions.subtract),
-                (&traits.Number_functions.multiply, &number_functions.multiply),
-                (&traits.Number_functions.divide, &number_functions.divide),
-                (&traits.Number_functions.modulo, &number_functions.modulo),
+                (&traits.Number_functions.add.target, &number_functions.add.target),
+                (&traits.Number_functions.subtract.target, &number_functions.subtract.target),
+                (&traits.Number_functions.multiply.target, &number_functions.multiply.target),
+                (&traits.Number_functions.divide.target, &number_functions.divide.target),
+                (&traits.Number_functions.modulo.target, &number_functions.modulo.target),
                 // TODO This shouldn't exist for unsigned types
-                (&traits.Number_functions.negative, &number_functions.negative),
+                (&traits.Number_functions.negative.target, &number_functions.negative.target),
             ]
         ).unwrap();
 
@@ -124,14 +124,14 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         add_function(&_parse_float_literal, primitive_type, PrimitiveOperation::ParseFloatString, module);
         module.trait_conformance.add_conformance_manual(
             traits.ConstructableByFloatLiteral.create_generic_binding(vec![(&"self".into(), type_.clone())]), vec![
-                (&traits.parse_float_literal_function, &_parse_float_literal),
+                (&traits.parse_float_literal_function.target, &_parse_float_literal.target),
             ]
         ).unwrap();
 
         module.trait_conformance.add_conformance_manual(
             traits.Float.create_generic_binding(vec![(&"self".into(), type_)]), vec![
-            (&traits.Float_functions.exponent, &float_functions.exponent),
-            (&traits.Float_functions.logarithm, &float_functions.logarithm),
+            (&traits.Float_functions.exponent.target, &float_functions.exponent.target),
+            (&traits.Float_functions.logarithm.target, &float_functions.logarithm.target),
         ]).unwrap();
     }
 
@@ -141,7 +141,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
     );
     module.add_function(&and_op);
     module.builtin_hints.insert(
-        Rc::clone(&and_op),
+        Rc::clone(&and_op.target),
         BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::And }
     );
 
@@ -151,7 +151,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
     );
     module.add_function(&or__op);
     module.builtin_hints.insert(
-        Rc::clone(&or__op),
+        Rc::clone(&or__op.target),
         BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::Or }
     );
 
@@ -161,7 +161,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
     );
     module.add_function(&not_op);
     module.builtin_hints.insert(
-        Rc::clone(&not_op),
+        Rc::clone(&not_op.target),
         BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::Not }
     );
 }

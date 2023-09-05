@@ -9,7 +9,7 @@ pub fn transpile(stream: &mut (dyn Write), type_def: &TypeProto, context: &Funct
         TypeUnit::Struct(s) => write!(stream, "{}", &context.names[&context.struct_ids[type_def]])?,
         TypeUnit::Monad => write!(stream, "np.ndarray")?,
         TypeUnit::Generic(_) => todo!(),
-        TypeUnit::Any(_) => todo!(),
+        TypeUnit::Any(id) => todo!("Failed to transpile Any<{}>", id),
         TypeUnit::MetaType => todo!(),
         TypeUnit::Void => todo!(),
         TypeUnit::Function(_) => todo!(),

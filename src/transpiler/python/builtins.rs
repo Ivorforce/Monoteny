@@ -37,32 +37,32 @@ pub fn create(builtins: &Builtins, type_ids: &mut HashMap<Box<TypeProto>, Uuid>)
     for (fun, hint) in builtins.core.module.builtin_hints.iter() {
         match hint {
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Add, type_ } => {
-                namespace.insert_keyword(fun.pointer_id, &String::from("op.add"));
+                namespace.insert_keyword(fun.function_id, &String::from("op.add"));
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Subtract, type_ } => {
-                namespace.insert_keyword(fun.pointer_id, &String::from("op.sub"));
+                namespace.insert_keyword(fun.function_id, &String::from("op.sub"));
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Multiply, type_ } => {
-                namespace.insert_keyword(fun.pointer_id, &String::from("op.mul"));
+                namespace.insert_keyword(fun.function_id, &String::from("op.mul"));
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Divide, type_ } => {
-                namespace.insert_keyword(fun.pointer_id, &String::from("op.truediv"));
+                namespace.insert_keyword(fun.function_id, &String::from("op.truediv"));
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Log, type_ } => {
-                namespace.insert_keyword(fun.pointer_id, &String::from("math.log"));
+                namespace.insert_keyword(fun.function_id, &String::from("math.log"));
             }
             _ => {}
         }
     }
 
-    namespace.insert_keyword(builtins.debug.print.pointer_id, &String::from("print"));
+    namespace.insert_keyword(builtins.debug.print.target.function_id, &String::from("print"));
 
     for trait_ in builtins.core.module.traits.keys() {
         // TODO Introduce a package ref system.
         namespace.register_definition(trait_.id, &format!("mn.traits.{}", &trait_.name));
 
         let trait_namespace = namespace.add_sublevel();
-        for fun in trait_.abstract_functions.iter() {
+        for fun in trait_.abstract_functions.values() {
             trait_namespace.register_definition(fun.target.function_id, &fun.name);
         }
     }

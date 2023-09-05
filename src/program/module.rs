@@ -6,7 +6,7 @@ use crate::{linker, parser};
 use crate::linker::LinkError;
 use crate::program::allocation::ObjectReference;
 use crate::program::builtins::Builtins;
-use crate::program::functions::FunctionPointer;
+use crate::program::functions::{FunctionHead, FunctionPointer};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::traits::{Trait, TraitGraph};
 use crate::program::types::{Pattern, TypeProto, TypeUnit};
@@ -16,11 +16,17 @@ pub struct Module {
     pub name: String,
 
     pub traits: HashMap<Rc<Trait>, Rc<ObjectReference>>,
-    pub functions: HashMap<Rc<FunctionPointer>, Rc<ObjectReference>>,
     pub patterns: HashSet<Rc<Pattern>>,
     pub trait_conformance: Box<TraitGraph>,
-    pub function_implementations: HashMap<Rc<FunctionPointer>, Rc<FunctionImplementation>>,
-    pub builtin_hints: HashMap<Rc<FunctionPointer>, BuiltinFunctionHint>,
+
+    /// For each function, a usable reference to it as an object.
+    pub functions_references: HashMap<Rc<FunctionHead>, Rc<ObjectReference>>,
+    /// For each function, its 'default' representation for syntax.
+    pub function_pointers: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
+    /// For relevant functions, their implementation.
+    pub function_implementations: HashMap<Rc<FunctionHead>, Rc<FunctionImplementation>>,
+    /// For relevant functions, a hint what type of builtin it is.
+    pub builtin_hints: HashMap<Rc<FunctionHead>, BuiltinFunctionHint>,
 }
 
 impl Module {
@@ -29,11 +35,12 @@ impl Module {
             id: Default::default(),
             name,
             traits: Default::default(),
-            functions: Default::default(),
+            functions_references: Default::default(),
             patterns: Default::default(),
             trait_conformance: Box::new(TraitGraph::new()),
             function_implementations: Default::default(),
             builtin_hints: Default::default(),
+            function_pointers: Default::default(),
         }
     }
 
@@ -47,9 +54,13 @@ impl Module {
     }
 
     pub fn add_function(&mut self, function: &Rc<FunctionPointer>) {
-        self.functions.insert(
-            Rc::clone(function),
-            ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(function))))
+        self.functions_references.insert(
+            Rc::clone(&function.target),
+            ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(&function.target))))
+        );
+        self.function_pointers.insert(
+            Rc::clone(&function.target),
+            Rc::clone(&function),
         );
     }
 }

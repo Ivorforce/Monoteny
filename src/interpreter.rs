@@ -12,7 +12,7 @@ use uuid::Uuid;
 use strum::IntoEnumIterator;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statement};
-use crate::program::functions::{FunctionPointer, FunctionCallType};
+use crate::program::functions::{FunctionHead, FunctionType};
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
 
@@ -77,10 +77,10 @@ impl FunctionInterpreter<'_, '_, '_> {
         // })
     }
 
-    pub fn resolve(&self, pointer: &FunctionPointer) -> Uuid {
-        match &pointer.call_type {
-            FunctionCallType::Static => pointer.target.function_id.clone(),
-            FunctionCallType::Polymorphic { requirement, abstract_function } => {
+    pub fn resolve(&self, pointer: &FunctionHead) -> Uuid {
+        match &pointer.function_type {
+            FunctionType::Static => pointer.function_id.clone(),
+            FunctionType::Polymorphic { requirement, abstract_function } => {
                 todo!();
                 // if let Some(result) = self.resolution.requirement_bindings.get(requirement).and_then(|x| x.function_binding.get(abstract_function)) {
                 //     return self.resolve(&result)
@@ -100,11 +100,10 @@ impl FunctionInterpreter<'_, '_, '_> {
 
         match &self.implementation.expression_forest.operations[expression_id] {
             ExpressionOperation::FunctionCall(call) => {
-                let function_id = self.resolve(&call.pointer);
-                let implementation = self.globals.function_evaluators.get(&function_id);
+                let function_id = self.resolve(&call.function);
 
-                guard!(let Some(implementation) = implementation else {
-                    panic!("Cannot find function ({}) with interface: {:?}", function_id, &call.pointer);
+                guard!(let Some(implementation) = self.globals.function_evaluators.get(&function_id) else {
+                    panic!("Cannot find function ({}) with interface: {:?}", function_id, &call.function);
                 });
 
                 return implementation(self, expression_id, &call.requirements_fulfillment)
