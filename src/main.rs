@@ -14,6 +14,7 @@ pub mod integration_tests;
 
 use std::ffi::OsStr;
 use std::fs::File;
+use std::io::Write;
 use std::path::PathBuf;
 use clap::{arg, Command};
 use crate::linker::LinkError;
@@ -122,12 +123,13 @@ fn main() -> Result<(), LinkError> {
                     "py" => {
                         let python_path = output_path.with_extension("py");
                         let mut f = File::create(python_path.clone()).expect("Unable to create file");
+                        let mut f: &mut (dyn Write) = &mut f;
 
-                        transpiler::python::transpile_program(
-                            &mut f,
+                        let transpiled_tree = transpiler::python::transpile_program(
                             &computation_tree,
                             &builtins
-                        ).expect("Error when writing to file");
+                        );
+                        write!(f, "{}", transpiled_tree).expect("Error writing file");
 
                         println!("{:?}", python_path);
                     },

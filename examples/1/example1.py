@@ -7,14 +7,14 @@ from typing import Any, Callable
 
 def main():
     """
-    <Docstring TODO!>
+    <DOCSTRING TODO>
     """
     print("Test: ")
-    value = (square_2(float32(2.2))) * (math.sin(e()))
-    b = (square_0(value=value)) + (pi_ish_0())
-    b = (floor_div((square_3(b)) ** (-(float32(2.2))), value)) + (tau())
+    value = square_2(float32(2.2)) * math.sin(e())
+    b = square_0(value=value) + pi_ish_0()
+    b = floor_div(square_3(b) ** (-float32(2.2)), value) + tau()
     c = pi_ish_1()
-    print(((b < (float32(2))) and (not (value > (float32(2))))) and (True))
+    print(((b < float32(2)) and (not (value > float32(2)))) and True)
 
 
 # ========================== ======== ============================
@@ -22,99 +22,108 @@ def main():
 # ========================== ======== ============================
 
 
-def tau() -> float32:
-    """
-    <Docstring TODO!>
-
-    Returns: float32
-    """
-    return float32(6.283185307179586)
-
-
-def square_0(value: float32, ) -> float32:
-    """
-    <Docstring TODO!>
-
-    Args:
-        value: float32
-
-    Returns: float32
-    """
-    return square_1(value)
-
-
-def square_1(self: float32, ) -> float32:
-    """
-    <Docstring TODO!>
-
-    Args:
-        self: float32
-
-    Returns: float32
-    """
-    return self * self
-
-
 def pi_ish_0() -> float32:
     """
-    <Docstring TODO!>
+    <DOCSTRING TODO>
 
-    Returns: float32
+    Returns:
+        <TODO>
     """
     return float32(3.14)
 
 
-def pi_ish_1() -> int32:
+def square_0(value: float32) -> float32:
     """
-    <Docstring TODO!>
-
-    Returns: int32
-    """
-    return int32(3)
-
-
-def floor_div(lhs: float32, rhs: float32, ) -> float32:
-    """
-    <Docstring TODO!>
+    <DOCSTRING TODO>
 
     Args:
-        lhs: float32
-        rhs: float32
+        value: TODO
 
-    Returns: float32
+    Returns:
+        <TODO>
     """
-    return lhs / rhs
+    return square_1(value)
 
 
-def e() -> float32:
+def square_1(self: float32) -> float32:
     """
-    <Docstring TODO!>
-
-    Returns: float32
-    """
-    return float32(2.718281828459045)
-
-
-def square_2(self: float32, ) -> float32:
-    """
-    <Docstring TODO!>
+    <DOCSTRING TODO>
 
     Args:
-        self: float32
+        self: TODO
 
-    Returns: float32
+    Returns:
+        <TODO>
     """
     return self * self
 
 
-def square_3(self: float32, ) -> float32:
+def floor_div(lhs: float32, rhs: float32) -> float32:
     """
-    <Docstring TODO!>
+    <DOCSTRING TODO>
 
     Args:
-        self: float32
+        lhs: TODO
+        rhs: TODO
 
-    Returns: float32
+    Returns:
+        <TODO>
+    """
+    return lhs / rhs
+
+
+def square_2(self: float32) -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        self: TODO
+
+    Returns:
+        <TODO>
+    """
+    return self * self
+
+
+def pi_ish_1() -> int32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return int32(3)
+
+
+def tau() -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return float32(6.283185307179586)
+
+
+def e() -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return float32(2.718281828459045)
+
+
+def square_3(self: float32) -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        self: TODO
+
+    Returns:
+        <TODO>
     """
     return self * self
 

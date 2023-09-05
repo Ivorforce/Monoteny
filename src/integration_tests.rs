@@ -54,7 +54,7 @@ def transpile(transpiler 'Transpiler) :: {
         assert_eq!(implementation.expression_forest.operations.len(), 2);
 
         let mut buf = BufWriter::new(Vec::new());
-        transpiler::python::transpile_program(&mut buf, &linked, &builtins).expect("Python transpiler failed");
+        transpiler::python::transpile_program(&linked, &builtins).expect("Python transpiler failed");
         let python_program = String::from_utf8(buf.into_inner().unwrap()).unwrap();
         assert!(python_program.contains("def main():"));
         assert!(python_program.contains("print(\"Hello World!\")"));
@@ -86,7 +86,7 @@ def transpile(transpiler 'Transpiler) :: {
         let implementation = linked.function_implementations.values().filter(|x| &x.pointer.name == "main").next().unwrap();
 
         let mut buf = BufWriter::new(Vec::new());
-        transpiler::python::transpile_program(&mut buf, &linked, &builtins).expect("Python transpiler failed");
+        transpiler::python::transpile_program(&linked, &builtins).expect("Python transpiler failed");
         let python_program = String::from_utf8(buf.into_inner().unwrap()).unwrap();
         assert!(python_program.contains("def main():"));
     }
