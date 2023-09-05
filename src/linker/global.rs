@@ -10,6 +10,7 @@ use crate::linker::conformance::ConformanceLinker;
 use crate::linker::interface::{link_function_pointer, link_operator_pointer};
 use crate::linker::scopes::Environment;
 use crate::linker::traits::TraitLinker;
+use crate::parser::abstract_syntax::Expression;
 use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance};
 use crate::program::builtins::*;
@@ -20,16 +21,16 @@ use crate::program::module::Module;
 use crate::program::types::*;
 
 struct GlobalLinker<'a> {
-    functions: Vec<FunctionWithoutBody<'a>>,
+    functions: Vec<UnlinkedFunctionImplementation<'a>>,
     module: Module,
     global_variables: scopes::Scope<'a>,
     builtins: &'a Builtins,
 }
 
-pub struct FunctionWithoutBody<'a> {
+pub struct UnlinkedFunctionImplementation<'a> {
     pub pointer: Rc<FunctionPointer>,
     pub decorators: Vec<String>,
-    pub body: &'a Vec<Box<abstract_syntax::Statement>>,
+    pub body: &'a Expression,
 }
 
 pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builtins: &Builtins) -> Result<Rc<Module>, LinkError> {
@@ -84,7 +85,7 @@ impl <'a> GlobalLinker<'a> {
                     return Err(LinkError::LinkError { msg: format!("Function {} needs a body.", fun.name) });
                 });
 
-                self.add_function(FunctionWithoutBody {
+                self.add_function(UnlinkedFunctionImplementation {
                     pointer: fun,
                     decorators: syntax.decorators.clone(),
                     body,
@@ -97,7 +98,7 @@ impl <'a> GlobalLinker<'a> {
                     return Err(LinkError::LinkError { msg: format!("Function {} needs a body.", fun.name) });
                 });
 
-                self.add_function(FunctionWithoutBody {
+                self.add_function(UnlinkedFunctionImplementation {
                     pointer: Rc::clone(&fun),
                     decorators: syntax.decorators.clone(),
                     body,
@@ -198,7 +199,7 @@ impl <'a> GlobalLinker<'a> {
         }))
     }
 
-    pub fn add_function(&mut self, fun: FunctionWithoutBody<'a>) -> Result<(), LinkError> {
+    pub fn add_function(&mut self, fun: UnlinkedFunctionImplementation<'a>) -> Result<(), LinkError> {
         // Create a variable for the function
         self.module.add_function(&fun.pointer);
         self.global_variables.overload_function(&fun.pointer, &self.module.functions_references[&fun.pointer.target])?;

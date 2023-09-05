@@ -97,9 +97,8 @@ ContextualParameter: Box<Expression> = {
     "{" <param_type: Expression> "}" => Box::new(param_type),
 }
 
-FunctionBody: Vec<Box<Statement>> = {
-    "{" <(<Statement> ";")*> "}",
-    <Expression> => vec![Box::new(Statement::Expression(<>))],
+FunctionBody: Expression = {
+    <Expression>,
 }
 
 KeyedParameter: Box<KeyedParameter> = {
@@ -156,6 +155,7 @@ Term: Box<Term> = {
         let s = <>;
         Box::new(Term::StringLiteral(String::from(&s[1..(s.len() - 1)])))
     },
+    "{" <(<Statement> ";")*> "}" => Box::new(Term::Scope(<>)),
 };
 
 StructArgument: StructArgument = {

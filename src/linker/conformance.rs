@@ -5,7 +5,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::generic_unfolding::map_interface_types;
 use crate::linker::{LinkError, scopes};
-use crate::linker::global::FunctionWithoutBody;
+use crate::linker::global::UnlinkedFunctionImplementation;
 use crate::linker::interface::link_function_pointer;
 use crate::parser::abstract_syntax;
 use crate::program::builtins::Builtins;
@@ -16,7 +16,7 @@ use crate::program::traits::{TraitBinding, TraitConformance};
 pub struct ConformanceLinker<'a> {
     pub builtins: &'a Builtins,
 
-    pub functions: Vec<FunctionWithoutBody<'a>>,
+    pub functions: Vec<UnlinkedFunctionImplementation<'a>>,
 }
 
 impl <'a> ConformanceLinker<'a> {
@@ -31,7 +31,7 @@ impl <'a> ConformanceLinker<'a> {
                     return Err(LinkError::LinkError { msg: format!("Function {} needs a body.", fun.name) });
                 });
 
-                self.functions.push(FunctionWithoutBody {
+                self.functions.push(UnlinkedFunctionImplementation {
                     pointer: fun,
                     decorators: syntax.decorators.clone(),
                     body,

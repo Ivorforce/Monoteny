@@ -34,7 +34,7 @@ pub struct Function {
     pub parameters: Vec<Box<KeyedParameter>>,
     pub return_type: Option<Expression>,
 
-    pub body: Option<Vec<Box<Statement>>>,
+    pub body: Option<Expression>,
 }
 
 #[derive(Eq, PartialEq)]
@@ -49,7 +49,7 @@ pub struct OperatorFunction {
     pub parts: Vec<Box<OperatorArgument>>,
     pub decorators: Vec<String>,
 
-    pub body: Option<Vec<Box<Statement>>>,
+    pub body: Option<Expression>,
     pub return_type: Option<Expression>,
 }
 
@@ -109,6 +109,7 @@ pub enum Term {
     Struct(Vec<StructArgument>),
     Array(Vec<ArrayArgument>),
     StringLiteral(String),
+    Scope(Vec<Box<Statement>>),
 }
 
 #[derive(Eq, PartialEq)]
@@ -198,7 +199,7 @@ impl Debug for OperatorFunction {
             }
         }
         write!(fmt, " -> {:?} {{\n", self.return_type)?;
-        for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };
+        write!(fmt, "{:?}", self.body)?;
         write!(fmt, "}}")?;
         return Ok(())
     }
@@ -266,6 +267,11 @@ impl Debug for Term {
                 write!(fmt, "]")?;
                 return Ok(())
             },
+            Scope(statements) => {
+                write!(fmt, "{{\n")?;
+                for item in statements.iter() { write!(fmt, "    {:?};\n", item)? };
+                write!(fmt, "}}")
+            }
         }
     }
 }

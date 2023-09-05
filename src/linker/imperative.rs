@@ -43,7 +43,7 @@ impl <'a> ImperativeLinker<'a> {
         id
     }
 
-    pub fn link_function_body(mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Rc<FunctionImplementation>, LinkError> {
+    pub fn link_function_body(mut self, body: &Expression, scope: &scopes::Scope) -> Result<Rc<FunctionImplementation>, LinkError> {
         let mut scope = scope.subscope();
 
         let granted_requirements = scope.traits.assume_granted(
@@ -124,25 +124,26 @@ impl <'a> ImperativeLinker<'a> {
         }))
     }
 
-    pub fn link_top_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
-        if let [statement] = &body[..] {
-            if let abstract_syntax::Statement::Expression(expression ) = statement.as_ref() {
-                // TODO Could be either single line function or { line }.
-                //  Once we have support for {}, we can check for real.
-                let expression_id = self.link_expression(expression, &scope)?;
-                // Can be either void or a type, but either way should match the expression
-                self.types.bind(expression_id, &self.function.interface.return_type.freezing_generics_to_any())?;
-
-                if self.function.interface.return_type.unit.is_void() {
-                    return Ok(vec![Box::new(Statement::Expression(expression_id))])
-                }
-                else {
-                    return Ok(vec![Box::new(Statement::Return(Some(expression_id)))])
-                }
+    pub fn link_top_scope(&mut self, body: &Expression, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
+        if let [term] = &body[..] {
+            if let abstract_syntax::Term::Scope(body ) = term.as_ref() {
+                // Single-Scope function; for simplicity's sake we'll just collapse it here.
+                return self.link_scope(body, &scope)
             }
         }
 
-        self.link_scope(body, &scope)
+        // Single-Expression function; let's figure out if we need to infer a Return statement.
+
+        let expression_id = self.link_expression(body, &scope)?;
+        // Can be either void or a type, but either way should match the expression
+        self.types.bind(expression_id, &self.function.interface.return_type.freezing_generics_to_any())?;
+
+        if self.function.interface.return_type.unit.is_void() {
+            return Ok(vec![Box::new(Statement::Expression(expression_id))])
+        }
+        else {
+            return Ok(vec![Box::new(Statement::Return(Some(expression_id)))])
+        }
     }
 
     pub fn link_unambiguous_expression(&mut self, arguments: Vec<ExpressionID>, return_type: &TypeProto, operation: ExpressionOperation) -> Result<ExpressionID, LinkError> {
@@ -378,6 +379,9 @@ impl <'a> ImperativeLinker<'a> {
                     &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.core.traits.String))),
                     ExpressionOperation::StringLiteral(string.clone())
                 )?)
+            }
+            abstract_syntax::Term::Scope(statements) => {
+                todo!("In-function scopes are not supported yet.")
             }
         })
     }
