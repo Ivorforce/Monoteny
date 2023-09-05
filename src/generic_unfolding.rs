@@ -134,7 +134,7 @@ impl FunctionUnfolder {
         expression_forest.arguments = implementation.expression_forest.arguments.clone();
 
         Rc::new(FunctionImplementation {
-            function_id: Uuid::new_v4(),
+            implementation_id: Uuid::new_v4(),
             head: Rc::clone(&function_binding.function),  // Re-use premapped pointer
             decorators: implementation.decorators.clone(),
             // TODO This is correct only if all requirements have been fulfilled.
@@ -147,6 +147,12 @@ impl FunctionUnfolder {
             parameter_variables: implementation.parameter_variables.iter().map(|x| Rc::clone(&variable_map[x])).collect_vec(),
             variable_names: implementation.variable_names.clone(),  // Variables don't change with unfolding
         })
+    }
+
+    pub fn get_reverse_mapped_calls(&self) -> HashMap<Rc<FunctionHead>, Rc<FunctionHead>> {
+        self.mapped_calls.iter()
+            .map(|(x, y)| (Rc::clone(&y.function), Rc::clone(&x.function)))
+            .collect()
     }
 }
 

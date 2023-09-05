@@ -10,7 +10,7 @@ use crate::program::primitives;
 use crate::program::traits::RequirementsAssumption;
 
 pub struct FunctionImplementation {
-    pub function_id: Uuid,
+    pub implementation_id: Uuid,
     pub head: Rc<FunctionHead>,
     pub decorators: Vec<String>,
 
@@ -51,7 +51,7 @@ pub enum PrimitiveOperation {
 
 impl PartialEq for FunctionImplementation {
     fn eq(&self, other: &Self) -> bool {
-        self.function_id == other.function_id
+        self.implementation_id == other.implementation_id
     }
 }
 
@@ -59,6 +59,6 @@ impl Eq for FunctionImplementation {}
 
 impl Hash for FunctionImplementation {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.function_id.hash(state);
+        self.implementation_id.hash(state);
     }
 }

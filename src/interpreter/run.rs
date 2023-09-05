@@ -18,7 +18,7 @@ pub fn preload_program<'a>(program: &'a Program, evaluators: &mut HashMap<Uuid, 
         unsafe {
             let fn_layout = Layout::new::<Uuid>();
             let ptr = alloc(fn_layout);
-            *(ptr as *mut Uuid) = implementation.function_id;
+            *(ptr as *mut Uuid) = implementation.implementation_id;
             assignments.insert(
                 program.module.functions_references[function_pointer].id,
                 Value { data: ptr, layout: fn_layout }
@@ -78,7 +78,7 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<F
 
     let mut implementations = HashMap::new();
     for implementation in program.module.function_implementations.values() {
-        implementations.insert(implementation.function_id, Rc::clone(implementation));
+        implementations.insert(implementation.implementation_id, Rc::clone(implementation));
     }
 
     let callback_cell = Rc::new(RefCell::new(callback));

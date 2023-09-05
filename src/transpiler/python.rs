@@ -82,7 +82,7 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
 
     for module in [&program.module].into_iter().chain(builtins.all_modules()) {
         for implementation in module.function_implementations.values() {
-            functions_by_id.insert(implementation.function_id, Rc::clone(implementation));
+            functions_by_id.insert(implementation.implementation_id, Rc::clone(implementation));
         }
         for (head, hint) in module.builtin_hints.iter() {
             builtin_hints_by_id.insert(head.function_id, hint.clone());
@@ -165,17 +165,17 @@ pub fn transpile_program(stream: &mut (dyn Write), program: &Program, builtins: 
         internal_symbols.push(unfolded_implementation);
     }
 
+    let reverse_mapped_calls = unfolder.get_reverse_mapped_calls();
+
     for implementation in exported_symbols.iter() {
         // TODO Register with priority over internal symbols
-        // TODO Pointers (i.e. function name and form) were collected with heads
-        //  earlier, but after unfolding we have different heads. We should find
-        //  _one_ fitting pointer for each head (although there may be more than one?)
-        //  and use its function name.
-        file_namespace.register_definition(implementation.head.function_id, &"fun".into());
+        let ptr = &pointer_by_id[&reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head).function_id];
+        file_namespace.register_definition(implementation.head.function_id, &ptr.name);
     }
 
     for implementation in internal_symbols.iter() {
-        file_namespace.register_definition(implementation.head.function_id, &"fun".into());
+        let ptr = &pointer_by_id[&reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head).function_id];
+        file_namespace.register_definition(implementation.head.function_id, &ptr.name);
     }
 
     for implementation in exported_symbols.iter().chain(internal_symbols.iter()) {

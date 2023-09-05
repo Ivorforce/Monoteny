@@ -112,7 +112,7 @@ impl <'a> ImperativeLinker<'a> {
         }
 
         Ok(Rc::new(FunctionImplementation {
-            function_id: self.function.function_id,
+            implementation_id: self.function.function_id,
             head: self.function,
             decorators: self.decorators,
             requirements_assumption: Box::new(RequirementsAssumption { conformance: HashMap::from_iter(granted_requirements.into_iter().map(|c| (Rc::clone(&c.binding), c))) }),
