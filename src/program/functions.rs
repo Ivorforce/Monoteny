@@ -25,7 +25,7 @@ pub enum ParameterKey {
 pub enum FunctionType {
     Static,
     /// Not a real function call, rather to be delegated through the requirement's resolution.
-    Polymorphic { requirement: Rc<TraitBinding>, abstract_function: Rc<FunctionPointer> },
+    Polymorphic { provided_by_assumption: Rc<TraitBinding>, abstract_function: Rc<FunctionPointer> },
 }
 
 /// The 'head' of a function. It is identifiable by its ID and has an interface.

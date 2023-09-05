@@ -29,7 +29,7 @@ pub enum TypeUnit {
     Any(Uuid),  // some unknown type - may be described by requirements
     Generic(GenericAlias),  // some type that isn't bound yet
     Monad,  // Bound to a monad with arguments [unit, dimensions...]
-    Struct(Rc<Trait>),  // Bound to a plain instance of some trait
+    Struct(Rc<Trait>),  // Bound to an instance of a non-generic trait.
     Function(Rc<FunctionHead>),  // Bound to a function / reference to a function.
 }
 

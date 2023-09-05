@@ -393,7 +393,7 @@ pub fn transpile_expression(stream: &mut (dyn Write), expression: ExpressionID, 
                         write!(stream, "{}", name)?
                     },
                     // Have to reference the function by trait
-                    FunctionType::Polymorphic { requirement, abstract_function } => {
+                    FunctionType::Polymorphic { provided_by_assumption: requirement, abstract_function } => {
                         todo!("Polymorphic calls should have been unfolded earlier. Python generics functionality can be restored later. {:?}", function)
                         // write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&pointer.pointer_id])?;
                     }

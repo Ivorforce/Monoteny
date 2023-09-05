@@ -23,6 +23,9 @@ impl <'a> ConformanceLinker<'a> {
     pub fn link_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> Result<(), LinkError> {
         match statement {
             abstract_syntax::GlobalStatement::FunctionDeclaration(syntax) => {
+                // TODO For simplicity's sake, we should match the generics IDs of all conformances
+                //  to the ID of the parent abstract function. That way, we can avoid another
+                //  generic to generic mapping later.
                 let fun = link_function_pointer(&syntax, &scope, requirements)?;
                 guard!(let Some(body) = &syntax.body else {
                     return Err(LinkError::LinkError { msg: format!("Function {} needs a body.", fun.name) });

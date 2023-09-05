@@ -239,7 +239,7 @@ impl TraitGraph {
                             }).collect(),
                         }),
                         FunctionType::Polymorphic {
-                            requirement: Rc::clone(&trait_binding),
+                            provided_by_assumption: Rc::clone(&trait_binding),
                             abstract_function: Rc::clone(abstract_fun)
                         }
                     ),

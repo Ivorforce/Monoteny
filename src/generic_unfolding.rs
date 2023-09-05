@@ -158,6 +158,11 @@ impl FunctionUnfolder {
 
 pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, Rc<FunctionHead>>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
     println!("Map {:?}", call.function);
+    // TODO The replacement map + requirements_fulfillment are not yet complete: All the conformance assumptions must be replaced as well.
+    //  e.g. when you have "A is B", then A.b_function() uses Self which has been assumed by the linker.
+    //  So Self (a generic) needs to be mapped as well. However, A.b_function() can use functions of A, so
+    //  HOW its assumptions can be fulfilled can only be found by the unfolder (now!).
+    //  In a 'virtual call' scenario, this would simply be a virtual call, of course.
     let mut generic_replacement_map: HashMap<Uuid, Box<TypeProto>> = call.requirements_fulfillment.generic_mapping.iter().map(|(any_id, type_)| {
         (*any_id, type_forest.resolve_type(type_).unwrap().replacing_anys(replacement_map))
     }).collect();

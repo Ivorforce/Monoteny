@@ -54,14 +54,9 @@ impl AmbiguousFunctionCall {
             conformance.insert(requirement.mapping_types(&|x| x.seeding_generics(&self.seed)), function_binding);
         }
 
-        let mut generic_mapping: HashMap<_, _> = candidate.function.interface.collect_generics().iter().map(|id| {
+        let generic_mapping: HashMap<_, _> = candidate.function.interface.collect_generics().iter().map(|id| {
             (*id, TypeProto::unit(TypeUnit::Generic(TypeProto::bitxor(id, &self.seed))))
         }).collect();
-        if let FunctionType::Polymorphic { requirement, abstract_function } = &candidate.function.function_type {
-            // Requirements that are already fulfilled / will be fulfilled by replacing the function.
-            // They still need to be mapped when replaced! But they don't exist anymore in the generic function.
-            generic_mapping.extend(requirement.generic_to_type.clone());
-        }
 
         Ok(Box::new(RequirementsFulfillment { generic_mapping, conformance }))
     }
