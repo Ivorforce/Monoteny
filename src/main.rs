@@ -121,33 +121,17 @@ fn main() -> Result<(), LinkError> {
             for output_extension in output_extensions {
                 match output_extension {
                     "py" => {
-                        let python_path = output_path.with_extension("py");
-                        let mut f = File::create(python_path.clone()).expect("Unable to create file");
-                        let mut f: &mut (dyn Write) = &mut f;
-
                         let transpiled_tree = transpiler::python::transpile_program(
                             &computation_tree,
                             &builtins
                         );
+
+                        let python_path = output_path.with_extension("py");
+                        let mut f = File::create(python_path.clone()).expect("Unable to create file");
+                        let mut f: &mut (dyn Write) = &mut f;
                         write!(f, "{}", transpiled_tree).expect("Error writing file");
 
                         println!("{:?}", python_path);
-                    },
-                    "cpp" => {
-                        let header_path = output_path.with_extension("hpp");
-                        let source_path = output_path.with_extension("cpp");
-
-                        let mut f_header = File::create(header_path.clone()).expect("Unable to create file");
-                        let mut f_source = File::create(source_path.clone()).expect("Unable to create file");
-
-                        transpiler::cpp::transpile_program(
-                            &computation_tree,
-                            &mut f_header,
-                            &mut f_source
-                        ).expect("Error when writing to file");
-
-                        println!("{:?}", header_path);
-                        println!("{:?}", source_path);
                     },
                     _ => unreachable!()
                 };
