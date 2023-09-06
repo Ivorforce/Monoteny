@@ -10,9 +10,9 @@ def main() :: {
     -- Call the generic function with a float32.
     -- We can unfold the generics at compile time and generate 2 ungeneric functions.
     print(3.2.square() 'Float32);
-}
+};
 
 @transpile
 def transpile(transpiler 'Transpiler) :: {
     transpiler.add(main);
-}
+};

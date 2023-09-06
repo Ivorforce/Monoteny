@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 def main():
     """
-    <Docstring TODO!>
+    <DOCSTRING TODO>
     """
     print(square_0(int32(3)))
     print(square_1(float32(3.2)))
@@ -18,26 +18,28 @@ def main():
 # ========================== ======== ============================
 
 
-def square_0(self: int32, ) -> int32:
+def square_0(self: int32) -> int32:
     """
-    <Docstring TODO!>
+    <DOCSTRING TODO>
 
     Args:
-        self: int32
+        self: TODO
 
-    Returns: int32
+    Returns:
+        <TODO>
     """
     return self * self
 
 
-def square_1(self: float32, ) -> float32:
+def square_1(self: float32) -> float32:
     """
-    <Docstring TODO!>
+    <DOCSTRING TODO>
 
     Args:
-        self: float32
+        self: TODO
 
-    Returns: float32
+    Returns:
+        <TODO>
     """
     return self * self
 
