@@ -266,7 +266,7 @@ impl Display for Statement {
                 let mutability_string = mutability.variable_declaration_keyword();
                 write!(fmt, "{} {}", mutability_string, identifier)?;
                 if let Some(type_declaration) = type_declaration {
-                    write!(fmt, ": {}", type_declaration)?;
+                    write!(fmt, " '{}", type_declaration)?;
                 }
                 write!(fmt, " = {}", expression)
             },
@@ -341,7 +341,7 @@ impl Display for PatternPart {
 
 impl Display for KeyedParameter {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{}{}: {}", self.key, self.internal_name, self.param_type)
+        write!(fmt, "{}{} '{}", self.key, self.internal_name, self.param_type)
     }
 }
 
