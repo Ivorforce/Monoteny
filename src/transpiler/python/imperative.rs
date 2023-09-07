@@ -13,7 +13,7 @@ use crate::program::global::{BuiltinFunctionHint, FunctionImplementation, Primit
 use crate::program::traits::TraitBinding;
 use crate::program::types::TypeProto;
 use crate::transpiler::python::optimization::{TranspilationHint, try_transpile_optimization};
-use crate::transpiler::python::{tree, types};
+use crate::transpiler::python::{syntax, types};
 
 pub struct FunctionContext<'a> {
     pub names: &'a HashMap<Uuid, String>,
@@ -26,11 +26,11 @@ pub struct FunctionContext<'a> {
     pub struct_ids: &'a HashMap<Box<TypeProto>, Uuid>,
 }
 
-pub fn transpile_function(function: &FunctionImplementation, context: &FunctionContext) -> Box<tree::Function> {
-    let mut syntax = Box::new(tree::Function {
+pub fn transpile_function(function: &FunctionImplementation, context: &FunctionContext) -> Box<syntax::Function> {
+    let mut syntax = Box::new(syntax::Function {
         name: context.names[&function.head.function_id].clone(),
         parameters: function.parameter_variables.iter().map(|parameter| {
-            Box::new(tree::Parameter {
+            Box::new(syntax::Parameter {
                 name: context.names[&parameter.id].clone(),
                 type_: types::transpile(&parameter.type_, context),
             })
@@ -72,16 +72,16 @@ pub fn transpile_function(function: &FunctionImplementation, context: &FunctionC
     for statement in function.statements.iter() {
         syntax.statements.push(Box::new(match statement.as_ref() {
                 Statement::Return(value) => {
-                    tree::Statement::Return(value.map(|value| transpile_expression(value.clone(), context)))
+                    syntax::Statement::Return(value.map(|value| transpile_expression(value.clone(), context)))
                 }
                 Statement::VariableAssignment(variable, expression) => {
-                    tree::Statement::VariableAssignment {
+                    syntax::Statement::VariableAssignment {
                         variable_name: context.names[&variable.id].clone(),
                         value: transpile_expression(expression.clone(), context),
                     }
                 }
                 Statement::Expression(expression) => {
-                    tree::Statement::Expression(transpile_expression(expression.clone(), context))
+                    syntax::Statement::Expression(transpile_expression(expression.clone(), context))
                 }
             }
         ));
@@ -90,13 +90,13 @@ pub fn transpile_function(function: &FunctionImplementation, context: &FunctionC
     syntax
 }
 
-pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext) -> Box<tree::Expression> {
+pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext) -> Box<syntax::Expression> {
     match &context.expressions.operations.get(&expression).unwrap() {
         ExpressionOperation::StringLiteral(string) => {
-            Box::new(tree::Expression::StringLiteral(string.clone()))
+            Box::new(syntax::Expression::StringLiteral(string.clone()))
         }
         ExpressionOperation::VariableLookup(variable) => {
-            Box::new(tree::Expression::VariableLookup(context.names[&variable.id].clone()))
+            Box::new(syntax::Expression::VariableLookup(context.names[&variable.id].clone()))
         }
         ExpressionOperation::FunctionCall(call) => {
             let function = &call.function;
@@ -148,7 +148,7 @@ pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext)
                     // }
                 }
 
-                Box::new(tree::Expression::FunctionCall(function_name, py_arguments))
+                Box::new(syntax::Expression::FunctionCall(function_name, py_arguments))
             }
         },
         ExpressionOperation::ArrayLiteral => {
@@ -190,7 +190,7 @@ pub fn escape_string(string: &String) -> String {
     return string
 }
 
-pub fn try_transpile_builtin(function: &Rc<FunctionHead>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Option<Box<tree::Expression>> {
+pub fn try_transpile_builtin(function: &Rc<FunctionHead>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Option<Box<syntax::Expression>> {
     guard!(let Some(hint) = context.builtin_hints.get(&function.function_id) else {
         return None;
     });
@@ -224,37 +224,37 @@ pub fn try_transpile_builtin(function: &Rc<FunctionHead>, expression_id: &Expres
             let struct_type = context.types.resolve_binding_alias(expression_id).unwrap();
             let struct_id = context.struct_ids[&struct_type];
             // TODO need to pass in parameters once they exist
-            Box::new(tree::Expression::FunctionCall(
+            Box::new(syntax::Expression::FunctionCall(
                 context.names[&struct_id].clone(),
                 vec![]
             ))
         },
-        BuiltinFunctionHint::True => Box::new(tree::Expression::ValueLiteral("True".to_string())),
-        BuiltinFunctionHint::False => Box::new(tree::Expression::ValueLiteral("False".to_string())),
+        BuiltinFunctionHint::True => Box::new(syntax::Expression::ValueLiteral("True".to_string())),
+        BuiltinFunctionHint::False => Box::new(syntax::Expression::ValueLiteral("False".to_string())),
         BuiltinFunctionHint::Print => transpile_single_arg_function_call("print", arguments, expression_id, context),
-        BuiltinFunctionHint::Panic => Box::new(tree::Expression::FunctionCall("exit".to_string(), vec![
-            (ParameterKey::Positional, Box::new(tree::Expression::ValueLiteral("1".to_string())))]
+        BuiltinFunctionHint::Panic => Box::new(syntax::Expression::FunctionCall("exit".to_string(), vec![
+            (ParameterKey::Positional, Box::new(syntax::Expression::ValueLiteral("1".to_string())))]
         )),
     })
 }
 
-pub fn transpile_unary_operator(operator: &str, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Box<tree::Expression> {
+pub fn transpile_unary_operator(operator: &str, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Box<syntax::Expression> {
     guard!(let [expression] = arguments[..] else {
         panic!("Unary operator got {} arguments: {}", arguments.len(), operator);
     });
 
-    Box::new(tree::Expression::UnaryOperation(operator.to_string(), transpile_expression(expression, context)))
+    Box::new(syntax::Expression::UnaryOperation(operator.to_string(), transpile_expression(expression, context)))
 }
 
-pub fn transpile_binary_operator(operator: &str, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Box<tree::Expression> {
+pub fn transpile_binary_operator(operator: &str, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Box<syntax::Expression> {
     guard!(let [lhs, rhs] = arguments[..] else {
         panic!("Binary operator got {} arguments: {}", arguments.len(), operator);
     });
 
-    Box::new(tree::Expression::BinaryOperation(transpile_expression(lhs, context), operator.to_string(), transpile_expression(rhs, context)))
+    Box::new(syntax::Expression::BinaryOperation(transpile_expression(lhs, context), operator.to_string(), transpile_expression(rhs, context)))
 }
 
-pub fn transpile_parse_function(supported_regex: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Box<tree::Expression> {
+pub fn transpile_parse_function(supported_regex: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Box<syntax::Expression> {
     guard!(let [argument_expression_id] = arguments[..] else {
         panic!("Parse function got {} arguments", arguments.len());
     });
@@ -263,7 +263,7 @@ pub fn transpile_parse_function(supported_regex: &str, arguments: &Vec<Expressio
         ExpressionOperation::StringLiteral(literal) => {
             let is_supported_literal = regex::Regex::new(supported_regex).unwrap();
             if is_supported_literal.is_match(literal) {
-                Box::new(tree::Expression::ValueLiteral(literal.clone()))
+                Box::new(syntax::Expression::ValueLiteral(literal.clone()))
             }
             else {
                 transpile_expression(argument_expression_id, context)
@@ -272,18 +272,18 @@ pub fn transpile_parse_function(supported_regex: &str, arguments: &Vec<Expressio
         _ => transpile_expression(argument_expression_id, context),
     };
 
-    Box::new(tree::Expression::FunctionCall(
+    Box::new(syntax::Expression::FunctionCall(
         types::transpile(&context.types.resolve_binding_alias(expression_id).unwrap(), context),
         vec![(ParameterKey::Positional, value)]
     ))
 }
 
-pub fn transpile_single_arg_function_call(function_name: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Box<tree::Expression> {
+pub fn transpile_single_arg_function_call(function_name: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Box<syntax::Expression> {
     guard!(let [argument_expression_id] = arguments[..] else {
         panic!("{} function got {} arguments", function_name, arguments.len());
     });
 
-    Box::new(tree::Expression::FunctionCall(
+    Box::new(syntax::Expression::FunctionCall(
         function_name.to_string(),
         vec![(ParameterKey::Positional, transpile_expression(argument_expression_id, context))]
     ))

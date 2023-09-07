@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::program::builtins::Builtins;
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::types::TypeProto;
-use crate::transpiler::python::tree;
+use crate::transpiler::python::syntax;
 
 pub struct ClassContext<'a> {
     pub names: &'a HashMap<Uuid, String>,
@@ -14,10 +14,10 @@ pub struct ClassContext<'a> {
     pub struct_ids: &'a HashMap<Box<TypeProto>, Uuid>,
 }
 
-pub fn transpile_class(type_def: &TypeProto, context: &ClassContext) -> Box<tree::Class> {
+pub fn transpile_class(type_def: &TypeProto, context: &ClassContext) -> Box<syntax::Class> {
     // TODO If the type has no variables, we can fold it away from the program entirely
     let struct_id = context.struct_ids[type_def];
-    Box::new(tree::Class {
+    Box::new(syntax::Class {
         name: context.names[&struct_id].clone(),
     })
 }
