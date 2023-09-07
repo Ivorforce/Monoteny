@@ -4,14 +4,14 @@ use guard::guard;
 use itertools::{Itertools, zip_eq};
 use crate::linker::r#type::TypeFactory;
 use crate::linker::{LinkError, scopes};
-use crate::parser::abstract_syntax;
-use crate::parser::abstract_syntax::{Expression, OperatorArgument};
+use crate::parser::ast;
+use crate::parser::ast::{Expression, OperatorArgument};
 use crate::program::functions::{FunctionForm, FunctionPointer, FunctionType, FunctionInterface, ParameterKey, Parameter, FunctionHead};
 use crate::program::traits::TraitBinding;
 use crate::program::types::{PatternPart, TypeProto};
 
 
-pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<FunctionPointer>, LinkError> {
+pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<FunctionPointer>, LinkError> {
     let mut type_factory = TypeFactory::new(scope);
 
     let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x)).unwrap_or_else(|| Ok(TypeProto::void()))?;
@@ -48,7 +48,7 @@ pub fn link_function_pointer(function: &abstract_syntax::Function, scope: &scope
     }))
 }
 
-pub fn link_operator_pointer(function: &abstract_syntax::OperatorFunction, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<FunctionPointer>, LinkError> {
+pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<FunctionPointer>, LinkError> {
     let mut type_factory = TypeFactory::new(scope);
 
     let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x)).unwrap_or_else(|| Ok(TypeProto::void()))?;

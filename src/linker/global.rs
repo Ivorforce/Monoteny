@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use guard::guard;
 use uuid::Uuid;
-use crate::parser::abstract_syntax;
+use crate::parser::ast;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{LinkError, scopes};
@@ -10,7 +10,7 @@ use crate::linker::conformance::ConformanceLinker;
 use crate::linker::interface::{link_function_pointer, link_operator_pointer};
 use crate::linker::scopes::Environment;
 use crate::linker::traits::TraitLinker;
-use crate::parser::abstract_syntax::Expression;
+use crate::parser::ast::Expression;
 use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance};
 use crate::program::builtins::*;
@@ -33,7 +33,7 @@ pub struct UnlinkedFunctionImplementation<'a> {
     pub body: &'a Expression,
 }
 
-pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builtins: &Builtins) -> Result<Rc<Module>, LinkError> {
+pub fn link_file(syntax: ast::Module, scope: &scopes::Scope, builtins: &Builtins) -> Result<Rc<Module>, LinkError> {
     let mut global_linker = GlobalLinker {
         functions: Vec::new(),
         module: Module::new("main".into()),  // TODO Give it a name!
@@ -72,13 +72,13 @@ pub fn link_file(syntax: abstract_syntax::Program, scope: &scopes::Scope, builti
 }
 
 impl <'a> GlobalLinker<'a> {
-    pub fn link_global_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>) -> Result<(), LinkError> {
+    pub fn link_global_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>) -> Result<(), LinkError> {
         match statement {
-            abstract_syntax::GlobalStatement::Pattern(pattern) => {
+            ast::GlobalStatement::Pattern(pattern) => {
                 let pattern = self.link_pattern(pattern)?;
                 &self.global_variables.add_pattern(pattern);
             }
-            abstract_syntax::GlobalStatement::FunctionDeclaration(syntax) => {
+            ast::GlobalStatement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
                 let fun = link_function_pointer(&syntax, &scope, requirements)?;
                 guard!(let Some(body) = &syntax.body else {
@@ -91,7 +91,7 @@ impl <'a> GlobalLinker<'a> {
                     body,
                 })?;
             }
-            abstract_syntax::GlobalStatement::Operator(syntax) => {
+            ast::GlobalStatement::Operator(syntax) => {
                 let scope = &self.global_variables;
                 let fun = link_operator_pointer(&syntax, &scope, requirements)?;
                 guard!(let Some(body) = &syntax.body else {
@@ -104,7 +104,7 @@ impl <'a> GlobalLinker<'a> {
                     body,
                 })?;
             }
-            abstract_syntax::GlobalStatement::Trait(syntax) => {
+            ast::GlobalStatement::Trait(syntax) => {
                 let mut trait_ = Trait::new(syntax.name.clone());
 
                 let generic_self_type = trait_.create_generic_type(&"self".into());
@@ -154,7 +154,7 @@ impl <'a> GlobalLinker<'a> {
                     &trait_.name.clone()
                 );
             }
-            abstract_syntax::GlobalStatement::Conformance(syntax) => {
+            ast::GlobalStatement::Conformance(syntax) => {
                 let target = self.global_variables.resolve(Environment::Global, &syntax.target).unwrap().as_trait().unwrap();
                 let trait_ = self.global_variables.resolve(Environment::Global, &syntax.trait_).unwrap().as_trait().unwrap();
 
@@ -188,7 +188,7 @@ impl <'a> GlobalLinker<'a> {
         Ok(())
     }
 
-    pub fn link_pattern(&mut self, syntax: &abstract_syntax::PatternDeclaration) -> Result<Rc<Pattern>, LinkError> {
+    pub fn link_pattern(&mut self, syntax: &ast::PatternDeclaration) -> Result<Rc<Pattern>, LinkError> {
         let precedence_group = self.global_variables.resolve_precedence_group(&syntax.precedence);
 
         Ok(Rc::new(Pattern {

@@ -4,7 +4,7 @@ use std::rc::Rc;
 use uuid::Uuid;
 use crate::linker::{LinkError, scopes};
 use crate::linker::scopes::Environment;
-use crate::parser::abstract_syntax;
+use crate::parser::ast;
 use crate::program::generics::GenericAlias;
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
@@ -46,7 +46,7 @@ impl <'a> TypeFactory<'a> {
         self.requirements.insert(requirement);
     }
 
-    pub fn link_type(&mut self, syntax: &abstract_syntax::Expression) -> Result<Box<TypeProto>, LinkError> {
+    pub fn link_type(&mut self, syntax: &ast::Expression) -> Result<Box<TypeProto>, LinkError> {
         if syntax.len() > 1 {
             panic!("Monads etc. are not implemented yet!")
         }
@@ -54,7 +54,7 @@ impl <'a> TypeFactory<'a> {
         let arguments = vec![];
 
         match syntax.iter().next().unwrap().as_ref() {
-            abstract_syntax::Term::Identifier(type_name) => {
+            ast::Term::Identifier(type_name) => {
                 match self.resolve_reference(type_name) {
                     Ok(unit) => {
                         Ok(Box::new(TypeProto {

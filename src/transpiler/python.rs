@@ -1,7 +1,7 @@
 pub mod types;
 pub mod builtins;
 pub mod class;
-pub mod syntax;
+pub mod ast;
 pub mod optimization;
 pub mod imperative;
 
@@ -30,7 +30,7 @@ use crate::transpiler::python::imperative::{FunctionContext, transpile_function}
 use crate::transpiler::python::optimization::TranspilationHint;
 
 
-pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<syntax::Module> {
+pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<ast::Module> {
     let mut struct_ids = HashMap::new();
 
     let mut global_namespace = builtins::create(&builtins, &mut struct_ids);
@@ -161,7 +161,7 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<synt
     let mut names = global_namespace.map_names();
     names.extend(object_namespace.map_names());
 
-    let mut module = Box::new(syntax::Module {
+    let mut module = Box::new(ast::Module {
         exported_classes: vec![],
         exported_functions: vec![],
         internal_functions: vec![],

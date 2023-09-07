@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::parser::abstract_syntax::*;
+use crate::parser::ast::*;
 use crate::program::types::*;
 use crate::program::allocation::*;
 use crate::program::functions::ParameterKey;
@@ -55,8 +55,8 @@ Float: String = {
 // =============================== Global =====================================
 
 
-pub Program: Program = {
-    <stmts: (<GlobalStatement> ";")*> => Program { global_statements: stmts }
+pub Program: Module = {
+    <stmts: (<GlobalStatement> ";")*> => Module { global_statements: stmts }
 };
 
 pub GlobalStatement: Box<GlobalStatement> = {

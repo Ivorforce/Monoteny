@@ -3,7 +3,7 @@ mod tests {
     use std::io::BufWriter;
     use itertools::Itertools;
     use crate::{interpreter, linker, parser, program, transpiler};
-    use crate::parser::abstract_syntax::*;
+    use crate::parser::ast::*;
     use crate::program::functions::ParameterKey;
 
     /// This tests the transpiler, interpreter and function calls.

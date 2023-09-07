@@ -7,7 +7,7 @@ use crate::generic_unfolding::map_interface_types;
 use crate::linker::{LinkError, scopes};
 use crate::linker::global::UnlinkedFunctionImplementation;
 use crate::linker::interface::link_function_pointer;
-use crate::parser::abstract_syntax;
+use crate::parser::ast;
 use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionHead, FunctionPointer};
 use crate::program::module::Module;
@@ -20,9 +20,9 @@ pub struct ConformanceLinker<'a> {
 }
 
 impl <'a> ConformanceLinker<'a> {
-    pub fn link_statement(&mut self, statement: &'a abstract_syntax::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> Result<(), LinkError> {
+    pub fn link_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> Result<(), LinkError> {
         match statement {
-            abstract_syntax::GlobalStatement::FunctionDeclaration(syntax) => {
+            ast::GlobalStatement::FunctionDeclaration(syntax) => {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
                 //  to the ID of the parent abstract function. That way, we can avoid another
                 //  generic to generic mapping later.

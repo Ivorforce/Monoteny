@@ -1,10 +1,8 @@
 use crate::monoteny_grammar;
 
-pub mod abstract_syntax;
+pub mod ast;
 
-use abstract_syntax::*;
-
-pub fn parse_program(content: &String) -> Program {
+pub fn parse_program(content: &String) -> ast::Module {
     monoteny_grammar::ProgramParser::new()
         .parse(content.as_str())
         .unwrap()

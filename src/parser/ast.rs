@@ -7,7 +7,7 @@ use crate::util::fmt::{write_comma_separated_list, write_space_separated_list};
 // =============================== Global =====================================
 
 #[derive(Eq, PartialEq)]
-pub struct Program {
+pub struct Module {
     pub global_statements: Vec<Box<GlobalStatement>>
 }
 
@@ -143,7 +143,7 @@ impl Mutability {
     }
 }
 
-impl Debug for Program {
+impl Debug for Module {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         for item in self.global_statements.iter() {
             write!(fmt, "{:?}\n\n", item)?

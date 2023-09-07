@@ -6,7 +6,7 @@ use crate::program::computation_tree::ExpressionID;
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::transpiler::python::FunctionContext;
 use crate::transpiler::python::imperative::transpile_expression;
-use crate::transpiler::python::syntax::Expression;
+use crate::transpiler::python::ast::Expression;
 
 #[derive(PartialEq, Eq, Clone)]
 pub enum TranspilationHint {

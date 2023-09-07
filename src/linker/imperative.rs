@@ -10,8 +10,8 @@ use crate::linker::{LinkError, precedence, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberLiteral, LinkerAmbiguity};
 use crate::linker::precedence::link_patterns;
 use crate::linker::r#type::TypeFactory;
-use crate::parser::abstract_syntax;
-use crate::parser::abstract_syntax::Expression;
+use crate::parser::ast;
+use crate::parser::ast::Expression;
 use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
 use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
@@ -126,7 +126,7 @@ impl <'a> ImperativeLinker<'a> {
 
     pub fn link_top_scope(&mut self, body: &Expression, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
         if let [term] = &body[..] {
-            if let abstract_syntax::Term::Scope(body ) = term.as_ref() {
+            if let ast::Term::Scope(body ) = term.as_ref() {
                 // Single-Scope function; for simplicity's sake we'll just collapse it here.
                 return self.link_scope(body, &scope)
             }
@@ -200,13 +200,13 @@ impl <'a> ImperativeLinker<'a> {
         Ok(())
     }
 
-    pub fn link_scope(&mut self, body: &Vec<Box<abstract_syntax::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
+    pub fn link_scope(&mut self, body: &Vec<Box<ast::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
         let mut scope = scope.subscope();
         let mut statements: Vec<Box<Statement>> = Vec::new();
 
         for statement in body.iter() {
             match statement.as_ref() {
-                abstract_syntax::Statement::VariableDeclaration {
+                ast::Statement::VariableDeclaration {
                     mutability, identifier, type_declaration, expression
                 } => {
                     let new_value: ExpressionID = self.link_expression(&expression, &scope)?;
@@ -227,7 +227,7 @@ impl <'a> ImperativeLinker<'a> {
                     self.variable_names.insert(object_ref, identifier.clone());
                     scope.override_variable(scopes::Environment::Global, variable, identifier);
                 },
-                abstract_syntax::Statement::Return(expression) => {
+                ast::Statement::Return(expression) => {
                     if let Some(expression) = expression {
                         if self.function.interface.return_type.unit.is_void() {
                             panic!("Return statement offers a value when the function declares void.")
@@ -246,11 +246,11 @@ impl <'a> ImperativeLinker<'a> {
                         statements.push(Box::new(Statement::Return(None)));
                     }
                 },
-                abstract_syntax::Statement::Expression(expression) => {
+                ast::Statement::Expression(expression) => {
                     let expression: ExpressionID = self.link_expression(&expression, &scope)?;
                     statements.push(Box::new(Statement::Expression(expression)));
                 }
-                abstract_syntax::Statement::VariableAssignment { variable_name, new_value } => {
+                ast::Statement::VariableAssignment { variable_name, new_value } => {
                     let ref_ = scope.resolve(scopes::Environment::Global, variable_name)?
                         .as_object_ref(true)?;
 
@@ -267,7 +267,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(statements)
     }
 
-    pub fn link_expression(&mut self, syntax: &abstract_syntax::Expression, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
+    pub fn link_expression(&mut self, syntax: &ast::Expression, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
         let arguments: Vec<precedence::Token> = syntax.iter().map(|a| {
             self.link_term(a, scope)
         }).try_collect()?;
@@ -275,9 +275,9 @@ impl <'a> ImperativeLinker<'a> {
         link_patterns(arguments, scope, self)
     }
 
-    pub fn link_term(&mut self, syntax: &abstract_syntax::Term, scope: &scopes::Scope) -> Result<precedence::Token, LinkError> {
+    pub fn link_term(&mut self, syntax: &ast::Term, scope: &scopes::Scope) -> Result<precedence::Token, LinkError> {
         Ok(match syntax {
-            abstract_syntax::Term::Identifier(s) => {
+            ast::Term::Identifier(s) => {
                 let variable = scope.resolve(scopes::Environment::Global, s)?;
 
                 match &variable.type_ {
@@ -311,21 +311,21 @@ impl <'a> ImperativeLinker<'a> {
                     }
                 }
             }
-            abstract_syntax::Term::Int(string) => {
+            ast::Term::Int(string) => {
                 precedence::Token::Expression(self.link_primitive(
                     string,
                     scope.traits.clone(),
                     false,
                 )?)
             }
-            abstract_syntax::Term::Float(string) => {
+            ast::Term::Float(string) => {
                 precedence::Token::Expression(self.link_primitive(
                     string,
                     scope.traits.clone(),
                     true,
                 )?)
             }
-            abstract_syntax::Term::MemberAccess { target, member_name } => {
+            ast::Term::MemberAccess { target, member_name } => {
                 let target = self.link_term(target, scope)?;
 
                 guard!(let precedence::Token::Expression(target) = target else {
@@ -341,7 +341,7 @@ impl <'a> ImperativeLinker<'a> {
                     todo!("Member access is not supported yet!")
                 }
             }
-            abstract_syntax::Term::Struct(s) => {
+            ast::Term::Struct(s) => {
                 let values = s.iter().map(|x| {
                     let value = self.link_expression(&x.value, scope)?;
                     if let Some(type_declaration) = &x.type_declaration {
@@ -357,7 +357,7 @@ impl <'a> ImperativeLinker<'a> {
                     values,
                 }
             }
-            abstract_syntax::Term::Array(a) => {
+            ast::Term::Array(a) => {
                 let values = a.iter().map(|x| {
                     let value = self.link_expression(&x.value, scope)?;
                     if let Some(type_declaration) = &x.type_declaration {
@@ -373,14 +373,14 @@ impl <'a> ImperativeLinker<'a> {
                     values,
                 }
             }
-            abstract_syntax::Term::StringLiteral(string) => {
+            ast::Term::StringLiteral(string) => {
                 precedence::Token::Expression(self.link_unambiguous_expression(
                     vec![],
                     &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.core.traits.String))),
                     ExpressionOperation::StringLiteral(string.clone())
                 )?)
             }
-            abstract_syntax::Term::Scope(statements) => {
+            ast::Term::Scope(statements) => {
                 todo!("In-function scopes are not supported yet.")
             }
         })
