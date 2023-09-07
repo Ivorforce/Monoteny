@@ -233,7 +233,7 @@ impl <'a> ImperativeLinker<'a> {
                             panic!("Return statement offers a value when the function declares void.")
                         }
 
-                        let result: ExpressionID = self.link_expression(expression.as_ref(), &scope)?;
+                        let result: ExpressionID = self.link_expression(expression, &scope)?;
                         self.types.bind(result, &self.function.interface.return_type.freezing_generics_to_any().as_ref())?;
 
                         statements.push(Box::new(Statement::Return(Some(result))));
@@ -435,13 +435,13 @@ impl <'a> ImperativeLinker<'a> {
         // TODO We should probably output the locations of candidates.
 
         if candidates_with_failed_signature.len() > 1 {
-            panic!("function {}({:?}) could not be resolved. {} candidates have mismatching signatures.", fn_name, argument_keys, candidates_with_failed_signature.len())
+            panic!("function {}({:?}) could not be resolved. {} candidates have mismatching signatures.", fn_name, argument_keys.iter().join(", "), candidates_with_failed_signature.len())
         }
 
         if candidates_with_failed_signature.len() == 1 {
             // TODO Print passed arguments like a signature, not array
             let candidate = candidates_with_failed_signature.iter().next().unwrap();
-            panic!("function {}({:?}) could not be resolved. Candidate has mismatching signature: {:?}", fn_name, argument_keys, candidate)
+            panic!("function {}({:?}) could not be resolved. Candidate has mismatching signature: {:?}", fn_name, argument_keys.iter().join(", "), candidate)
         }
 
         panic!("function {} could not be resolved.", fn_name)

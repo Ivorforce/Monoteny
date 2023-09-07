@@ -86,7 +86,7 @@ fn main() -> Result<(), LinkError> {
                 let syntax_tree = parser::parse_program(&content);
 
                 if should_output_tree {
-                    println!("{:?}", &syntax_tree);
+                    println!("{}", &syntax_tree);
                 }
 
                 let _ = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;

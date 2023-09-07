@@ -24,7 +24,7 @@ impl <'a> TraitLinker<'a> {
                 self.trait_.insert_function(fun);
             }
             _ => {
-                return Err(LinkError::LinkError { msg: format!("Statement {:?} not valid in a trait context.", statement) });
+                return Err(LinkError::LinkError { msg: format!("Statement {} not valid in a trait context.", statement) });
             }
         }
 

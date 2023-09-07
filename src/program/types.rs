@@ -4,12 +4,13 @@ use std::rc::Rc;
 use std::fmt::{Debug, Formatter, Pointer};
 use std::collections::{HashMap, HashSet};
 use std::ops::BitXor;
+use std::path::Display;
 use itertools::Itertools;
 use crate::program::traits::{Trait};
 use crate::linker::precedence::PrecedenceGroup;
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::GenericAlias;
-use crate::util::fmt::write_comma_separated_list;
+use crate::util::fmt::{write_comma_separated_list, write_comma_separated_list_debug};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TypeProto {
@@ -64,7 +65,7 @@ impl Debug for TypeProto {
         write!(fmt, "{:?}", self.unit)?;
         if !self.arguments.is_empty() {
             write!(fmt, "<")?;
-            write_comma_separated_list(fmt, &self.arguments)?;
+            write_comma_separated_list_debug(fmt, &self.arguments)?;
             write!(fmt, ">")?;
         }
         Ok(())

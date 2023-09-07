@@ -141,7 +141,7 @@ VariableDeclarationMutability: Mutability = {
 // =============================== Expression =====================================
 
 Expression: Expression = {
-    Term+
+    Term+ => Expression::from(<>)
 };
 
 Term: Box<Term> = {
@@ -161,7 +161,7 @@ Term: Box<Term> = {
 StructArgument: StructArgument = {
     <key: Identifier> ":" <value: Expression> <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Name(key), value, type_declaration },
     <value: Expression> <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Positional, value, type_declaration },
-    <key: Identifier> ":" => StructArgument { key: ParameterKey::Name(key.clone()), value: vec![Box::new(Term::Identifier(key))], type_declaration: None },  // TODO Maybe better handled post-syntax?
+    <key: Identifier> ":" => StructArgument { key: ParameterKey::Name(key.clone()), value: Expression::from(vec![Box::new(Term::Identifier(key))]), type_declaration: None },  // TODO Maybe better handled post-syntax?
 }
 
 ArrayArgument: ArrayArgument = {

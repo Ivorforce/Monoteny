@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::fmt::{Debug, Formatter, Pointer};
+use std::fmt::{Debug, Display, Formatter, Pointer};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use uuid::Uuid;
@@ -297,11 +297,11 @@ impl Debug for FunctionHead {
     }
 }
 
-impl Debug for ParameterKey {
+impl Display for ParameterKey {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ParameterKey::Name(s) => write!(fmt, ":{}", s),
-            ParameterKey::Positional => write!(fmt, "<>"),
+            ParameterKey::Name(s) => write!(fmt, "{}: ", s),
+            ParameterKey::Positional => Ok(()),
         }
     }
 }

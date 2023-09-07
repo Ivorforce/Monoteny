@@ -1,4 +1,5 @@
-use std::fmt::{Binary, Debug, Error, Formatter};
+use std::fmt::{Binary, Debug, Display, Error, Formatter};
+use std::ops::{Deref, DerefMut};
 use crate::program::functions::ParameterKey;
 use crate::program::allocation::Mutability;
 use crate::program::types::PatternPart;
@@ -85,8 +86,6 @@ pub struct TraitConformanceDeclaration {
 
 // =============================== Code =====================================
 
-pub type Expression = Vec<Box<Term>>;
-
 #[derive(Eq, PartialEq)]
 pub enum Statement {
     VariableDeclaration {
@@ -98,6 +97,29 @@ pub enum Statement {
     VariableAssignment { variable_name: String, new_value: Expression },
     Expression(Expression),
     Return(Option<Expression>),
+}
+
+#[derive(Eq, PartialEq)]
+pub struct Expression(Vec<Box<Term>>);
+
+impl Deref for Expression {
+    type Target = Vec<Box<Term>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Expression {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl From<Vec<Box<Term>>> for Expression {
+    fn from(value: Vec<Box<Term>>) -> Self {
+        Expression(value)
+    }
 }
 
 #[derive(Eq, PartialEq)]
@@ -143,76 +165,86 @@ impl Mutability {
     }
 }
 
-impl Debug for Module {
+impl Display for Module {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         for item in self.global_statements.iter() {
-            write!(fmt, "{:?}\n\n", item)?
+            write!(fmt, "{}\n\n", item)?
         };
         return Ok(())
     }
 }
 
-impl Debug for GlobalStatement {
+impl Display for GlobalStatement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
-            GlobalStatement::FunctionDeclaration(function) => write!(fmt, "{:?}", function),
-            GlobalStatement::Pattern(pattern) => write!(fmt, "{:?}", pattern),
-            GlobalStatement::Operator(operator) => write!(fmt, "{:?}", operator),
-            GlobalStatement::Trait(trait_) => write!(fmt, "{:?}", trait_),
-            GlobalStatement::Conformance(conformance) => write!(fmt, "{:?}", conformance),
+            GlobalStatement::FunctionDeclaration(function) => write!(fmt, "{}", function),
+            GlobalStatement::Pattern(pattern) => write!(fmt, "{}", pattern),
+            GlobalStatement::Operator(operator) => write!(fmt, "{}", operator),
+            GlobalStatement::Trait(trait_) => write!(fmt, "{}", trait_),
+            GlobalStatement::Conformance(conformance) => write!(fmt, "{}", conformance),
+        }?;
+
+        write!(fmt, ";")
+    }
+}
+
+impl Display for MemberStatement {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        match self {
+            MemberStatement::FunctionDeclaration(function) => write!(fmt, "{}", function),
         }
     }
 }
 
-impl Debug for MemberStatement {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match self {
-            MemberStatement::FunctionDeclaration(function) => write!(fmt, "{:?}", function),
-        }
-    }
-}
-
-impl Debug for Function {
+impl Display for Function {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "def ")?;
         if let Some(target_type) = &self.target_type {
-            write!(fmt, "{{{:?}}}.", target_type)?;
+            write!(fmt, "{{{}}}.", target_type)?;
         }
         write!(fmt, "{}(", self.identifier)?;
-        for item in self.parameters.iter() { write!(fmt, "{:?},", item)? };
-        write!(fmt, ") -> {:?} {{\n", self.return_type)?;
-        for item in self.body.iter() { write!(fmt, "    {:?};\n", item)? };
-        write!(fmt, "}}")?;
+        for item in self.parameters.iter() { write!(fmt, "{},", item)? };
+        write!(fmt, ")")?;
+        if let Some(return_type) = &self.return_type {
+            write!(fmt, " -> {}", return_type)?;
+        }
+        write!(fmt, " :: ")?;
+        if let Some(body) = &self.body {
+            write!(fmt, "{}", body)?;
+        }
         return Ok(())
     }
 }
 
-impl Debug for OperatorFunction {
+impl Display for OperatorFunction {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "def ")?;
         for argument in self.parts.iter() {
             match argument.as_ref() {
-                OperatorArgument::Parameter(param) => write!(fmt, "{{{:?}}} ", param)?,
-                OperatorArgument::Keyword(keyword) => write!(fmt, "{:?} ", keyword)?,
+                OperatorArgument::Parameter(param) => write!(fmt, "{{{}}} ", param)?,
+                OperatorArgument::Keyword(keyword) => write!(fmt, "{} ", keyword)?,
             }
         }
-        write!(fmt, " -> {:?} {{\n", self.return_type)?;
-        write!(fmt, "{:?}", self.body)?;
-        write!(fmt, "}}")?;
+        if let Some(return_type) = &self.return_type {
+            write!(fmt, "-> {}", return_type)?;
+        }
+        write!(fmt, " :: ")?;
+        if let Some(body) = &self.body {
+            write!(fmt, "{}", body)?;
+        }
         return Ok(())
     }
 }
 
-impl Debug for PatternDeclaration {
+impl Display for PatternDeclaration {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "pattern {}({}) :: ", &self.alias, self.precedence)?;
         write_space_separated_list(fmt, &self.parts)?;
-        write!(fmt, ";")?;
         Ok(())
     }
 }
 
-impl Debug for TraitDefinition {
+impl Display for TraitDefinition {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "trait {} {{", self.name)?;
 
@@ -220,37 +252,48 @@ impl Debug for TraitDefinition {
     }
 }
 
-impl Debug for TraitConformanceDeclaration {
+impl Display for TraitConformanceDeclaration {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "declare {} is {} {{}} :: ", self.target, self.trait_)?;
         Ok(())
     }
 }
 
-impl Debug for Statement {
+impl Display for Statement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
             Statement::VariableDeclaration { mutability, identifier, type_declaration, expression} => {
                 let mutability_string = mutability.variable_declaration_keyword();
-                write!(fmt, "{} {}: {:?} = {:?}", mutability_string, identifier, type_declaration, expression)
+                write!(fmt, "{} {}", mutability_string, identifier)?;
+                if let Some(type_declaration) = type_declaration {
+                    write!(fmt, ": {}", type_declaration)?;
+                }
+                write!(fmt, " = {}", expression)
             },
             Statement::VariableAssignment { variable_name, new_value } => {
-                write!(fmt, "{} = {:?}", variable_name, new_value)
+                write!(fmt, "{} = {}", variable_name, new_value)
             },
-            Statement::Return(ref expression) => write!(fmt, "return {:?}", expression),
-            Statement::Expression(ref expression) => write!(fmt, "{:?}", expression),
+            Statement::Return(Some(expression)) => write!(fmt, "return {}", expression),
+            Statement::Return(None) => write!(fmt, "return"),
+            Statement::Expression(ref expression) => write!(fmt, "{}", expression),
         }
     }
 }
 
-impl Debug for Term {
+impl Display for Expression {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write_space_separated_list(f, self)
+    }
+}
+
+impl Display for Term {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
             Term::Identifier(s) => write!(fmt, "{}", s),
             Term::Int(s) => write!(fmt, "{}", s),
             Term::Float(s) => write!(fmt, "{}", s),
             Term::StringLiteral(string) => write!(fmt, "{:?}", string),
-            Term::MemberAccess { target, member_name } =>  write!(fmt, "{:?}.{}", target, member_name),
+            Term::MemberAccess { target, member_name } =>  write!(fmt, "{}.{}", target, member_name),
             Term::Struct(arguments) => {
                 write!(fmt, "(")?;
                 write_comma_separated_list(fmt, arguments)?;
@@ -265,37 +308,40 @@ impl Debug for Term {
             },
             Term::Scope(statements) => {
                 write!(fmt, "{{\n")?;
-                for item in statements.iter() { write!(fmt, "    {:?};\n", item)? };
+                for item in statements.iter() { write!(fmt, "    {};\n", item)? };
                 write!(fmt, "}}")
             }
         }
     }
 }
 
-impl Debug for StructArgument {
+impl Display for StructArgument {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{:?}: {:?}", self.key, self.value)
+        write!(fmt, "{}{}", self.key, self.value)
     }
 }
 
-impl Debug for ArrayArgument {
+impl Display for ArrayArgument {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{:?}: {:?}", self.key, self.value)
+        if let Some(key) = &self.key {
+            write!(fmt, "{}: ", key)?;
+        }
+        write!(fmt, "{}", self.value)
     }
 }
 
-impl Debug for PatternPart {
+impl Display for PatternPart {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
-            PatternPart::Parameter { key, internal_name } => write!(fmt, "({:?}:{})", key, internal_name),
+            PatternPart::Parameter { key, internal_name } => write!(fmt, "({}{})", key, internal_name),
             PatternPart::Keyword(keyword) => write!(fmt, "{}", keyword),
         }
     }
 }
 
-impl Debug for KeyedParameter {
+impl Display for KeyedParameter {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{:?} {}: {:?}", self.key, self.internal_name, self.param_type)
+        write!(fmt, "{}{}: {}", self.key, self.internal_name, self.param_type)
     }
 }
 

@@ -1,15 +1,23 @@
 use std::collections::HashMap;
-use std::fmt::{Debug, Error, Formatter};
+use std::fmt::{Debug, Display, Error, Formatter};
 
-pub fn write_space_separated_list<E>(fmt: &mut Formatter, list: &Vec<E>) -> Result<(), Error> where E: Debug {
+pub fn write_space_separated_list<E>(fmt: &mut Formatter, list: &Vec<E>) -> Result<(), Error> where E: Display {
     if let Some(first) = list.first() {
-        write!(fmt, "{:?}", first)?
+        write!(fmt, "{}", first)?
     }
-    for item in list.iter().skip(1) { write!(fmt, " {:?}", item)? }
+    for item in list.iter().skip(1) { write!(fmt, " {}", item)? }
     Ok(())
 }
 
-pub fn write_comma_separated_list<E>(fmt: &mut Formatter, list: &Vec<E>) -> Result<(), Error> where E: Debug {
+pub fn write_comma_separated_list<E>(fmt: &mut Formatter, list: &Vec<E>) -> Result<(), Error> where E: Display {
+    if let Some(first) = list.first() {
+        write!(fmt, "{}", first)?
+    }
+    for item in list.iter().skip(1) { write!(fmt, ", {}", item)? }
+    Ok(())
+}
+
+pub fn write_comma_separated_list_debug<E>(fmt: &mut Formatter, list: &Vec<E>) -> Result<(), Error> where E: Debug {
     if let Some(first) = list.first() {
         write!(fmt, "{:?}", first)?
     }

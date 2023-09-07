@@ -38,7 +38,7 @@ impl <'a> ConformanceLinker<'a> {
                 });
             }
             _ => {
-                return Err(LinkError::LinkError { msg: format!("Statement {:?} not valid in a conformance context.", statement) });
+                return Err(LinkError::LinkError { msg: format!("Statement {} not valid in a conformance context.", statement) });
             }
         }
 
