@@ -19,18 +19,25 @@ pub struct TypeProto {
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum TypeUnit {
-    // Used because the expression_forest wants to bind a return type for an expression.
-    //  If none is bound, that would rather indicate an error.
-    //  If one is bound, and it's void, that means we KNOW it has return type void.
-    // Having it doesn't hurt anyway; an implementation might actually pass void objects around
-    //  to simplify logic.
-    Void,  // Not a type
-    MetaType,  // Type of a type
-    Any(Uuid),  // some unknown type - may be described by requirements
-    Generic(GenericAlias),  // some type that isn't bound yet
-    Monad,  // Bound to a monad with arguments [unit, dimensions...]
-    Struct(Rc<Trait>),  // Bound to an instance of a non-generic trait.
-    Function(Rc<FunctionHead>),  // Bound to a function / reference to a function.
+    /// Used because the expression_forest wants to bind a return type for an expression.
+    ///  If none is bound, that would rather indicate an error.
+    ///  If one is bound, and it's void, that means we KNOW it has return type void.
+    /// Having it doesn't hurt anyway; an implementation might actually pass void objects around
+    ///  to simplify logic.
+    Void,
+    /// Type of a type
+    MetaType,
+    /// Some unknown type, identified fully by its name.
+    /// This type is unique only within the user-defined scope and should be generified when imported.
+    Any(Uuid),
+    /// some type that isn't bound yet. This is fully unique and should not be created statically or imported.
+    Generic(GenericAlias),
+    /// Bound to a monad with arguments [unit, dimensions...]. In the future, this should be a struct.
+    Monad,
+    /// Bound to an instance of a trait. The arguments are the generic bindings.
+    Struct(Rc<Trait>),
+    /// Bound to a function / reference to a function.
+    Function(Rc<FunctionHead>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
