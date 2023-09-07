@@ -299,11 +299,9 @@ impl Debug for FunctionHead {
 
 impl Debug for ParameterKey {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        use ParameterKey::*;
-        use crate::program::functions::ParameterKey::Positional;
         match self {
-            Name(s) => write!(fmt, ":{}", s),
-            Positional => write!(fmt, "<>"),
+            ParameterKey::Name(s) => write!(fmt, ":{}", s),
+            ParameterKey::Positional => write!(fmt, "<>"),
         }
     }
 }

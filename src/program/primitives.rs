@@ -57,21 +57,20 @@ impl Type {
     }
 
     pub fn identifier_string(&self) -> String {
-        use Type::*;
         String::from(match self {
-            Bool => "Bool",
-            Int8 => "Int8",
-            Int16 => "Int16",
-            Int32 => "Int32",
-            Int64 => "Int64",
-            Int128 => "Int128",
-            UInt8 => "UInt8",
-            UInt16 => "UInt16",
-            UInt32 => "UInt32",
-            UInt64 => "UInt64",
-            UInt128 => "UInt128",
-            Float32 => "Float32",
-            Float64 => "Float64",
+            Type::Bool => "Bool",
+            Type::Int8 => "Int8",
+            Type::Int16 => "Int16",
+            Type::Int32 => "Int32",
+            Type::Int64 => "Int64",
+            Type::Int128 => "Int128",
+            Type::UInt8 => "UInt8",
+            Type::UInt16 => "UInt16",
+            Type::UInt32 => "UInt32",
+            Type::UInt64 => "UInt64",
+            Type::UInt128 => "UInt128",
+            Type::Float32 => "Float32",
+            Type::Float64 => "Float64",
         })
     }
 }

@@ -154,22 +154,20 @@ impl Debug for Program {
 
 impl Debug for GlobalStatement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::GlobalStatement::*;
         match self {
-            FunctionDeclaration(function) => write!(fmt, "{:?}", function),
-            Pattern(pattern) => write!(fmt, "{:?}", pattern),
-            Operator(operator) => write!(fmt, "{:?}", operator),
-            Trait(trait_) => write!(fmt, "{:?}", trait_),
-            Conformance(conformance) => write!(fmt, "{:?}", conformance),
+            GlobalStatement::FunctionDeclaration(function) => write!(fmt, "{:?}", function),
+            GlobalStatement::Pattern(pattern) => write!(fmt, "{:?}", pattern),
+            GlobalStatement::Operator(operator) => write!(fmt, "{:?}", operator),
+            GlobalStatement::Trait(trait_) => write!(fmt, "{:?}", trait_),
+            GlobalStatement::Conformance(conformance) => write!(fmt, "{:?}", conformance),
         }
     }
 }
 
 impl Debug for MemberStatement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::MemberStatement::*;
         match self {
-            FunctionDeclaration(function) => write!(fmt, "{:?}", function),
+            MemberStatement::FunctionDeclaration(function) => write!(fmt, "{:?}", function),
         }
     }
 }
@@ -231,43 +229,41 @@ impl Debug for TraitConformanceDeclaration {
 
 impl Debug for Statement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::Statement::*;
         match self {
-            VariableDeclaration { mutability, identifier, type_declaration, expression} => {
+            Statement::VariableDeclaration { mutability, identifier, type_declaration, expression} => {
                 let mutability_string = mutability.variable_declaration_keyword();
                 write!(fmt, "{} {}: {:?} = {:?}", mutability_string, identifier, type_declaration, expression)
             },
-            VariableAssignment { variable_name, new_value } => {
+            Statement::VariableAssignment { variable_name, new_value } => {
                 write!(fmt, "{} = {:?}", variable_name, new_value)
             },
-            Return(ref expression) => write!(fmt, "return {:?}", expression),
-            Expression(ref expression) => write!(fmt, "{:?}", expression),
+            Statement::Return(ref expression) => write!(fmt, "return {:?}", expression),
+            Statement::Expression(ref expression) => write!(fmt, "{:?}", expression),
         }
     }
 }
 
 impl Debug for Term {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        use self::Term::*;
         match self {
-            Identifier(s) => write!(fmt, "{}", s),
-            Int(s) => write!(fmt, "{}", s),
-            Float(s) => write!(fmt, "{}", s),
-            StringLiteral(string) => write!(fmt, "{:?}", string),
-            MemberAccess { target, member_name } =>  write!(fmt, "{:?}.{}", target, member_name),
-            Struct(arguments) => {
+            Term::Identifier(s) => write!(fmt, "{}", s),
+            Term::Int(s) => write!(fmt, "{}", s),
+            Term::Float(s) => write!(fmt, "{}", s),
+            Term::StringLiteral(string) => write!(fmt, "{:?}", string),
+            Term::MemberAccess { target, member_name } =>  write!(fmt, "{:?}.{}", target, member_name),
+            Term::Struct(arguments) => {
                 write!(fmt, "(")?;
                 write_comma_separated_list(fmt, arguments)?;
                 write!(fmt, ")")?;
                 return Ok(())
             },
-            Array(arguments) => {
+            Term::Array(arguments) => {
                 write!(fmt, "[")?;
                 write_comma_separated_list(fmt, arguments)?;
                 write!(fmt, "]")?;
                 return Ok(())
             },
-            Scope(statements) => {
+            Term::Scope(statements) => {
                 write!(fmt, "{{\n")?;
                 for item in statements.iter() { write!(fmt, "    {:?};\n", item)? };
                 write!(fmt, "}}")
@@ -305,10 +301,9 @@ impl Debug for KeyedParameter {
 
 impl FunctionCallType {
     fn bracket_str(&self) -> &str {
-        use self::FunctionCallType::*;
         return match *self {
-            Call => "()",
-            Subscript => "[]",
+            FunctionCallType::Call => "()",
+            FunctionCallType::Subscript => "[]",
         };
     }
 }

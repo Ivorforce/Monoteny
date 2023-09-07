@@ -73,15 +73,13 @@ impl Debug for TypeProto {
 
 impl Debug for TypeUnit {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        use TypeUnit::*;
         match self {
-            Struct(s) => write!(fmt, "{}", s.name),
-            Monad => write!(fmt, "Monad"),
-            Generic(g) => write!(fmt, "Generic<{}>", g),
-            Any(g) => write!(fmt, "Any<{}>", g),
-            MetaType => write!(fmt, "MetaType"),
-            Void => write!(fmt, "Void"),
-            Function(f) => write!(fmt, "{:?}", f),
+            TypeUnit::Struct(s) => write!(fmt, "{}", s.name),
+            TypeUnit::Generic(g) => write!(fmt, "Generic<{}>", g),
+            TypeUnit::Any(g) => write!(fmt, "Any<{}>", g),
+            TypeUnit::MetaType => write!(fmt, "MetaType"),
+            TypeUnit::Void => write!(fmt, "Void"),
+            TypeUnit::Function(f) => write!(fmt, "{:?}", f),
         }
     }
 }

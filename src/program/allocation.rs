@@ -131,12 +131,11 @@ impl Hash for ObjectReference {
 
 impl Debug for ReferenceType {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        use ReferenceType::*;
         match self {
-            Object(t) => write!(fmt, "{:?}", t.type_),
-            FunctionOverload(f) => write!(fmt, "{}", &f.name),
-            PrecedenceGroup(p) => write!(fmt, "{}", &p.name),
-            Keyword(s) => write!(fmt, "{}", s),
+            ReferenceType::Object(t) => write!(fmt, "{:?}", t.type_),
+            ReferenceType::FunctionOverload(f) => write!(fmt, "{}", &f.name),
+            ReferenceType::PrecedenceGroup(p) => write!(fmt, "{}", &p.name),
+            ReferenceType::Keyword(s) => write!(fmt, "{}", s),
         }
     }
 }
