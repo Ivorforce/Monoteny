@@ -32,8 +32,6 @@ pub enum TypeUnit {
     Any(Uuid),
     /// some type that isn't bound yet. This is fully unique and should not be created statically or imported.
     Generic(GenericAlias),
-    /// Bound to a monad with arguments [unit, dimensions...]. In the future, this should be a struct.
-    Monad,
     /// Bound to an instance of a trait. The arguments are the generic bindings.
     Struct(Rc<Trait>),
     /// Bound to a function / reference to a function.
@@ -106,10 +104,6 @@ impl TypeProto {
 
     pub fn simple_struct(trait_: &Rc<Trait>) -> Box<TypeProto> {
         TypeProto::unit(TypeUnit::Struct(Rc::clone(trait_)))
-    }
-
-    pub fn monad(unit: Box<TypeProto>) -> Box<TypeProto> {
-        Box::new(TypeProto { unit: TypeUnit::Monad, arguments: vec![unit] })
     }
 
     pub fn bitxor(lhs: &Uuid, rhs: &Uuid) -> Uuid {
