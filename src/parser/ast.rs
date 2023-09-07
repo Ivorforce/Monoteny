@@ -271,7 +271,7 @@ impl Display for Statement {
                 write!(fmt, " = {}", expression)
             },
             Statement::VariableAssignment { variable_name, new_value } => {
-                write!(fmt, "{} = {}", variable_name, new_value)
+                write!(fmt, "upd {} = {}", variable_name, new_value)
             },
             Statement::Return(Some(expression)) => write!(fmt, "return {}", expression),
             Statement::Return(None) => write!(fmt, "return"),
