@@ -27,7 +27,7 @@ pub struct Value {
 
 pub struct InterpreterGlobals<'a> {
     pub builtins: Rc<Builtins>,
-    pub function_evaluators: &'a HashMap<Uuid, FunctionInterpreterImpl<'a>>,
+    pub function_evaluators: HashMap<Uuid, FunctionInterpreterImpl<'a>>,
 }
 
 pub struct FunctionInterpreter<'a, 'b, 'c> {
@@ -106,6 +106,8 @@ impl FunctionInterpreter<'_, '_, '_> {
                     panic!("Cannot find function ({}) with interface: {:?}", function_id, &call.function);
                 });
 
+                // Copy it to release the borrow on self.
+                let implementation: FunctionInterpreterImpl = Rc::clone(&implementation);
                 return implementation(self, expression_id, &call.requirements_fulfillment)
             }
             ExpressionOperation::PairwiseOperations { .. } => {

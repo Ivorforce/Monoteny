@@ -41,7 +41,7 @@ pub fn main(program: &Program, builtins: &Rc<Builtins>) {
     let mut interpreter = FunctionInterpreter {
         globals: &mut InterpreterGlobals {
             builtins: Rc::clone(builtins),
-            function_evaluators: &mut evaluators,
+            function_evaluators: evaluators,
         },
         implementation: entry_function,
         // No parameters and return type = nothing to bind!
@@ -108,7 +108,7 @@ pub fn transpile(program: &Program, builtins: &Rc<Builtins>, callback: &dyn Fn(&
     let mut interpreter = FunctionInterpreter {
         globals: &mut InterpreterGlobals {
             builtins: Rc::clone(builtins),
-            function_evaluators: &mut evaluators,
+            function_evaluators: evaluators,
         },
         implementation: entry_function,
         // TODO Technically we should bind Transpiler here, probably to some internal transpiler we make up on the spot.
