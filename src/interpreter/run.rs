@@ -87,7 +87,7 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<F
         unsafe {
             let arguments = interpreter.evaluate_arguments(expression_id);
             let arg = &arguments[1];
-            let arg_id = &interpreter.implementation.expression_forest.arguments[expression_id][1];
+            let arg_id = &interpreter.implementation.expression_forest.arguments[&expression_id][1];
             let arg_type = interpreter.implementation.type_forest.get_unit(arg_id).unwrap();
 
             // TODO Once we have a Function supertype we can remove this check.

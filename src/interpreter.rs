@@ -17,7 +17,7 @@ use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
 
 
-pub type FunctionInterpreterImpl<'a> = Rc<dyn Fn(&mut FunctionInterpreter, &ExpressionID, &RequirementsFulfillment) -> Option<Value> + 'a>;
+pub type FunctionInterpreterImpl<'a> = Rc<dyn Fn(&mut FunctionInterpreter, ExpressionID, &RequirementsFulfillment) -> Option<Value> + 'a>;
 
 
 pub struct Value {
@@ -49,16 +49,16 @@ impl FunctionInterpreter<'_, '_, '_> {
         for statement in self.implementation.statements.iter() {
             match statement.as_ref() {
                 Statement::VariableAssignment(target, value) => {
-                    let value = self.evaluate(value);
+                    let value = self.evaluate(*value);
                     self.assignments.insert(target.id.clone(), value.unwrap());
                 }
                 Statement::Expression(expression_id) => {
-                    self.evaluate(expression_id);
+                    self.evaluate(*expression_id);
                 }
                 Statement::Return(return_value) => {
                     return match return_value {
                         None => None,
-                        Some(expression_id) => self.evaluate(expression_id),
+                        Some(expression_id) => self.evaluate(*expression_id),
                     }
                 }
             }
@@ -91,14 +91,14 @@ impl FunctionInterpreter<'_, '_, '_> {
         }
     }
 
-    pub unsafe fn evaluate(&mut self, expression_id: &ExpressionID) -> Option<Value> {
+    pub unsafe fn evaluate(&mut self, expression_id: ExpressionID) -> Option<Value> {
         // TODO We should probably create an interpretation tree and an actual VM, where abstract functions are statically pre-resolved.
         //  Function instances could be assigned an int ID and thus we can call the functions directly without a UUID hash lookup. Which should be nearly as fast as a switch statement.
         //  ExpressionOperation outer switch would be replaced by having a function for every call. Literals would be stored and copied somewhere else.
         //  FunctionInterpreter instances could also be cached - no need to re-create them recursively.
         //  This would be managed by a global interpreter that is expandable dynamically. i.e. it can be re-used for interactive environments and so on.
 
-        match &self.implementation.expression_forest.operations[expression_id] {
+        match &self.implementation.expression_forest.operations[&expression_id] {
             ExpressionOperation::FunctionCall(call) => {
                 let function_id = self.resolve(&call.function);
 
@@ -126,9 +126,9 @@ impl FunctionInterpreter<'_, '_, '_> {
         }
     }
 
-    pub unsafe fn evaluate_arguments(&mut self, expression_id: &ExpressionID) -> Vec<Value> {
-        self.implementation.expression_forest.arguments[expression_id].iter()
-            .map(|x| self.evaluate(x).unwrap())
+    pub unsafe fn evaluate_arguments(&mut self, expression_id: ExpressionID) -> Vec<Value> {
+        self.implementation.expression_forest.arguments[&expression_id].iter()
+            .map(|x| self.evaluate(*x).unwrap())
             .collect_vec()
     }
 }
