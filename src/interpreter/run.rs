@@ -2,6 +2,7 @@ use std::alloc::{alloc, Layout};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use guard::guard;
 use uuid::Uuid;
 use crate::interpreter::{builtins, compiler, FunctionInterpreter, FunctionInterpreterImpl, InterpreterGlobals, Value};
 use crate::program::builtins::Builtins;
@@ -11,7 +12,7 @@ use crate::program::traits::RequirementsFulfillment;
 use crate::program::types::TypeUnit;
 
 
-pub fn preload_program<'a>(program: &'a Program, evaluators: &mut HashMap<Uuid, FunctionInterpreterImpl<'a>>, assignments: &mut HashMap<Uuid, Value>) {
+pub fn preload_program(program: &Program, evaluators: &mut HashMap<Uuid, FunctionInterpreterImpl>, assignments: &mut HashMap<Uuid, Value>) {
     for (function_pointer, implementation) in program.module.function_implementations.iter() {
         evaluators.insert(implementation.head.function_id.clone(), compiler::compile_function(implementation));
 
@@ -67,9 +68,9 @@ pub fn transpile(program: &Program, builtins: &Rc<Builtins>, callback: &dyn Fn(&
         // We have nothing useful to set for now.
         // TODO In the future, we should differentiate between different transpiler objects.
         //  But that's certainly not needed for a while.
-        let transpiler_layout = Layout::new::<Uuid>();
+        let transpiler_layout = Layout::new::<&dyn Fn(&Rc<FunctionImplementation>)>();
         let ptr = alloc(transpiler_layout);
-        *(ptr as *mut Uuid) = Uuid::new_v4();
+        *(ptr as *mut &dyn Fn(&Rc<FunctionImplementation>)) = callback;
         assignments.insert(
             transpiler_obj.id,
             Value { data: ptr, layout: transpiler_layout }
@@ -81,11 +82,14 @@ pub fn transpile(program: &Program, builtins: &Rc<Builtins>, callback: &dyn Fn(&
         implementations.insert(implementation.implementation_id, Rc::clone(implementation));
     }
 
-    let callback_cell = Rc::new(RefCell::new(callback));
-
     let b: FunctionInterpreterImpl = Rc::new(move |interpreter, expression_id, binding| {
         unsafe {
             let arguments = interpreter.evaluate_arguments(expression_id);
+
+            // This may cause a SIGSEV if the callback pointer is invalidated. This should not happen as long as
+            //  nobody owns a Transpiler object outside of its lifetime.
+            let transpiler_callback = *(arguments[0].data as *const &dyn Fn(&Rc<FunctionImplementation>));
+
             let arg = &arguments[1];
             let arg_id = &interpreter.implementation.expression_forest.arguments[&expression_id][1];
             let arg_type = interpreter.implementation.type_forest.get_unit(arg_id).unwrap();
@@ -98,7 +102,7 @@ pub fn transpile(program: &Program, builtins: &Rc<Builtins>, callback: &dyn Fn(&
 
             let implementation_id = *(arg.data as *const Uuid);
             let implementation = &implementations[&implementation_id];
-            (&mut *callback_cell.borrow_mut())(implementation);
+            transpiler_callback(implementation);
 
             return None;
         }

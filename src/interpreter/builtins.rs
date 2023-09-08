@@ -83,7 +83,7 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
     map
 }
 
-pub fn create_primitive_op<'a>(type_: primitives::Type, operation: PrimitiveOperation) -> FunctionInterpreterImpl<'a> {
+pub fn create_primitive_op(type_: primitives::Type, operation: PrimitiveOperation) -> FunctionInterpreterImpl {
     match (type_, operation) {
         // -------------------------------------- Bool --------------------------------------
         (primitives::Type::Bool, PrimitiveOperation::And) => bin_op!(bool && bool),

@@ -17,7 +17,7 @@ use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
 
 
-pub type FunctionInterpreterImpl<'a> = Rc<dyn Fn(&mut FunctionInterpreter, ExpressionID, &RequirementsFulfillment) -> Option<Value> + 'a>;
+pub type FunctionInterpreterImpl = Rc<dyn Fn(&mut FunctionInterpreter, ExpressionID, &RequirementsFulfillment) -> Option<Value>>;
 
 
 pub struct Value {
@@ -25,20 +25,20 @@ pub struct Value {
     pub data: *mut u8,
 }
 
-pub struct InterpreterGlobals<'a> {
+pub struct InterpreterGlobals {
     pub builtins: Rc<Builtins>,
-    pub function_evaluators: HashMap<Uuid, FunctionInterpreterImpl<'a>>,
+    pub function_evaluators: HashMap<Uuid, FunctionInterpreterImpl>,
 }
 
-pub struct FunctionInterpreter<'a, 'b> {
-    pub globals: &'a mut InterpreterGlobals<'b>,
+pub struct FunctionInterpreter<'a> {
+    pub globals: &'a mut InterpreterGlobals,
     pub implementation: Rc<FunctionImplementation>,
     pub requirements_fulfillment: Box<RequirementsFulfillment>,
 
     pub assignments: HashMap<Uuid, Value>,
 }
 
-impl FunctionInterpreter<'_, '_> {
+impl FunctionInterpreter<'_> {
     pub unsafe fn assign_arguments(&mut self, arguments: Vec<Value>) {
         for (arg, parameter) in zip_eq(arguments, self.implementation.parameter_variables.iter()) {
             self.assignments.insert(parameter.id.clone(), arg);
