@@ -7,6 +7,7 @@ use std::alloc::{alloc, dealloc, Layout};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::rc::Rc;
+use custom_error::custom_error;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
@@ -16,6 +17,11 @@ use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statem
 use crate::program::functions::{FunctionHead, FunctionType};
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
+
+
+custom_error!{pub RuntimeError
+    RuntimeError{msg: String} = "Runtime Error: {msg}",
+}
 
 
 pub type FunctionInterpreterImpl = Rc<dyn Fn(&mut FunctionInterpreter, ExpressionID, &RequirementsFulfillment) -> Option<Value>>;

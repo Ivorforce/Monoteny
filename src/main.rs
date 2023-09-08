@@ -130,7 +130,7 @@ fn main() -> Result<(), LinkError> {
                         let transpiled_tree = transpiler::python::transpile_program(
                             &computation_tree,
                             &builtins
-                        );
+                        ).unwrap();
 
                         let python_path = output_path.with_extension("py");
                         let mut f = File::create(python_path.clone()).expect("Unable to create file");

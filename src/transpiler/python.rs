@@ -16,11 +16,11 @@ use uuid::Uuid;
 use regex;
 use crate::monomorphization::Monomorphizer;
 use crate::interpreter;
-use crate::interpreter::InterpreterGlobals;
+use crate::interpreter::{InterpreterGlobals, RuntimeError};
 
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
-use crate::program::{find_annotated, Program};
+use crate::program::{find_one_annotated_function, Program};
 use crate::program::calls::FunctionBinding;
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::traits::RequirementsFulfillment;
@@ -31,7 +31,7 @@ use crate::transpiler::python::imperative::{FunctionContext, transpile_function}
 use crate::transpiler::python::optimization::TranspilationHint;
 
 
-pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<ast::Module> {
+pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Result<Box<ast::Module>, RuntimeError> {
     let mut struct_ids = HashMap::new();
 
     let mut global_namespace = builtins::create(&builtins, &mut struct_ids);
@@ -101,7 +101,7 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<ast:
         );
 
         exported_symbols.borrow_mut().deref_mut().push(mono_function);
-    });
+    })?;
 
     // Find and monomorphize internal symbols
     let mut exported_symbols_ = exported_symbols.borrow_mut();
@@ -172,8 +172,7 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<ast:
         exported_classes: vec![],
         exported_functions: vec![],
         internal_functions: vec![],
-        main_function: find_annotated(exported_functions.iter(), "main")
-            .map(|main_function| names.get(&main_function.head.function_id).unwrap().clone()),
+        main_function: find_one_annotated_function(exported_functions.iter(), "main").map(|x| names[&x.head.function_id].clone()).ok()
     });
 
     for (struct_type, id) in struct_ids.iter() {
@@ -212,5 +211,5 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<ast:
         }
     }
 
-    module
+    Ok(module)
 }

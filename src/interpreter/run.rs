@@ -2,12 +2,12 @@ use std::alloc::{alloc, Layout};
 use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::interpreter::{FunctionInterpreter, InterpreterGlobals, Value};
-use crate::program::{find_annotated, Program};
+use crate::interpreter::{FunctionInterpreter, InterpreterGlobals, RuntimeError, Value};
+use crate::program::{find_one_annotated_function, Program};
 use crate::program::traits::RequirementsFulfillment;
 
-pub fn main(program: &Program, globals: &mut InterpreterGlobals) {
-    let entry_function = find_annotated(program.module.function_implementations.values(), "main").expect("No main function!");
+pub fn main(program: &Program, globals: &mut InterpreterGlobals) -> Result<(), RuntimeError> {
+    let entry_function = find_one_annotated_function(program.module.function_implementations.values(), "main")?;
     assert!(entry_function.head.interface.parameters.is_empty(), "@main function has parameters.");
     assert!(entry_function.head.interface.return_type.unit.is_void(), "@main function has a return value.");
 
@@ -21,10 +21,12 @@ pub fn main(program: &Program, globals: &mut InterpreterGlobals) {
     unsafe {
         interpreter.run();
     }
+
+    Ok(())
 }
 
-pub fn transpile(program: &Program, globals: &mut InterpreterGlobals, callback: &dyn Fn(Uuid)) {
-    let entry_function = find_annotated(program.module.function_implementations.values(), "transpile").expect("No main function!");
+pub fn transpile(program: &Program, globals: &mut InterpreterGlobals, callback: &dyn Fn(Uuid)) -> Result<(), RuntimeError> {
+    let entry_function = find_one_annotated_function(program.module.function_implementations.values(), "transpile")?;
     assert!(entry_function.head.interface.return_type.unit.is_void(), "@transpile function has a return value.");
 
     let mut assignments = HashMap::new();
@@ -52,6 +54,8 @@ pub fn transpile(program: &Program, globals: &mut InterpreterGlobals, callback: 
     unsafe {
         interpreter.run();
     }
+
+    Ok(())
 }
 
 
