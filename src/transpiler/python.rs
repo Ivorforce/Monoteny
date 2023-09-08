@@ -14,7 +14,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 use regex;
-use crate::generic_unfolding::FunctionUnfolder;
+use crate::monomorphization::Monomorphizer;
 use crate::interpreter;
 use crate::interpreter::InterpreterGlobals;
 
@@ -61,9 +61,9 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<ast:
     }
 
     let exported_symbols: Rc<RefCell<Vec<Rc<FunctionImplementation>>>> = Rc::new(RefCell::new(vec![]));
-    let unfolder: Rc<RefCell<FunctionUnfolder>> = Rc::new(RefCell::new(FunctionUnfolder::new()));
+    let monomorphizer: Rc<RefCell<Monomorphizer>> = Rc::new(RefCell::new(Monomorphizer::new()));
 
-    fn should_unfold(f: &Rc<FunctionBinding>, primitives: &HashMap<Uuid, BuiltinFunctionHint>, transpilation_hints_by_id: &HashMap<Uuid, TranspilationHint>) -> bool {
+    fn should_monomorphize(f: &Rc<FunctionBinding>, primitives: &HashMap<Uuid, BuiltinFunctionHint>, transpilation_hints_by_id: &HashMap<Uuid, TranspilationHint>) -> bool {
         if primitives.contains_key(&f.function.function_id) {
             // We need to inject these
             return false;
@@ -88,7 +88,7 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<ast:
             panic!("Transpiling generic functions is not supported yet: {:?}", implementation.head);
         }
 
-        let unfolded_function = unfolder.borrow_mut().deref_mut().unfold_anonymous(
+        let mono_function = monomorphizer.borrow_mut().deref_mut().monomorphize_function(
             implementation,
             &Rc::new(FunctionBinding {
                 // The implementation's pointer is fine.
@@ -97,34 +97,34 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<ast:
                 // Unless generics are bound in the transpile directive, which is TODO
                 requirements_fulfillment: RequirementsFulfillment::empty(),
             }),
-            &|f| should_unfold(f, &builtin_hints_by_id, &transpilation_hints_by_id)
+            &|f| should_monomorphize(f, &builtin_hints_by_id, &transpilation_hints_by_id)
         );
 
-        exported_symbols.borrow_mut().deref_mut().push(unfolded_function);
+        exported_symbols.borrow_mut().deref_mut().push(mono_function);
     });
 
-    // Find and unfold internal symbols
+    // Find and monomorphize internal symbols
     let mut exported_symbols_ = exported_symbols.borrow_mut();
     let exported_functions = exported_symbols_.deref_mut().clone();
-    let mut unfolder_ = unfolder.borrow_mut();
-    let unfolder = unfolder_.deref_mut();
+    let mut monomorphizer_ = monomorphizer.borrow_mut();
+    let monomorphizer = monomorphizer_.deref_mut();
 
     let mut internal_functions: Vec<Rc<FunctionImplementation>> = vec![];
-    while let Some(used_symbol) = unfolder.new_mappable_calls.pop() {
+    while let Some(used_symbol) = monomorphizer.new_mappable_calls.pop() {
         // TODO Use underscore names?
-        let replacement_symbol = Rc::clone(&unfolder.mapped_calls[&used_symbol]);
+        let replacement_symbol = Rc::clone(&monomorphizer.mapped_calls[&used_symbol]);
         let implementation = &functions_by_id[&used_symbol.function.function_id];
 
-        let unfolded_implementation = unfolder.unfold_anonymous(
+        let mono_implementation = monomorphizer.monomorphize_function(
             implementation,
             &replacement_symbol,
-            &|f| should_unfold(f, &builtin_hints_by_id, &transpilation_hints_by_id)
+            &|f| should_monomorphize(f, &builtin_hints_by_id, &transpilation_hints_by_id)
         );
 
-        internal_functions.push(unfolded_implementation);
+        internal_functions.push(mono_implementation);
     }
 
-    let reverse_mapped_calls = unfolder.get_reverse_mapped_calls();
+    let reverse_mapped_calls = monomorphizer.get_reverse_mapped_calls();
 
     for implementation in exported_functions.iter() {
         // TODO Register with priority over internal symbols

@@ -8,7 +8,7 @@ def main() :: {
     -- Call the generic function with an int32.
     print(3.square() 'Int32);
     -- Call the generic function with a float32.
-    -- We can unfold the generics at compile time and generate 2 ungeneric functions.
+    -- We can monomorphize the function  at compile time and generate 2 specialized functions.
     print(3.2.square() 'Float32);
 };
 

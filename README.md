@@ -73,7 +73,7 @@ Polymorphic types carry a sub-type per object. Generic traits defined on the sup
 
 ### Functional and Impure
 
-Large parts of programs can be designed in a pure and deterministic way. When compiling, Monoteny first generically unfolds function calls to resolve generic types, and then statically folds all constant code to minimize runtime cost.
+Large parts of programs can be designed in a pure and deterministic way. When compiling, Monoteny first monomorphizes function calls to resolve generic types, and then statically folds all constant code to minimize runtime cost.
 
 In other languages, 4 concepts usually prevent this type of folding:
 - Global Mutables
@@ -158,7 +158,6 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
   - [x] `@transpile` decorators: Functions that are called when making a transpilation target. 
   - [ ] `@private` decorators: Functions or traits that can only be referenced using qualified syntax.
   - [ ] `inherit` statements: Use and expose another module within your module, allowing additions and overrides.
-    - [ ] Partial inheritance: Use generic unfolding to use only the parts of a module /  trait that is actually needed.
   - [ ] Abstract Functions, Conformance Declarations
   - [ ] Namespaces
 - [ ] Control Callbacks (e.g. `def if(expression 'Bool, onTrue 'fun, onFalse 'Fun[Option]) { ... }`))

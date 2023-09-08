@@ -9,7 +9,7 @@ pub mod parser;
 pub mod program;
 pub mod transpiler;
 pub mod util;
-pub mod generic_unfolding;
+pub mod monomorphization;
 pub mod integration_tests;
 
 use std::ffi::OsStr;

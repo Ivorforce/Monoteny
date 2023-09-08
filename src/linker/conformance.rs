@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::generic_unfolding::map_interface_types;
+use crate::monomorphization::map_interface_types;
 use crate::linker::{LinkError, scopes};
 use crate::linker::global::UnlinkedFunctionImplementation;
 use crate::linker::interface::link_function_pointer;

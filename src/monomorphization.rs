@@ -14,20 +14,20 @@ use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, Tr
 use crate::program::types::TypeProto;
 
 
-pub struct FunctionUnfolder {
+pub struct Monomorphizer {
     pub mapped_calls: HashMap<Rc<FunctionBinding>, Rc<FunctionBinding>>,
     pub new_mappable_calls: Vec<Rc<FunctionBinding>>,
 }
 
-impl FunctionUnfolder {
-    pub fn new() -> FunctionUnfolder {
-        FunctionUnfolder {
+impl Monomorphizer {
+    pub fn new() -> Monomorphizer {
+        Monomorphizer {
             mapped_calls: Default::default(),
             new_mappable_calls: Default::default(),
         }
     }
 
-    pub fn unfold_anonymous(&mut self, implementation: &FunctionImplementation, function_binding: &Rc<FunctionBinding>, should_unfold: &dyn Fn(&Rc<FunctionBinding>) -> bool) -> Rc<FunctionImplementation> {
+    pub fn monomorphize_function(&mut self, implementation: &FunctionImplementation, function_binding: &Rc<FunctionBinding>, should_monomorphize: &dyn Fn(&Rc<FunctionBinding>) -> bool) -> Rc<FunctionImplementation> {
         println!("Unfold {:?}", implementation.head);
         // Map types.
         let mut type_forest = implementation.type_forest.clone();
@@ -85,7 +85,7 @@ impl FunctionUnfolder {
                 ExpressionOperation::FunctionCall(call) => {
                     let replaced_call = map_function_call(call, &function_replacement_map);
 
-                    let unfolded_call: Rc<FunctionBinding> = if should_unfold(&replaced_call) {
+                    let mono_call: Rc<FunctionBinding> = if should_monomorphize(&replaced_call) {
                         match self.mapped_calls.entry(Rc::clone(&replaced_call)) {
                             Entry::Occupied(o) => Rc::clone(o.get()),
                             Entry::Vacant(v) => {
@@ -98,7 +98,7 @@ impl FunctionUnfolder {
                         replaced_call
                     };
 
-                    ExpressionOperation::FunctionCall(unfolded_call)
+                    ExpressionOperation::FunctionCall(mono_call)
                 }
                 ExpressionOperation::PairwiseOperations { calls } => {
                     ExpressionOperation::PairwiseOperations {
@@ -106,7 +106,7 @@ impl FunctionUnfolder {
                             .map(|call| {
                                 let replaced_call = map_function_call(call, &function_replacement_map);
 
-                                let unfolded_call: Rc<FunctionBinding> = if should_unfold(&replaced_call) {
+                                let mono_call: Rc<FunctionBinding> = if should_monomorphize(&replaced_call) {
                                     match self.mapped_calls.entry(Rc::clone(call)) {
                                         Entry::Occupied(o) => Rc::clone(o.get()),
                                         Entry::Vacant(v) => {
@@ -119,7 +119,7 @@ impl FunctionUnfolder {
                                     replaced_call
                                 };
 
-                                unfolded_call
+                                mono_call
                             }).collect_vec()
                     }
                 }
@@ -138,14 +138,14 @@ impl FunctionUnfolder {
             head: Rc::clone(&function_binding.function),  // Re-use premapped pointer
             decorators: implementation.decorators.clone(),
             // TODO This is correct only if all requirements have been fulfilled.
-            //  If unfolding was requested on a partially generic function, we continue to
+            //  If monomorphization was requested on a partially generic function, we continue to
             //  have some requirements.
             requirements_assumption: Box::new(RequirementsAssumption { conformance: Default::default() }),
             statements,
             expression_forest,
             type_forest,
             parameter_variables: implementation.parameter_variables.iter().map(|x| Rc::clone(&variable_map[x])).collect_vec(),
-            variable_names: implementation.variable_names.clone(),  // Variables don't change with unfolding
+            variable_names: implementation.variable_names.clone(),  // TODO The variable references change as the variables themselves change type
         })
     }
 
@@ -161,7 +161,7 @@ pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<
     // TODO The replacement map + requirements_fulfillment are not yet complete: All the conformance assumptions must be replaced as well.
     //  e.g. when you have "A is B", then A.b_function() uses Self which has been assumed by the linker.
     //  So Self (a generic) needs to be mapped as well. However, A.b_function() can use functions of A, so
-    //  HOW its assumptions can be fulfilled can only be found by the unfolder (now!).
+    //  HOW its assumptions can be fulfilled can only be found by the monomorphizer (now!).
     //  In a 'virtual call' scenario, this would simply be a virtual call, of course.
     let mut generic_replacement_map: HashMap<Uuid, Box<TypeProto>> = call.requirements_fulfillment.generic_mapping.iter().map(|(any_id, type_)| {
         (*any_id, type_forest.resolve_type(type_).unwrap().replacing_anys(replacement_map))
