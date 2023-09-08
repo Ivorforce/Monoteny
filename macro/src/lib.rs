@@ -17,7 +17,9 @@ pub fn bin_op(_item: TokenStream) -> TokenStream {
             let layout = Layout::new::<{result_type}>();
             Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
-                    let args = &interpreter.implementation.expression_forest.arguments[&expression_id];
+                    // Avoid borrowing interpreter.
+                    let implementation = Rc::clone(&interpreter.implementation);
+                    let args = &implementation.expression_forest.arguments[&expression_id];
                     let l = interpreter.evaluate(args[0]).unwrap();
                     let r = interpreter.evaluate(args[1]).unwrap();
 
@@ -41,7 +43,8 @@ pub fn un_op(_item: TokenStream) -> TokenStream {
             let layout = Layout::new::<{type_}>();
             Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
-                    let args = &interpreter.implementation.expression_forest.arguments[&expression_id];
+                    let implementation = Rc::clone(&interpreter.implementation);
+                    let args = &implementation.expression_forest.arguments[&expression_id];
                     let arg = interpreter.evaluate(args[0]).unwrap();
 
                     let data = alloc(layout);
@@ -67,7 +70,8 @@ pub fn fun_op(_item: TokenStream) -> TokenStream {
             let layout = Layout::new::<{result_type}>();
             Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
-                    let args = &interpreter.implementation.expression_forest.arguments[&expression_id];
+                    let implementation = Rc::clone(&interpreter.implementation);
+                    let args = &implementation.expression_forest.arguments[&expression_id];
                     let l = interpreter.evaluate(args[0]).unwrap();
                     let r = interpreter.evaluate(args[1]).unwrap();
 
@@ -90,7 +94,8 @@ pub fn parse_op(_item: TokenStream) -> TokenStream {
             let layout = Layout::new::<{type_}>();
             Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
-                    let args = &interpreter.implementation.expression_forest.arguments[&expression_id];
+                    let implementation = Rc::clone(&interpreter.implementation);
+                    let args = &implementation.expression_forest.arguments[&expression_id];
                     let arg = interpreter.evaluate(args[0]).unwrap();
                     let data = alloc(layout);
                     *(data as *mut {type_}) = {type_}::from_str((*(arg.data as *const String)).as_str()).unwrap();

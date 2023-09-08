@@ -14,7 +14,7 @@ pub fn compile_function(function: &Rc<FunctionImplementation>) -> FunctionInterp
             let arguments = interpreter.evaluate_arguments(expression_id);
 
             let mut sub_interpreter = FunctionInterpreter {
-                implementation: &f,
+                implementation: f,
                 requirements_fulfillment: FunctionInterpreter::combine_bindings(&interpreter.requirements_fulfillment, binding),
                 globals: interpreter.globals,
                 assignments: HashMap::new(),

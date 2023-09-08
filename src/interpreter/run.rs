@@ -43,7 +43,7 @@ pub fn main(program: &Program, builtins: &Rc<Builtins>) {
             builtins: Rc::clone(builtins),
             function_evaluators: evaluators,
         },
-        implementation: entry_function,
+        implementation: Rc::clone(entry_function),
         // No parameters and return type = nothing to bind!
         requirements_fulfillment: RequirementsFulfillment::empty(),
         assignments,
@@ -110,7 +110,7 @@ pub fn transpile(program: &Program, builtins: &Rc<Builtins>, callback: &dyn Fn(&
             builtins: Rc::clone(builtins),
             function_evaluators: evaluators,
         },
-        implementation: entry_function,
+        implementation: Rc::clone(entry_function),
         // TODO Technically we should bind Transpiler here, probably to some internal transpiler we make up on the spot.
         requirements_fulfillment: RequirementsFulfillment::empty(),
         assignments,

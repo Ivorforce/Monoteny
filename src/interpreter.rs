@@ -30,15 +30,15 @@ pub struct InterpreterGlobals<'a> {
     pub function_evaluators: HashMap<Uuid, FunctionInterpreterImpl<'a>>,
 }
 
-pub struct FunctionInterpreter<'a, 'b, 'c> {
+pub struct FunctionInterpreter<'a, 'b> {
     pub globals: &'a mut InterpreterGlobals<'b>,
-    pub implementation: &'c FunctionImplementation,
+    pub implementation: Rc<FunctionImplementation>,
     pub requirements_fulfillment: Box<RequirementsFulfillment>,
 
     pub assignments: HashMap<Uuid, Value>,
 }
 
-impl FunctionInterpreter<'_, '_, '_> {
+impl FunctionInterpreter<'_, '_> {
     pub unsafe fn assign_arguments(&mut self, arguments: Vec<Value>) {
         for (arg, parameter) in zip_eq(arguments, self.implementation.parameter_variables.iter()) {
             self.assignments.insert(parameter.id.clone(), arg);
@@ -46,7 +46,9 @@ impl FunctionInterpreter<'_, '_, '_> {
     }
 
     pub unsafe fn run(&mut self) -> Option<Value> {
-        for statement in self.implementation.statements.iter() {
+        // Avoid borrowing self.
+        let self_implementation = Rc::clone(&self.implementation);
+        for statement in self_implementation.statements.iter() {
             match statement.as_ref() {
                 Statement::VariableAssignment(target, value) => {
                     let value = self.evaluate(*value);
@@ -97,8 +99,9 @@ impl FunctionInterpreter<'_, '_, '_> {
         //  ExpressionOperation outer switch would be replaced by having a function for every call. Literals would be stored and copied somewhere else.
         //  FunctionInterpreter instances could also be cached - no need to re-create them recursively.
         //  This would be managed by a global interpreter that is expandable dynamically. i.e. it can be re-used for interactive environments and so on.
-
-        match &self.implementation.expression_forest.operations[&expression_id] {
+        // Avoid borrowing self.
+        let self_implementation = Rc::clone(&self.implementation);
+        match &self_implementation.expression_forest.operations[&expression_id] {
             ExpressionOperation::FunctionCall(call) => {
                 let function_id = self.resolve(&call.function);
 
@@ -129,7 +132,9 @@ impl FunctionInterpreter<'_, '_, '_> {
     }
 
     pub unsafe fn evaluate_arguments(&mut self, expression_id: ExpressionID) -> Vec<Value> {
-        self.implementation.expression_forest.arguments[&expression_id].iter()
+        // Avoid borrowing self.
+        let self_implementation = Rc::clone(&self.implementation);
+        self_implementation.expression_forest.arguments[&expression_id].iter()
             .map(|x| self.evaluate(*x).unwrap())
             .collect_vec()
     }
