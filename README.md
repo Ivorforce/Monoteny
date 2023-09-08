@@ -203,7 +203,7 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
 
 ### Standard Library
 
-- [ ] 0D-Math operations (pow, sqrt, etc.)
+- [x] 0D-Math operations (pow, sqrt, etc.)
 - [ ] Array manipulation (filter, add, etc.)
 - [ ] Collection reductions (sum, std, any, etc.)
 - [ ] 1D timeseries data functions (filter, gaussian, running mean, etc.)
