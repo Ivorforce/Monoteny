@@ -196,6 +196,7 @@ pub fn try_transpile_builtin(function: &Rc<FunctionHead>, expression_id: &Expres
     });
 
     Some(match hint {
+        // TODO Many of these operations automatically 'upgrade' the type.
         BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
             match operation {
                 PrimitiveOperation::And => transpile_binary_operator("and", arguments, context),
@@ -205,8 +206,14 @@ pub fn try_transpile_builtin(function: &Rc<FunctionHead>, expression_id: &Expres
                 PrimitiveOperation::Add => transpile_binary_operator("+", arguments, context),
                 PrimitiveOperation::Subtract => transpile_binary_operator("-", arguments, context),
                 PrimitiveOperation::Multiply => transpile_binary_operator("*", arguments, context),
-                // TODO This should be truediv for ints
-                PrimitiveOperation::Divide => transpile_binary_operator("/", arguments, context),
+                PrimitiveOperation::Divide => {
+                    if type_.is_int() {
+                        transpile_binary_operator("//", arguments, context)
+                    }
+                    else {
+                        transpile_binary_operator("/", arguments, context)
+                    }
+                },
                 PrimitiveOperation::Modulo => transpile_binary_operator("%", arguments, context),
                 PrimitiveOperation::Exp => transpile_binary_operator("**", arguments, context),
                 PrimitiveOperation::Log => transpile_single_arg_function_call("math.log", arguments, expression_id, context),

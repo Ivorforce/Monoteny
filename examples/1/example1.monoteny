@@ -30,7 +30,7 @@ def main() :: {
     upd b = b.square() ** -2.2 /_ value + tau;
 
     -- Use pi_ish for ints, which yields 3.
-    var c 'Int32 = pi_ish;
+    var c 'Int32 = pi_ish / 2;
 
     -- Print boolean
     print(b < 2 and not (value > 2) and true);
