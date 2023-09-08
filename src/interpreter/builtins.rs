@@ -1,18 +1,15 @@
 use std::alloc::{alloc, Layout};
-use std::collections::HashMap;
 use std::rc::Rc;
 use monoteny_macro::{bin_op, parse_op, un_op, fun_op, load_constant};
 use std::str::FromStr;
 use uuid::Uuid;
-use crate::interpreter::{FunctionInterpreterImpl, Value};
+use crate::interpreter::{FunctionInterpreterImpl, InterpreterGlobals, Value};
 use crate::program::builtins::Builtins;
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
 use crate::program::primitives;
 use crate::program::types::TypeUnit;
 
-pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreterImpl> {
-    let mut map: HashMap<Uuid, FunctionInterpreterImpl> = HashMap::new();
-
+pub fn load(globals: &mut InterpreterGlobals, builtins: &Builtins) {
     let f32_type = TypeUnit::Struct(Rc::clone(&builtins.core.primitives[&primitives::Type::Float32]));
     let f64_type = TypeUnit::Struct(Rc::clone(&builtins.core.primitives[&primitives::Type::Float64]));
 
@@ -21,7 +18,7 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
     // -------------------------------------- ------ --------------------------------------
 
     for (ptr, builtin_hint) in builtins.core.module.builtin_hints.iter() {
-        map.insert(ptr.unwrap_id(), match builtin_hint {
+        globals.function_evaluators.insert(ptr.unwrap_id(), match builtin_hint {
             BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
                 create_primitive_op(type_.clone(), operation.clone())
             }
@@ -37,7 +34,7 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
     // -------------------------------------- Common --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    map.insert(builtins.debug.print.target.unwrap_id(), Rc::new(|interpreter, expression_id, binding| {
+    globals.function_evaluators.insert(builtins.debug.print.target.unwrap_id(), Rc::new(|interpreter, expression_id, binding| {
         unsafe {
             let arg_id = interpreter.implementation.expression_forest.arguments[&expression_id][0];
             let arg = interpreter.evaluate(arg_id).unwrap();
@@ -80,7 +77,37 @@ pub fn make_evaluators(builtins: &Builtins) -> HashMap<Uuid, FunctionInterpreter
         }
     }));
 
-    map
+    // -------------------------------------- ------ --------------------------------------
+    // -------------------------------------- Transpiler --------------------------------------
+    // -------------------------------------- ------ --------------------------------------
+
+    globals.function_evaluators.insert(
+        builtins.transpilation.add.target.function_id.clone(),
+        Rc::new(move |interpreter, expression_id, binding| {
+            unsafe {
+                let arguments = interpreter.evaluate_arguments(expression_id);
+
+                // This may cause a SIGSEV if the callback pointer is invalidated. This should not happen as long as
+                //  nobody owns a Transpiler object outside of its lifetime.
+                let transpiler_callback = *(arguments[0].data as *const &dyn Fn(Uuid));
+
+                let arg = &arguments[1];
+                let arg_id = &interpreter.implementation.expression_forest.arguments[&expression_id][1];
+                let arg_type = interpreter.implementation.type_forest.get_unit(arg_id).unwrap();
+
+                // TODO Once we have a Function supertype we can remove this check.
+                match arg_type {
+                    TypeUnit::Function(f) => {},
+                    _ => panic!("Argument to transpiler.add is not a function: {:?}", arg_type)
+                };
+
+                let implementation_id = *(arg.data as *const Uuid);
+                transpiler_callback(implementation_id);
+
+                return None;
+            }
+        })
+    );
 }
 
 pub fn create_primitive_op(type_: primitives::Type, operation: PrimitiveOperation) -> FunctionInterpreterImpl {

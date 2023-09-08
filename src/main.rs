@@ -17,6 +17,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use clap::{arg, Command};
+use crate::interpreter::InterpreterGlobals;
 use crate::linker::LinkError;
 
 fn cli() -> Command<'static> {
@@ -63,8 +64,13 @@ fn main() -> Result<(), LinkError> {
 
             let syntax_tree = parser::parse_program(&content);
 
-            let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;
-            interpreter::run::main(&computation_tree, &builtins);
+            let program = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;
+
+            let mut globals = InterpreterGlobals::new(&builtins);
+            for module in [&program.module].into_iter().chain(builtins.all_modules()) {
+                interpreter::load::module(module, &mut globals);
+            }
+            interpreter::run::main(&program, &mut globals);
         },
         Some(("check", sub_matches)) => {
             let paths = sub_matches

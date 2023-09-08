@@ -16,6 +16,7 @@ use uuid::Uuid;
 use regex;
 use crate::generic_unfolding::FunctionUnfolder;
 use crate::interpreter;
+use crate::interpreter::InterpreterGlobals;
 
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::*;
@@ -38,12 +39,16 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<ast:
     let mut file_namespace = global_namespace.add_sublevel();
     let mut object_namespace = namespaces::Level::new();  // TODO Keywords can't be in object namespace either
 
+    let mut globals = InterpreterGlobals::new(&builtins);
+
     let mut functions_by_id = HashMap::new();
     let mut builtin_hints_by_id = HashMap::new();
     let mut transpilation_hints_by_id = optimization::prepare(&builtins);
     let mut pointer_by_id = HashMap::new();
 
     for module in [&program.module].into_iter().chain(builtins.all_modules()) {
+        interpreter::load::module(module, &mut globals);
+
         for implementation in module.function_implementations.values() {
             functions_by_id.insert(implementation.implementation_id, Rc::clone(implementation));
         }
@@ -74,7 +79,9 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Box<ast:
 
     // Run interpreter
 
-    interpreter::run::transpile(program, &Rc::clone(&builtins), &|implementation| {
+    interpreter::run::transpile(program, &mut globals, &|implementation_id| {
+        let implementation = &functions_by_id[&implementation_id];
+
         if implementation.head.interface.collect_generics().len() > 0 {
             // We'll need to somehow transpile requirements as protocols and generics as generics.
             // That's for later!

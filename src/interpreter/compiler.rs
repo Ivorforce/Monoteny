@@ -17,7 +17,7 @@ pub fn compile_function(function: &Rc<FunctionImplementation>) -> FunctionInterp
                 implementation: f,
                 requirements_fulfillment: FunctionInterpreter::combine_bindings(&interpreter.requirements_fulfillment, binding),
                 globals: interpreter.globals,
-                assignments: HashMap::new(),
+                locals: HashMap::new(),
             };
             sub_interpreter.assign_arguments(arguments);
             sub_interpreter.run()

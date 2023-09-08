@@ -1,6 +1,7 @@
 pub mod builtins;
 pub mod compiler;
 pub mod run;
+pub mod load;
 
 use std::alloc::{alloc, dealloc, Layout};
 use std::collections::HashMap;
@@ -28,6 +29,7 @@ pub struct Value {
 pub struct InterpreterGlobals {
     pub builtins: Rc<Builtins>,
     pub function_evaluators: HashMap<Uuid, FunctionInterpreterImpl>,
+    pub assignments: HashMap<Uuid, Value>,
 }
 
 pub struct FunctionInterpreter<'a> {
@@ -35,13 +37,27 @@ pub struct FunctionInterpreter<'a> {
     pub implementation: Rc<FunctionImplementation>,
     pub requirements_fulfillment: Box<RequirementsFulfillment>,
 
-    pub assignments: HashMap<Uuid, Value>,
+    pub locals: HashMap<Uuid, Value>,
+}
+
+impl InterpreterGlobals {
+    pub fn new(builtins: &Rc<Builtins>) -> InterpreterGlobals {
+        let mut globals = InterpreterGlobals {
+            builtins: Rc::clone(builtins),
+            function_evaluators: Default::default(),
+            assignments: Default::default(),
+        };
+
+        builtins::load(&mut globals, builtins);
+
+        globals
+    }
 }
 
 impl FunctionInterpreter<'_> {
     pub unsafe fn assign_arguments(&mut self, arguments: Vec<Value>) {
         for (arg, parameter) in zip_eq(arguments, self.implementation.parameter_variables.iter()) {
-            self.assignments.insert(parameter.id.clone(), arg);
+            self.locals.insert(parameter.id.clone(), arg);
         }
     }
 
@@ -52,7 +68,7 @@ impl FunctionInterpreter<'_> {
             match statement.as_ref() {
                 Statement::VariableAssignment(target, value) => {
                     let value = self.evaluate(*value);
-                    self.assignments.insert(target.id.clone(), value.unwrap());
+                    self.locals.insert(target.id.clone(), value.unwrap());
                 }
                 Statement::Expression(expression_id) => {
                     self.evaluate(*expression_id);
@@ -117,7 +133,12 @@ impl FunctionInterpreter<'_> {
                 panic!()
             }
             ExpressionOperation::VariableLookup(variable) => {
-                return Some(self.assignments[&variable.id].clone())
+                return Some(
+                    self.locals.get(&variable.id)
+                        .or(self.globals.assignments.get(&variable.id))
+                        .expect(format!("Unknown Variable: {} '{:?}", variable.id, variable.type_).as_str())
+                        .clone()
+                )
             }
             ExpressionOperation::ArrayLiteral => {
                 panic!()
