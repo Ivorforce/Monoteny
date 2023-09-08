@@ -28,7 +28,7 @@ pub fn preload_program<'a>(program: &'a Program, evaluators: &mut HashMap<Uuid, 
 }
 
 
-pub fn main(program: &Program, builtins: &Builtins) {
+pub fn main(program: &Program, builtins: &Rc<Builtins>) {
     let entry_function = find_annotated(program.module.function_implementations.values(), "main").expect("No main function!");
     assert!(entry_function.head.interface.parameters.is_empty(), "@main function has parameters.");
     assert!(entry_function.head.interface.return_type.unit.is_void(), "@main function has a return value.");
@@ -40,7 +40,7 @@ pub fn main(program: &Program, builtins: &Builtins) {
 
     let mut interpreter = FunctionInterpreter {
         globals: &mut InterpreterGlobals {
-            builtins,
+            builtins: Rc::clone(builtins),
             function_evaluators: &mut evaluators,
         },
         implementation: entry_function,
@@ -53,7 +53,7 @@ pub fn main(program: &Program, builtins: &Builtins) {
     }
 }
 
-pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<FunctionImplementation>)) {
+pub fn transpile(program: &Program, builtins: &Rc<Builtins>, callback: &dyn Fn(&Rc<FunctionImplementation>)) {
     let entry_function = find_annotated(program.module.function_implementations.values(), "transpile").expect("No main function!");
     let mut evaluators = builtins::make_evaluators(builtins);
     let mut assignments = HashMap::new();
@@ -107,7 +107,7 @@ pub fn transpile(program: &Program, builtins: &Builtins, callback: &dyn Fn(&Rc<F
 
     let mut interpreter = FunctionInterpreter {
         globals: &mut InterpreterGlobals {
-            builtins,
+            builtins: Rc::clone(builtins),
             function_evaluators: &mut evaluators,
         },
         implementation: entry_function,

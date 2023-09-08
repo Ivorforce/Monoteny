@@ -26,7 +26,7 @@ pub struct Value {
 }
 
 pub struct InterpreterGlobals<'a> {
-    pub builtins: &'a Builtins,
+    pub builtins: Rc<Builtins>,
     pub function_evaluators: &'a HashMap<Uuid, FunctionInterpreterImpl<'a>>,
 }
 
