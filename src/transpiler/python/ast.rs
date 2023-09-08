@@ -16,7 +16,7 @@ impl Display for Module {
         writeln!(f, "import numpy as np")?;
         writeln!(f, "import math")?;
         writeln!(f, "import operator as op")?;
-        writeln!(f, "from numpy import int8, int16, int32, int64, int128, uint8, uint16, uint32, uint64, uint128, float32, float64, bool")?;
+        writeln!(f, "from numpy import int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64")?;
         writeln!(f, "from typing import Any, Callable")?;
         write!(f, "\n\n")?;
 

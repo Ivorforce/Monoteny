@@ -67,18 +67,18 @@ pub fn create(builtins: &Builtins, type_ids: &mut HashMap<Box<TypeProto>, Uuid>)
         }
     }
 
+    // TODO 128 bit ints are not available in numpy.
     for (struct_, name) in [
         (&builtins.core.traits.String, "str"),
+        (&builtins.core.primitives[&primitives::Type::Bool], "bool"),
         (&builtins.core.primitives[&primitives::Type::Int8], "int8"),
         (&builtins.core.primitives[&primitives::Type::Int16], "int16"),
         (&builtins.core.primitives[&primitives::Type::Int32], "int32"),
         (&builtins.core.primitives[&primitives::Type::Int64], "int64"),
-        (&builtins.core.primitives[&primitives::Type::Int128], "int128"),
         (&builtins.core.primitives[&primitives::Type::UInt8], "uint8"),
         (&builtins.core.primitives[&primitives::Type::UInt16], "uint16"),
         (&builtins.core.primitives[&primitives::Type::UInt32], "uint32"),
         (&builtins.core.primitives[&primitives::Type::UInt64], "uint64"),
-        (&builtins.core.primitives[&primitives::Type::UInt128], "uint128"),
         (&builtins.core.primitives[&primitives::Type::Float32], "float32"),
         (&builtins.core.primitives[&primitives::Type::Float64], "float64"),
     ].into_iter() {
