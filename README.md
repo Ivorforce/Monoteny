@@ -2,7 +2,21 @@
 
 Welcome to the mathemagical land of Monoteny! 
 
-Monoteny is an experimental language intended for making libraries and solving deterministic problems. It aims to expose logic using simple syntax, selectively borrowing concepts from many different languages that have worked well for this purpose.
+Monoteny is a programming language intended for making libraries. It transpiles to many other programming languages and ecosystems so you don't need to reinvent the wheel!
+
+Monoteny specializes in reusability, runtime safety and readability. Why not check out [Monoteny 101](https://www.craft.me/s/dYSfJhYM9TAsne)?
+
+## Philosophy
+
+Let's quick-fire some language design decisions:
+
+- **Many transpilation targets:** Writing your code in Monoteny ensures it lives forever.
+- **Implicit Safety:** Monoteny code cannot do anything bad to you except crash or freeze the program. There are no syscalls!
+- **Flexible Runtime:** You can generate new code from text, tokens or specialization on the fly.
+- **Monomorphization:** Transpilation will result in code that doesn't use dynamic dispatch, even when using generics. This makes it fast!
+- **Monads:** Monoteny loves monads. Monads make your code short and easy to read!
+- **Vectorization:** Writing Monoteny code means writing vectorized code. This can be compiled to be _very_ fast.
+- **Infinite Re-Usability:** All interface types are generic and thus replaceable. You can finally stop worrying about writing the same function _again_.
 
 ## Code
 
@@ -43,48 +57,7 @@ def main() {
 }
 ```
 
-For a full practical introduction, see: [Introduction to Monoteny](https://www.craft.do/s/dYSfJhYM9TAsne).
 More code can be found in the [examples](./examples) directory.
-
-## Philosophy
-
-### Idealistic Simplicity
-
-Many languages adopt concepts because they map to machine code in some desirable way. Instead, Monoteny strives for logic coherence: One piece of logic is reusable in many contexts, even if there are vastly different implications for the execution. In Monoteny, these implications are considered optimizations which are handled with hints and compiler logic.
-
-On a syntactical level, many decisions are trade-offs between readability vs. brevity. Decisions often take into account one particular subset of domains, and may be arbitrary or obscure for other domains. Indeed, different groups of people may prefer different dialects to better understand some piece of logic. Monoteny supports and encourages dialects on a language level to aid adoption. 
-
-### First-Class Multiplicity
-
-Monoteny recognizes multiplicity (data) usually comes in predictable forms:
-
-- Some known number of objects of different types.
-  - Fields of an object -> Monoteny: Trait / Struct
-- One object of varying subtype.
-  - Tagged Union -> Monoteny: Enum / Poly
-- Some unknown number of objects of the same type.
-  - Arrays / Dictionaries -> Monoteny: Multimonad
-
-A monad is a wrapper that hides multiplicity on interaction with the type. Only when referenced (e.g. `a@[0]`) is interaction with the monadic wrapper permitted. A monadic wrapper might be anything from arrays over dictionaries to streams or nullability.
-
-Meanwhile, objects come with a known type and can only be interacted with using declared traits. Functions cannot extract more knowledge from an object than they are given, trading freedom for functional determinism. Often, objects are viewed from a minimalist perspective in order to reduce complexity.
-
-Polymorphic types carry a sub-type per object. Generic traits defined on the supertype are adopted. For non-generically defined functions, the sub-types must be acted on one by one. 
-
-### Functional and Impure
-
-Large parts of programs can be designed in a pure and deterministic way. When compiling, Monoteny first monomorphizes function calls to resolve generic types, and then statically folds all constant code to minimize runtime cost.
-
-In other languages, 4 concepts usually prevent this type of folding:
-- Global Mutables
-  - Monoteny does not allow global mutables. Instead, parameters must be explicitly passed.
-- Functional Impurities (e.g. I/O, Random...)
-  - Monoteny requires explicitly impurity declarations.
-    - `Float[Var]`: Values are unknown at design-time.
-- Type Loss (e.g. multi-object array, polymorphism).
-  - Monoteny uses statically typed multiplicity and subject-oriented function calls.
-
-As a side effect to folding, often promises can be made about the code: For example, an array lookup into an empty array will always fail. Monoteny allows user code at fold-time to make promises about the code, from used types, parameters or impurities.
 
 ## Roadmap
 
