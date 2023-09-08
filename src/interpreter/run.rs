@@ -33,9 +33,6 @@ pub fn transpile(program: &Program, globals: &mut InterpreterGlobals, callback: 
 
     // Set the transpiler object.
     unsafe {
-        // We have nothing useful to set for now.
-        // TODO In the future, we should differentiate between different transpiler objects.
-        //  But that's certainly not needed for a while.
         let transpiler_layout = Layout::new::<&dyn Fn(Uuid)>();
         let ptr = alloc(transpiler_layout);
         *(ptr as *mut &dyn Fn(Uuid)) = callback;
@@ -48,7 +45,7 @@ pub fn transpile(program: &Program, globals: &mut InterpreterGlobals, callback: 
     let mut interpreter = FunctionInterpreter {
         globals,
         implementation: Rc::clone(entry_function),
-        // TODO Technically we should bind Transpiler here, probably to some internal transpiler we make up on the spot.
+        // TODO Technically we should bind Transpiler here, probably to a Transpiler subtype that cannot be instantiated.
         requirements_fulfillment: RequirementsFulfillment::empty(),
         locals: assignments,
     };
