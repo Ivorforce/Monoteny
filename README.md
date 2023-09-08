@@ -108,6 +108,8 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
 ### Monoteny 0.2 (Proof of Concept Stage)
 
 - [x] Generics
+  - [x] Monomorphization: Specialize functions and types at compile-time.
+    - [ ] Generic Export: Allow the export of unspecialized functions through a trait conformance parameter. 
   - [x] Reverse generic type checking (output types determined from inputs)
   - [x] Implicit generics (`#A`)
     - [x] ... in imperative code
@@ -130,7 +132,6 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
   - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
   - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
 - [ ] Modules (imports)
-  - [x] Generic Unfolding: Compile functions with deeply resolved generics
   - [ ] `use` statements: Use parts of a module without changing or re-exporting it.
   - [ ] `abstract` functions: Declare functions only later.
   - [x] `@transpile` decorators: Functions that are called when making a transpilation target. 

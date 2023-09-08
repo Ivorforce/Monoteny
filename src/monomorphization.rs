@@ -28,7 +28,7 @@ impl Monomorphizer {
     }
 
     pub fn monomorphize_function(&mut self, implementation: &FunctionImplementation, function_binding: &Rc<FunctionBinding>, should_monomorphize: &dyn Fn(&Rc<FunctionBinding>) -> bool) -> Rc<FunctionImplementation> {
-        println!("Unfold {:?}", implementation.head);
+        println!("Monomorphize {:?}", implementation.head);
         // Map types.
         let mut type_forest = implementation.type_forest.clone();
 
