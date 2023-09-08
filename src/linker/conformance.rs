@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::generic_unfolding::map_interface_types;
@@ -27,14 +26,11 @@ impl <'a> ConformanceLinker<'a> {
                 //  to the ID of the parent abstract function. That way, we can avoid another
                 //  generic to generic mapping later.
                 let fun = link_function_pointer(&syntax, &scope, requirements)?;
-                guard!(let Some(body) = &syntax.body else {
-                    return Err(LinkError::LinkError { msg: format!("Function {} needs a body.", fun.name) });
-                });
 
                 self.functions.push(UnlinkedFunctionImplementation {
                     pointer: fun,
                     decorators: syntax.decorators.clone(),
-                    body,
+                    body: &syntax.body,
                 });
             }
             _ => {

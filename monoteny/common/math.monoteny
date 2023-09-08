@@ -9,23 +9,23 @@ def +{$Number} -> $Number :: arg;
 -- Those that have no implementation will receive one eventually.
 -- For primitives, transpilers will usually insert a hardware implementation instead.
 
-def {$Float}.factorial() -> $Float :: panic();
+def {$Float}.factorial() -> $Float;
 
-def sin(x '$Float) -> $Float :: panic();
-def cos(x '$Float) -> $Float :: panic();
-def tan(x '$Float) -> $Float :: panic();
-def sinh(x '$Float) -> $Float :: panic();
-def cosh(x '$Float) -> $Float :: panic();
-def tanh(x '$Float) -> $Float :: panic();
-def arcsin(x '$Float) -> $Float :: panic();
-def arccos(x '$Float) -> $Float :: panic();
-def arctan(x '$Float) -> $Float :: panic();
-def arcsinh(x '$Float) -> $Float :: panic();
-def arccosh(x '$Float) -> $Float :: panic();
-def arctanh(x '$Float) -> $Float :: panic();
+def sin(x '$Float) -> $Float;
+def cos(x '$Float) -> $Float;
+def tan(x '$Float) -> $Float;
+def sinh(x '$Float) -> $Float;
+def cosh(x '$Float) -> $Float;
+def tanh(x '$Float) -> $Float;
+def arcsin(x '$Float) -> $Float;
+def arccos(x '$Float) -> $Float;
+def arctan(x '$Float) -> $Float;
+def arcsinh(x '$Float) -> $Float;
+def arccosh(x '$Float) -> $Float;
+def arctanh(x '$Float) -> $Float;
 
-def ceil(x '$Float) -> $Float :: panic();
-def floor(x '$Float) -> $Float :: panic();
-def round(x '$Float) -> $Float :: panic();
+def ceil(x '$Float) -> $Float;
+def floor(x '$Float) -> $Float;
+def round(x '$Float) -> $Float;
 
-def abs(x '$Float) -> $Float :: panic();
+def abs(x '$Float) -> $Float;

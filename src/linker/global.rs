@@ -30,7 +30,7 @@ struct GlobalLinker<'a> {
 pub struct UnlinkedFunctionImplementation<'a> {
     pub pointer: Rc<FunctionPointer>,
     pub decorators: Vec<String>,
-    pub body: &'a Expression,
+    pub body: &'a Option<Expression>,
 }
 
 pub fn link_file(syntax: ast::Module, scope: &scopes::Scope, builtins: &Builtins) -> Result<Rc<Module>, LinkError> {
@@ -50,6 +50,9 @@ pub fn link_file(syntax: ast::Module, scope: &scopes::Scope, builtins: &Builtins
 
     // Resolve function bodies
     for fun in global_linker.functions.iter() {
+        guard!(let Some(body) = fun.body else {
+            continue;
+        });
         let mut variable_names = HashMap::new();
 
         // TODO Inject traits, not pointers
@@ -63,7 +66,7 @@ pub fn link_file(syntax: ast::Module, scope: &scopes::Scope, builtins: &Builtins
             ambiguities: vec![]
         });
 
-        let implementation = resolver.link_function_body(fun.body, &global_variable_scope)?;
+        let implementation = resolver.link_function_body(body, &global_variable_scope)?;
 
         global_linker.module.function_implementations.insert(Rc::clone(&fun.pointer.target), Rc::clone(&implementation));
     }
@@ -81,14 +84,11 @@ impl <'a> GlobalLinker<'a> {
             ast::GlobalStatement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
                 let fun = link_function_pointer(&syntax, &scope, requirements)?;
-                guard!(let Some(body) = &syntax.body else {
-                    return Err(LinkError::LinkError { msg: format!("Function {} needs a body.", fun.name) });
-                });
 
                 self.add_function(UnlinkedFunctionImplementation {
                     pointer: fun,
                     decorators: syntax.decorators.clone(),
-                    body,
+                    body: &syntax.body,
                 })?;
             }
             ast::GlobalStatement::Operator(syntax) => {
@@ -101,7 +101,7 @@ impl <'a> GlobalLinker<'a> {
                 self.add_function(UnlinkedFunctionImplementation {
                     pointer: Rc::clone(&fun),
                     decorators: syntax.decorators.clone(),
-                    body,
+                    body: &syntax.body,
                 })?;
             }
             ast::GlobalStatement::Trait(syntax) => {
