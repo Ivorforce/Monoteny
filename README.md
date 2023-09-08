@@ -39,10 +39,10 @@ def {'Float[Cartesian]}.to_spherical() -> Float[Spherical] :: {
     e: xz_sq.sqrt().atan2(y),
     a: z.atan2(x),
   );
-}
+};
 
 @main
-def main() {
+def main() :: {
   -- Define dimensions
   let n, coord;
   
@@ -54,7 +54,12 @@ def main() {
   
   -- Print the multimonad
   print(lea);
-}
+};
+
+@transpile
+def transpile(transpiler 'Transpiler) :: {
+  transpiler.add(main);
+};
 ```
 
 More code can be found in the [examples](./examples) directory.
