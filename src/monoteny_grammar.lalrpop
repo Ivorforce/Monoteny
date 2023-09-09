@@ -1,10 +1,12 @@
 use std::str::FromStr;
 use crate::parser::ast::*;
+use crate::parser::strings::REGEX_UNESCAPE;
 use crate::program::types::*;
 use crate::program::allocation::*;
 use crate::program::functions::ParameterKey;
 
 grammar;
+
 
 // =============================== Lexer Precedence =====================================
 
@@ -151,9 +153,9 @@ Term: Box<Term> = {
     "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Box::new(Term::Array(<>)),
     "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Box::new(Term::Struct(<>)),
     <target: Term> "." <member_name: Identifier> => Box::new(Term::MemberAccess { <> }),
-    r"\x22[^\x22]*\x22" => {
+    r"\x22(?:[^\x22\\]|\\.)*\x22" => {
         let s = <>;
-        Box::new(Term::StringLiteral(String::from(&s[1..(s.len() - 1)])))
+        Box::new(Term::StringLiteral(REGEX_UNESCAPE.replace_all(&s[1..(s.len() - 1)], "$1").to_string()))
     },
     "{" <(<Statement> ";")*> "}" => Box::new(Term::Scope(<>)),
 };

@@ -20,7 +20,7 @@ def pi_ish -> $Int :: 3;
 @main
 def main() :: {
     -- Print string
-    print("Test: ");
+    print("Test: \"Success\"");
 
     -- 'value' is not bound yet. It could be any $Float!
     let value = 2.2.square() * sin(e);
