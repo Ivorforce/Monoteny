@@ -67,8 +67,9 @@ impl Monomorphizer {
         // Now it's time we replace them depending on the actual requirements fulfillment.
         let mut function_replacement_map = HashMap::new();
         for assumption in implementation.requirements_assumption.conformance.values() {
+            let fulfillment = &function_binding.requirements_fulfillment.conformance[&assumption.binding.mapping_types(&|type_| type_.unfreezing_any_to_generics())];
+
             for (abstract_fun, fun_assumption) in assumption.function_mapping.iter() {
-                let fulfillment = &function_binding.requirements_fulfillment.conformance[&assumption.binding.mapping_types(&|type_| type_.unfreezing_any_to_generics())];
                 let fun_fulfillment = &fulfillment.function_mapping[abstract_fun];
                 function_replacement_map.insert(Rc::clone(fun_assumption), Rc::clone(fun_fulfillment));
             }
