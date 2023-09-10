@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::rc::Rc;
@@ -15,15 +15,20 @@ use crate::program::types::TypeProto;
 
 
 pub struct Monomorphizer {
+    pub new_encountered_calls: Vec<Rc<FunctionBinding>>,
+    pub encountered_calls: HashSet<Rc<FunctionBinding>>,
+    // Not every call that is mapped is actually encountered.
+    // The primary reason is that for polymorphic function calls, EVERY function in the
+    //  fulfillment needs to be mapped upon call, but isn't necessarily actually called.
     pub resolved_call_to_mono_call: HashMap<Rc<FunctionBinding>, Rc<FunctionBinding>>,
-    pub new_monomorphizable_functions: Vec<Rc<FunctionBinding>>,
 }
 
 impl Monomorphizer {
     pub fn new() -> Monomorphizer {
         Monomorphizer {
+            new_encountered_calls: Default::default(),
+            encountered_calls: Default::default(),
             resolved_call_to_mono_call: Default::default(),
-            new_monomorphizable_functions: Default::default(),
         }
     }
 
@@ -72,7 +77,12 @@ impl Monomorphizer {
             expression_forest.operations.insert(expression_id.clone(), match operation {
                 ExpressionOperation::FunctionCall(call) => {
                     let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &type_forest);
-                    let mono_call: Rc<FunctionBinding> = if should_monomorphize(&resolved_call) {
+
+                    if self.encountered_calls.insert(Rc::clone(&resolved_call)) {
+                        self.new_encountered_calls.push(Rc::clone(&resolved_call));
+                    }
+
+                    let mono_call: Rc<FunctionBinding> = if !resolved_call.requirements_fulfillment.is_empty() && should_monomorphize(&resolved_call) {
                         self.monomorphize_call(&resolved_call)
                     }
                     else {
@@ -86,7 +96,12 @@ impl Monomorphizer {
                         calls: calls.iter()
                             .map(|call| {
                                 let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &type_forest);
-                                let mono_call: Rc<FunctionBinding> = if should_monomorphize(&resolved_call) {
+
+                                if self.encountered_calls.insert(Rc::clone(&resolved_call)) {
+                                    self.new_encountered_calls.push(Rc::clone(&resolved_call));
+                                }
+
+                                let mono_call: Rc<FunctionBinding> = if !resolved_call.requirements_fulfillment.is_empty() && should_monomorphize(&resolved_call) {
                                     self.monomorphize_call(&resolved_call)
                                 }
                                 else {
@@ -125,13 +140,9 @@ impl Monomorphizer {
     }
 
     fn monomorphize_call(&mut self, resolved_call: &Rc<FunctionBinding>) -> Rc<FunctionBinding> {
-        // TODO if resolved_call.requirements_fulfillment.is_empty(), we can skip the monomorphization (mostly for performance reasons).
-        //  However, currently only monomorphized functions are registered for transpilation, so let's just do it for now to keep it simple.
-        //  We can always introduce 'straight-forward' monomorphizations later.
         match self.resolved_call_to_mono_call.entry(Rc::clone(&resolved_call)) {
             Entry::Occupied(o) => Rc::clone(o.get()),
             Entry::Vacant(v) => {
-                self.new_monomorphizable_functions.push(Rc::clone(&resolved_call));
                 Rc::clone(v.insert(monomorphize_call(&resolved_call)))
             },
         }

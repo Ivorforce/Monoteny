@@ -11,6 +11,7 @@ use std::collections::hash_map::Entry;
 use std::io::Write;
 use std::ops::DerefMut;
 use std::rc::Rc;
+use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use regex;
@@ -63,14 +64,14 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Result<B
     let exported_symbols: Rc<RefCell<Vec<Rc<FunctionImplementation>>>> = Rc::new(RefCell::new(vec![]));
     let monomorphizer: Rc<RefCell<Monomorphizer>> = Rc::new(RefCell::new(Monomorphizer::new()));
 
-    fn should_monomorphize(f: &Rc<FunctionBinding>, primitives: &HashMap<Uuid, BuiltinFunctionHint>, transpilation_hints_by_id: &HashMap<Uuid, TranspilationHint>) -> bool {
-        if primitives.contains_key(&f.function.function_id) {
-            // We need to inject these
+    fn should_monomorphize(f: &Rc<FunctionBinding>, builtin_function_hints: &HashMap<Uuid, BuiltinFunctionHint>, transpilation_hints_by_id: &HashMap<Uuid, TranspilationHint>) -> bool {
+        if builtin_function_hints.contains_key(&f.function.function_id) {
+            // This function is either a builtin, or it will be injected elsewhere.
             return false;
         }
 
         if transpilation_hints_by_id.contains_key(&f.function.function_id) {
-            // We want to inject / override these
+            // We want to use a different implementation for the function.
             return false;
         }
 
@@ -110,17 +111,23 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Result<B
     let monomorphizer = monomorphizer_.deref_mut();
 
     let mut internal_functions: Vec<Rc<FunctionImplementation>> = vec![];
-    while let Some(function_binding) = monomorphizer.new_monomorphizable_functions.pop() {
-        // TODO Use underscore names?
-        let implementation = &functions_by_id[&function_binding.function.function_id];
+    while let Some(function_binding) = monomorphizer.new_encountered_calls.pop() {
+        guard!(let Some(implementation) = functions_by_id.get(&function_binding.function.function_id) else {
+            // We don't have an implementation ready, so it must be a builtin or otherwise injected.
+            continue;
+        });
 
-        let mono_implementation = monomorphizer.monomorphize_function(
-            implementation,
-            &function_binding,
-            &|f| should_monomorphize(f, &builtin_hints_by_id, &transpilation_hints_by_id)
-        );
+        // If the call had an empty fulfillment, it wasn't monomorphized. We can just use the implementation itself!
+        let transpiled_implementation = match monomorphizer.resolved_call_to_mono_call.contains_key(&function_binding) {
+            true => monomorphizer.monomorphize_function(
+                implementation,
+                &function_binding,
+                &|f| should_monomorphize(f, &builtin_hints_by_id, &transpilation_hints_by_id)
+            ),
+            false => Rc::clone(implementation),
+        };
 
-        internal_functions.push(mono_implementation);
+        internal_functions.push(transpiled_implementation);
     }
 
     let reverse_mapped_calls = monomorphizer.get_mono_call_to_original_call();
@@ -133,6 +140,7 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Result<B
 
     for implementation in internal_functions.iter() {
         let ptr = &pointer_by_id[&reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head).function_id];
+        // TODO Use underscore names?
         file_namespace.register_definition(implementation.head.function_id, &ptr.name);
     }
 
