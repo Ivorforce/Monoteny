@@ -114,14 +114,13 @@ pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext)
                     // Can reference the static function
                     FunctionType::Static => {
                         guard!(let Some(name) = context.names.get(&function.function_id) else {
-                            panic!("Couldn't find name in python: {:?}", function)
+                            panic!("Couldn't find name for function: {:?}", function)
                         });
                         name.clone()
                     },
                     // Have to reference the function by trait
-                    FunctionType::Polymorphic { provided_by_assumption: requirement, abstract_function } => {
-                        todo!("Polymorphic calls should have been monomorphized earlier. Python generics functionality can be restored later. {:?}", function)
-                        // write!(stream, "{}.{}", &context.names[todo!("We used to look for 'declaration ID', but that was weird, where is the name stored?")], context.names[&pointer.pointer_id])?;
+                    FunctionType::Polymorphic { provided_by_assumption, abstract_function } => {
+                        todo!("Polymorphic calls (from generic transpilations) are not supported yet.", function)
                     }
                 };
 
