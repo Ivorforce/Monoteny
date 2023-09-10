@@ -9,10 +9,10 @@ def main():
     """
     <DOCSTRING TODO>
     """
-    print("Test: ")
+    print("Test: \"Success\"")
     value = square_0(float32(2.2)) * math.sin(e())
-    b = square_1(value=value) + pi_ish_1()
-    b = floor_div(square_3(b) ** (-float32(2.2)), value) + tau()
+    b = square_2(value=value) + pi_ish_1()
+    b = floor_div(square_1(b) ** (-float32(2.2)), value) + tau()
     c = pi_ish_0() // int32(2)
     print(((b < float32(2)) and (not (value > float32(2)))) and True)
 
@@ -42,6 +42,26 @@ def pi_ish_1() -> float32:
     return float32(3.14)
 
 
+def e() -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return float32(2.718281828459045)
+
+
+def tau() -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return float32(6.283185307179586)
+
+
 def square_0(self: float32) -> float32:
     """
     <DOCSTRING TODO>
@@ -55,17 +75,20 @@ def square_0(self: float32) -> float32:
     return self * self
 
 
-def tau() -> float32:
+def square_1(self: float32) -> float32:
     """
     <DOCSTRING TODO>
+
+    Args:
+        self: TODO
 
     Returns:
         <TODO>
     """
-    return float32(6.283185307179586)
+    return self * self
 
 
-def square_1(value: float32) -> float32:
+def square_2(value: float32) -> float32:
     """
     <DOCSTRING TODO>
 
@@ -75,43 +98,7 @@ def square_1(value: float32) -> float32:
     Returns:
         <TODO>
     """
-    return square_2(value)
-
-
-def square_2(self: float32) -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Args:
-        self: TODO
-
-    Returns:
-        <TODO>
-    """
-    return self * self
-
-
-def e() -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Returns:
-        <TODO>
-    """
-    return float32(2.718281828459045)
-
-
-def square_3(self: float32) -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Args:
-        self: TODO
-
-    Returns:
-        <TODO>
-    """
-    return self * self
+    return square_0(value)
 
 
 def floor_div(lhs: float32, rhs: float32) -> float32:

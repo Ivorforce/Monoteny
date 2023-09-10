@@ -110,21 +110,20 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Result<B
     let monomorphizer = monomorphizer_.deref_mut();
 
     let mut internal_functions: Vec<Rc<FunctionImplementation>> = vec![];
-    while let Some(used_symbol) = monomorphizer.new_mappable_calls.pop() {
+    while let Some(function_binding) = monomorphizer.new_monomorphizable_functions.pop() {
         // TODO Use underscore names?
-        let replacement_symbol = Rc::clone(&monomorphizer.mapped_calls[&used_symbol]);
-        let implementation = &functions_by_id[&used_symbol.function.function_id];
+        let implementation = &functions_by_id[&function_binding.function.function_id];
 
         let mono_implementation = monomorphizer.monomorphize_function(
             implementation,
-            &replacement_symbol,
+            &function_binding,
             &|f| should_monomorphize(f, &builtin_hints_by_id, &transpilation_hints_by_id)
         );
 
         internal_functions.push(mono_implementation);
     }
 
-    let reverse_mapped_calls = monomorphizer.get_reverse_mapped_calls();
+    let reverse_mapped_calls = monomorphizer.get_mono_call_to_original_call();
 
     for implementation in exported_functions.iter() {
         // TODO Register with priority over internal symbols

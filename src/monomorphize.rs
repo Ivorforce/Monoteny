@@ -15,15 +15,15 @@ use crate::program::types::TypeProto;
 
 
 pub struct Monomorphizer {
-    pub mapped_calls: HashMap<Rc<FunctionBinding>, Rc<FunctionBinding>>,
-    pub new_mappable_calls: Vec<Rc<FunctionBinding>>,
+    pub resolved_call_to_mono_call: HashMap<Rc<FunctionBinding>, Rc<FunctionBinding>>,
+    pub new_monomorphizable_functions: Vec<Rc<FunctionBinding>>,
 }
 
 impl Monomorphizer {
     pub fn new() -> Monomorphizer {
         Monomorphizer {
-            mapped_calls: Default::default(),
-            new_mappable_calls: Default::default(),
+            resolved_call_to_mono_call: Default::default(),
+            new_monomorphizable_functions: Default::default(),
         }
     }
 
@@ -68,34 +68,16 @@ impl Monomorphizer {
             }
         }
 
-        let map_function_call: fn(&Rc<FunctionBinding>, &HashMap<Rc<FunctionHead>, Rc<FunctionHead>>) -> Rc<FunctionBinding> = |call, function_replacement_map| {
-            guard!(let Some(replacement_pointer) = function_replacement_map.get(&call.function) else {
-                return Rc::clone(call)
-            });
-
-            Rc::new(FunctionBinding {
-                function: Rc::clone(replacement_pointer),
-                requirements_fulfillment: call.requirements_fulfillment.clone(),
-            })
-        };
-
         // Find function calls in the expression forest
         for (expression_id, operation) in implementation.expression_forest.operations.iter() {
             expression_forest.operations.insert(expression_id.clone(), match operation {
                 ExpressionOperation::FunctionCall(call) => {
-                    let replaced_call = map_function_call(call, &function_replacement_map);
-
-                    let mono_call: Rc<FunctionBinding> = if should_monomorphize(&replaced_call) {
-                        match self.mapped_calls.entry(Rc::clone(&replaced_call)) {
-                            Entry::Occupied(o) => Rc::clone(o.get()),
-                            Entry::Vacant(v) => {
-                                self.new_mappable_calls.push(Rc::clone(&replaced_call));
-                                Rc::clone(v.insert(map_call(&replaced_call, &generic_replacement_map, &function_replacement_map, &type_forest)))
-                            },
-                        }
+                    let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &type_forest);
+                    let mono_call: Rc<FunctionBinding> = if should_monomorphize(&resolved_call) {
+                        self.monomorphize_call(&resolved_call)
                     }
                     else {
-                        replaced_call
+                        resolved_call
                     };
 
                     ExpressionOperation::FunctionCall(mono_call)
@@ -104,19 +86,12 @@ impl Monomorphizer {
                     ExpressionOperation::PairwiseOperations {
                         calls: calls.iter()
                             .map(|call| {
-                                let replaced_call = map_function_call(call, &function_replacement_map);
-
-                                let mono_call: Rc<FunctionBinding> = if should_monomorphize(&replaced_call) {
-                                    match self.mapped_calls.entry(Rc::clone(call)) {
-                                        Entry::Occupied(o) => Rc::clone(o.get()),
-                                        Entry::Vacant(v) => {
-                                            self.new_mappable_calls.push(Rc::clone(&replaced_call));
-                                            Rc::clone(v.insert(map_call(&replaced_call, &generic_replacement_map, &function_replacement_map, &type_forest)))
-                                        },
-                                    }
+                                let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &type_forest);
+                                let mono_call: Rc<FunctionBinding> = if should_monomorphize(&resolved_call) {
+                                    self.monomorphize_call(&resolved_call)
                                 }
                                 else {
-                                    replaced_call
+                                    resolved_call
                                 };
 
                                 mono_call
@@ -133,9 +108,10 @@ impl Monomorphizer {
         }
         expression_forest.arguments = implementation.expression_forest.arguments.clone();
 
+        let monomorphized_binding = &self.resolved_call_to_mono_call.get(function_binding).unwrap_or(function_binding);
         Rc::new(FunctionImplementation {
             implementation_id: Uuid::new_v4(),
-            head: Rc::clone(&function_binding.function),  // Re-use premapped pointer
+            head: Rc::clone(&monomorphized_binding.function),  // Re-use premapped pointer
             decorators: implementation.decorators.clone(),
             // TODO This is correct only if all requirements have been fulfilled.
             //  If monomorphize was requested on a partially generic function, we continue to
@@ -149,33 +125,32 @@ impl Monomorphizer {
         })
     }
 
-    pub fn get_reverse_mapped_calls(&self) -> HashMap<Rc<FunctionHead>, Rc<FunctionHead>> {
-        self.mapped_calls.iter()
+    fn monomorphize_call(&mut self, resolved_call: &Rc<FunctionBinding>) -> Rc<FunctionBinding> {
+        match self.resolved_call_to_mono_call.entry(Rc::clone(&resolved_call)) {
+            Entry::Occupied(o) => Rc::clone(o.get()),
+            Entry::Vacant(v) => {
+                self.new_monomorphizable_functions.push(Rc::clone(&resolved_call));
+                Rc::clone(v.insert(monomorphize_call(&resolved_call)))
+            },
+        }
+    }
+
+    pub fn get_mono_call_to_original_call(&self) -> HashMap<Rc<FunctionHead>, Rc<FunctionHead>> {
+        self.resolved_call_to_mono_call.iter()
             .map(|(x, y)| (Rc::clone(&y.function), Rc::clone(&x.function)))
             .collect()
     }
 }
 
-pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, Rc<FunctionHead>>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
-    println!("Map {:?}", call.function);
-    // TODO The replacement map + requirements_fulfillment are not yet complete: All the conformance assumptions must be replaced as well.
-    //  e.g. when you have "A is B", then A.b_function() uses Self which has been assumed by the linker.
-    //  So Self (a generic) needs to be mapped as well. However, A.b_function() can use functions of A, so
-    //  HOW its assumptions can be fulfilled can only be found by the monomorphizer (now!).
-    //  In a 'virtual call' scenario, this would simply be a virtual call, of course.
+pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMap<Uuid, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, Rc<FunctionHead>>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
+    let mapped_call = function_replacement_map.get(&call.function).unwrap_or(&call.function);
+
     let mut generic_replacement_map: HashMap<Uuid, Box<TypeProto>> = call.requirements_fulfillment.generic_mapping.iter().map(|(any_id, type_)| {
-        (*any_id, type_forest.resolve_type(type_).unwrap().replacing_anys(replacement_map))
+        (*any_id, type_forest.resolve_type(type_).unwrap().replacing_anys(generic_replacement_map))
     }).collect();
-    println!("{:?}", call.requirements_fulfillment.generic_mapping);
-    println!("--> {:?}", generic_replacement_map);
 
     Rc::new(FunctionBinding {
-        function: Rc::new(FunctionHead {
-            function_id: Uuid::new_v4(),
-            interface: Rc::new(map_interface_types(&call.function.interface, &|x| x.replacing_generics(&generic_replacement_map))),
-            // We're now a static call! (as long as the binding was complete, todo)
-            function_type: FunctionType::Static
-        }),
+        function: Rc::clone(mapped_call),
         requirements_fulfillment: Box::new(RequirementsFulfillment {
             conformance: call.requirements_fulfillment.conformance.iter()
                 .map(|(key, conformance)| {
@@ -184,7 +159,7 @@ pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<
                         conformance.function_mapping.iter()
                             .map(
                                 |(abstract_fun, fulfillment_fun)|
-                                (Rc::clone(abstract_fun), Rc::clone(function_replacement_map.get(fulfillment_fun).unwrap_or_else(|| fulfillment_fun)))
+                                    (Rc::clone(abstract_fun), Rc::clone(function_replacement_map.get(fulfillment_fun).unwrap_or_else(|| fulfillment_fun)))
                             )
                             .collect()
                     ))
@@ -192,6 +167,22 @@ pub fn map_call(call: &Rc<FunctionBinding>, replacement_map: &HashMap<Uuid, Box<
                 .collect(),
             generic_mapping: generic_replacement_map,
         }),
+    })
+}
+
+pub fn monomorphize_call(call: &Rc<FunctionBinding>) -> Rc<FunctionBinding> {
+    // TODO If we're not fully monomorphized, which might be the case if we're transpiling a generic function, we
+    //   - are not yet static
+    //   - still require a requirements fulfillment
+    Rc::new(FunctionBinding {
+        function: Rc::new(FunctionHead {
+            function_id: Uuid::new_v4(),
+            // We're now a static call!
+            function_type: FunctionType::Static,
+            interface: Rc::new(map_interface_types(&call.function.interface, &|x| x.replacing_generics(&call.requirements_fulfillment.generic_mapping))),
+        }),
+        // We are finally empty now!
+        requirements_fulfillment: RequirementsFulfillment::empty(),
     })
 }
 
