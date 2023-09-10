@@ -19,15 +19,14 @@ match {
     r"[!+\-*/&%=><|.^?][!+\-*/&%=><|.^?_]*" => _OperatorIdentifier,
     r"[0-9]+" => _Int,
     r"[0-9]+\.[0-9]+" => _Float,
-    "return",
     ".", "'",
     "(", ")", "{", "}", "[",  "]", "..",
     ";", ",", ":", "::", "->",
     "=",
+    "def", "pattern", "declare", "trait",
     "let", "var", "upd",
-    "def", "pattern", "declare",
     "if", "is",
-    "trait",
+    "return",
     _
 }
 
