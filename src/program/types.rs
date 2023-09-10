@@ -76,8 +76,8 @@ impl Debug for TypeUnit {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             TypeUnit::Struct(s) => write!(fmt, "{}", s.name),
-            TypeUnit::Generic(g) => write!(fmt, "Generic<{}>", g),
-            TypeUnit::Any(g) => write!(fmt, "Any<{}>", g),
+            TypeUnit::Generic(g) => write!(fmt, "#({})", g),
+            TypeUnit::Any(g) => write!(fmt, "Any({})", g),
             TypeUnit::MetaType => write!(fmt, "MetaType"),
             TypeUnit::Void => write!(fmt, "Void"),
             TypeUnit::Function(f) => write!(fmt, "{:?}", f),
