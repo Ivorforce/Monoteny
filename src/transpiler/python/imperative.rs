@@ -120,7 +120,7 @@ pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext)
                     },
                     // Have to reference the function by trait
                     FunctionType::Polymorphic { provided_by_assumption, abstract_function } => {
-                        todo!("Polymorphic calls (from generic transpilations) are not supported yet.", function)
+                        todo!("Polymorphic calls (from generic transpilations) are not supported yet: {:?}", function)
                     }
                 };
 
