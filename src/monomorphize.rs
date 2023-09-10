@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::hash::Hash;
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::program::allocation::ObjectReference;
@@ -28,7 +28,6 @@ impl Monomorphizer {
     }
 
     pub fn monomorphize_function(&mut self, implementation: &FunctionImplementation, function_binding: &Rc<FunctionBinding>, should_monomorphize: &dyn Fn(&Rc<FunctionBinding>) -> bool) -> Rc<FunctionImplementation> {
-        println!("Monomorphize {:?}", implementation.head);
         // Map types.
         let mut type_forest = implementation.type_forest.clone();
 
@@ -73,7 +72,7 @@ impl Monomorphizer {
             expression_forest.operations.insert(expression_id.clone(), match operation {
                 ExpressionOperation::FunctionCall(call) => {
                     let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &type_forest);
-                    let mono_call: Rc<FunctionBinding> = if should_monomorphize(&resolved_call) {
+                    let mono_call: Rc<FunctionBinding> = if !resolved_call.requirements_fulfillment.is_empty() && should_monomorphize(&resolved_call) {
                         self.monomorphize_call(&resolved_call)
                     }
                     else {
@@ -87,7 +86,7 @@ impl Monomorphizer {
                         calls: calls.iter()
                             .map(|call| {
                                 let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &type_forest);
-                                let mono_call: Rc<FunctionBinding> = if should_monomorphize(&resolved_call) {
+                                let mono_call: Rc<FunctionBinding> = if !resolved_call.requirements_fulfillment.is_empty() && should_monomorphize(&resolved_call) {
                                     self.monomorphize_call(&resolved_call)
                                 }
                                 else {
@@ -153,13 +152,13 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMa
         function: Rc::clone(mapped_call),
         requirements_fulfillment: Box::new(RequirementsFulfillment {
             conformance: call.requirements_fulfillment.conformance.iter()
-                .map(|(key, conformance)| {
-                    (Rc::clone(key), TraitConformance::new(
-                        Rc::clone(key),
+                .map(|(requirement, conformance)| {
+                    (Rc::clone(requirement), TraitConformance::new(
+                        Rc::clone(requirement),
                         conformance.function_mapping.iter()
                             .map(
                                 |(abstract_fun, fulfillment_fun)|
-                                    (Rc::clone(abstract_fun), Rc::clone(function_replacement_map.get(fulfillment_fun).unwrap_or_else(|| fulfillment_fun)))
+                                (Rc::clone(abstract_fun), Rc::clone(function_replacement_map.get(fulfillment_fun).unwrap_or_else(|| fulfillment_fun)))
                             )
                             .collect()
                     ))

@@ -11,6 +11,7 @@ use crate::program::functions::{FunctionHead, FunctionPointer, FunctionType, Fun
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::util::fmt::write_keyval;
+use crate::util::hash;
 
 /// The definition of some trait.
 #[derive(Clone)]
@@ -358,6 +359,10 @@ impl RequirementsFulfillment {
             generic_mapping: Default::default(),
         })
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.conformance.is_empty() && self.generic_mapping.is_empty()
+    }
 }
 
 impl PartialEq for Trait {
@@ -406,14 +411,14 @@ impl Debug for TraitBinding {
 
 impl Hash for RequirementsFulfillment {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        for (binding, conformance) in self.conformance.iter().sorted_by_key(|(binding, mapping)| binding.hash(&mut DefaultHasher::new())) {
+        for (binding, conformance) in self.conformance.iter().sorted_by_key(|(binding, mapping)| hash::one(binding, DefaultHasher::new())) {
             binding.hash(state);
             for keyval in conformance.function_mapping.iter().sorted_by_key(|(src, dst)| src.function_id) {
                 keyval.hash(state)
             }
         }
 
-        for (id, type_) in self.generic_mapping.iter().sorted_by_key(|(id, type_)| *id) {
+        for (id, type_) in self.generic_mapping.iter().sorted_by_key(|(id, type_)| id.clone()) {
             id.hash(state);
             type_.hash(state);
         }
