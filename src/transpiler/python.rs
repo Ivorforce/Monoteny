@@ -14,7 +14,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 use regex;
-use crate::monomorphization::Monomorphizer;
+use crate::monomorphize::Monomorphizer;
 use crate::interpreter;
 use crate::interpreter::{InterpreterGlobals, RuntimeError};
 

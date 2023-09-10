@@ -138,7 +138,7 @@ impl Monomorphizer {
             head: Rc::clone(&function_binding.function),  // Re-use premapped pointer
             decorators: implementation.decorators.clone(),
             // TODO This is correct only if all requirements have been fulfilled.
-            //  If monomorphization was requested on a partially generic function, we continue to
+            //  If monomorphize was requested on a partially generic function, we continue to
             //  have some requirements.
             requirements_assumption: Box::new(RequirementsAssumption { conformance: Default::default() }),
             statements,
