@@ -72,7 +72,7 @@ impl Monomorphizer {
             expression_forest.operations.insert(expression_id.clone(), match operation {
                 ExpressionOperation::FunctionCall(call) => {
                     let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &type_forest);
-                    let mono_call: Rc<FunctionBinding> = if !resolved_call.requirements_fulfillment.is_empty() && should_monomorphize(&resolved_call) {
+                    let mono_call: Rc<FunctionBinding> = if should_monomorphize(&resolved_call) {
                         self.monomorphize_call(&resolved_call)
                     }
                     else {
@@ -86,7 +86,7 @@ impl Monomorphizer {
                         calls: calls.iter()
                             .map(|call| {
                                 let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &type_forest);
-                                let mono_call: Rc<FunctionBinding> = if !resolved_call.requirements_fulfillment.is_empty() && should_monomorphize(&resolved_call) {
+                                let mono_call: Rc<FunctionBinding> = if should_monomorphize(&resolved_call) {
                                     self.monomorphize_call(&resolved_call)
                                 }
                                 else {
@@ -125,6 +125,9 @@ impl Monomorphizer {
     }
 
     fn monomorphize_call(&mut self, resolved_call: &Rc<FunctionBinding>) -> Rc<FunctionBinding> {
+        // TODO if resolved_call.requirements_fulfillment.is_empty(), we can skip the monomorphization (mostly for performance reasons).
+        //  However, currently only monomorphized functions are registered for transpilation, so let's just do it for now to keep it simple.
+        //  We can always introduce 'straight-forward' monomorphizations later.
         match self.resolved_call_to_mono_call.entry(Rc::clone(&resolved_call)) {
             Entry::Occupied(o) => Rc::clone(o.get()),
             Entry::Vacant(v) => {
