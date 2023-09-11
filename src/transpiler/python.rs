@@ -176,6 +176,8 @@ pub fn transpile_program(program: &Program, builtins: &Rc<Builtins>) -> Result<B
     names.extend(object_namespace.map_names());
 
     let mut module = Box::new(ast::Module {
+        // TODO Only classes used in the interface of exported functions are exported.
+        //  Everything else is an internal class.
         exported_classes: vec![],
         exported_functions: vec![],
         internal_functions: vec![],
