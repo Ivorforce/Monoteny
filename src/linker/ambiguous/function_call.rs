@@ -49,9 +49,9 @@ impl AmbiguousFunctionCall {
         // TODO We should only use deep requirements once we actually use this candidate.
         //  The deep ones are guaranteed to exist if the original requirements can be satisfied.
         for requirement in self.traits.gather_deep_requirements(candidate.requirements.clone().into_iter()).iter() {
-            let function_binding = self.traits
+            let (trait_conformance_tail, trait_conformance) = self.traits
                 .satisfy_requirement(requirement, &types)?;
-            conformance.insert(requirement.mapping_types(&|x| x.seeding_generics(&self.seed)), function_binding);
+            conformance.insert(requirement.mapping_types(&|x| x.seeding_generics(&self.seed)), (trait_conformance_tail, trait_conformance));
         }
 
         let generic_mapping: HashMap<_, _> = candidate.function.interface.collect_generics().iter().map(|id| {

@@ -10,7 +10,7 @@ use crate::program::computation_tree::{ExpressionForest, ExpressionOperation, St
 use crate::program::functions::{FunctionHead, FunctionType, FunctionInterface, Parameter};
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
-use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, TraitConformance};
+use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, TraitBinding, TraitConformance};
 use crate::program::types::TypeProto;
 
 
@@ -67,11 +67,12 @@ impl Monomorphizer {
         // Now it's time we replace them depending on the actual requirements fulfillment.
         let mut function_replacement_map = HashMap::new();
         for assumption in implementation.requirements_assumption.conformance.values() {
-            let fulfillment = &function_binding.requirements_fulfillment.conformance[&assumption.binding.mapping_types(&|type_| type_.unfreezing_any_to_generics())];
+            // TODO Use tail
+            let (tail, fulfillment) = &function_binding.requirements_fulfillment.conformance[&assumption.binding.mapping_types(&|type_| type_.unfreezing_any_to_generics())];
 
             for (abstract_fun, fun_assumption) in assumption.function_mapping.iter() {
                 let fun_fulfillment = &fulfillment.function_mapping[abstract_fun];
-                function_replacement_map.insert(Rc::clone(fun_assumption), Rc::clone(fun_fulfillment));
+                function_replacement_map.insert(Rc::clone(fun_assumption), (tail.clone(), Rc::clone(fun_fulfillment)));
             }
         }
 
@@ -158,27 +159,33 @@ impl Monomorphizer {
     }
 }
 
-pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMap<Uuid, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, Rc<FunctionHead>>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
-    let mapped_call = function_replacement_map.get(&call.function).unwrap_or(&call.function);
+pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMap<Uuid, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, (Box<RequirementsFulfillment>, Rc<FunctionHead>)>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
+    let default_pair = (RequirementsFulfillment::empty(), Rc::clone(&call.function));
+    let (mapped_function_tail, mapped_function) = function_replacement_map.get(&call.function)
+        .unwrap_or(&default_pair);
+    println!("Call to {:?} with tail {:?}", mapped_function, mapped_function_tail);
 
-    let mut generic_replacement_map: HashMap<Uuid, Box<TypeProto>> = call.requirements_fulfillment.generic_mapping.iter().map(|(any_id, type_)| {
+    let full_conformance = RequirementsFulfillment::merge(&call.requirements_fulfillment, mapped_function_tail);
+
+    let mut generic_replacement_map: HashMap<Uuid, Box<TypeProto>> = full_conformance.generic_mapping.iter().map(|(any_id, type_)| {
         (*any_id, type_forest.resolve_type(type_).unwrap().replacing_anys(generic_replacement_map))
     }).collect();
 
     Rc::new(FunctionBinding {
-        function: Rc::clone(mapped_call),
+        function: Rc::clone(mapped_function),
         requirements_fulfillment: Box::new(RequirementsFulfillment {
-            conformance: call.requirements_fulfillment.conformance.iter()
-                .map(|(requirement, conformance)| {
-                    (Rc::clone(requirement), TraitConformance::new(
+            conformance: full_conformance.conformance.iter()
+                .map(|(requirement, (tail, conformance))| {
+                    // TODO Use tail
+                    (Rc::clone(requirement), (tail.clone(), TraitConformance::new(
                         Rc::clone(requirement),
                         conformance.function_mapping.iter()
                             .map(
                                 |(abstract_fun, fulfillment_fun)|
-                                (Rc::clone(abstract_fun), Rc::clone(function_replacement_map.get(fulfillment_fun).unwrap_or_else(|| fulfillment_fun)))
+                                (Rc::clone(abstract_fun), Rc::clone(function_replacement_map.get(fulfillment_fun).map(|x| &x.1).unwrap_or_else(|| fulfillment_fun)))
                             )
                             .collect()
-                    ))
+                    )))
                 })
                 .collect(),
             generic_mapping: generic_replacement_map,

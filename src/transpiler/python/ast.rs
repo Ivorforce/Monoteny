@@ -58,7 +58,7 @@ pub struct Class {
 
 impl Display for Class {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\n\nclass {}:\n    pass", self.name)
+        write!(f, "class {}:\n    pass\n", self.name)
     }
 }
 

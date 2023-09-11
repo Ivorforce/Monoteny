@@ -160,7 +160,7 @@ impl <'a> GlobalLinker<'a> {
 
                 // We make a new type because it's a generic that will be later fulfilled.
                 // Once we have support for it, the conformance may contain more generics.
-                let generic_self_type = TypeProto::unit(TypeUnit::Generic(Uuid::new_v4()));
+                let generic_self_type = target.create_generic_type(&"self".into());
                 let generic_self_type_ref = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(generic_self_type.clone()))));
                 let self_binding = trait_.create_generic_binding(vec![(&"self".into(), generic_self_type.clone())]);
                 let requirement = target.create_generic_binding(vec![(&"self".into(), generic_self_type)]);

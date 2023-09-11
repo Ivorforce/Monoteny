@@ -49,7 +49,10 @@ pub struct TraitConformance {
 #[derive(Clone, Eq, PartialEq)]
 pub struct TraitGraph {
     /// All known conformances.
-    pub conformance: HashMap<Rc<TraitBinding>, Option<Rc<TraitConformance>>>,
+    /// For each conformance, we also know its tail - aka HOW the conformance was achieved (through dynamic rules).
+    /// While the dynamic function call itself does not need this information, the dynamic dispatch (/monomorphization)
+    ///  later needs to know more because the conformance's functions might call the tail's functions.
+    pub conformance: HashMap<Rc<TraitBinding>, Option<(Box<RequirementsFulfillment>, Rc<TraitConformance>)>>,
     /// For each trait, what other traits does it require?
     /// This causes cascading requirements on functions etc.
     pub requirements: HashMap<Rc<Trait>, HashSet<Rc<TraitBinding>>>,
@@ -59,14 +62,14 @@ pub struct TraitGraph {
     pub conformance_rules: HashMap<Rc<Trait>, Vec<(HashSet<Rc<TraitBinding>>, Rc<TraitConformance>)>>,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct RequirementsAssumption {
     pub conformance: HashMap<Rc<TraitBinding>, Rc<TraitConformance>>,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct RequirementsFulfillment {
-    pub conformance: HashMap<Rc<TraitBinding>, Rc<TraitConformance>>,
+    pub conformance: HashMap<Rc<TraitBinding>, (Box<RequirementsFulfillment>, Rc<TraitConformance>)>,
     pub generic_mapping: HashMap<Uuid, Box<TypeProto>>,
 }
 
@@ -99,7 +102,7 @@ impl TraitGraph {
             }
         }
 
-        self.conformance.insert(Rc::clone(&conformance.binding), Some(conformance));
+        self.conformance.insert(Rc::clone(&conformance.binding), Some((RequirementsFulfillment::empty(), conformance)));
 
         Ok(())
     }
@@ -146,7 +149,7 @@ impl TraitGraph {
         );
     }
 
-    pub fn satisfy_requirement(&mut self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<Rc<TraitConformance>, LinkError> {
+    pub fn satisfy_requirement(&mut self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<(Box<RequirementsFulfillment>, Rc<TraitConformance>), LinkError> {
         // TODO What if requirement is e.g. Float<Float>? Is Float declared on itself?
 
         // We resolve this binding because it might contain generics.
@@ -173,17 +176,18 @@ impl TraitGraph {
             guard!(let Some(generics_map) = TraitBinding::merge(&offered_conformance.binding, &resolved_binding) else {
                 continue;
             });
-            let resolved_requirements = requirements.iter().map(|x| x.mapping_types(&|type_| type_.replacing_generics(&generics_map))).collect();
+            let resolved_requirements: HashSet<Rc<TraitBinding>> = requirements.iter().map(|x| x.mapping_types(&|type_| type_.replacing_generics(&generics_map))).collect();
 
-            if self.test_requirements(&resolved_requirements, mapping) {
+            if let Ok(fulfilled_requirements) = self.test_requirements(&resolved_requirements, mapping) {
                 let resolved_conformance = TraitConformance::new(
                     resolved_binding.clone(),
                     // TODO Do we need to map the functions?
                     offered_conformance.function_mapping.clone(),
                 );
                 // TODO There may be more than one conflicting solution
-                self.conformance.insert(resolved_binding, Some(Rc::clone(&resolved_conformance)));
-                return Ok(Rc::clone(&resolved_conformance));
+                let pair = (fulfilled_requirements, resolved_conformance);
+                self.conformance.insert(resolved_binding, Some(pair.clone()));
+                return Ok(pair.clone());
             }
         }
 
@@ -191,14 +195,16 @@ impl TraitGraph {
         Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding)) })
     }
 
-    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, mapping: &TypeForest) -> bool {
-        for requirement in requirements.iter() {
-            if let Err(e) = self.satisfy_requirement(&requirement, mapping) {
-                return false;
-            }
+    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, mapping: &TypeForest) -> Result<Box<RequirementsFulfillment>, LinkError> {
+        let mut fulfillment = RequirementsFulfillment::empty();
+
+        for r in requirements.iter() {
+            let (req_tail, req_fulfillment) = self.satisfy_requirement(r, mapping)?;
+            fulfillment.generic_mapping.extend(req_fulfillment.binding.generic_to_type.clone());
+            fulfillment.conformance.insert(Rc::clone(r), (req_tail, req_fulfillment));
         }
 
-        return true;
+        return Ok(fulfillment);
     }
 
     pub fn gather_deep_requirements<C>(&self, bindings: C) -> Vec<Rc<TraitBinding>> where C: Iterator<Item=Rc<TraitBinding>> {
@@ -363,6 +369,13 @@ impl RequirementsFulfillment {
     pub fn is_empty(&self) -> bool {
         self.conformance.is_empty() && self.generic_mapping.is_empty()
     }
+
+    pub fn merge(a: &RequirementsFulfillment, b: &RequirementsFulfillment) -> Box<RequirementsFulfillment> {
+        Box::new(RequirementsFulfillment {
+            conformance: a.conformance.clone().into_iter().chain(b.conformance.clone().into_iter()).collect(),
+            generic_mapping: a.generic_mapping.clone().into_iter().chain(b.generic_mapping.clone().into_iter()).collect(),
+        })
+    }
 }
 
 impl PartialEq for Trait {
@@ -411,8 +424,9 @@ impl Debug for TraitBinding {
 
 impl Hash for RequirementsFulfillment {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        for (binding, conformance) in self.conformance.iter().sorted_by_key(|(binding, mapping)| hash::one(binding, DefaultHasher::new())) {
+        for (binding, (conformance_tail, conformance)) in self.conformance.iter().sorted_by_key(|(binding, mapping)| hash::one(binding, DefaultHasher::new())) {
             binding.hash(state);
+            conformance_tail.hash(state);
             for keyval in conformance.function_mapping.iter().sorted_by_key(|(src, dst)| src.function_id) {
                 keyval.hash(state)
             }
