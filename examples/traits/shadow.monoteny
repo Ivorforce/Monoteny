@@ -1,0 +1,23 @@
+trait Animal {
+    var height_cm 'Float32;
+};
+
+trait Cat {
+    -- Inherit height_cm.
+    @inherit(Animal);
+};
+
+@main
+def main() :: {
+    -- Create a cat with pre-defined name and height.
+    let cat = Cat(height_cm: 180);
+    -- This matches Cat.height_cm, because Animal.height_cm is shadowed.
+    print(cat.height_cm);
+    -- This matches Animal.height_cm.
+    print((cat as $Animal).height_cm);
+};
+
+@transpile
+def transpile(transpiler 'Transpiler) :: {
+    transpiler.add(main);
+};

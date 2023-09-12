@@ -1,0 +1,41 @@
+trait Animal {
+    -- Immutable Field
+    let species 'String;
+    let name 'String;
+
+    -- Mutable Field
+    var height_cm 'Float32;
+};
+
+trait Cat {
+    -- Inherit name and height_cm, but define 'species' as a constant.
+    -- This also declares "Cat is Animal".
+    @inherit(Animal) {
+        def {Self}.species -> String :: "Cat";
+    };
+};
+
+def update_height(animal '$Animal) :: {
+    print(animal.species);
+    print(animal.name);
+
+    print("Before:");
+    print(animal.height_cm);
+
+    -- We can set height_cm, but not species or name.
+    animal.height_cm = 25;
+    print("After:");
+    print(animal.height_cm);
+};
+
+@main
+def main() :: {
+    -- Create a cat with pre-defined name and height.
+    var cat = Cat(name: "Noir", height_cm: 180);
+    update_height(cat);
+};
+
+@transpile
+def transpile(transpiler 'Transpiler) :: {
+    transpiler.add(main);
+};
