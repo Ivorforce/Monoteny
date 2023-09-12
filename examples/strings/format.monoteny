@@ -11,7 +11,7 @@ def main() :: {
     -- The string is concatenated with a string builder.
     print("Height is \(height)");
 
-    -- Calls format(height, precision: 2)
+    -- Calls format(height, precision: 1)
     print("Height is \(height, precision: 1)");
 
     -- Calls the above declared format function.
