@@ -1,9 +1,7 @@
-def format(value '$Float32, rounded: Bool) -> String :: {
-    return match rounded [
-        true: Int64(value).to_string(),
-        false: value.to_string(),
-    ];
-};
+def format(value '$Float32, rounded: Bool) -> String :: match rounded [
+    true: round(value).to_string(),
+    false: value.to_string(),
+];
 
 @main
 def main() :: {
