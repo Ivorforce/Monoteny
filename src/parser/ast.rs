@@ -130,7 +130,7 @@ pub enum Term {
     MemberAccess { target: Box<Term>, member_name: String },
     Struct(Vec<StructArgument>),
     Array(Vec<ArrayArgument>),
-    StringLiteral(String),
+    StringLiteral(Vec<StringPart>),
     Scope(Vec<Box<Statement>>),
 }
 
@@ -148,10 +148,16 @@ pub struct ArrayArgument {
     pub type_declaration: Option<Expression>,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FunctionCallType {
     Call,
     Subscript,
+}
+
+#[derive(PartialEq, Eq)]
+pub enum StringPart {
+    Literal(String),
+    Object(Vec<StructArgument>),
 }
 
 // =============================== String =====================================
@@ -292,19 +298,23 @@ impl Display for Term {
             Term::Identifier(s) => write!(fmt, "{}", s),
             Term::Int(s) => write!(fmt, "{}", s),
             Term::Float(s) => write!(fmt, "{}", s),
-            Term::StringLiteral(string) => write!(fmt, "{:?}", string),
+            Term::StringLiteral(parts) => {
+                write!(fmt, "\"")?;
+                for part in parts {
+                    write!(fmt, "{}", part)?;
+                }
+                write!(fmt, "\"")
+            },
             Term::MemberAccess { target, member_name } =>  write!(fmt, "{}.{}", target, member_name),
             Term::Struct(arguments) => {
                 write!(fmt, "(")?;
                 write_comma_separated_list(fmt, arguments)?;
-                write!(fmt, ")")?;
-                return Ok(())
+                write!(fmt, ")")
             },
             Term::Array(arguments) => {
                 write!(fmt, "[")?;
                 write_comma_separated_list(fmt, arguments)?;
-                write!(fmt, "]")?;
-                return Ok(())
+                write!(fmt, "]")
             },
             Term::Scope(statements) => {
                 write!(fmt, "{{\n")?;
@@ -351,5 +361,18 @@ impl FunctionCallType {
             FunctionCallType::Call => "()",
             FunctionCallType::Subscript => "[]",
         };
+    }
+}
+
+impl Display for StringPart {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StringPart::Literal(s) => write!(f, "{}", s),
+            StringPart::Object(arguments) => {
+                write!(f, "(")?;
+                write_comma_separated_list(f, arguments)?;
+                write!(f, ")")
+            },
+        }
     }
 }

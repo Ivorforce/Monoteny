@@ -1,57 +1,66 @@
 use std::str::FromStr;
 use crate::parser::ast::*;
-use crate::parser::strings::REGEX_UNESCAPE;
+use crate::parser::lexer::*;
 use crate::program::types::*;
 use crate::program::allocation::*;
 use crate::program::functions::ParameterKey;
 
-grammar;
+grammar<'i>(text: &'i str);
 
+extern {
+    type Location = usize;
+    type Error = Error;
 
-// =============================== Lexer Precedence =====================================
+    enum Token<'i> {
+        _Identifier => Token::Identifier(_),
+        _OperatorIdentifier => Token::OperatorIdentifier(_),
+        _Int => Token::Int(_),
+        _Float => Token::Float(_),
+        StringConstant => Token::StringConstant(_),
 
-match {
-    r"\s*" => { },  // whitespace
-    r"--[^\n\r]*[\n\r]*" => { }, // line comment
-} else {
-    // so i heard u like regex
-    r"[a-zA-Z_$#][\w$#]*" => _Identifier,
-    r"[!+\-*/&%=><|.^?][!+\-*/&%=><|.^?_]*" => _OperatorIdentifier,
-    r"[0-9]+" => _Int,
-    r"[0-9]+\.[0-9]+" => _Float,
-    ".", "'",
-    "(", ")", "{", "}", "[",  "]", "..",
-    ";", ",", ":", "::", "->",
-    "=",
-    "def", "pattern", "declare", "trait",
-    "let", "var", "upd",
-    "if", "is",
-    "return",
-    _
+        "def" => Token::Symbol("def"),
+        "pattern" => Token::Symbol("pattern"),
+        "trait" => Token::Symbol("trait"),
+        "declare" => Token::Symbol("declare"),
+
+        "{" => Token::Symbol("{"),
+        "}" => Token::Symbol("}"),
+        "(" => Token::Symbol("("),
+        ")" => Token::Symbol(")"),
+        "[" => Token::Symbol("["),
+        "]" => Token::Symbol("]"),
+        "::" => Token::Symbol("::"),
+        ":" => Token::Symbol(":"),
+        "@" => Token::Symbol("@"),
+        "'" => Token::Symbol("'"),
+        "=" => Token::Symbol("="),
+        "," => Token::Symbol(","),
+        ";" => Token::Symbol(";"),
+        "." => Token::Symbol("."),
+        "->" => Token::Symbol("->"),
+        "\"" => Token::Symbol("\""),
+
+        "let" => Token::Symbol("let"),
+        "var" => Token::Symbol("var"),
+        "upd" => Token::Symbol("upd"),
+        "return" => Token::Symbol("return"),
+
+        "is" => Token::Symbol("is"),
+    }
 }
 
 // =============================== Primitive =====================================
 
-Identifier: String = {
-    _Identifier => format!("{}", <>),
-};
-
-OperatorIdentifier: String = {
-    _OperatorIdentifier => format!("{}", <>),
-};
+Identifier: String = { _Identifier => <>.to_string() };
+OperatorIdentifier: String = { _OperatorIdentifier => <>.to_string(), };
+Int: String = { _Int => <>.to_string() };
+Float: String = { _Float => <>.to_string() };
 
 AnyIdentifier: String = {
     Identifier,
     OperatorIdentifier,
 };
 
-Int: String = {
-    _Int => format!("{}", <>)
-};
-
-Float: String = {
-    _Float => format!("{}", <>)
-};
 
 // =============================== Global =====================================
 
@@ -152,10 +161,7 @@ Term: Box<Term> = {
     "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Box::new(Term::Array(<>)),
     "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Box::new(Term::Struct(<>)),
     <target: Term> "." <member_name: Identifier> => Box::new(Term::MemberAccess { <> }),
-    r"\x22(?:[^\x22\\]|\\.)*\x22" => {
-        let s = <>;
-        Box::new(Term::StringLiteral(REGEX_UNESCAPE.replace_all(&s[1..(s.len() - 1)], "$1").to_string()))
-    },
+    "\"" <StringPart*> "\"" => Box::new(Term::StringLiteral(<>)),
     "{" <(<Statement> ";")*> "}" => Box::new(Term::Scope(<>)),
 };
 
@@ -167,7 +173,12 @@ StructArgument: StructArgument = {
 
 ArrayArgument: ArrayArgument = {
     <key: Expression> ":" <value: Expression> <type_declaration: ("'" <Expression>)?> => ArrayArgument { key: Some(key), value, type_declaration },
-    <value: Expression> <type_declaration: ("'" <Expression>)?>=> ArrayArgument { key: None, value, type_declaration }
+    <value: Expression> <type_declaration: ("'" <Expression>)?>=> ArrayArgument { key: None, value, type_declaration },
+}
+
+StringPart: StringPart = {
+    StringConstant => StringPart::Literal(<>.to_string()),
+    "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => StringPart::Object(<>),
 }
 
 // =============================== Util =====================================

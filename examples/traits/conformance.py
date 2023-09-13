@@ -5,11 +5,11 @@ from numpy import int8, int16, int32, int64, uint8, uint16, uint32, uint64, floa
 from typing import Any, Callable
 
 
-class Dog:
+class Cat:
     pass
 
 
-class Cat:
+class Dog:
     pass
 
 

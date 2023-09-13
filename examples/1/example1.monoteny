@@ -24,6 +24,7 @@ def main() :: {
 
     -- 'value' is not bound yet. It could be any $Float!
     let value = 2.2.square() * sin(e);
+    print("Value: \(value, precision: 2)");
 
     -- Bind 'value' implicitly by binding b to Float32.
     var b 'Float32 = square(value:) + pi_ish;
@@ -33,7 +34,7 @@ def main() :: {
     var c 'Int32 = pi_ish / 2;
 
     -- Print boolean
-    print(b < 2 and not (value > 2) and true);
+    print("Bool Value: \(b < 2 and not (value > 2) and true)");
 };
 
 @transpile

@@ -11,7 +11,7 @@ use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate
 use crate::linker::precedence::link_patterns;
 use crate::linker::r#type::TypeFactory;
 use crate::parser::ast;
-use crate::parser::ast::Expression;
+use crate::parser::ast::{Expression, StringPart};
 use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
 use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
@@ -373,12 +373,17 @@ impl <'a> ImperativeLinker<'a> {
                     values,
                 }
             }
-            ast::Term::StringLiteral(string) => {
-                precedence::Token::Expression(self.link_unambiguous_expression(
-                    vec![],
-                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.core.traits.String))),
-                    ExpressionOperation::StringLiteral(string.clone())
-                )?)
+            ast::Term::StringLiteral(parts) => {
+                if let [StringPart::Literal(literal)] = &parts[..] {
+                    precedence::Token::Expression(self.link_unambiguous_expression(
+                        vec![],
+                        &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.core.traits.String))),
+                        ExpressionOperation::StringLiteral(literal.clone())
+                    )?)
+                }
+                else {
+                    todo!("Format strings aren't supported yet.")
+                }
             }
             ast::Term::Scope(statements) => {
                 todo!("In-function scopes are not supported yet.")

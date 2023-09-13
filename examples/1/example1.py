@@ -22,16 +22,6 @@ def main():
 # ========================== ======== ============================
 
 
-def e() -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Returns:
-        <TODO>
-    """
-    return float32(2.718281828459045)
-
-
 def pi_ish_0() -> int32:
     """
     <DOCSTRING TODO>
@@ -55,6 +45,16 @@ def square_0(value: float32) -> float32:
     return square_1(value)
 
 
+def tau() -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return float32(6.283185307179586)
+
+
 def floor_div(lhs: float32, rhs: float32) -> float32:
     """
     <DOCSTRING TODO>
@@ -69,6 +69,16 @@ def floor_div(lhs: float32, rhs: float32) -> float32:
     return math.floor(lhs / rhs)
 
 
+def e() -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return float32(2.718281828459045)
+
+
 def pi_ish_1() -> float32:
     """
     <DOCSTRING TODO>
@@ -77,16 +87,6 @@ def pi_ish_1() -> float32:
         <TODO>
     """
     return float32(3.14)
-
-
-def tau() -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Returns:
-        <TODO>
-    """
-    return float32(6.283185307179586)
 
 
 def square_1(self: float32) -> float32:
