@@ -375,7 +375,7 @@ impl <'a> ImperativeLinker<'a> {
                         let last = parts.pop().unwrap();
                         parts.into_iter().try_rfold(last, |rstring, lstring| {
                             // Call format(<args>)
-                            self.link_simple_function_call("add", vec![ParameterKey::Positional, ParameterKey::Positional], vec![lstring, lstring], scope)
+                            self.link_simple_function_call("add", vec![ParameterKey::Positional, ParameterKey::Positional], vec![lstring, rstring], scope)
                         })?
                     }
                 })
