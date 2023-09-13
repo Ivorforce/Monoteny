@@ -50,6 +50,10 @@ impl<'i> Iterator for Lexer<'i> {
         //    When the \( is closed with ), the string context continues.
         // 2) Encountered comments are stored elsewhere for transpilation (WIP).
 
+        // Some complexity is added to avoid doing the same work more than once - e.g.
+        //  not testing every string for symbol equality, but only when the current identifier
+        //  is a string of the same length.
+
         if let Some(next) = self.next_planned.take() {
             return Some(Ok(next));
         }
