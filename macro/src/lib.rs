@@ -107,6 +107,28 @@ pub fn parse_op(_item: TokenStream) -> TokenStream {
 
 #[macro_export]
 #[proc_macro]
+pub fn to_string_op(_item: TokenStream) -> TokenStream {
+    let mut args = _item.into_iter();
+    let type_ = args.next().unwrap();
+
+    format!("{{
+            let layout = Layout::new::<String>();
+            Rc::new(move |interpreter, expression_id, binding| {{
+                unsafe {{
+                    let implementation = Rc::clone(&interpreter.implementation);
+                    let args = &implementation.expression_forest.arguments[&expression_id];
+                    let arg = interpreter.evaluate(args[0]).unwrap();
+
+                    let data = alloc(layout);
+                    (*(data as *mut String)) = (*(arg.data as *const {type_})).to_string();
+                    return Some(Value {{ data, layout }});
+                }}
+            }})
+        }}", type_=type_).parse().unwrap()
+}
+
+#[macro_export]
+#[proc_macro]
 pub fn load_constant(_item: TokenStream) -> TokenStream {
     let mut args = _item.into_iter();
     let type_ = args.next().unwrap();

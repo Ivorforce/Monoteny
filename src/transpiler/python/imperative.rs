@@ -224,6 +224,7 @@ pub fn try_transpile_builtin(function: &Rc<FunctionHead>, expression_id: &Expres
                 PrimitiveOperation::LesserThanOrEqual => transpile_binary_operator("<=", arguments, context),
                 PrimitiveOperation::ParseIntString => transpile_parse_function("^[0-9]+$", arguments, expression_id, context),
                 PrimitiveOperation::ParseFloatString => transpile_parse_function("^[0-9]+\\.[0-9]*$", arguments, expression_id, context),
+                PrimitiveOperation::ToString => transpile_single_arg_function_call("str", arguments, expression_id, context),
             }
         }
         BuiltinFunctionHint::Constructor => {
@@ -237,10 +238,6 @@ pub fn try_transpile_builtin(function: &Rc<FunctionHead>, expression_id: &Expres
         },
         BuiltinFunctionHint::True => Box::new(ast::Expression::ValueLiteral("True".to_string())),
         BuiltinFunctionHint::False => Box::new(ast::Expression::ValueLiteral("False".to_string())),
-        BuiltinFunctionHint::Print => transpile_single_arg_function_call("print", arguments, expression_id, context),
-        BuiltinFunctionHint::Panic => Box::new(ast::Expression::FunctionCall("exit".to_string(), vec![
-            (ParameterKey::Positional, Box::new(ast::Expression::ValueLiteral("1".to_string())))]
-        )),
     })
 }
 

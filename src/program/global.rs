@@ -30,8 +30,6 @@ pub enum BuiltinFunctionHint {
     Constructor,
     True,
     False,
-    Print,
-    Panic,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -47,6 +45,7 @@ pub enum PrimitiveOperation {
     GreaterThanOrEqual, LesserThanOrEqual,
     ParseIntString,
     ParseFloatString,
+    ToString,
 }
 
 impl PartialEq for FunctionImplementation {

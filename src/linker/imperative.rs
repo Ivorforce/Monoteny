@@ -10,13 +10,14 @@ use crate::linker::{LinkError, precedence, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberLiteral, LinkerAmbiguity};
 use crate::linker::precedence::link_patterns;
 use crate::linker::r#type::TypeFactory;
+use crate::linker::scopes::Scope;
 use crate::parser::ast;
-use crate::parser::ast::{Expression, StringPart};
 use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
 use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
+use crate::program::r#struct::Struct;
 use crate::program::traits::{RequirementsAssumption, TraitGraph};
 use crate::program::types::*;
 
@@ -43,7 +44,7 @@ impl <'a> ImperativeLinker<'a> {
         id
     }
 
-    pub fn link_function_body(mut self, body: &Expression, scope: &scopes::Scope) -> Result<Rc<FunctionImplementation>, LinkError> {
+    pub fn link_function_body(mut self, body: &ast::Expression, scope: &scopes::Scope) -> Result<Rc<FunctionImplementation>, LinkError> {
         let mut scope = scope.subscope();
 
         let granted_requirements = scope.traits.assume_granted(
@@ -124,7 +125,7 @@ impl <'a> ImperativeLinker<'a> {
         }))
     }
 
-    pub fn link_top_scope(&mut self, body: &Expression, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
+    pub fn link_top_scope(&mut self, body: &ast::Expression, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
         if let [term] = &body[..] {
             if let ast::Term::Scope(body ) = term.as_ref() {
                 // Single-Scope function; for simplicity's sake we'll just collapse it here.
@@ -178,7 +179,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(expression_id)
     }
 
-    pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &Expression, scope: &scopes::Scope) -> Result<(), LinkError> {
+    pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &ast::Expression, scope: &scopes::Scope) -> Result<(), LinkError> {
         let mut type_factory = TypeFactory::new(&scope);
 
         let type_declaration = type_factory.link_type(&type_declaration)?;
@@ -267,6 +268,14 @@ impl <'a> ImperativeLinker<'a> {
         Ok(statements)
     }
 
+    fn link_expression_with_type(&mut self, syntax: &ast::Expression, type_declaration: &Option<ast::Expression>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
+        let value = self.link_expression(syntax, scope)?;
+        if let Some(type_declaration) = type_declaration {
+            self.hint_type(value, type_declaration, scope)?
+        }
+        Ok(value)
+    }
+
     pub fn link_expression(&mut self, syntax: &ast::Expression, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
         let arguments: Vec<precedence::Token> = syntax.iter().map(|a| {
             self.link_term(a, scope)
@@ -342,28 +351,11 @@ impl <'a> ImperativeLinker<'a> {
                 }
             }
             ast::Term::Struct(s) => {
-                let values = s.iter().map(|x| {
-                    let value = self.link_expression(&x.value, scope)?;
-                    if let Some(type_declaration) = &x.type_declaration {
-                        self.hint_type(value, type_declaration, scope)?
-                    }
-                    Ok(value)
-                }).try_collect()?;
-
-                precedence::Token::AnonymousStruct {
-                    keys: s.iter()
-                        .map(|x| x.key.clone())
-                        .collect(),
-                    values,
-                }
+                precedence::Token::AnonymousStruct(self.link_struct(scope, s)?)
             }
             ast::Term::Array(a) => {
                 let values = a.iter().map(|x| {
-                    let value = self.link_expression(&x.value, scope)?;
-                    if let Some(type_declaration) = &x.type_declaration {
-                        self.hint_type(value, type_declaration, scope)?
-                    }
-                    Ok(value)
+                    self.link_expression_with_type(&x.value, &x.type_declaration, scope)
                 }).try_collect()?;
 
                 precedence::Token::AnonymousArray {
@@ -374,21 +366,75 @@ impl <'a> ImperativeLinker<'a> {
                 }
             }
             ast::Term::StringLiteral(parts) => {
-                if let [StringPart::Literal(literal)] = &parts[..] {
-                    precedence::Token::Expression(self.link_unambiguous_expression(
-                        vec![],
-                        &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.core.traits.String))),
-                        ExpressionOperation::StringLiteral(literal.clone())
-                    )?)
-                }
-                else {
-                    todo!("Format strings aren't supported yet.")
-                }
+                precedence::Token::Expression(match &parts[..] {
+                    // Simple case: Just one part means we can use it directly.
+                    [part] => self.link_string_part(part, scope)?,
+                    _ => {
+                        let mut parts: Vec<_> = parts.iter().map(|part| self.link_string_part(part, scope)).try_collect()?;
+                        // TODO We should call concat() with an array instead.
+                        let last = parts.pop().unwrap();
+                        parts.into_iter().try_rfold(last, |rstring, lstring| {
+                            // Call format(<args>)
+                            self.link_simple_function_call("add", vec![ParameterKey::Positional, ParameterKey::Positional], vec![lstring, lstring], scope)
+                        })?
+                    }
+                })
             }
             ast::Term::Scope(statements) => {
                 todo!("In-function scopes are not supported yet.")
             }
         })
+    }
+
+    fn link_struct(&mut self, scope: &scopes::Scope, args: &Vec<ast::StructArgument>) -> Result<Struct, LinkError> {
+        let values = args.iter().map(|x| {
+            self.link_expression_with_type(&x.value, &x.type_declaration, scope)
+        }).try_collect()?;
+
+        Ok(Struct {
+            keys: args.iter()
+                .map(|x| x.key.clone())
+                .collect(),
+            values,
+        })
+    }
+
+    pub fn link_string_part(&mut self, part: &ast::StringPart, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
+        match part {
+            ast::StringPart::Literal(literal) => {
+                self.link_unambiguous_expression(
+                    vec![],
+                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.core.traits.String))),
+                    ExpressionOperation::StringLiteral(literal.clone())
+                )
+            }
+            ast::StringPart::Object(o) => {
+                let struct_ = self.link_struct(scope, o)?;
+                // Call format(<args>)
+                self.link_simple_function_call("format", struct_.keys, struct_.values, scope)
+            }
+        }
+    }
+
+    fn link_simple_function_call(&mut self, name: &str, keys: Vec<ParameterKey>, args: Vec<ExpressionID>, scope: &Scope) -> Result<ExpressionID, LinkError> {
+        let variable = scope.resolve(scopes::Environment::Global, name)?;
+
+        match &variable.type_ {
+            ReferenceType::FunctionOverload(overload) => {
+                match overload.form {
+                    FunctionForm::Global => {
+                        let expression_id = self.link_function_call(&overload.functions(), &overload.name, keys, args, scope)?;
+                        // Make sure the return type is actually String.
+                        self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.core.traits.String))))?;
+                        Ok(expression_id)
+                    }
+                    // this could happen if somebody uses def format ... without parentheses.
+                    _ => panic!("'{}' must not be shadowed in this context.", name)
+                }
+            }
+            // todo lolz, this is kinda dumb?
+            _ => panic!("'{}' must not be shadowed in this context.", name)
+        }
     }
 
     pub fn link_conjunctive_pairs(&mut self, arguments: Vec<ExpressionID>, operations: Vec<Rc<FunctionOverload>>) -> Result<ExpressionID, LinkError> {

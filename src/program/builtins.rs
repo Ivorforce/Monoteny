@@ -7,7 +7,6 @@ use crate::program::module;
 use crate::program::module::Module;
 
 pub mod precedence;
-pub mod debug;
 pub mod core;
 pub mod primitives;
 pub mod common;
@@ -17,8 +16,6 @@ pub mod traits;
 pub struct Builtins {
     pub core: core::Core,
     pub precedence_groups: precedence::PrecedenceGroups,
-
-    pub debug: debug::Debug,
     pub transpilation: transpilation::Transpilation,
 
     pub module_by_name: HashMap<String, Rc<Module>>,
@@ -27,17 +24,20 @@ pub struct Builtins {
 pub fn create_builtins() -> Rc<Builtins> {
     let core = core::create();
     let mut builtins = Builtins {
-        debug: debug::create(),
         transpilation: transpilation::create(&core),
         core,
         precedence_groups: precedence::create(),
         module_by_name: HashMap::new(),
     };
 
-    builtins.module_by_name.insert(
-        "math".into(),
-        module::from_file(PathBuf::from("monoteny/common/math.monoteny"), &builtins).expect("Error compiling math library")
-    );
+    for name in [
+        "math", "debug", "strings",
+    ] {
+        builtins.module_by_name.insert(
+            name.into(),
+            module::from_file(PathBuf::from(format!("monoteny/common/{}.monoteny", name)), &builtins).expect(format!("Error compiling {} library", name).as_str())
+        );
+    }
     Rc::new(builtins)
 }
 
@@ -46,7 +46,6 @@ impl Builtins {
         self.module_by_name.values().chain([
             &self.core.module,
             &self.precedence_groups.module,
-            &self.debug.module,
             &self.transpilation.module,
         ]).collect_vec()
     }

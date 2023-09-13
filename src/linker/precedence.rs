@@ -8,6 +8,7 @@ use crate::linker::{scopes, LinkError};
 use crate::linker::scopes::Environment;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionOverload, ParameterKey};
+use crate::program::r#struct::Struct;
 use crate::program::types::{TypeProto, TypeUnit};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -58,7 +59,7 @@ impl Hash for PrecedenceGroup {
 pub enum Token {
     Keyword(String),
     Expression(ExpressionID),
-    AnonymousStruct { keys: Vec<ParameterKey>, values: Vec<ExpressionID> },
+    AnonymousStruct(Struct),
     AnonymousArray { keys: Vec<Option<ExpressionID>>, values: Vec<ExpressionID> },
     FunctionReference { overload: Rc<FunctionOverload>, target: Option<ExpressionID> },
 }
@@ -68,32 +69,32 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
     let mut i = 0;
     for _ in 0 .. tokens.len() {
         match &tokens[i] {
-            Token::AnonymousStruct { keys, values } => {
+            Token::AnonymousStruct(struct_) => {
                 match if i > 0 { tokens.get(i - 1) } else { None } {
                     Some(Token::FunctionReference { overload, target }) => {
                         tokens[i] = Token::Expression(linker.link_function_call(
                             &overload.functions(),
                             &overload.name,
-                            target.iter().map(|_| &ParameterKey::Positional).chain(keys).map(Clone::clone).collect(),
-                            target.iter().chain(values).map(Clone::clone).collect(),
+                            target.iter().map(|_| &ParameterKey::Positional).chain(&struct_.keys).map(Clone::clone).collect(),
+                            target.iter().chain(&struct_.values).map(Clone::clone).collect(),
                             scope
                         )?);
                         tokens.remove(i - 1);
                     }
                     Some(Token::Expression(expression)) => {
-                        let overload = scope.resolve(Environment::Member, &"call_as_function".into())?.as_function_overload()?;
+                        let overload = scope.resolve(Environment::Member, "call_as_function")?.as_function_overload()?;
                         tokens[i] = Token::Expression(linker.link_function_call(
                             &overload.functions(),
                             &overload.name,
-                            [&ParameterKey::Positional].into_iter().chain(keys).map(Clone::clone).collect(),
-                            [expression].into_iter().chain(values).map(Clone::clone).collect(),
+                            [&ParameterKey::Positional].into_iter().chain(&struct_.keys).map(Clone::clone).collect(),
+                            [expression].into_iter().chain(&struct_.values).map(Clone::clone).collect(),
                             scope
                         )?);
                         tokens.remove(i - 1);
                     }
                     _ => {
-                        if values.len() == 1 && keys.iter().next().unwrap() == &ParameterKey::Positional {
-                            tokens[i] = Token::Expression(*values.iter().next().unwrap());
+                        if &struct_.keys[..] == &[ParameterKey::Positional] {
+                            tokens[i] = Token::Expression(*struct_.values.iter().next().unwrap());
                         }
                         else {
                             return Err(LinkError::LinkError { msg: String ::from("Anonymous struct literals are not yet supported.") })

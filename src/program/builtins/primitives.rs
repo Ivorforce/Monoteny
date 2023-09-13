@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use strum::IntoEnumIterator;
 use crate::program::builtins::traits;
-use crate::program::builtins::traits::Traits;
+use crate::program::builtins::traits::{make_to_string_function, Traits};
 use crate::program::functions::{FunctionInterface, FunctionPointer};
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
 use crate::program::module::Module;
@@ -50,6 +50,15 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
             ]
         ).unwrap();
 
+        let to_string_function = make_to_string_function(&traits.ToString, &traits.String);
+        add_function(&to_string_function, primitive_type, PrimitiveOperation::ToString, module);
+        module.trait_conformance.add_conformance_manual(
+            traits.ToString.create_generic_binding(vec![(&"self".into(), type_.clone())]),
+            vec![
+                (&traits.to_string_function.target, &to_string_function.target),
+            ]
+        ).unwrap();
+
         if !primitive_type.is_number() {
             continue;
         }
@@ -72,7 +81,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         ).unwrap();
 
         // Number
-        let number_functions = traits::make_number_functions(&type_, &bool_type);
+        let number_functions = traits::make_number_functions(&type_);
         add_function(&number_functions.add, primitive_type, PrimitiveOperation::Add, module);
         add_function(&number_functions.subtract, primitive_type, PrimitiveOperation::Subtract, module);
         add_function(&number_functions.multiply, primitive_type, PrimitiveOperation::Multiply, module);

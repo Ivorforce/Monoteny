@@ -107,11 +107,33 @@ impl FunctionInterface {
 
     pub fn new_simple<'a, I>(parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Box<TypeProto>> {
         let parameters: Vec<Parameter> = parameter_types
-            .map(|x| Parameter {
+            .enumerate()
+            .map(|(i, x)| Parameter {
                 external_key: ParameterKey::Positional,
-                internal_name: format!("p"),  // TODO Should be numbered? idk
+                internal_name: format!("p{}", i),
                 type_: x.clone(),
             })
+            .collect();
+
+        Rc::new(FunctionInterface {
+            parameters,
+            return_type: return_type.clone(),
+            requirements: Default::default(),
+        })
+    }
+
+    pub fn new_member<'a, I>(self_type: Box<TypeProto>, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Box<TypeProto>> {
+        let parameters: Vec<Parameter> = [Parameter {
+                external_key: ParameterKey::Positional,
+                internal_name: "self".to_string(),
+                type_: self_type,
+            }].into_iter().chain(parameter_types
+            .enumerate()
+            .map(|(i, x)| Parameter {
+                external_key: ParameterKey::Positional,
+                internal_name: format!("p{}", i),
+                type_: x.clone(),
+            }))
             .collect();
 
         Rc::new(FunctionInterface {

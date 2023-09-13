@@ -51,12 +51,13 @@ pub fn create(builtins: &Builtins, type_ids: &mut HashMap<Box<TypeProto>, Uuid>)
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Log, type_ } => {
                 namespace.insert_keyword(fun.function_id, &String::from("math.log"));
             }
+            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ToString, type_ } => {
+                namespace.insert_keyword(fun.function_id, &String::from("str"));
+            }
             _ => {}
         }
     }
-
-    namespace.insert_keyword(builtins.debug.print.target.function_id, &String::from("print"));
-
+    
     for trait_ in builtins.core.module.traits.keys() {
         // TODO Introduce a package ref system.
         namespace.register_definition(trait_.id, &format!("mn.traits.{}", &trait_.name));

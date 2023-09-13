@@ -1,0 +1,9 @@
+-- The easiest way to format an object: It formats itself!
+def format(object '$ToString) -> String :: object.to_string();
+
+declare String is ToString {
+    def {Self}.to_string() -> String :: self;
+};
+
+-- Provided by the transpiler.
+def {String} + {String} -> String;

@@ -24,7 +24,7 @@ def main() :: {
 
     -- 'value' is not bound yet. It could be any $Float!
     let value = 2.2.square() * sin(e);
-    print("Value: \(value, precision: 2)");
+    print("Value: \(value)");
 
     -- Bind 'value' implicitly by binding b to Float32.
     var b 'Float32 = square(value:) + pi_ish;

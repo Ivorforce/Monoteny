@@ -11,25 +11,16 @@ def main():
     """
     print("Test: \"Success\"")
     value = square_1(float32(2.2)) * math.sin(e())
+    print(op.add("Value: (", "Value: ("))
     b = square_0(value=value) + pi_ish_1()
     b = floor_div(square_1(b) ** (-float32(2.2)), value) + tau()
-    c = pi_ish_0() // int32(2)
-    print(((b < float32(2)) and (not (value > float32(2)))) and True)
+    c = pi_ish_0() // int32("2;")
+    print(op.add("Bool Value: (", "Bool Value: ("))
 
 
 # ========================== ======== ============================
 # ========================== Internal ============================
 # ========================== ======== ============================
-
-
-def pi_ish_0() -> int32:
-    """
-    <DOCSTRING TODO>
-
-    Returns:
-        <TODO>
-    """
-    return int32(3)
 
 
 def square_0(value: float32) -> float32:
@@ -45,28 +36,14 @@ def square_0(value: float32) -> float32:
     return square_1(value)
 
 
-def tau() -> float32:
+def pi_ish_0() -> int32:
     """
     <DOCSTRING TODO>
 
     Returns:
         <TODO>
     """
-    return float32(6.283185307179586)
-
-
-def floor_div(lhs: float32, rhs: float32) -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Args:
-        lhs: TODO
-        rhs: TODO
-
-    Returns:
-        <TODO>
-    """
-    return math.floor(lhs / rhs)
+    return int32("3;")
 
 
 def e() -> float32:
@@ -89,6 +66,19 @@ def pi_ish_1() -> float32:
     return float32(3.14)
 
 
+def format_0(object: bool) -> str:
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        object: TODO
+
+    Returns:
+        <TODO>
+    """
+    return str(object)
+
+
 def square_1(self: float32) -> float32:
     """
     <DOCSTRING TODO>
@@ -100,6 +90,43 @@ def square_1(self: float32) -> float32:
         <TODO>
     """
     return self * self
+
+
+def floor_div(lhs: float32, rhs: float32) -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        lhs: TODO
+        rhs: TODO
+
+    Returns:
+        <TODO>
+    """
+    return math.floor(lhs / rhs)
+
+
+def tau() -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return float32(6.283185307179586)
+
+
+def format_1(object: float32) -> str:
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        object: TODO
+
+    Returns:
+        <TODO>
+    """
+    return str(object)
 
 
 __all__ = [

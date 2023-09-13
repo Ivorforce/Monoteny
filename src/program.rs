@@ -15,6 +15,7 @@ pub mod traits;
 pub mod types;
 pub mod module;
 pub mod calls;
+pub mod r#struct;
 
 pub struct Program {
     pub module: Rc<Module>,

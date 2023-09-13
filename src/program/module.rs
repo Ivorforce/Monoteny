@@ -67,7 +67,7 @@ impl Module {
 
 pub fn from_file(path: PathBuf, builtins: &Builtins) -> Result<Rc<Module>, LinkError> {
     let content = std::fs::read_to_string(&path)
-        .expect("could not read library file");
+        .expect(format!("could not read library file: {:?}", path).as_str());
 
     let syntax_tree = parser::parse_program(&content);
 

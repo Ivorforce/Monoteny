@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::program::functions::{FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::traits::Trait;
+use crate::program::traits::{Trait, TraitConformance};
 use crate::program::types::{TypeProto, TypeUnit};
 
 
@@ -15,6 +15,8 @@ pub struct Traits {
     pub Ord_functions: OrdFunctions,
 
     pub String: Rc<Trait>,
+    pub ToString: Rc<Trait>,
+    pub to_string_function: Rc<FunctionPointer>,
 
     pub ConstructableByIntLiteral: Rc<Trait>,
     pub parse_int_literal_function: Rc<FunctionPointer>,
@@ -89,7 +91,7 @@ pub struct NumberFunctions {
     pub negative: Rc<FunctionPointer>,
 }
 
-pub fn make_number_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>) -> NumberFunctions {
+pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
     NumberFunctions {
         add: FunctionPointer::new_global(
             "add",
@@ -138,6 +140,17 @@ pub fn make_float_functions(type_: &Box<TypeProto>) -> FloatFunctions {
     }
 }
 
+pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<FunctionPointer> {
+    FunctionPointer::new_member(
+        "to_string",
+        FunctionInterface::new_member(
+            type_.create_generic_type(&"self".into()),
+            [].into_iter(),
+            TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))
+        )
+    )
+}
+
 pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, Rc<Trait>>) -> Traits {
     let bool_type = TypeProto::simple_struct(&primitive_traits[&primitives::Type::Bool]);
 
@@ -163,7 +176,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.trait_conformance.add_simple_parent_requirement(&Ord, &Eq);
 
     let mut Number = Trait::new("Number".into());
-    let number_functions = make_number_functions(&Number.create_generic_type(&"self".into()), &bool_type);
+    let number_functions = make_number_functions(&Number.create_generic_type(&"self".into()));
     Number.insert_functions([
         &number_functions.add,
         &number_functions.subtract,
@@ -180,6 +193,15 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     let String = Rc::new(String);
     module.add_trait(&String);
 
+    // TODO String is not ToString. We could declare it on the struct, but that seems counterintuitive, no?
+    //  Maybe a candidate for return self.strip().
+    let mut ToString = Trait::new("ToString".into());
+    let to_string_function = make_to_string_function(&ToString, &String);
+    ToString.insert_functions([
+        &to_string_function
+    ].into_iter());
+    let ToString = Rc::new(ToString);
+    module.add_trait(&ToString);
 
     let mut ConstructableByIntLiteral = Trait::new("ConstructableByIntLiteral".into());
     let parse_int_literal_function = FunctionPointer::new_global(
@@ -237,6 +259,8 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         Ord_functions: ord_functions,
 
         String,
+        ToString,
+        to_string_function,
 
         ConstructableByIntLiteral,
         parse_int_literal_function,

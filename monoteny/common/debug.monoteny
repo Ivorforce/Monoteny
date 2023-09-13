@@ -1,0 +1,5 @@
+-- Supplied by transpiler.
+def panic() -> #A;
+
+-- Supplied by transpiler.
+def print(value '$ToString);

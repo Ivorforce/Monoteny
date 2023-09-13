@@ -223,7 +223,7 @@ impl <'a> Scope<'a> {
 }
 
 impl <'a> Scope<'a> {
-    pub fn resolve(&'a self, environment: Environment, variable_name: &String) -> Result<&'a Rc<Reference>, LinkError> {
+    pub fn resolve(&'a self, environment: Environment, variable_name: &str) -> Result<&'a Rc<Reference>, LinkError> {
         if let Some(matches) = self.references(environment).get(variable_name) {
             return Ok(matches)
         }

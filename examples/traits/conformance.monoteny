@@ -4,13 +4,13 @@ trait Animal {
 
 trait Cat {};
 
-declare Cat is Animal {
+declare $Cat is Animal {
     def {Self}.talk() :: print("Meow");
 };
 
 trait Dog {};
 
-declare Dog is Animal {
+declare $Dog is Animal {
     def {Self}.talk() :: print("Bark");
 };
 

@@ -85,7 +85,8 @@ impl TraitGraph {
     pub fn add_graph(&mut self, graph: &TraitGraph) {
         // TODO Check for conflicting conformance
         self.conformance.extend(graph.conformance.clone());
-        self.requirements.extend(graph.requirements.clone())
+        self.requirements.extend(graph.requirements.clone());
+        self.conformance_rules.extend(graph.conformance_rules.clone());
     }
 
     pub fn add_conformance(&mut self, conformance: Rc<TraitConformance>) -> Result<(), LinkError> {

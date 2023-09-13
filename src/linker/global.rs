@@ -94,9 +94,6 @@ impl <'a> GlobalLinker<'a> {
             ast::GlobalStatement::Operator(syntax) => {
                 let scope = &self.global_variables;
                 let fun = link_operator_pointer(&syntax, &scope, requirements)?;
-                guard!(let Some(body) = &syntax.body else {
-                    return Err(LinkError::LinkError { msg: format!("Function {} needs a body.", fun.name) });
-                });
 
                 self.add_function(UnlinkedFunctionImplementation {
                     pointer: Rc::clone(&fun),
@@ -155,18 +152,31 @@ impl <'a> GlobalLinker<'a> {
                 );
             }
             ast::GlobalStatement::Conformance(syntax) => {
-                let target = self.global_variables.resolve(Environment::Global, &syntax.target).unwrap().as_trait().unwrap();
+                let is_generic_conformance = syntax.target.starts_with("$");
+                let target = self.global_variables.resolve(Environment::Global, match is_generic_conformance {
+                    true => &syntax.target[1..],
+                    false => &syntax.target,
+                }).unwrap();
                 let trait_ = self.global_variables.resolve(Environment::Global, &syntax.trait_).unwrap().as_trait().unwrap();
 
-                // We make a new type because it's a generic that will be later fulfilled.
-                // Once we have support for it, the conformance may contain more generics.
-                let generic_self_type = target.create_generic_type(&"self".into());
-                let generic_self_type_ref = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(generic_self_type.clone()))));
-                let self_binding = trait_.create_generic_binding(vec![(&"self".into(), generic_self_type.clone())]);
-                let requirement = target.create_generic_binding(vec![(&"self".into(), generic_self_type)]);
+                let (self_type, requirements) = if !is_generic_conformance {
+                    let self_type = TypeProto::unit(TypeUnit::Struct(target.as_trait().unwrap()));
+                    (self_type, HashSet::new())
+                }
+                else {
+                    let target = target.as_trait().unwrap();
+                    // We make a new type because it's a generic that will be later fulfilled.
+                    // Once we have support for it, the conformance may contain more generics.
+                    let generic_self_type = target.create_generic_type(&"self".into());
+                    let requirement = target.create_generic_binding(vec![(&"self".into(), generic_self_type.clone())]);
+                    (generic_self_type, HashSet::from([requirement]))
+                };
+
+                let self_ref = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(self_type.clone()))));
+                let self_binding = trait_.create_generic_binding(vec![(&"self".into(), self_type)]);
 
                 let mut scope = self.global_variables.subscope();
-                scope.insert_singleton(Environment::Global, generic_self_type_ref, &"Self".into());
+                scope.insert_singleton(Environment::Global, self_ref, &"Self".into());
 
                 let mut linker = ConformanceLinker {
                     builtins: self.builtins,
@@ -178,7 +188,7 @@ impl <'a> GlobalLinker<'a> {
 
                 // TODO To be order independent, we should finalize after sorting...
                 //  ... Or check inconsistencies only at the very end.
-                linker.finalize(self_binding, HashSet::from([requirement]), &mut self.module, &mut self.global_variables)?;
+                linker.finalize(self_binding, requirements, &mut self.module, &mut self.global_variables)?;
                 for function in linker.functions {
                     self.add_function(function)?;
                 }
