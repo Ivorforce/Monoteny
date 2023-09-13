@@ -119,7 +119,7 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
 - [x] `trait`: Objects that functions can be associated with.
   - [x] `trait` `inherit`: Require trait conformance to another trait
   - [ ] Stored Properties (for traits with associated Self)
-    - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract
+    - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract traits
     - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
     - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
     - [ ] Properties conforming to property-like functions (automatically?)
@@ -133,11 +133,10 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
   - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
 - [ ] Modules (imports)
   - [ ] `use` statements: Use parts of a module without changing or re-exporting it.
-  - [ ] `abstract` functions: Declare functions only later.
   - [x] `@transpile` decorators: Functions that are called when making a transpilation target. 
   - [ ] `@private` decorators: Functions or traits that can only be referenced using qualified syntax.
   - [ ] `inherit` statements: Use and expose another module within your module, allowing additions and overrides.
-  - [ ] Abstract Functions, Conformance Declarations
+  - [x] Abstract Functions, Conformance Declarations
   - [ ] Namespaces
 - [ ] Control Callbacks (e.g. `def if(expression 'Bool, onTrue 'fun, onFalse 'Fun[Option]) { ... }`))
   - [ ] If / Else
