@@ -17,19 +17,19 @@ impl Level {
         }
     }
 
-    pub fn register_definition(&mut self, uuid: Uuid, name: &String) {
+    pub fn register_definition(&mut self, uuid: Uuid, name: &str) {
         if let Some(existing) = self.claims.get_mut(name) {
             existing.push(uuid);
         }
         else {
             self.claims.insert(
-                name.clone(),
+                name.to_string(),
                 vec![uuid.clone()]
             );
         }
     }
 
-    pub fn insert_keyword(&mut self, uuid: Uuid, name: &String) {
+    pub fn insert_keyword(&mut self, uuid: Uuid, name: &str) {
         self.register_definition(uuid, name);
         self.keywords.insert(uuid);
     }

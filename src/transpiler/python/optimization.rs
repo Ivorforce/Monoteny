@@ -50,7 +50,7 @@ pub fn prepare(builtins: &Builtins) -> HashMap<Uuid, TranspilationHint> {
         transpilation_hints_by_id.insert(
             ptr.target.function_id,
             TranspilationHint::CallProvided(match ptr.name.as_str() {
-                "print" => "print",
+                "_print" => "print",
                 "panic" => "exit",
                 _ => continue,
             }.to_string())

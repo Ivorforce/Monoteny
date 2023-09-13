@@ -57,6 +57,8 @@ pub fn create(builtins: &Builtins, type_ids: &mut HashMap<Box<TypeProto>, Uuid>)
             _ => {}
         }
     }
+
+    namespace.insert_keyword(Uuid::new_v4(), "print");
     
     for trait_ in builtins.core.module.traits.keys() {
         // TODO Introduce a package ref system.

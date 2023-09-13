@@ -167,6 +167,7 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
     - [ ] Custom precedence steps (with associativity)
   - [x] Comments
     - [ ] Documentation
+- [x] String Comprehension: "Value: \(value, precision: 5)"
 
 ### Monoteny 1.0
 
@@ -179,7 +180,6 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
 - [ ] Switch / Match
 - [ ] Local functions and declarations
   - [ ] Anonymous functions
-- [ ] String Comprehension
 - [ ] Custom Decorators (on structs, definitions)
 - [ ] Non-Varargs subscripts and subscript overloads
 - [ ] Indeterministic polymorphism
