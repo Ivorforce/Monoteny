@@ -17,8 +17,8 @@ pub fn load(globals: &mut InterpreterGlobals, builtins: &Builtins) {
     // -------------------------------------- Math --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    for (ptr, builtin_hint) in builtins.core.module.builtin_hints.iter() {
-        globals.function_evaluators.insert(ptr.unwrap_id(), match builtin_hint {
+    for (head, builtin_hint) in builtins.core.module.builtin_hints.iter() {
+        globals.function_evaluators.insert(head.unwrap_id(), match builtin_hint {
             BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
                 create_primitive_op(type_.clone(), operation.clone())
             }
@@ -32,48 +32,25 @@ pub fn load(globals: &mut InterpreterGlobals, builtins: &Builtins) {
     // -------------------------------------- Common --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    // globals.function_evaluators.insert(builtins.debug.print.target.unwrap_id(), Rc::new(|interpreter, expression_id, binding| {
-    //     unsafe {
-    //         let arg_id = interpreter.implementation.expression_forest.arguments[&expression_id][0];
-    //         let arg = interpreter.evaluate(arg_id).unwrap();
-    //         let arg_type = interpreter.implementation.type_forest.get_unit(&arg_id).unwrap();
-    //
-    //         // TODO Instead, introduce a ToString trait that can be called, with each getting their own function to fit it.
-    //         //  If not implemented, dump the type instead.
-    //         println!("{}", match arg_type {
-    //             TypeUnit::Struct(s) => {
-    //                 if s == &interpreter.globals.builtins.core.traits.String {
-    //                     (*(arg.data as *const String)).clone()
-    //                 }
-    //                 else if s == &interpreter.globals.builtins.core.primitives[&primitives::Type::Bool] {
-    //                     (*(arg.data as *const bool)).to_string()
-    //                 }
-    //                 else if s == &interpreter.globals.builtins.core.primitives[&primitives::Type::Float32] {
-    //                     (*(arg.data as *const f32)).to_string()
-    //                 }
-    //                 // TODO Transpile these too. Should probably make a lookup table somewhere?
-    //                 // TypeUnit::Primitive(primitives::Type::Int8) => (*(arg.data as *const i8)).to_string(),
-    //                 // TypeUnit::Primitive(primitives::Type::Int16) => (*(arg.data as *const i16)).to_string(),
-    //                 // TypeUnit::Primitive(primitives::Type::Int32) => (*(arg.data as *const i32)).to_string(),
-    //                 // TypeUnit::Primitive(primitives::Type::Int64) => (*(arg.data as *const i64)).to_string(),
-    //                 // TypeUnit::Primitive(primitives::Type::Int128) => (*(arg.data as *const i128)).to_string(),
-    //                 // TypeUnit::Primitive(primitives::Type::UInt8) => (*(arg.data as *const u8)).to_string(),
-    //                 // TypeUnit::Primitive(primitives::Type::UInt16) => (*(arg.data as *const u16)).to_string(),
-    //                 // TypeUnit::Primitive(primitives::Type::UInt32) => (*(arg.data as *const u32)).to_string(),
-    //                 // TypeUnit::Primitive(primitives::Type::UInt64) => (*(arg.data as *const u64)).to_string(),
-    //                 // TypeUnit::Primitive(primitives::Type::UInt128) => (*(arg.data as *const u128)).to_string(),
-    //                 // TypeUnit::Primitive(primitives::Type::Float32) => (*(arg.data as *const f32)).to_string(),
-    //                 // TypeUnit::Primitive(primitives::Type::Float64) => (*(arg.data as *const f64)).to_string(),
-    //                 else {
-    //                     panic!()
-    //                 }
-    //             },
-    //             _ => panic!(),
-    //         });
-    //
-    //         return None;
-    //     }
-    // }));
+    for ptr in builtins.module_by_name["debug".into()].function_pointers.values() {
+        globals.function_evaluators.insert(ptr.target.unwrap_id(), match ptr.name.as_str() {
+            "_print" => Rc::new(move |interpreter, expression_id, binding| {{
+                unsafe {{
+                    let implementation = Rc::clone(&interpreter.implementation);
+                    let args = &implementation.expression_forest.arguments[&expression_id];
+                    let arg = interpreter.evaluate(args[0]).unwrap();
+                    println!("{}", *(arg.data as *const String));
+
+                    None
+                }}
+            }}),
+            "panic" => Rc::new(move |interpreter, expression_id, binding| {{
+                panic!()
+            }})
+        ,
+            _ => continue,
+        });
+    }
 
     // -------------------------------------- ------ --------------------------------------
     // -------------------------------------- Transpiler --------------------------------------

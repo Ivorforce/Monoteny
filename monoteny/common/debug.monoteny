@@ -2,4 +2,7 @@
 def panic() -> #A;
 
 -- Supplied by transpiler.
-def print(value '$ToString);
+def print(value '$ToString) :: _print(value.to_string());
+
+-- This is a 'direct syscall'!
+def _print(value 'String);
