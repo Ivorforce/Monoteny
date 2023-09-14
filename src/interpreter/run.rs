@@ -70,7 +70,8 @@ pub fn transpile(module: &Module, runtime: &mut Runtime, callback: &dyn Fn(Rc<Fu
     let mut interpreter = FunctionInterpreter {
         runtime,
         implementation: Rc::new(*implementation.clone()),
-        // TODO Technically we should bind Transpiler here, probably to a Transpiler subtype that cannot be instantiated.
+        // TODO Technically we should bind Transpiler here. It should be a subtype of Transpiler
+        //  depending on the target language.
         requirements_fulfillment: RequirementsFulfillment::empty(),
         locals: assignments,
     };

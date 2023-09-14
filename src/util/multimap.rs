@@ -1,22 +1,14 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::collections::hash_map::Entry;
 use std::hash::Hash;
 
-pub fn extend_multimap<K, V>(multimap: &mut HashMap<K, Vec<V>>, extension: &HashMap<K, Vec<V>>) where K: Hash, K: Eq, V: Clone, K: Clone {
-    for (trait_, trait_declarations) in extension.iter() {
-        if let Some(existing) = multimap.get_mut(trait_) {
-            existing.extend(trait_declarations.clone());
+pub fn insert_into_multimap<K, V>(multimap: &mut HashMap<K, HashSet<V>>, key: K, value: V) where K: Hash, V: Hash, K: Eq, V: Eq, V: Clone, K: Clone {
+    match multimap.entry(key) {
+        Entry::Occupied(o) => {
+            o.into_mut().insert(value);
         }
-        else {
-            multimap.insert(trait_.clone(), trait_declarations.clone());
+        Entry::Vacant(v) => {
+            v.insert(HashSet::from([value]));
         }
-    }
-}
-
-pub fn push_into_multimap<K, V>(multimap: &mut HashMap<K, Vec<V>>, key: &K, value: V) where K: Hash, K: Eq, V: Clone, K: Clone {
-    if let Some(existing) = multimap.get_mut(key) {
-        existing.push(value);
-    }
-    else {
-        multimap.insert(key.clone(), vec![value]);
     }
 }

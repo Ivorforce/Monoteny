@@ -4,6 +4,9 @@ use crate::program::functions::ParameterKey;
 use crate::transpiler::python::imperative::escape_string;
 
 pub struct Module {
+    // TODO We should use Statement objects instead of 'hardcoding' our structure into this
+    //  ast representation.
+    //  But before that happens we need to be able to inject comments and have a good indenter.
     pub exported_classes: Vec<Box<Class>>,
     pub exported_functions: Vec<Box<Function>>,
     pub internal_functions: Vec<Box<Function>>,

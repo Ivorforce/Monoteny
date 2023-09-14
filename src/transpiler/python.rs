@@ -106,24 +106,34 @@ pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_
         transpiler_context.internal_functions.push(mono_implementation);
     }
 
-    if should_constant_fold && false {
+    if should_constant_fold {
         // Run constant folder
         let mut constant_folder = ConstantFold::new();
-        let internal_function_order = transpiler_context.internal_functions.iter().map(|x| Rc::clone(&x.head)).collect_vec();
         let exported_function_order = transpiler_context.exported_functions.iter().map(|x| Rc::clone(&x.head)).collect_vec();
 
+        // The exported functions aren't called so it makes sense to prepare the internal functions first.
         for implementation in transpiler_context.internal_functions.drain(..) {
             constant_folder.add(implementation, true);
         }
         for implementation in transpiler_context.exported_functions.drain(..) {
             constant_folder.add(implementation, false);
         }
+
+        // Exported functions MUST be there still, because they can't be inlined.
+        transpiler_context.exported_functions.extend(exported_function_order.iter().map(|x| constant_folder.implementation_by_head.remove(x).unwrap()).collect_vec());
+        // The order of the internal functions is unimportant anyway, because they are sorted. Everything the constant
+        transpiler_context.internal_functions = constant_folder.drain_all_functions_yield_uninlined();
     }
 
-    finalize(module, &transpiler_context, runtime)
+    // TODO We need to somehow sort transpiler_context.internal_functions.
+    //  One way would be to keep track of the order from before, but constant_folder may remove and add functions at will.
+    //  IDs are created randomly and are thus useless for the task. Sorting by name doesn't work because there may
+    //  be conflicting names, so those would still be assigned randomized names.
+
+    create_ast(module, &transpiler_context, runtime)
 }
 
-pub fn finalize(module: &Module, transpiler_context: &TranspilerContext, runtime: &Runtime) -> Result<Box<ast::Module>, InterpreterError> {
+pub fn create_ast(module: &Module, transpiler_context: &TranspilerContext, runtime: &Runtime) -> Result<Box<ast::Module>, InterpreterError> {
     let mut struct_ids = HashMap::new();
 
     let mut global_namespace = builtins::create_name_level(&runtime.builtins, &mut struct_ids);
@@ -182,7 +192,7 @@ pub fn finalize(module: &Module, transpiler_context: &TranspilerContext, runtime
     }
 
     let mut module = Box::new(ast::Module {
-        // TODO Only classes used in the interface of exported functions are exported.
+        // TODO Only classes used in the interface of exported functions should be exported.
         //  Everything else is an internal class.
         exported_classes: vec![],
         exported_functions: vec![],
