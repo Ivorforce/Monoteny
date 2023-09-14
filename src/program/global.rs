@@ -9,10 +9,10 @@ use crate::program::generics::TypeForest;
 use crate::program::primitives;
 use crate::program::traits::RequirementsAssumption;
 
+#[derive(Clone)]
 pub struct FunctionImplementation {
     pub implementation_id: Uuid,
     pub head: Rc<FunctionHead>,
-    pub decorators: Vec<String>,
 
     pub requirements_assumption: Box<RequirementsAssumption>,
 

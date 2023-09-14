@@ -2,14 +2,16 @@ use std::alloc::{alloc, Layout};
 use std::rc::Rc;
 use monoteny_macro::{bin_op, parse_op, un_op, fun_op, load_constant, to_string_op};
 use std::str::FromStr;
+use guard::guard;
 use uuid::Uuid;
-use crate::interpreter::{FunctionInterpreterImpl, InterpreterGlobals, Value};
-use crate::program::builtins::Builtins;
+use crate::interpreter::{FunctionInterpreterImpl, Runtime, Value};
+use crate::program::functions::FunctionHead;
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
 use crate::program::primitives;
 use crate::program::types::TypeUnit;
 
-pub fn load(globals: &mut InterpreterGlobals, builtins: &Builtins) {
+pub fn load(runtime: &mut Runtime) {
+    let builtins = &runtime.builtins;
     let f32_type = TypeUnit::Struct(Rc::clone(&builtins.core.primitives[&primitives::Type::Float32]));
     let f64_type = TypeUnit::Struct(Rc::clone(&builtins.core.primitives[&primitives::Type::Float64]));
 
@@ -17,8 +19,8 @@ pub fn load(globals: &mut InterpreterGlobals, builtins: &Builtins) {
     // -------------------------------------- Math --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    for (head, builtin_hint) in builtins.core.module.builtin_hints.iter() {
-        globals.function_evaluators.insert(head.unwrap_id(), match builtin_hint {
+    for (head, builtin_hint) in builtins.core.module.fn_builtin_hints.iter() {
+        runtime.function_evaluators.insert(head.unwrap_id(), match builtin_hint {
             BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
                 create_primitive_op(type_.clone(), operation.clone())
             }
@@ -29,34 +31,10 @@ pub fn load(globals: &mut InterpreterGlobals, builtins: &Builtins) {
     }
 
     // -------------------------------------- ------ --------------------------------------
-    // -------------------------------------- Common --------------------------------------
-    // -------------------------------------- ------ --------------------------------------
-
-    for ptr in builtins.module_by_name["debug".into()].function_pointers.values() {
-        globals.function_evaluators.insert(ptr.target.unwrap_id(), match ptr.name.as_str() {
-            "_print" => Rc::new(move |interpreter, expression_id, binding| {{
-                unsafe {{
-                    let implementation = Rc::clone(&interpreter.implementation);
-                    let args = &implementation.expression_forest.arguments[&expression_id];
-                    let arg = interpreter.evaluate(args[0]).unwrap();
-                    println!("{}", *(arg.data as *const String));
-
-                    None
-                }}
-            }}),
-            "panic" => Rc::new(move |interpreter, expression_id, binding| {{
-                panic!()
-            }})
-        ,
-            _ => continue,
-        });
-    }
-
-    // -------------------------------------- ------ --------------------------------------
     // -------------------------------------- Transpiler --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    globals.function_evaluators.insert(
+    runtime.function_evaluators.insert(
         builtins.transpilation.add.target.function_id.clone(),
         Rc::new(move |interpreter, expression_id, binding| {
             unsafe {
@@ -64,7 +42,7 @@ pub fn load(globals: &mut InterpreterGlobals, builtins: &Builtins) {
 
                 // This may cause a SIGSEV if the callback pointer is invalidated. This should not happen as long as
                 //  nobody owns a Transpiler object outside of its lifetime.
-                let transpiler_callback = *(arguments[0].data as *const &dyn Fn(Uuid));
+                let transpiler_callback = *(arguments[0].data as *const &dyn Fn(Rc<FunctionHead>, &Runtime));
 
                 let arg = &arguments[1];
                 let arg_id = &interpreter.implementation.expression_forest.arguments[&expression_id][1];
@@ -77,7 +55,10 @@ pub fn load(globals: &mut InterpreterGlobals, builtins: &Builtins) {
                 };
 
                 let implementation_id = *(arg.data as *const Uuid);
-                transpiler_callback(implementation_id);
+                guard!(let implementation = &interpreter.runtime.source.fn_heads[&implementation_id] else {
+                    panic!("Couldn't find function head: {}", implementation_id)
+                });
+                transpiler_callback(Rc::clone(implementation), &interpreter.runtime);
 
                 return None;
             }

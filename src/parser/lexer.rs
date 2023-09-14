@@ -158,8 +158,9 @@ impl<'i> Iterator for Lexer<'i> {
                     let mut input = self.input.clone();
                     let mut len = 1 + Self::advance_while(&mut input, |ch| matches!(ch, '0'..='9'));
 
-                    let is_float = match input.next() {
+                    let is_float = match input.peek() {
                         Some((_, '.')) => {
+                            input.next();  // Skip dot.
                             let len_plus = Self::advance_while(&mut input, |ch| matches!(ch, '0'..='9'));
                             if len_plus > 0 {
                                 len += 1 + len_plus;
@@ -284,5 +285,11 @@ impl<'i> Display for Token<'i> {
             Token::Symbol(s) => write!(f, "{}", s),
             Token::StringConstant(s) => write!(f, "{}", s),
         }
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

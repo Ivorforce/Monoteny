@@ -4,17 +4,19 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::monomorphize::map_interface_types;
 use crate::linker::{LinkError, scopes};
-use crate::linker::global::UnlinkedFunctionImplementation;
 use crate::linker::interface::link_function_pointer;
 use crate::parser::ast;
-use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionHead, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::traits::{TraitBinding, TraitConformance};
 
-pub struct ConformanceLinker<'a> {
-    pub builtins: &'a Builtins,
+pub struct UnlinkedFunctionImplementation<'a> {
+    pub pointer: Rc<FunctionPointer>,
+    pub decorators: &'a Vec<String>,
+    pub body: &'a Option<ast::Expression>,
+}
 
+pub struct ConformanceLinker<'a> {
     pub functions: Vec<UnlinkedFunctionImplementation<'a>>,
 }
 
@@ -29,8 +31,8 @@ impl <'a> ConformanceLinker<'a> {
 
                 self.functions.push(UnlinkedFunctionImplementation {
                     pointer: fun,
-                    decorators: syntax.decorators.clone(),
                     body: &syntax.body,
+                    decorators: &syntax.decorators,
                 });
             }
             _ => {
@@ -43,7 +45,7 @@ impl <'a> ConformanceLinker<'a> {
 
     pub fn finalize(&self, binding: Rc<TraitBinding>, requirements: HashSet<Rc<TraitBinding>>, module: &mut Module, scope: &mut scopes::Scope) -> Result<(), LinkError> {
         let mut function_bindings = HashMap::new();
-        let mut unmatched_implementations = self.functions.iter().map(|f| Rc::clone(&f.pointer)).collect_vec();
+        let mut unmatched_implementations = self.functions.iter().map(|x| Rc::clone(&x.pointer)).collect_vec();
 
         for abstract_function in binding.trait_.abstract_functions.values() {
             let expected_interface = Rc::new(map_interface_types(&abstract_function.target.interface, &|type_| type_.replacing_generics(&binding.generic_to_type)));

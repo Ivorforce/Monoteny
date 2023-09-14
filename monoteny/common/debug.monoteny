@@ -1,5 +1,6 @@
 -- Supplied by transpiler.
 def panic() -> #A;
+def todo() -> #A;
 
 -- Supplied by transpiler.
 def print(value '$ToString) :: _print(value.to_string());

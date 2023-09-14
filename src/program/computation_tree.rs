@@ -15,6 +15,7 @@ pub enum Statement {
     Return(Option<ExpressionID>),
 }
 
+#[derive(Clone)]
 pub enum ExpressionOperation {
     FunctionCall(Rc<FunctionBinding>),
     PairwiseOperations { calls: Vec<Rc<FunctionBinding>> },
@@ -23,6 +24,7 @@ pub enum ExpressionOperation {
     StringLiteral(String),
 }
 
+#[derive(Clone)]
 pub struct ExpressionForest {
     /// Will be set for every expression ID
     pub arguments: HashMap<ExpressionID, Vec<ExpressionID>>,

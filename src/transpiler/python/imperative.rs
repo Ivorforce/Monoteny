@@ -4,26 +4,25 @@ use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use regex;
-
-use crate::program::builtins::Builtins;
+use crate::interpreter::Runtime;
 use crate::program::computation_tree::*;
 use crate::program::functions::{FunctionHead, FunctionType, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation, PrimitiveOperation};
 use crate::program::traits::TraitBinding;
 use crate::program::types::TypeProto;
-use crate::transpiler::python::optimization::{TranspilationHint, try_transpile_optimization};
-use crate::transpiler::python::{ast, types};
+use crate::transpiler::python::optimization::try_transpile_optimization;
+use crate::transpiler::python::{ast, TranspilerContext, types};
 
 pub struct FunctionContext<'a> {
     pub names: &'a HashMap<Uuid, String>,
-    pub functions_by_id: &'a HashMap<Uuid, Rc<FunctionImplementation>>,
-    pub builtins: &'a Builtins,
-    pub builtin_hints: &'a HashMap<Uuid, BuiltinFunctionHint>,
-    pub transpilation_hints: &'a HashMap<Uuid, TranspilationHint>,
+    pub struct_ids: &'a HashMap<Box<TypeProto>, Uuid>,
+
+    pub runtime: &'a Runtime,
+    pub transpilation_context: &'a TranspilerContext,
+
     pub expressions: &'a ExpressionForest,
     pub types: &'a TypeForest,
-    pub struct_ids: &'a HashMap<Box<TypeProto>, Uuid>,
 }
 
 pub fn transpile_function(function: &FunctionImplementation, context: &FunctionContext) -> Box<ast::Function> {
@@ -190,7 +189,7 @@ pub fn escape_string(string: &String) -> String {
 }
 
 pub fn try_transpile_builtin(function: &Rc<FunctionHead>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Option<Box<ast::Expression>> {
-    guard!(let Some(hint) = context.builtin_hints.get(&function.function_id) else {
+    guard!(let Some(hint) = context.runtime.source.fn_builtin_hints.get(function) else {
         return None;
     });
 

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
+use crate::interpreter::Runtime;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::ExpressionID;
 use crate::program::functions::{FunctionHead, ParameterKey};
@@ -14,12 +15,12 @@ pub enum TranspilationHint {
 }
 
 
-pub fn prepare(builtins: &Builtins) -> HashMap<Uuid, TranspilationHint> {
-    let mut transpilation_hints_by_id: HashMap<Uuid, TranspilationHint> = HashMap::new();
+pub fn prepare(runtime: &Runtime) -> HashMap<Rc<FunctionHead>, TranspilationHint> {
+    let mut transpilation_hints_by_id: HashMap<Rc<FunctionHead>, TranspilationHint> = HashMap::new();
 
-    for ptr in builtins.module_by_name["math".into()].function_pointers.values() {
+    for ptr in runtime.source.module_by_name["math".into()].fn_pointers.values() {
         transpilation_hints_by_id.insert(
-            ptr.target.function_id,
+            Rc::clone(&ptr.target),
             TranspilationHint::CallProvided(match ptr.name.as_str() {
                 "factorial" => "math.factorial",
 
@@ -46,9 +47,9 @@ pub fn prepare(builtins: &Builtins) -> HashMap<Uuid, TranspilationHint> {
         );
     }
 
-    for ptr in builtins.module_by_name["debug".into()].function_pointers.values() {
+    for ptr in runtime.source.module_by_name["debug".into()].fn_pointers.values() {
         transpilation_hints_by_id.insert(
-            ptr.target.function_id,
+            Rc::clone(&ptr.target),
             TranspilationHint::CallProvided(match ptr.name.as_str() {
                 "_print" => "print",
                 "panic" => "exit",
@@ -57,9 +58,9 @@ pub fn prepare(builtins: &Builtins) -> HashMap<Uuid, TranspilationHint> {
         );
     }
 
-    for ptr in builtins.module_by_name["strings".into()].function_pointers.values() {
+    for ptr in runtime.source.module_by_name["strings".into()].fn_pointers.values() {
         transpilation_hints_by_id.insert(
-            ptr.target.function_id,
+            Rc::clone(&ptr.target),
             TranspilationHint::CallProvided(match ptr.name.as_str() {
                 "add" => "op.add",
                 _ => continue,
@@ -71,7 +72,7 @@ pub fn prepare(builtins: &Builtins) -> HashMap<Uuid, TranspilationHint> {
 }
 
 pub fn try_transpile_optimization(function: &Rc<FunctionHead>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Option<Box<Expression>> {
-    if let Some(transpilation_hint) = context.transpilation_hints.get(&function.function_id) {
+    if let Some(transpilation_hint) = context.transpilation_context.fn_transpilation_hints.get(function) {
         match transpilation_hint {
             TranspilationHint::CallProvided(python_name) => {
                 return Some(

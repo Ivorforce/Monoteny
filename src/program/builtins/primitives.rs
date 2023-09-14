@@ -27,7 +27,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
 
     let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module| {
         module.add_function(&function);
-        module.builtin_hints.insert(
+        module.fn_builtin_hints.insert(
             Rc::clone(&function.target),
             BuiltinFunctionHint::PrimitiveOperation { type_: primitive_type, operation }
         );
@@ -149,7 +149,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         FunctionInterface::new_operator(2, &bool_type, &bool_type)
     );
     module.add_function(&and_op);
-    module.builtin_hints.insert(
+    module.fn_builtin_hints.insert(
         Rc::clone(&and_op.target),
         BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::And }
     );
@@ -159,7 +159,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         FunctionInterface::new_operator(2, &bool_type, &bool_type)
     );
     module.add_function(&or__op);
-    module.builtin_hints.insert(
+    module.fn_builtin_hints.insert(
         Rc::clone(&or__op.target),
         BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::Or }
     );
@@ -169,7 +169,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         FunctionInterface::new_operator(1, &bool_type, &bool_type)
     );
     module.add_function(&not_op);
-    module.builtin_hints.insert(
+    module.fn_builtin_hints.insert(
         Rc::clone(&not_op.target),
         BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::Not }
     );

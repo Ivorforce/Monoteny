@@ -32,16 +32,12 @@ impl Monomorphizer {
         }
     }
 
-    pub fn monomorphize_function(&mut self, implementation: &FunctionImplementation, function_binding: &Rc<FunctionBinding>, should_monomorphize: &dyn Fn(&Rc<FunctionBinding>) -> bool) -> Rc<FunctionImplementation> {
+    pub fn monomorphize_function(&mut self, implementation: &mut Box<FunctionImplementation>, function_binding: &Rc<FunctionBinding>, should_monomorphize: &dyn Fn(&Rc<FunctionBinding>) -> bool) {
         // Map types.
-        let mut type_forest = implementation.type_forest.clone();
-
         let generic_replacement_map = &function_binding.requirements_fulfillment.generic_mapping;
 
         // Change Anys to Generics in the type forest.
-        type_forest.bind_any_as_generic(generic_replacement_map).unwrap();
-
-        let mut expression_forest = Box::new(ExpressionForest::new());
+        implementation.type_forest.bind_any_as_generic(generic_replacement_map).unwrap();
 
         // Map variables.
         // TODO For fully internal variables, it would be enough to set the type to the Any's corresponding Generic,
@@ -54,7 +50,7 @@ impl Monomorphizer {
             .collect();
 
         // Map statements. Expressions are mapped elsewhere, so this should be easy.
-        let statements = implementation.statements.iter().map(|x| {
+        implementation.statements.iter_mut().map(|x| {
             Box::new(match x.as_ref() {
                 Statement::VariableAssignment(v, e) => {
                     Statement::VariableAssignment(Rc::clone(&variable_map[v]), e.clone())
@@ -77,10 +73,10 @@ impl Monomorphizer {
         }
 
         // Find function calls in the expression forest
-        for (expression_id, operation) in implementation.expression_forest.operations.iter() {
-            expression_forest.operations.insert(expression_id.clone(), match operation {
+        for (expression_id, operation) in implementation.expression_forest.operations.iter_mut() {
+            match operation {
                 ExpressionOperation::FunctionCall(call) => {
-                    let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &type_forest);
+                    let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &implementation.type_forest);
 
                     if self.encountered_calls.insert(Rc::clone(&resolved_call)) {
                         self.new_encountered_calls.push(Rc::clone(&resolved_call));
@@ -93,13 +89,13 @@ impl Monomorphizer {
                         resolved_call
                     };
 
-                    ExpressionOperation::FunctionCall(mono_call)
+                    *operation = ExpressionOperation::FunctionCall(mono_call)
                 }
                 ExpressionOperation::PairwiseOperations { calls } => {
-                    ExpressionOperation::PairwiseOperations {
+                    *operation = ExpressionOperation::PairwiseOperations {
                         calls: calls.iter()
                             .map(|call| {
-                                let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &type_forest);
+                                let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &implementation.type_forest);
 
                                 if self.encountered_calls.insert(Rc::clone(&resolved_call)) {
                                     self.new_encountered_calls.push(Rc::clone(&resolved_call));
@@ -118,29 +114,32 @@ impl Monomorphizer {
                 }
                 ExpressionOperation::VariableLookup(v) => {
                     // If we cannot find a replacement, it's a static variable. Unless we have a bug.
-                    ExpressionOperation::VariableLookup(Rc::clone(variable_map.get(v).unwrap_or(v)))
+                    *operation = ExpressionOperation::VariableLookup(Rc::clone(variable_map.get(v).unwrap_or(v)))
                 }
-                ExpressionOperation::ArrayLiteral => ExpressionOperation::ArrayLiteral,
-                ExpressionOperation::StringLiteral(s) => ExpressionOperation::StringLiteral(s.clone()),
-            });
+                ExpressionOperation::ArrayLiteral => {},
+                ExpressionOperation::StringLiteral(_) => {},
+            };
         }
-        expression_forest.arguments = implementation.expression_forest.arguments.clone();
+
+        // Update parameter variables
+        for param_variable in implementation.parameter_variables.iter_mut() {
+            *param_variable = Rc::clone(&variable_map[param_variable])
+        }
+        implementation.variable_names = implementation.variable_names.drain().map(|(key, value)| {
+            (Rc::clone(&variable_map[&key]), value)
+        }).collect();
+
+        // Requirements
+        // TODO This is correct only if all requirements have been fulfilled.
+        //  If monomorphize was requested on a partially generic function, we continue to
+        //  have some requirements.
+        implementation.requirements_assumption = Box::new(RequirementsAssumption { conformance: Default::default() });
+
+        // Finalize: New identity and head
+        implementation.implementation_id = Uuid::new_v4();
 
         let monomorphized_binding = &self.resolved_call_to_mono_call.get(function_binding).unwrap_or(function_binding);
-        Rc::new(FunctionImplementation {
-            implementation_id: Uuid::new_v4(),
-            head: Rc::clone(&monomorphized_binding.function),  // Re-use premapped pointer
-            decorators: implementation.decorators.clone(),
-            // TODO This is correct only if all requirements have been fulfilled.
-            //  If monomorphize was requested on a partially generic function, we continue to
-            //  have some requirements.
-            requirements_assumption: Box::new(RequirementsAssumption { conformance: Default::default() }),
-            statements,
-            expression_forest,
-            type_forest,
-            parameter_variables: implementation.parameter_variables.iter().map(|x| Rc::clone(&variable_map[x])).collect_vec(),
-            variable_names: implementation.variable_names.clone(),  // TODO The variable references change as the variables themselves change type
-        })
+        implementation.head = Rc::clone(&monomorphized_binding.function);
     }
 
     fn monomorphize_call(&mut self, resolved_call: &Rc<FunctionBinding>) -> Rc<FunctionBinding> {

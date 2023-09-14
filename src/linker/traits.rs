@@ -3,13 +3,10 @@ use std::rc::Rc;
 use crate::linker::{LinkError, scopes};
 use crate::linker::interface::link_function_pointer;
 use crate::parser::ast;
-use crate::program::builtins::Builtins;
 use crate::program::traits::{Trait, TraitBinding};
 
 pub struct TraitLinker<'a> {
     pub trait_: &'a mut Trait,
-
-    pub builtins: &'a Builtins,
 }
 
 impl <'a> TraitLinker<'a> {

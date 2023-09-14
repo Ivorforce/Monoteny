@@ -1,9 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use std::io::BufWriter;
     use itertools::Itertools;
     use crate::{interpreter, linker, parser, program, transpiler};
-    use crate::interpreter::InterpreterGlobals;
+    use crate::interpreter::{common, Runtime};
     use crate::parser::ast::*;
     use crate::program::functions::ParameterKey;
 
@@ -20,7 +19,7 @@ def main() :: {
 def transpile(transpiler 'Transpiler) :: {
     transpiler.add(main);
 };
-".to_string());
+".to_string())?;
         assert_eq!(parsed.global_statements.len(), 2);
         assert!(parsed.global_statements[0].as_ref() == &GlobalStatement::FunctionDeclaration(Box::new(
             Function {
@@ -43,16 +42,17 @@ def transpile(transpiler 'Transpiler) :: {
         )));
 
         let builtins = program::builtins::create_builtins();
-        let builtin_variable_scope = builtins.create_scope();
+        let mut runtime = Runtime::new(&builtins);
+        common::load(&mut runtime)?;
 
-        let program = linker::link_program(parsed, &builtin_variable_scope, &builtins).expect("Linker failed");
+        let module = runtime.load_ast(&parsed)?;
 
-        assert_eq!(program.module.function_implementations.len(), 2);
-        let ptr = program.module.function_pointers.values().filter(|ptr| &ptr.name == "main").exactly_one().unwrap();
-        let implementation = &program.module.function_implementations[&ptr.target];
+        assert_eq!(module.function_implementations.len(), 2);
+        let ptr = module.function_pointers.values().filter(|ptr| &ptr.name == "main").exactly_one().unwrap();
+        let implementation = &module.function_implementations[&ptr.target];
         assert_eq!(implementation.expression_forest.operations.len(), 2);
 
-        let python_ast = transpiler::python::transpile_program(&program, &builtins).expect("Python transpiler failed");
+        let python_ast = transpiler::python::transpile_module(&module, &mut runtime, true).expect("Python transpiler failed");
         let python_string = python_ast.to_string();
         assert!(python_string.contains("def main():"));
         assert!(python_string.contains("print(\"Hello World!\")"));
@@ -60,11 +60,7 @@ def transpile(transpiler 'Transpiler) :: {
         assert!(!python_string.contains("transpile"));
 
         // TODO Pass a pipe and monitor that "Hello World!" is printed.
-        let mut globals = InterpreterGlobals::new(&builtins);
-        for module in [&program.module].into_iter().chain(builtins.all_modules()) {
-            interpreter::load::module(module, &mut globals);
-        }
-        interpreter::run::main(&program, &mut globals).expect("Interpreter failed");
+        interpreter::run::main(&module, &mut runtime).expect("Interpreter failed");
     }
 
     /// This tests generics, algebra and printing.
@@ -79,17 +75,15 @@ def main() :: {
 def transpile(transpiler 'Transpiler) :: {
     transpiler.add(main);
 };
-".to_string());
+".to_string())?;
 
         let builtins = program::builtins::create_builtins();
-        let builtin_variable_scope = builtins.create_scope();
+        let mut runtime = Runtime::new(&builtins);
+        common::load(&mut runtime)?;
 
-        let program = linker::link_program(parsed, &builtin_variable_scope, &builtins).expect("Linker failed");
+        let module = runtime.load_ast(&parsed)?;
 
-        let ptr = program.module.function_pointers.values().filter(|ptr| &ptr.name == "main").exactly_one().unwrap();
-        let implementation = &program.module.function_implementations[&ptr.target];
-
-        let python_ast = transpiler::python::transpile_program(&program, &builtins).expect("Python transpiler failed");
+        let python_ast = transpiler::python::transpile_module(&module, &mut runtime, true).expect("Python transpiler failed");
         let python_string = python_ast.to_string();
         assert!(python_string.contains("def main():"));
     }

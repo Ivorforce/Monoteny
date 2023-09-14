@@ -11,14 +11,16 @@ pub mod transpiler;
 pub mod util;
 pub mod monomorphize;
 pub mod integration_tests;
+pub mod constant_folding;
 
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use clap::{arg, Command};
-use crate::interpreter::InterpreterGlobals;
+use crate::interpreter::{Runtime, InterpreterError, common};
 use crate::linker::LinkError;
+
 
 fn cli() -> Command<'static> {
     Command::new("monoteny")
@@ -36,7 +38,6 @@ fn cli() -> Command<'static> {
             Command::new("check")
                 .about("Parse files to check for validity.")
                 .arg_required_else_help(true)
-                .arg(arg!(<TREE> "dump the parse tree to stdout").required(false).takes_value(false).long("tree"))
                 .arg(arg!(<PATH> ... "files to check").value_parser(clap::value_parser!(PathBuf)))
         )
         .subcommand(
@@ -50,27 +51,19 @@ fn cli() -> Command<'static> {
         )
 }
 
-fn main() -> Result<(), LinkError> {
+fn main() -> Result<(), InterpreterError> {
     let matches = cli().get_matches();
     match matches.subcommand() {
         Some(("run", sub_matches)) => {
             let path = sub_matches.get_one::<PathBuf>("PATH").unwrap();
 
             let builtins = program::builtins::create_builtins();
-            let builtin_variable_scope = builtins.create_scope();
+            let mut runtime = Runtime::new(&builtins);
+            common::load(&mut runtime)?;
 
-            let content = std::fs::read_to_string(&path)
-                .expect("could not read file");
+            let module = runtime.load_file(path)?;
 
-            let syntax_tree = parser::parse_program(&content);
-
-            let program = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;
-
-            let mut globals = InterpreterGlobals::new(&builtins);
-            for module in [&program.module].into_iter().chain(builtins.all_modules()) {
-                interpreter::load::module(module, &mut globals);
-            }
-            interpreter::run::main(&program, &mut globals);
+            interpreter::run::main(&module, &mut runtime)?;
         },
         Some(("check", sub_matches)) => {
             let paths = sub_matches
@@ -78,24 +71,14 @@ fn main() -> Result<(), LinkError> {
                 .into_iter()
                 .flatten()
                 .collect::<Vec<_>>();
-            let should_output_tree = sub_matches.is_present("TREE");
 
             let builtins = program::builtins::create_builtins();
-            let builtin_variable_scope = &builtins.create_scope();
+            let mut runtime = Runtime::new(&builtins);
+            common::load(&mut runtime)?;
 
             for path in paths {
                 println!("Checking {:?}...", path);
-
-                let content = std::fs::read_to_string(&path)
-                    .expect("could not read file");
-
-                let syntax_tree = parser::parse_program(&content);
-
-                if should_output_tree {
-                    println!("{}", &syntax_tree);
-                }
-
-                let _ = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;
+                runtime.load_file(path)?;
             }
 
             println!("All files are valid .monoteny!");
@@ -114,23 +97,18 @@ fn main() -> Result<(), LinkError> {
                 false => vec![output_path.extension().and_then(OsStr::to_str).unwrap()]
             };
 
-            let content = std::fs::read_to_string(&input_path)
-                .expect("could not read file");
-
             let builtins = program::builtins::create_builtins();
+            let mut runtime = Runtime::new(&builtins);
+            common::load(&mut runtime)?;
 
-            let syntax_tree = parser::parse_program(&content);
-
-            let builtin_variable_scope = &builtins.create_scope();
-            let computation_tree = linker::link_program(syntax_tree, &builtin_variable_scope, &builtins)?;
+            let module = runtime.load_file(input_path)?;
 
             for output_extension in output_extensions {
                 match output_extension {
                     "py" => {
-                        let transpiled_tree = transpiler::python::transpile_program(
-                            &computation_tree,
-                            &builtins
-                        ).unwrap();
+                        let transpiled_tree = transpiler::python::transpile_module(
+                            &module, &mut runtime, should_constant_fold
+                        )?;
 
                         let python_path = output_path.with_extension("py");
                         let mut f = File::create(python_path.clone()).expect("Unable to create file");

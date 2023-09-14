@@ -1,25 +1,34 @@
 pub mod builtins;
 pub mod compiler;
 pub mod run;
-pub mod load;
+pub mod common;
 
 use std::alloc::{alloc, dealloc, Layout};
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::path::PathBuf;
 use std::rc::Rc;
 use custom_error::custom_error;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use strum::IntoEnumIterator;
+use crate::{linker, parser};
+use crate::linker::LinkError;
+use crate::parser::ast;
+use crate::program::allocation::ObjectReference;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statement};
-use crate::program::functions::{FunctionHead, FunctionType};
-use crate::program::global::FunctionImplementation;
+use crate::program::functions::{FunctionHead, FunctionPointer, FunctionType};
+use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
+use crate::program::module::Module;
 use crate::program::traits::RequirementsFulfillment;
 
 
-custom_error!{pub RuntimeError
+custom_error!{pub InterpreterError
+    OSError{msg: String} = "OS Error: {msg}",
+    ParserError{msg: String} = "Parser Error: {msg}",
+    LinkerError{msg: String} = "Linker Error: {msg}",
     RuntimeError{msg: String} = "Runtime Error: {msg}",
 }
 
@@ -32,31 +41,116 @@ pub struct Value {
     pub data: *mut u8,
 }
 
-pub struct InterpreterGlobals {
+pub struct Runtime {
     pub builtins: Rc<Builtins>,
+
+    // These are optimized for running and may not reflect the source code itself.
+    // They are also only loaded on demand.
     pub function_evaluators: HashMap<Uuid, FunctionInterpreterImpl>,
-    pub assignments: HashMap<Uuid, Value>,
+    pub global_assignments: HashMap<Uuid, Value>,
+
+    // These remain unchanged after linking.
+    pub source: Source,
+}
+
+pub struct Source {
+    pub module_by_name: HashMap<String, Box<Module>>,
+
+    // Cache of aggregated module_by_name fields for quick reference.
+
+    /// For each function_id, its head.
+    pub fn_heads: HashMap<Uuid, Rc<FunctionHead>>,
+
+    /// For each function, a usable reference to it as an object.
+    pub fn_references: HashMap<Rc<FunctionHead>, Rc<ObjectReference>>,
+    /// For each function, its 'default' representation for syntax.
+    pub fn_pointers: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
+    /// For relevant functions, their implementation.
+    pub fn_implementations: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
+    /// For relevant functions, a hint what type of builtin it is.
+    pub fn_builtin_hints: HashMap<Rc<FunctionHead>, BuiltinFunctionHint>,
 }
 
 pub struct FunctionInterpreter<'a> {
-    pub globals: &'a mut InterpreterGlobals,
+    pub runtime: &'a mut Runtime,
     pub implementation: Rc<FunctionImplementation>,
     pub requirements_fulfillment: Box<RequirementsFulfillment>,
 
     pub locals: HashMap<Uuid, Value>,
 }
 
-impl InterpreterGlobals {
-    pub fn new(builtins: &Rc<Builtins>) -> InterpreterGlobals {
-        let mut globals = InterpreterGlobals {
+impl Runtime {
+    pub fn new(builtins: &Rc<Builtins>) -> Box<Runtime> {
+        let mut runtime = Box::new(Runtime {
             builtins: Rc::clone(builtins),
             function_evaluators: Default::default(),
-            assignments: Default::default(),
-        };
+            global_assignments: Default::default(),
+            source: Source {
+                module_by_name: Default::default(),
+                fn_heads: Default::default(),
+                fn_references: Default::default(),
+                fn_pointers: Default::default(),
+                fn_implementations: Default::default(),
+                fn_builtin_hints: Default::default(),
+            },
+        });
 
-        builtins::load(&mut globals, builtins);
+        builtins::load(&mut runtime);
+        for module in builtins.all_modules() {
+            runtime.load_module(module);
+        }
 
-        globals
+        runtime
+    }
+
+    pub fn load_file(&mut self, path: &PathBuf) -> Result<Box<Module>, InterpreterError> {
+        let content = std::fs::read_to_string(&path)
+            .map_err(|e| InterpreterError::OSError { msg: e.to_string() })?;
+        self.load_source(&content)
+    }
+
+    pub fn load_source(&mut self, source: &str) -> Result<Box<Module>, InterpreterError> {
+        let ast = parser::parse_program(source)
+            .map_err(|e| InterpreterError::ParserError { msg: e.to_string() })?;
+        self.load_ast(&ast)
+    }
+
+    pub fn load_ast(&mut self, syntax: &ast::Module) -> Result<Box<Module>, InterpreterError> {
+        let mut scope = self.builtins.create_scope();
+
+        for module in self.source.module_by_name.values() {
+            scope.import(module)
+                .map_err(|e| InterpreterError::LinkerError { msg: e.to_string() })?;
+        }
+
+        let module = linker::link_file(syntax, &scope, self)
+            .map_err(|e| InterpreterError::LinkerError { msg: e.to_string() })?;
+
+        self.load_module(&module);
+
+        Ok(module)
+    }
+
+    pub fn load_module(&mut self, module: &Module) {
+        self.source.fn_heads.extend(module.fn_pointers.keys().map(|f| (f.function_id, Rc::clone(f))).collect_vec());
+        self.source.fn_references.extend(module.fn_references.clone());
+        self.source.fn_pointers.extend(module.fn_pointers.clone());
+        self.source.fn_implementations.extend(module.fn_implementations.clone());
+        self.source.fn_builtin_hints.extend(module.fn_builtin_hints.clone());
+
+        for (head, implementation) in module.fn_implementations.iter() {
+            self.function_evaluators.insert(implementation.head.function_id.clone(), compiler::compile_function(implementation));
+
+            unsafe {
+                let fn_layout = Layout::new::<Uuid>();
+                let ptr = alloc(fn_layout);
+                *(ptr as *mut Uuid) = implementation.implementation_id;
+                self.global_assignments.insert(
+                    module.fn_references[head].id,
+                    Value { data: ptr, layout: fn_layout }
+                );
+            }
+        }
     }
 }
 
@@ -127,7 +221,7 @@ impl FunctionInterpreter<'_> {
             ExpressionOperation::FunctionCall(call) => {
                 let function_id = self.resolve(&call.function);
 
-                guard!(let Some(implementation) = self.globals.function_evaluators.get(&function_id) else {
+                guard!(let Some(implementation) = self.runtime.function_evaluators.get(&function_id) else {
                     panic!("Cannot find function ({}) with interface: {:?}", function_id, &call.function);
                 });
 
@@ -141,8 +235,8 @@ impl FunctionInterpreter<'_> {
             ExpressionOperation::VariableLookup(variable) => {
                 return Some(
                     self.locals.get(&variable.id)
-                        .or(self.globals.assignments.get(&variable.id))
-                        .expect(format!("Unknown Variable: {} '{:?}", variable.id, variable.type_).as_str())
+                        .or(self.runtime.global_assignments.get(&variable.id))
+                        .expect(format!("Unknown Variable: {:?}", variable).as_str())
                         .clone()
                 )
             }

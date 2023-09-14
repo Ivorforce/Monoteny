@@ -129,6 +129,16 @@ impl Hash for ObjectReference {
     }
 }
 
+impl Debug for ObjectReference {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut_keyword = match self.mutability {
+            Mutability::Immutable => "let",
+            Mutability::Mutable => "var",
+        };
+        write!(f, "{} <{}> '{:?}", mut_keyword, self.id, self.type_)
+    }
+}
+
 impl Debug for ReferenceType {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         match self {

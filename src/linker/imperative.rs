@@ -5,6 +5,7 @@ use guard::guard;
 use itertools::Itertools;
 use strum::IntoEnumIterator;
 use try_map::FallibleMapExt;
+use crate::interpreter::Runtime;
 use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation, Statement};
 use crate::linker::{LinkError, precedence, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberLiteral, LinkerAmbiguity};
@@ -13,7 +14,6 @@ use crate::linker::r#type::TypeFactory;
 use crate::linker::scopes::Scope;
 use crate::parser::ast;
 use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
-use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
@@ -23,9 +23,8 @@ use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
     pub function: Rc<FunctionHead>,
-    pub decorators: Vec<String>,
 
-    pub builtins: &'a Builtins,
+    pub runtime: &'a Runtime,
 
     pub types: Box<TypeForest>,
     pub expressions: Box<ExpressionForest>,
@@ -44,7 +43,7 @@ impl <'a> ImperativeLinker<'a> {
         id
     }
 
-    pub fn link_function_body(mut self, body: &ast::Expression, scope: &scopes::Scope) -> Result<Rc<FunctionImplementation>, LinkError> {
+    pub fn link_function_body(mut self, body: &ast::Expression, scope: &scopes::Scope) -> Result<Box<FunctionImplementation>, LinkError> {
         let mut scope = scope.subscope();
 
         let granted_requirements = scope.traits.assume_granted(
@@ -112,10 +111,9 @@ impl <'a> ImperativeLinker<'a> {
             }
         }
 
-        Ok(Rc::new(FunctionImplementation {
+        Ok(Box::new(FunctionImplementation {
             implementation_id: self.function.function_id,
             head: self.function,
-            decorators: self.decorators,
             requirements_assumption: Box::new(RequirementsAssumption { conformance: HashMap::from_iter(granted_requirements.into_iter().map(|c| (Rc::clone(&c.binding), c))) }),
             statements,
             expression_forest: self.expressions,
@@ -404,7 +402,7 @@ impl <'a> ImperativeLinker<'a> {
             ast::StringPart::Literal(literal) => {
                 self.link_unambiguous_expression(
                     vec![],
-                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.core.traits.String))),
+                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.core.traits.String))),
                     ExpressionOperation::StringLiteral(literal.clone())
                 )
             }
@@ -425,7 +423,7 @@ impl <'a> ImperativeLinker<'a> {
                     FunctionForm::Global => {
                         let expression_id = self.link_function_call(&overload.functions(), &overload.name, keys, args, scope)?;
                         // Make sure the return type is actually String.
-                        self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builtins.core.traits.String))))?;
+                        self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.core.traits.String))))?;
                         Ok(expression_id)
                     }
                     // this could happen if somebody uses def format ... without parentheses.

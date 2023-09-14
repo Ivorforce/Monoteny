@@ -8,7 +8,7 @@ use crate::linker::imperative::ImperativeLinker;
 use crate::linker::LinkError;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
-use crate::program::functions::{FunctionType, FunctionHead};
+use crate::program::functions::FunctionHead;
 use crate::program::generics::TypeForest;
 use crate::program::traits::{RequirementsFulfillment, TraitBinding, TraitGraph};
 use crate::program::types::{TypeProto, TypeUnit};

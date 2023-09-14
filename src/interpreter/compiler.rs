@@ -4,8 +4,9 @@ use crate::interpreter::{FunctionInterpreter, FunctionInterpreterImpl};
 use crate::program::global::FunctionImplementation;
 
 
-pub fn compile_function(function: &Rc<FunctionImplementation>) -> FunctionInterpreterImpl {
-    let function = Rc::clone(function);
+pub fn compile_function(function: &FunctionImplementation) -> FunctionInterpreterImpl {
+    // Make it our own because the function implementation change at any point.
+    let function = Rc::new(function.clone());
 
     Rc::new(move |interpreter, expression_id, binding| {
         let f = Rc::clone(&function);
@@ -16,7 +17,7 @@ pub fn compile_function(function: &Rc<FunctionImplementation>) -> FunctionInterp
             let mut sub_interpreter = FunctionInterpreter {
                 implementation: f,
                 requirements_fulfillment: FunctionInterpreter::combine_bindings(&interpreter.requirements_fulfillment, binding),
-                globals: interpreter.globals,
+                runtime: interpreter.runtime,
                 locals: HashMap::new(),
             };
             sub_interpreter.assign_arguments(arguments);

@@ -7,7 +7,7 @@ use crate::program::primitives;
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::namespaces;
 
-pub fn create(builtins: &Builtins, type_ids: &mut HashMap<Box<TypeProto>, Uuid>) -> namespaces::Level {
+pub fn create_name_level(builtins: &Builtins, type_ids: &mut HashMap<Box<TypeProto>, Uuid>) -> namespaces::Level {
     let mut namespace = namespaces::Level::new();
 
     for keyword in [
@@ -34,7 +34,7 @@ pub fn create(builtins: &Builtins, type_ids: &mut HashMap<Box<TypeProto>, Uuid>)
 
     // The operators can normally be referenced as operators (which the transpiler does do).
     // However, if a reference is required, we need to resort to another strategy.
-    for (fun, hint) in builtins.core.module.builtin_hints.iter() {
+    for (fun, hint) in builtins.core.module.fn_builtin_hints.iter() {
         match hint {
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Add, type_ } => {
                 namespace.insert_keyword(fun.function_id, &String::from("op.add"));

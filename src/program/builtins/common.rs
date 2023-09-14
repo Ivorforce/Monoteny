@@ -16,7 +16,7 @@ pub fn create_functions(module: &mut Module, primitive_types: &HashMap<primitive
         FunctionInterface::new_constant(&bool_type, vec![])
     );
     module.add_function(&true_);
-    module.builtin_hints.insert(
+    module.fn_builtin_hints.insert(
         Rc::clone(&true_.target),
         BuiltinFunctionHint::True,
     );
@@ -26,7 +26,7 @@ pub fn create_functions(module: &mut Module, primitive_types: &HashMap<primitive
         FunctionInterface::new_constant(&bool_type, vec![])
     );
     module.add_function(&false_);
-    module.builtin_hints.insert(
+    module.fn_builtin_hints.insert(
         Rc::clone(&false_.target),
         BuiltinFunctionHint::False,
     );

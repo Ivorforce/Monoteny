@@ -20,13 +20,19 @@ pub struct Module {
     pub trait_conformance: Box<TraitGraph>,
 
     /// For each function, a usable reference to it as an object.
-    pub functions_references: HashMap<Rc<FunctionHead>, Rc<ObjectReference>>,
+    pub fn_references: HashMap<Rc<FunctionHead>, Rc<ObjectReference>>,
     /// For each function, its 'default' representation for syntax.
-    pub function_pointers: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
+    pub fn_pointers: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
     /// For relevant functions, their implementation.
-    pub function_implementations: HashMap<Rc<FunctionHead>, Rc<FunctionImplementation>>,
+    pub fn_implementations: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
     /// For relevant functions, a hint what type of builtin it is.
-    pub builtin_hints: HashMap<Rc<FunctionHead>, BuiltinFunctionHint>,
+    pub fn_builtin_hints: HashMap<Rc<FunctionHead>, BuiltinFunctionHint>,
+
+    /// These come from decorators.
+    /// Collecting all decorated functions allows us to fail late - the rest of the code is still
+    ///  valid even if multiple @main functions are declared! We just cannot run them as 'main'.
+    pub main_functions: Vec<Rc<FunctionHead>>,
+    pub transpile_functions: Vec<Rc<FunctionHead>>,
 }
 
 impl Module {
@@ -35,12 +41,14 @@ impl Module {
             id: Default::default(),
             name,
             traits: Default::default(),
-            functions_references: Default::default(),
+            fn_references: Default::default(),
             patterns: Default::default(),
             trait_conformance: Box::new(TraitGraph::new()),
-            function_implementations: Default::default(),
-            builtin_hints: Default::default(),
-            function_pointers: Default::default(),
+            fn_implementations: Default::default(),
+            fn_builtin_hints: Default::default(),
+            fn_pointers: Default::default(),
+            main_functions: vec![],
+            transpile_functions: vec![],
         }
     }
 
@@ -54,25 +62,13 @@ impl Module {
     }
 
     pub fn add_function(&mut self, function: &Rc<FunctionPointer>) {
-        self.functions_references.insert(
+        self.fn_references.insert(
             Rc::clone(&function.target),
             ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(&function.target))))
         );
-        self.function_pointers.insert(
+        self.fn_pointers.insert(
             Rc::clone(&function.target),
             Rc::clone(&function),
         );
     }
-}
-
-pub fn from_file(path: PathBuf, builtins: &Builtins) -> Result<Rc<Module>, LinkError> {
-    let content = std::fs::read_to_string(&path)
-        .expect(format!("could not read library file: {:?}", path).as_str());
-
-    let syntax_tree = parser::parse_program(&content);
-
-    let builtin_variable_scope = builtins.create_scope();
-    let module = linker::link_file(syntax_tree, &builtin_variable_scope, &builtins)?;
-
-    Ok(module)
 }
