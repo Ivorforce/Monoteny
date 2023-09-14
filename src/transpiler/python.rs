@@ -36,20 +36,15 @@ use crate::transpiler::python::optimization::TranspilationHint;
 pub struct TranspilerContext {
     monomorphizer: Box<Monomorphizer>,
     exported_functions: Vec<Box<FunctionImplementation>>,
+    internal_functions: Vec<Box<FunctionImplementation>>,
     fn_transpilation_hints: HashMap<Rc<FunctionHead>, TranspilationHint>,
 }
 
 pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_fold: bool) -> Result<Box<ast::Module>, InterpreterError> {
-    let mut struct_ids = HashMap::new();
-
-    let mut global_namespace = builtins::create_name_level(&runtime.builtins, &mut struct_ids);
-    let builtin_structs: HashSet<_> = struct_ids.keys().map(Clone::clone).collect();
-    let mut file_namespace = global_namespace.add_sublevel();
-    let mut object_namespace = namespaces::Level::new();  // TODO Keywords can't be in object namespace either
-
     let transpiler_context = TranspilerContext {
         monomorphizer: Box::new(Monomorphizer::new()),
         exported_functions: vec![],
+        internal_functions: vec![],
         fn_transpilation_hints: optimization::prepare(runtime),
     };
 
@@ -91,7 +86,6 @@ pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_
     let mut transpiler_context = transpiler_context.borrow_mut();
     let mut transpiler_context = transpiler_context.deref_mut();
 
-    let mut internal_functions: Vec<Box<FunctionImplementation>> = vec![];
     while let Some(function_binding) = transpiler_context.monomorphizer.new_encountered_calls.pop() {
         guard!(let Some(implementation) = runtime.source.fn_implementations.get(&function_binding.function) else {
             // We don't have an implementation ready, so it must be a builtin or otherwise injected.
@@ -109,20 +103,33 @@ pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_
             );
         };
 
-        internal_functions.push(mono_implementation);
+        transpiler_context.internal_functions.push(mono_implementation);
     }
 
     if should_constant_fold && false {
         // Run constant folder
         let mut constant_folder = ConstantFold::new();
+        let internal_function_order = transpiler_context.internal_functions.iter().map(|x| Rc::clone(&x.head)).collect_vec();
+        let exported_function_order = transpiler_context.exported_functions.iter().map(|x| Rc::clone(&x.head)).collect_vec();
 
-        for implementation in internal_functions.drain(..) {
+        for implementation in transpiler_context.internal_functions.drain(..) {
             constant_folder.add(implementation, true);
         }
         for implementation in transpiler_context.exported_functions.drain(..) {
             constant_folder.add(implementation, false);
         }
     }
+
+    finalize(module, &transpiler_context, runtime)
+}
+
+pub fn finalize(module: &Module, transpiler_context: &TranspilerContext, runtime: &Runtime) -> Result<Box<ast::Module>, InterpreterError> {
+    let mut struct_ids = HashMap::new();
+
+    let mut global_namespace = builtins::create_name_level(&runtime.builtins, &mut struct_ids);
+    let builtin_structs: HashSet<_> = struct_ids.keys().map(Clone::clone).collect();
+    let mut file_namespace = global_namespace.add_sublevel();
+    let mut object_namespace = namespaces::Level::new();  // TODO Keywords can't be in object namespace either
 
     let reverse_mapped_calls = transpiler_context.monomorphizer.get_mono_call_to_original_call();
 
@@ -133,13 +140,13 @@ pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_
         file_namespace.register_definition(implementation.head.function_id, &ptr.name);
     }
 
-    for implementation in internal_functions.iter() {
+    for implementation in transpiler_context.internal_functions.iter() {
         let ptr = &runtime.source.fn_pointers[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
         // TODO Use underscore names?
         file_namespace.register_definition(implementation.head.function_id, &ptr.name);
     }
 
-    for implementation in transpiler_context.exported_functions.iter().chain(internal_functions.iter()) {
+    for implementation in transpiler_context.exported_functions.iter().chain(transpiler_context.internal_functions.iter()) {
         let function_namespace = file_namespace.add_sublevel();
         for (variable, name) in implementation.variable_names.iter() {
             function_namespace.register_definition(variable.id.clone(), name);
@@ -200,7 +207,7 @@ pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_
 
     for (ref_, implementations) in [
         (&mut module.exported_functions, &transpiler_context.exported_functions),
-        (&mut module.internal_functions, &internal_functions),
+        (&mut module.internal_functions, &transpiler_context.internal_functions),
     ] {
         for implementation in implementations.iter() {
             let context = FunctionContext {
@@ -209,7 +216,7 @@ pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_
                 types: &implementation.type_forest,
                 struct_ids: &struct_ids,
                 runtime,
-                transpilation_context: transpiler_context,
+                fn_transpilation_hints: &transpiler_context.fn_transpilation_hints,
             };
 
             ref_.push(transpile_function(implementation, &context));

@@ -11,15 +11,15 @@ use crate::program::generics::TypeForest;
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation, PrimitiveOperation};
 use crate::program::traits::TraitBinding;
 use crate::program::types::TypeProto;
-use crate::transpiler::python::optimization::try_transpile_optimization;
-use crate::transpiler::python::{ast, TranspilerContext, types};
+use crate::transpiler::python::optimization::{TranspilationHint, try_transpile_optimization};
+use crate::transpiler::python::{ast, types};
 
 pub struct FunctionContext<'a> {
     pub names: &'a HashMap<Uuid, String>,
     pub struct_ids: &'a HashMap<Box<TypeProto>, Uuid>,
 
     pub runtime: &'a Runtime,
-    pub transpilation_context: &'a TranspilerContext,
+    pub fn_transpilation_hints: &'a HashMap<Rc<FunctionHead>, TranspilationHint>,
 
     pub expressions: &'a ExpressionForest,
     pub types: &'a TypeForest,

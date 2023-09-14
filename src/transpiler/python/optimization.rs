@@ -72,7 +72,7 @@ pub fn prepare(runtime: &Runtime) -> HashMap<Rc<FunctionHead>, TranspilationHint
 }
 
 pub fn try_transpile_optimization(function: &Rc<FunctionHead>, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Option<Box<Expression>> {
-    if let Some(transpilation_hint) = context.transpilation_context.fn_transpilation_hints.get(function) {
+    if let Some(transpilation_hint) = context.fn_transpilation_hints.get(function) {
         match transpilation_hint {
             TranspilationHint::CallProvided(python_name) => {
                 return Some(
