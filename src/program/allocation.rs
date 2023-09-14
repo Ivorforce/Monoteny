@@ -15,14 +15,8 @@ pub enum Mutability {
     Mutable,
 }
 
-#[derive(Clone, Eq)]
-pub struct Reference {
-    pub id: Uuid,
-    pub type_: ReferenceType,
-}
-
 #[derive(Clone, PartialEq, Eq)]
-pub enum ReferenceType {
+pub enum Reference {
     Object(Rc<ObjectReference>),
     // Keywords aren't really objects and can't be logically passed around.
     Keyword(String),
@@ -42,29 +36,10 @@ pub struct ObjectReference {
     pub mutability: Mutability,
 }
 
-impl PartialEq for Reference {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-
-impl Hash for Reference {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-    }
-}
-
 impl Reference {
-    pub fn make(type_: ReferenceType) -> Rc<Reference> {
-        Rc::new(Reference {
-            id: Uuid::new_v4(),
-            type_,
-        })
-    }
-
     pub fn as_object_ref(&self, require_mutable: bool) -> Result<&Rc<ObjectReference>, LinkError> {
-        guard!(let ReferenceType::Object(obj_ref) = &self.type_ else {
-            return Err(LinkError::LinkError { msg: format!("Reference is not to an object: {:?}", &self.type_) });
+        guard!(let Reference::Object(obj_ref) = self else {
+            return Err(LinkError::LinkError { msg: format!("Reference is not to an object: {:?}", self) });
         });
 
         Ok(&obj_ref)
@@ -93,8 +68,8 @@ impl Reference {
     }
 
     pub fn as_function_overload(&self) -> Result<Rc<FunctionOverload>, LinkError> {
-        match &self.type_ {
-            ReferenceType::FunctionOverload(overload) => Ok(Rc::clone(overload)),
+        match self {
+            Reference::FunctionOverload(overload) => Ok(Rc::clone(overload)),
             _ => Err(LinkError::LinkError { msg: format!("Reference is not a function in this context.") })
         }
     }
@@ -139,13 +114,13 @@ impl Debug for ObjectReference {
     }
 }
 
-impl Debug for ReferenceType {
+impl Debug for Reference {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ReferenceType::Object(t) => write!(fmt, "{:?}", t.type_),
-            ReferenceType::FunctionOverload(f) => write!(fmt, "{}", &f.name),
-            ReferenceType::PrecedenceGroup(p) => write!(fmt, "{}", &p.name),
-            ReferenceType::Keyword(s) => write!(fmt, "{}", s),
+            Reference::Object(t) => write!(fmt, "{:?}", t.type_),
+            Reference::FunctionOverload(f) => write!(fmt, "{}", &f.name),
+            Reference::PrecedenceGroup(p) => write!(fmt, "{}", &p.name),
+            Reference::Keyword(s) => write!(fmt, "{}", s),
         }
     }
 }

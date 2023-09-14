@@ -13,7 +13,7 @@ use crate::linker::precedence::link_patterns;
 use crate::linker::r#type::TypeFactory;
 use crate::linker::scopes::Scope;
 use crate::parser::ast;
-use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
+use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
@@ -83,7 +83,7 @@ impl <'a> ImperativeLinker<'a> {
             self.variable_names.insert(Rc::clone(&parameter_variable), parameter.internal_name.clone());
             scope.insert_singleton(
                 scopes::Environment::Global,
-                Reference::make(ReferenceType::Object(Rc::clone(&parameter_variable))),
+                Reference::Object(Rc::clone(&parameter_variable)),
                 &parameter.internal_name
             );
             parameter_variables.push(parameter_variable);
@@ -215,10 +215,7 @@ impl <'a> ImperativeLinker<'a> {
                     }
 
                     let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(new_value)), mutability: mutability.clone() });
-                    let variable = Rc::new(Reference {
-                        id: Uuid::new_v4(),
-                        type_: ReferenceType::Object(Rc::clone(&object_ref)),
-                    });
+                    let variable = Reference::Object(Rc::clone(&object_ref));
 
                     statements.push(Box::new(
                         Statement::VariableAssignment(Rc::clone(&object_ref), new_value)
@@ -287,8 +284,8 @@ impl <'a> ImperativeLinker<'a> {
             ast::Term::Identifier(s) => {
                 let variable = scope.resolve(scopes::Environment::Global, s)?;
 
-                match &variable.type_ {
-                    ReferenceType::Object(ref_) => {
+                match variable {
+                    Reference::Object(ref_) => {
                         let ObjectReference { id, type_, mutability } = ref_.as_ref();
 
                         precedence::Token::Expression(self.link_unambiguous_expression(
@@ -297,10 +294,10 @@ impl <'a> ImperativeLinker<'a> {
                             ExpressionOperation::VariableLookup(ref_.clone())
                         )?)
                     }
-                    ReferenceType::Keyword(keyword) => {
+                    Reference::Keyword(keyword) => {
                         precedence::Token::Keyword(keyword.clone())
                     }
-                    ReferenceType::FunctionOverload(overload) => {
+                    Reference::FunctionOverload(overload) => {
                         match overload.form {
                             FunctionForm::Global => {
                                 precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
@@ -313,7 +310,7 @@ impl <'a> ImperativeLinker<'a> {
                             }
                         }
                     }
-                    ReferenceType::PrecedenceGroup(_) => {
+                    Reference::PrecedenceGroup(_) => {
                         return Err(LinkError::LinkError { msg: format!("Precedence group references are not supported in expressions yet.") })
                     }
                 }
@@ -341,7 +338,7 @@ impl <'a> ImperativeLinker<'a> {
 
                 let variable = scope.resolve(scopes::Environment::Member, member_name)?;
 
-                if let ReferenceType::FunctionOverload(overload) = &variable.type_ {
+                if let Reference::FunctionOverload(overload) = variable {
                     precedence::Token::FunctionReference { overload: Rc::clone(overload), target: Some(target) }
                 }
                 else {
@@ -417,8 +414,8 @@ impl <'a> ImperativeLinker<'a> {
     fn link_simple_function_call(&mut self, name: &str, keys: Vec<ParameterKey>, args: Vec<ExpressionID>, scope: &Scope) -> Result<ExpressionID, LinkError> {
         let variable = scope.resolve(scopes::Environment::Global, name)?;
 
-        match &variable.type_ {
-            ReferenceType::FunctionOverload(overload) => {
+        match variable {
+            Reference::FunctionOverload(overload) => {
                 match overload.form {
                     FunctionForm::Global => {
                         let expression_id = self.link_function_call(&overload.functions(), &overload.name, keys, args, scope)?;

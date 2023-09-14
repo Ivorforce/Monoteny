@@ -10,7 +10,7 @@ use crate::linker::conformance::ConformanceLinker;
 use crate::linker::interface::{link_function_pointer, link_operator_pointer};
 use crate::linker::scopes::Environment;
 use crate::linker::traits::TraitLinker;
-use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
+use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance};
 use crate::program::functions::{FunctionHead, FunctionType, FunctionForm, FunctionInterface, FunctionPointer};
 use crate::program::generics::TypeForest;
@@ -85,7 +85,7 @@ impl <'a> GlobalLinker<'a> {
 
                 let generic_self_type = trait_.create_generic_type(&"self".into());
                 // TODO module.add_trait also adds a reference; should we use the same?
-                let generic_self_type_ref = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(generic_self_type.clone()))));
+                let generic_self_type_ref = Reference::Object(ObjectReference::new_immutable(TypeProto::meta(generic_self_type.clone())));
 
                 let mut scope = self.global_variables.subscope();
                 scope.insert_singleton(Environment::Global, generic_self_type_ref, &"Self".into());
@@ -125,7 +125,7 @@ impl <'a> GlobalLinker<'a> {
 
                 self.global_variables.insert_singleton(
                     Environment::Global,
-                    Reference::make(ReferenceType::Object(meta_type_reference)),
+                    Reference::Object(meta_type_reference),
                     &trait_.name.clone()
                 );
             }
@@ -150,7 +150,7 @@ impl <'a> GlobalLinker<'a> {
                     (generic_self_type, HashSet::from([requirement]))
                 };
 
-                let self_ref = Reference::make(ReferenceType::Object(ObjectReference::new_immutable(TypeProto::meta(self_type.clone()))));
+                let self_ref = Reference::Object(ObjectReference::new_immutable(TypeProto::meta(self_type.clone())));
                 let self_binding = trait_.create_generic_binding(vec![(&"self".into(), self_type)]);
 
                 let mut scope = self.global_variables.subscope();

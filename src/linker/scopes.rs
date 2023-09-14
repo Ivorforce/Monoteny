@@ -4,7 +4,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use crate::linker::precedence::PrecedenceGroup;
 use crate::linker::LinkError;
-use crate::program::allocation::{ObjectReference, Reference, ReferenceType};
+use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer};
 use crate::program::traits::TraitGraph;
 use crate::program::module::Module;
@@ -13,7 +13,7 @@ use crate::program::types::{Pattern, PatternPart};
 // Note: While a single pool cannot own overloaded variables, multiple same-level pools (-> from imports) can.
 // When we have imports, this should be ignored until referenced, to avoid unnecessary import complications.
 // For these cases, we could store an AMBIGUOUS value inside our pool, crashing when accessed?
-type RefPool = HashMap<String, Rc<Reference>>;
+type RefPool = HashMap<String, Reference>;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum Environment {
@@ -89,7 +89,7 @@ impl <'a> Scope<'a> {
         for (trait_, object_ref) in module.traits.iter() {
             self.insert_singleton(
                 Environment::Global,
-                Reference::make(ReferenceType::Object(Rc::clone(object_ref))),
+                Reference::Object(Rc::clone(object_ref)),
                 &trait_.name.clone()
             );
         }
@@ -113,10 +113,8 @@ impl <'a> Scope<'a> {
         // This may seem weird at first but it kinda makes sense - if someone queries the scope, gets a reference,
         // and then the scope is modified, the previous caller still expects their reference to not change.
         if let Some(existing) = variables.remove(name) {
-            if let ReferenceType::FunctionOverload(overload) = &existing.type_ {
-                let variable = Reference::make(
-                    ReferenceType::FunctionOverload(overload.adding_function(fun, object_ref)?)
-                );
+            if let Reference::FunctionOverload(overload) = existing {
+                let variable = Reference::FunctionOverload(overload.adding_function(fun, object_ref)?);
 
                 variables.insert(fun.name.clone(), variable);
             }
@@ -126,10 +124,8 @@ impl <'a> Scope<'a> {
         }
         else {
             // Copy the parent's function overload into us and then add the function to the overload
-            if let Some(Some(ReferenceType::FunctionOverload(overload))) = self.parent.map(|x| x.resolve(environment, name).ok().map(|x| &x.as_ref().type_)) {
-                let variable = Reference::make(
-                    ReferenceType::FunctionOverload(overload.adding_function(fun, object_ref)?)
-                );
+            if let Some(Some(Reference::FunctionOverload(overload))) = self.parent.map(|x| x.resolve(environment, name).ok()) {
+                let variable = Reference::FunctionOverload(overload.adding_function(fun, object_ref)?);
 
                 let mut variables = self.references_mut(environment);
                 variables.insert(fun.name.clone(), variable);
@@ -137,9 +133,7 @@ impl <'a> Scope<'a> {
 
             let mut variables = self.references_mut(environment);
 
-            let variable = Reference::make(
-                ReferenceType::FunctionOverload(FunctionOverload::from(fun, object_ref))
-            );
+            let variable = Reference::FunctionOverload(FunctionOverload::from(fun, object_ref));
 
             variables.insert(fun.name.clone(), variable);
         }
@@ -147,7 +141,7 @@ impl <'a> Scope<'a> {
         Ok(())
     }
 
-    pub fn insert_singleton(&mut self, environment: Environment, reference: Rc<Reference>, name: &String) {
+    pub fn insert_singleton(&mut self, environment: Environment, reference: Reference, name: &String) {
         let mut references = self.references_mut(environment);
 
         if let Some(other) = references.insert(name.clone(), reference) {
@@ -156,17 +150,17 @@ impl <'a> Scope<'a> {
     }
 
     pub fn insert_keyword(&mut self, keyword: &String) {
-        let reference = Reference::make(ReferenceType::Keyword(keyword.clone()));
+        let reference = Reference::Keyword(keyword.clone());
         let mut references = self.references_mut(Environment::Global);
 
         if let Some(other) = references.insert(keyword.clone(), reference) {
-            if &ReferenceType::Keyword(keyword.clone()) != &other.type_ {
+            if Reference::Keyword(keyword.clone()) != other {
                 panic!("Multiple variables of the same name: {}", keyword);
             }
         }
     }
 
-    pub fn override_variable(&mut self, environment: Environment, variable: Rc<Reference>, name: &String) {
+    pub fn override_variable(&mut self, environment: Environment, variable: Reference, name: &String) {
         let mut variables = self.references_mut(environment);
 
         variables.insert(name.clone(), variable);
@@ -223,7 +217,7 @@ impl <'a> Scope<'a> {
 }
 
 impl <'a> Scope<'a> {
-    pub fn resolve(&'a self, environment: Environment, variable_name: &str) -> Result<&'a Rc<Reference>, LinkError> {
+    pub fn resolve(&'a self, environment: Environment, variable_name: &str) -> Result<&'a Reference, LinkError> {
         if let Some(matches) = self.references(environment).get(variable_name) {
             return Ok(matches)
         }
