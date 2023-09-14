@@ -107,63 +107,63 @@ impl <'a> Scope<'a> {
         let name = &fun.name;
         let environment = Environment::from_form(&fun.form);
 
-        let mut variables = self.references_mut(environment);
+        let mut refs = self.references_mut(environment);
 
         // Remove the current FunctionOverload reference and replace with a reference containing also our new overload.
         // This may seem weird at first but it kinda makes sense - if someone queries the scope, gets a reference,
         // and then the scope is modified, the previous caller still expects their reference to not change.
-        if let Some(existing) = variables.remove(name) {
+        if let Some(existing) = refs.remove(name) {
             if let Reference::FunctionOverload(overload) = existing {
-                let variable = Reference::FunctionOverload(overload.adding_function(fun, object_ref)?);
+                let overload = Reference::FunctionOverload(overload.adding_function(fun, object_ref)?);
 
-                variables.insert(fun.name.clone(), variable);
+                refs.insert(fun.name.clone(), overload);
             }
             else {
-                panic!("Cannot overload with function '{}' if a variable exists in the same scope under the same name.", name);
+                panic!("Cannot overload with function '{}' if a reference exists in the same scope under the same name.", name);
             }
         }
         else {
             // Copy the parent's function overload into us and then add the function to the overload
             if let Some(Some(Reference::FunctionOverload(overload))) = self.parent.map(|x| x.resolve(environment, name).ok()) {
-                let variable = Reference::FunctionOverload(overload.adding_function(fun, object_ref)?);
+                let overload = Reference::FunctionOverload(overload.adding_function(fun, object_ref)?);
 
-                let mut variables = self.references_mut(environment);
-                variables.insert(fun.name.clone(), variable);
+                let mut refs = self.references_mut(environment);
+                refs.insert(fun.name.clone(), overload);
             }
 
-            let mut variables = self.references_mut(environment);
+            let mut refs = self.references_mut(environment);
 
-            let variable = Reference::FunctionOverload(FunctionOverload::from(fun, object_ref));
+            let overload = Reference::FunctionOverload(FunctionOverload::from(fun, object_ref));
 
-            variables.insert(fun.name.clone(), variable);
+            refs.insert(fun.name.clone(), overload);
         }
 
         Ok(())
     }
 
     pub fn insert_singleton(&mut self, environment: Environment, reference: Reference, name: &String) {
-        let mut references = self.references_mut(environment);
+        let mut refs = self.references_mut(environment);
 
-        if let Some(other) = references.insert(name.clone(), reference) {
-            panic!("Multiple variables of the same name: {}", name);
+        if let Some(other) = refs.insert(name.clone(), reference) {
+            panic!("Multiple references with the same name: {}", name);
         }
     }
 
     pub fn insert_keyword(&mut self, keyword: &String) {
         let reference = Reference::Keyword(keyword.clone());
-        let mut references = self.references_mut(Environment::Global);
+        let mut refs = self.references_mut(Environment::Global);
 
-        if let Some(other) = references.insert(keyword.clone(), reference) {
+        if let Some(other) = refs.insert(keyword.clone(), reference) {
             if Reference::Keyword(keyword.clone()) != other {
-                panic!("Multiple variables of the same name: {}", keyword);
+                panic!("Multiple references with the same name: {}", keyword);
             }
         }
     }
 
-    pub fn override_variable(&mut self, environment: Environment, variable: Reference, name: &String) {
-        let mut variables = self.references_mut(environment);
+    pub fn override_reference(&mut self, environment: Environment, reference: Reference, name: &String) {
+        let mut refs = self.references_mut(environment);
 
-        variables.insert(name.clone(), variable);
+        refs.insert(name.clone(), reference);
     }
 
     pub fn contains(&mut self, environment: Environment, name: &String) -> bool {
@@ -217,16 +217,16 @@ impl <'a> Scope<'a> {
 }
 
 impl <'a> Scope<'a> {
-    pub fn resolve(&'a self, environment: Environment, variable_name: &str) -> Result<&'a Reference, LinkError> {
-        if let Some(matches) = self.references(environment).get(variable_name) {
+    pub fn resolve(&'a self, environment: Environment, name: &str) -> Result<&'a Reference, LinkError> {
+        if let Some(matches) = self.references(environment).get(name) {
             return Ok(matches)
         }
 
         if let Some(parent) = self.parent {
-            return parent.resolve(environment, variable_name);
+            return parent.resolve(environment, name);
         }
 
-        Err(LinkError::LinkError { msg: format!("Variable '{}' could not be resolved", variable_name) })
+        Err(LinkError::LinkError { msg: format!("Reference '{}' could not be resolved", name) })
     }
 
     pub fn resolve_precedence_group(&self, name: &String) -> Rc<PrecedenceGroup> {

@@ -19,6 +19,8 @@ pub enum Mutability {
 pub enum Reference {
     Object(Rc<ObjectReference>),
     // Keywords aren't really objects and can't be logically passed around.
+    // They aren't technically language keywords, but instead were defined in patterns.
+    // This means they can be shadowed!
     Keyword(String),
     // This COULD be an object, but only if it 'inherits' the callable interfaces
     //  from ALL included overloads. Overall, this is probably too confusing and thus not worth

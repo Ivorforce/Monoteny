@@ -221,7 +221,7 @@ impl <'a> ImperativeLinker<'a> {
                         Statement::VariableAssignment(Rc::clone(&object_ref), new_value)
                     ));
                     self.variable_names.insert(object_ref, identifier.clone());
-                    scope.override_variable(scopes::Environment::Global, variable, identifier);
+                    scope.override_reference(scopes::Environment::Global, variable, identifier);
                 },
                 ast::Statement::Return(expression) => {
                     if let Some(expression) = expression {
