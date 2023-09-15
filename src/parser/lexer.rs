@@ -78,16 +78,21 @@ impl<'i> Iterator for Lexer<'i> {
                         '\\' => {
                             // Escape next character
                             if let Some((pos, ch)) = self.input.next() {
-                                if matches!(ch, '(') {
-                                    // We are in a struct! Emit the constant, but plan to emit a ( next.
-                                    self.string_context.last_mut().unwrap().1 += 1;
-                                    let end = self.peek_next_pos(self.input.clone());
-                                    let slice = unsafe { self.source.get_unchecked(pos..end) };
-                                    self.next_planned = Some((pos, Token::Symbol(slice), end));
-                                    break;
-                                }
-                                else {
-                                    builder.push(ch);
+                                match ch {
+                                    '(' => {
+                                        // We are in a struct! Emit the constant, but plan to emit a ( next.
+                                        self.string_context.last_mut().unwrap().1 += 1;
+                                        let end = self.peek_next_pos(self.input.clone());
+                                        let slice = unsafe { self.source.get_unchecked(pos..end) };
+                                        self.next_planned = Some((pos, Token::Symbol(slice), end));
+                                        break;
+                                    }
+                                    '\\' | '"' => builder.push(ch),
+                                    '0' => builder.push('\0'),
+                                    'n' => builder.push('\n'),
+                                    't' => builder.push('\t'),
+                                    'r' => builder.push('\r'),
+                                    _ => return Some(Err(Error(format!("Invalid escape sequence in string literal: {}", ch))))
                                 }
                             }
                             else {
