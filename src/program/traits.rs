@@ -158,6 +158,8 @@ impl TraitGraph {
             return Err(LinkError::LinkError { msg: String::from(format!("No declarations found for trait: {:?}", resolved_binding.trait_)) });
         });
 
+        let mut compatible_conformances = vec![];
+
         // Recalculate
         // TODO clone is a bit much, but we need it to be memory safe
         let cloned_declarations: Vec<Rc<TraitConformanceRule>> = relevant_declarations.clone();
@@ -181,21 +183,31 @@ impl TraitGraph {
                     // TODO Do we need to map the functions?
                     rule.conformance.function_mapping.clone(),
                 );
-                // TODO There may be more than one conflicting solution
-                let pair = Rc::new(TraitConformanceWithTail {
-                    tail: Rc::new(RequirementsFulfillment {
-                        conformance: fulfilled_requirements,
-                        generic_mapping: generics_map.clone(),
-                    }),
-                    conformance: resolved_conformance,
-                });
-                self.conformance_cache.insert(resolved_binding, Some(pair.clone()));
-                return Ok(pair.clone());
+                compatible_conformances.push(
+                    Rc::new(TraitConformanceWithTail {
+                        tail: Rc::new(RequirementsFulfillment {
+                            conformance: fulfilled_requirements,
+                            generic_mapping: generics_map.clone(),
+                        }),
+                        conformance: resolved_conformance,
+                    })
+                );
             }
         }
 
-        self.conformance_cache.insert(Rc::clone(&resolved_binding), None);
-        Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}. {} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations)) })
+        match compatible_conformances.as_slice() {
+            [] => {
+                self.conformance_cache.insert(Rc::clone(&resolved_binding), None);
+                Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}. {} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations)) })
+            }
+            [declaration] => {
+                self.conformance_cache.insert(resolved_binding, Some(Rc::clone(declaration)));
+                Ok(Rc::clone(declaration))
+            }
+            _ => {
+                Err(LinkError::LinkError { msg: String::from(format!("Conflicting declarations for trait conformance requirement: {:?}. {} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations)) })
+            }
+        }
     }
 
     pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, mapping: &TypeForest) -> Result<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>, LinkError> {
