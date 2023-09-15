@@ -147,7 +147,7 @@ impl FunctionInterface {
         TypeProto::collect_generics(self.parameters.iter().map(|x| &x.type_).chain([&self.return_type]))
     }
 
-    pub fn fmt_with_form(&self, fmt: &mut Formatter<'_>, name: &String, form: &FunctionForm) -> std::fmt::Result {
+    pub fn fmt_with_form(&self, fmt: &mut Formatter<'_>, name: &str, form: &FunctionForm) -> std::fmt::Result {
         let mut head = 0;
 
         match form {
@@ -225,7 +225,7 @@ impl FunctionHead {
         })
     }
 
-    pub fn fmt_with_form(&self, fmt: &mut Formatter<'_>, name: &String, form: &FunctionForm) -> std::fmt::Result {
+    pub fn fmt_with_form(&self, fmt: &mut Formatter<'_>, name: &str, form: &FunctionForm) -> std::fmt::Result {
         let call_type_symbol = match self.function_type {
             FunctionType::Static => "|",
             FunctionType::Polymorphic { .. } => "?"

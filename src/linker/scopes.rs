@@ -141,32 +141,32 @@ impl <'a> Scope<'a> {
         Ok(())
     }
 
-    pub fn insert_singleton(&mut self, environment: Environment, reference: Reference, name: &String) {
+    pub fn insert_singleton(&mut self, environment: Environment, reference: Reference, name: &str) {
         let mut refs = self.references_mut(environment);
 
-        if let Some(other) = refs.insert(name.clone(), reference) {
+        if let Some(other) = refs.insert(name.to_string(), reference) {
             panic!("Multiple references with the same name: {}", name);
         }
     }
 
-    pub fn insert_keyword(&mut self, keyword: &String) {
-        let reference = Reference::Keyword(keyword.clone());
+    pub fn insert_keyword(&mut self, keyword: &str) {
+        let reference = Reference::Keyword(keyword.to_string());
         let mut refs = self.references_mut(Environment::Global);
 
-        if let Some(other) = refs.insert(keyword.clone(), reference) {
-            if Reference::Keyword(keyword.clone()) != other {
+        if let Some(other) = refs.insert(keyword.to_string(), reference) {
+            if Reference::Keyword(keyword.to_string()) != other {
                 panic!("Multiple references with the same name: {}", keyword);
             }
         }
     }
 
-    pub fn override_reference(&mut self, environment: Environment, reference: Reference, name: &String) {
+    pub fn override_reference(&mut self, environment: Environment, reference: Reference, name: &str) {
         let mut refs = self.references_mut(environment);
 
-        refs.insert(name.clone(), reference);
+        refs.insert(name.to_string(), reference);
     }
 
-    pub fn contains(&mut self, environment: Environment, name: &String) -> bool {
+    pub fn contains(&mut self, environment: Environment, name: &str) -> bool {
         self.references(environment).contains_key(name)
     }
 
@@ -229,7 +229,7 @@ impl <'a> Scope<'a> {
         Err(LinkError::LinkError { msg: format!("Reference '{}' could not be resolved", name) })
     }
 
-    pub fn resolve_precedence_group(&self, name: &String) -> Rc<PrecedenceGroup> {
+    pub fn resolve_precedence_group(&self, name: &str) -> Rc<PrecedenceGroup> {
         for (group, _) in self.precedence_groups.iter() {
             if &group.name == name {
                 return Rc::clone(group)

@@ -25,7 +25,7 @@ impl <'a> TypeFactory<'a> {
         }
     }
 
-    fn resolve_reference(&mut self, name: &String) -> Result<&TypeUnit, LinkError> {
+    fn resolve_reference(&mut self, name: &str) -> Result<&TypeUnit, LinkError> {
         if let Some(generic) = self.generics.get(name) {
             return Ok(generic)
         }
@@ -33,12 +33,12 @@ impl <'a> TypeFactory<'a> {
         self.scope.resolve(Environment::Global, &name)?.as_metatype()
     }
 
-    fn resolve_trait(&mut self, name: &String) -> Rc<Trait> {
+    fn resolve_trait(&mut self, name: &str) -> Rc<Trait> {
         self.scope.resolve(Environment::Global, &name).unwrap().as_trait().unwrap()
     }
 
-    fn register_generic(&mut self, name: &String, id: Uuid) -> &TypeUnit {
-        self.generics.insert(name.clone(), TypeUnit::Generic(id));
+    fn register_generic(&mut self, name: &str, id: Uuid) -> &TypeUnit {
+        self.generics.insert(name.to_string(), TypeUnit::Generic(id));
         self.generics.get(name).unwrap()
     }
 

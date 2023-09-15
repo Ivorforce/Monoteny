@@ -20,7 +20,7 @@ pub struct PrecedenceGroups {
 }
 
 pub fn create() -> PrecedenceGroups {
-    let mut module = Module::new("monoteny.precedence".into());
+    let mut module = Module::new("monoteny.precedence".to_string());
     let mut list = vec![];
 
     let add_precedence_group = |list: &mut Vec<Rc<PrecedenceGroup>>, module: &mut Module, name: &str, associativity: OperatorAssociativity, functions: Vec<(&str, &str)>| -> Rc<PrecedenceGroup> {

@@ -192,7 +192,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
 
     // Resolve binary operators. At this point, we have only expressions interspersed with operators.
 
-    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<ExpressionID>, alias: &String, i: usize| -> Result<(), LinkError> {
+    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<ExpressionID>, alias: &str, i: usize| -> Result<(), LinkError> {
         let lhs = arguments.remove(i);
         let rhs = arguments.remove(i);
         let operator = scope.resolve(Environment::Global, &alias)?;

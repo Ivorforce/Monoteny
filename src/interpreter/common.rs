@@ -10,7 +10,7 @@ pub fn load(runtime: &mut Runtime) -> Result<(), InterpreterError> {
         runtime.source.module_by_name.insert(name.into(), module);
     }
 
-    for ptr in runtime.source.module_by_name["debug".into()].fn_pointers.values() {
+    for ptr in runtime.source.module_by_name["debug"].fn_pointers.values() {
         runtime.function_evaluators.insert(ptr.target.unwrap_id(), match ptr.name.as_str() {
             "_print" => Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{

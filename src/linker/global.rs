@@ -28,7 +28,7 @@ pub struct GlobalLinker<'a> {
 pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime) -> Result<Box<Module>, LinkError> {
     let mut global_linker = GlobalLinker {
         runtime,
-        module: Module::new("main".into()),  // TODO Give it a name!
+        module: Module::new("main".to_string()),  // TODO Give it a name!
         global_variables: scope.subscope(),
         function_bodies: Default::default(),
     };
@@ -83,12 +83,12 @@ impl <'a> GlobalLinker<'a> {
             ast::GlobalStatement::Trait(syntax) => {
                 let mut trait_ = Trait::new(syntax.name.clone());
 
-                let generic_self_type = trait_.create_generic_type(&"self".into());
+                let generic_self_type = trait_.create_generic_type("self");
                 // TODO module.add_trait also adds a reference; should we use the same?
                 let generic_self_type_ref = Reference::Object(ObjectReference::new_immutable(TypeProto::meta(generic_self_type.clone())));
 
                 let mut scope = self.global_variables.subscope();
-                scope.insert_singleton(Environment::Global, generic_self_type_ref, &"Self".into());
+                scope.insert_singleton(Environment::Global, generic_self_type_ref, "Self");
 
                 let mut linker = TraitLinker {
                     trait_: &mut trait_,
@@ -104,7 +104,7 @@ impl <'a> GlobalLinker<'a> {
                     // Can be instantiated as a struct!
 
                     let struct_type = TypeProto::unit(TypeUnit::Struct(Rc::clone(&trait_)));
-                    let conformance_binding = trait_.create_generic_binding(vec![(&"self".into(), struct_type.clone())]);
+                    let conformance_binding = trait_.create_generic_binding(vec![("self", struct_type.clone())]);
 
                     let conformance = TraitConformance::pure(conformance_binding.clone());
                     self.module.trait_conformance.add_conformance(Rc::clone(&conformance))?;
@@ -115,7 +115,7 @@ impl <'a> GlobalLinker<'a> {
                             FunctionInterface::new_simple([TypeProto::meta(struct_type.clone())].into_iter(), struct_type),
                             FunctionType::Static
                         ),
-                        name: "call_as_function".into(),
+                        name: "call_as_function".to_string(),
                         form: FunctionForm::Member,
                     });
                     self.module.add_function(&new_function);
@@ -145,16 +145,16 @@ impl <'a> GlobalLinker<'a> {
                     let target = target.as_trait().unwrap();
                     // We make a new type because it's a generic that will be later fulfilled.
                     // Once we have support for it, the conformance may contain more generics.
-                    let generic_self_type = target.create_generic_type(&"self".into());
-                    let requirement = target.create_generic_binding(vec![(&"self".into(), generic_self_type.clone())]);
+                    let generic_self_type = target.create_generic_type("self");
+                    let requirement = target.create_generic_binding(vec![("self", generic_self_type.clone())]);
                     (generic_self_type, HashSet::from([requirement]))
                 };
 
                 let self_ref = Reference::Object(ObjectReference::new_immutable(TypeProto::meta(self_type.clone())));
-                let self_binding = trait_.create_generic_binding(vec![(&"self".into(), self_type)]);
+                let self_binding = trait_.create_generic_binding(vec![("self", self_type)]);
 
                 let mut scope = self.global_variables.subscope();
-                scope.insert_singleton(Environment::Global, self_ref, &"Self".into());
+                scope.insert_singleton(Environment::Global, self_ref, "Self");
 
                 let mut linker = ConformanceLinker {
                     functions: vec![],

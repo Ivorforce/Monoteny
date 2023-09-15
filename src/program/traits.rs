@@ -146,7 +146,7 @@ impl TraitGraph {
     pub fn add_simple_parent_requirement(&mut self, sub_trait: &Rc<Trait>, parent_trait: &Rc<Trait>) {
         self.add_requirement(
             Rc::clone(sub_trait),
-            parent_trait.create_generic_binding(vec![(&"self".into(), sub_trait.create_generic_type(&"self".into()))])
+            parent_trait.create_generic_binding(vec![("self", sub_trait.create_generic_type("self"))])
         );
     }
 
@@ -273,15 +273,15 @@ impl Trait {
             id: Uuid::new_v4(),
             name,
             abstract_functions: Default::default(),
-            generics: HashMap::from([("self".into(), Uuid::new_v4())]),
+            generics: HashMap::from([("self".to_string(), Uuid::new_v4())]),
         }
     }
 
-    pub fn create_generic_type(self: &Trait, generic_name: &String) -> Box<TypeProto> {
+    pub fn create_generic_type(self: &Trait, generic_name: &str) -> Box<TypeProto> {
         TypeProto::unit(TypeUnit::Generic(self.generics[generic_name]))
     }
 
-    pub fn create_generic_binding(self: &Rc<Trait>, generic_to_type: Vec<(&String, Box<TypeProto>)>) -> Rc<TraitBinding> {
+    pub fn create_generic_binding(self: &Rc<Trait>, generic_to_type: Vec<(&str, Box<TypeProto>)>) -> Rc<TraitBinding> {
         Rc::new(TraitBinding {
             trait_: Rc::clone(self),
             generic_to_type: HashMap::from_iter(

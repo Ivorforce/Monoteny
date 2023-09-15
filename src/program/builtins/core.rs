@@ -14,7 +14,7 @@ pub struct Core {
 }
 
 pub fn create() -> Core {
-    let mut module = Module::new("monoteny.core".into());
+    let mut module = Module::new("monoteny.core".to_string());
 
     let primitive_traits = builtins::primitives::create_traits(&mut module);
     let traits = builtins::traits::create(&mut module, &primitive_traits);

@@ -166,11 +166,11 @@ impl <'a> ImperativeLinker<'a> {
         }
     }
 
-    pub fn link_primitive(&mut self, value: &String, traits: TraitGraph, is_float: bool) -> Result<ExpressionID, LinkError> {
+    pub fn link_primitive(&mut self, value: &str, traits: TraitGraph, is_float: bool) -> Result<ExpressionID, LinkError> {
         let expression_id = self.register_new_expression(vec![]);
         self.register_ambiguity(Box::new(AmbiguousNumberLiteral {
             expression_id,
-            value: value.clone(),
+            value: value.to_string(),
             traits,
             is_float
         }))?;
@@ -436,7 +436,7 @@ impl <'a> ImperativeLinker<'a> {
         todo!()
     }
 
-    pub fn link_function_call(&mut self, functions: &Vec<Rc<FunctionHead>>, fn_name: &String, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
+    pub fn link_function_call(&mut self, functions: &Vec<Rc<FunctionHead>>, fn_name: &str, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
         // TODO Check if any arguments are void before anything else
         let seed = Uuid::new_v4();
 
@@ -468,7 +468,7 @@ impl <'a> ImperativeLinker<'a> {
             self.register_ambiguity(Box::new(AmbiguousFunctionCall {
                 seed,
                 expression_id,
-                function_name: fn_name.clone(),
+                function_name: fn_name.to_string(),
                 arguments: argument_expressions,
                 traits: scope.traits.clone(),
                 candidates,

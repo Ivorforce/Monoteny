@@ -18,7 +18,7 @@ pub enum TranspilationHint {
 pub fn prepare(runtime: &Runtime) -> HashMap<Rc<FunctionHead>, TranspilationHint> {
     let mut transpilation_hints_by_id: HashMap<Rc<FunctionHead>, TranspilationHint> = HashMap::new();
 
-    for ptr in runtime.source.module_by_name["math".into()].fn_pointers.values() {
+    for ptr in runtime.source.module_by_name["math"].fn_pointers.values() {
         transpilation_hints_by_id.insert(
             Rc::clone(&ptr.target),
             TranspilationHint::CallProvided(match ptr.name.as_str() {
@@ -47,7 +47,7 @@ pub fn prepare(runtime: &Runtime) -> HashMap<Rc<FunctionHead>, TranspilationHint
         );
     }
 
-    for ptr in runtime.source.module_by_name["debug".into()].fn_pointers.values() {
+    for ptr in runtime.source.module_by_name["debug"].fn_pointers.values() {
         transpilation_hints_by_id.insert(
             Rc::clone(&ptr.target),
             TranspilationHint::CallProvided(match ptr.name.as_str() {
@@ -58,7 +58,7 @@ pub fn prepare(runtime: &Runtime) -> HashMap<Rc<FunctionHead>, TranspilationHint
         );
     }
 
-    for ptr in runtime.source.module_by_name["strings".into()].fn_pointers.values() {
+    for ptr in runtime.source.module_by_name["strings"].fn_pointers.values() {
         transpilation_hints_by_id.insert(
             Rc::clone(&ptr.target),
             TranspilationHint::CallProvided(match ptr.name.as_str() {

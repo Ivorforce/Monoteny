@@ -182,7 +182,7 @@ pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext)
     }
 }
 
-pub fn escape_string(string: &String) -> String {
+pub fn escape_string(string: &str) -> String {
     let string = string.replace("\\", "\\\\");
     let string = string.replace("\"", "\\\"");
     return string

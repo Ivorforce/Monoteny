@@ -83,7 +83,7 @@ pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::S
         for (key, internal_name, type_expression) in arguments.into_iter() {
             parameters.push(Parameter {
                 external_key: key.clone(),
-                internal_name: internal_name.clone(),
+                internal_name: internal_name.to_string(),
                 type_: type_factory.link_type(type_expression)?,
             });
         }
@@ -105,12 +105,12 @@ pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::S
     return Err(LinkError::LinkError { msg: String::from("Unknown pattern in function definition.") });
 }
 
-pub fn match_patterns<'a>(pattern_parts: &'a Vec<Box<PatternPart>>, function_parts: &'a Vec<Box<OperatorArgument>>) -> Option<Vec<(&'a ParameterKey, &'a String, &'a Expression)>> {
+pub fn match_patterns<'a>(pattern_parts: &'a Vec<Box<PatternPart>>, function_parts: &'a Vec<Box<OperatorArgument>>) -> Option<Vec<(&'a ParameterKey, &'a str, &'a Expression)>> {
     if pattern_parts.len() != function_parts.len() {
         return None;
     }
 
-    let mut parameters: Vec<(&ParameterKey, &String, &Expression)> = vec![];
+    let mut parameters: Vec<(&ParameterKey, &str, &Expression)> = vec![];
 
     for (pattern_part, function_part) in zip_eq(pattern_parts.iter(), function_parts.iter()) {
         match (pattern_part.as_ref(), function_part.as_ref()) {

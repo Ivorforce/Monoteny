@@ -16,11 +16,11 @@ pub struct Transpilation {
 }
 
 pub fn create(core: &Core) -> Transpilation {
-    let mut module = Module::new("monoteny.transpiler".into());
+    let mut module = Module::new("monoteny.transpiler".to_string());
 
     let any_type = TypeProto::unit(TypeUnit::Generic(Uuid::new_v4()));
 
-    let mut Transpiler = Trait::new("Transpiler".into());
+    let mut Transpiler = Trait::new("Transpiler".to_string());
     let Transpiler = Rc::new(Transpiler);
     module.add_trait(&Transpiler);
 

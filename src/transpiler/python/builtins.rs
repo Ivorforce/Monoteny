@@ -22,14 +22,14 @@ pub fn create_name_level(builtins: &Builtins, type_ids: &mut HashMap<Box<TypePro
         "for", "not"
     ] {
         // Don't really need an ID but it's easy to just do it like this here.
-        namespace.insert_keyword(Uuid::new_v4(), &String::from(keyword));
+        namespace.insert_keyword(Uuid::new_v4(), keyword);
     }
 
     for type_name in [
         "bool",
         "np", "op",
     ] {
-        namespace.insert_keyword(Uuid::new_v4(), &String::from(type_name));
+        namespace.insert_keyword(Uuid::new_v4(), type_name);
     }
 
     // The operators can normally be referenced as operators (which the transpiler does do).
@@ -37,22 +37,22 @@ pub fn create_name_level(builtins: &Builtins, type_ids: &mut HashMap<Box<TypePro
     for (fun, hint) in builtins.core.module.fn_builtin_hints.iter() {
         match hint {
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Add, type_ } => {
-                namespace.insert_keyword(fun.function_id, &String::from("op.add"));
+                namespace.insert_keyword(fun.function_id, "op.add");
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Subtract, type_ } => {
-                namespace.insert_keyword(fun.function_id, &String::from("op.sub"));
+                namespace.insert_keyword(fun.function_id, "op.sub");
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Multiply, type_ } => {
-                namespace.insert_keyword(fun.function_id, &String::from("op.mul"));
+                namespace.insert_keyword(fun.function_id, "op.mul");
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Divide, type_ } => {
-                namespace.insert_keyword(fun.function_id, &String::from("op.truediv"));
+                namespace.insert_keyword(fun.function_id, "op.truediv");
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Log, type_ } => {
-                namespace.insert_keyword(fun.function_id, &String::from("math.log"));
+                namespace.insert_keyword(fun.function_id, "math.log");
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ToString, type_ } => {
-                namespace.insert_keyword(fun.function_id, &String::from("str"));
+                namespace.insert_keyword(fun.function_id, "str");
             }
             _ => {}
         }

@@ -32,7 +32,7 @@ def transpile(transpiler 'Transpiler) :: {
                     Box::new(Term::Struct(vec![
                         StructArgument {
                             key: ParameterKey::Positional,
-                            value: Expression::from(vec![Box::new(Term::StringLiteral("Hello World!".to_string()))]),
+                            value: Expression::from(vec![Box::new(Term::StringLiteral(vec![StringPart::Literal("Hello World!".to_string())]))]),
                             type_declaration: None,
                         }
                     ])),
