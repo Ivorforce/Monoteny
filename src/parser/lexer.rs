@@ -78,8 +78,6 @@ impl<'i> Iterator for Lexer<'i> {
                         '\\' => {
                             // Escape next character
                             if let Some((pos, ch)) = self.input.next() {
-                                builder.push(ch);
-
                                 if matches!(ch, '(') {
                                     // We are in a struct! Emit the constant, but plan to emit a ( next.
                                     self.string_context.last_mut().unwrap().1 += 1;
@@ -87,6 +85,9 @@ impl<'i> Iterator for Lexer<'i> {
                                     let slice = unsafe { self.source.get_unchecked(pos..end) };
                                     self.next_planned = Some((pos, Token::Symbol(slice), end));
                                     break;
+                                }
+                                else {
+                                    builder.push(ch);
                                 }
                             }
                             else {
@@ -105,7 +106,7 @@ impl<'i> Iterator for Lexer<'i> {
 
             // If the string is empty it's not worth emitting a StringConstant for.
             if !builder.is_empty() {
-                let end = self.peek_next_pos(self.input.clone());
+                let end = string_start + builder.as_bytes().len();
                 return Some(Ok((string_start, Token::StringConstant(builder), end)))
             }
 
