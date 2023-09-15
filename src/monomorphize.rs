@@ -6,11 +6,11 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
-use crate::program::computation_tree::{ExpressionForest, ExpressionOperation, Statement};
+use crate::program::computation_tree::{ExpressionOperation, Statement};
 use crate::program::functions::{FunctionHead, FunctionType, FunctionInterface, Parameter};
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
-use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, TraitBinding, TraitConformance};
+use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, TraitConformance};
 use crate::program::types::TypeProto;
 
 

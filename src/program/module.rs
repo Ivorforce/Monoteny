@@ -1,11 +1,7 @@
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::{linker, parser};
-use crate::linker::LinkError;
 use crate::program::allocation::ObjectReference;
-use crate::program::builtins::Builtins;
 use crate::program::functions::{FunctionHead, FunctionPointer};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::traits::{Trait, TraitGraph};

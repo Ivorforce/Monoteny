@@ -14,7 +14,6 @@ use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use strum::IntoEnumIterator;
 use crate::{linker, parser};
-use crate::linker::LinkError;
 use crate::parser::ast;
 use crate::program::allocation::ObjectReference;
 use crate::program::builtins::Builtins;

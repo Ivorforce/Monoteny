@@ -1,6 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::ops::Index;
-use std::os::macos::raw::stat;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::program::functions::{FunctionInterface, FunctionPointer};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitConformance};
+use crate::program::traits::Trait;
 use crate::program::types::{TypeProto, TypeUnit};
 
 

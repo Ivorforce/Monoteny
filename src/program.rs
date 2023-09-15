@@ -1,9 +1,3 @@
-use std::rc::Rc;
-use itertools::Itertools;
-use global::{FunctionImplementation};
-use crate::interpreter::InterpreterError;
-use crate::program::module::Module;
-
 pub mod allocation;
 pub mod builtins;
 pub mod computation_tree;

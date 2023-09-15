@@ -2,7 +2,6 @@ use std::alloc::{alloc, Layout};
 use std::collections::HashMap;
 use std::rc::Rc;
 use guard::guard;
-use uuid::Uuid;
 use crate::interpreter::{FunctionInterpreter, Runtime, InterpreterError, Value};
 use crate::program::functions::FunctionHead;
 use crate::program::module::Module;
