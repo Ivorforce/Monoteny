@@ -21,8 +21,12 @@ pub enum ExpressionOperation {
     VariableLookup(Rc<ObjectReference>),
     ArrayLiteral,
     StringLiteral(String),
+    Block(Vec<Box<Statement>>),
 }
 
+// TODO We should integrate statements into the tree somehow, so it can be traversed fully automatically.
+//  One solution might be to use blocks' arguments to link to each statement, and then to link only the
+//  top block or expression in FunctionImplementation.
 #[derive(Clone)]
 pub struct ExpressionForest {
     /// Will be set for every expression ID

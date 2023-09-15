@@ -27,7 +27,7 @@ def transpile(transpiler 'Transpiler) :: {
                 identifier: "main".to_string(),
                 parameters: vec![],
                 decorators: vec!["main".to_string()],
-                body: Some(Expression::from(vec![Box::new(Term::Scope(vec![Box::new(Statement::Expression(Expression::from(vec![
+                body: Some(Expression::from(vec![Box::new(Term::Block(vec![Box::new(Statement::Expression(Expression::from(vec![
                     Box::new(Term::Identifier("write_line".to_string())),
                     Box::new(Term::Struct(vec![
                         StructArgument {

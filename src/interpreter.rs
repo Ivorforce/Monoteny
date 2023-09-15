@@ -247,6 +247,9 @@ impl FunctionInterpreter<'_> {
                 *(ptr as *mut String) = value.clone();
                 return Some(Value { data: ptr, layout: string_layout })
             }
+            ExpressionOperation::Block(_) => {
+                todo!()
+            }
         }
     }
 

@@ -131,7 +131,7 @@ pub enum Term {
     Struct(Vec<StructArgument>),
     Array(Vec<ArrayArgument>),
     StringLiteral(Vec<StringPart>),
-    Scope(Vec<Box<Statement>>),
+    Block(Vec<Box<Statement>>),
 }
 
 #[derive(Eq, PartialEq)]
@@ -316,7 +316,7 @@ impl Display for Term {
                 write_comma_separated_list(fmt, arguments)?;
                 write!(fmt, "]")
             },
-            Term::Scope(statements) => {
+            Term::Block(statements) => {
                 write!(fmt, "{{\n")?;
                 for item in statements.iter() { write!(fmt, "    {};\n", item)? };
                 write!(fmt, "}}")

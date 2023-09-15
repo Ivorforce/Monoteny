@@ -10,7 +10,6 @@ use crate::linker::{LinkError, precedence, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberLiteral, LinkerAmbiguity};
 use crate::linker::precedence::link_patterns;
 use crate::linker::r#type::TypeFactory;
-use crate::linker::scopes::Scope;
 use crate::parser::ast;
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
@@ -126,9 +125,9 @@ impl <'a> ImperativeLinker<'a> {
 
     pub fn link_top_scope(&mut self, body: &ast::Expression, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
         if let [term] = &body[..] {
-            if let ast::Term::Scope(body ) = term.as_ref() {
+            if let ast::Term::Block(body ) = term.as_ref() {
                 // Single-Scope function; for simplicity's sake we'll just collapse it here.
-                return self.link_scope(body, &scope)
+                return self.link_block(body, &scope)
             }
         }
 
@@ -200,7 +199,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(())
     }
 
-    pub fn link_scope(&mut self, body: &Vec<Box<ast::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
+    pub fn link_block(&mut self, body: &Vec<Box<ast::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
         let mut scope = scope.subscope();
         let mut statements: Vec<Box<Statement>> = Vec::new();
 
@@ -377,8 +376,15 @@ impl <'a> ImperativeLinker<'a> {
                     }
                 })
             }
-            ast::Term::Scope(statements) => {
-                todo!("In-function scopes are not supported yet.")
+            ast::Term::Block(statements) => {
+                let expression_id = self.register_new_expression(vec![]);
+
+                // TODO The important part is we need to link yield types with our result.
+                let statements = self.link_block(statements, &scope)?;
+
+                self.expressions.operations.insert(expression_id, ExpressionOperation::Block(statements));
+
+                precedence::Token::Expression(expression_id)
             }
         })
     }
@@ -413,7 +419,7 @@ impl <'a> ImperativeLinker<'a> {
         }
     }
 
-    fn link_simple_function_call(&mut self, name: &str, keys: Vec<ParameterKey>, args: Vec<ExpressionID>, scope: &Scope) -> Result<ExpressionID, LinkError> {
+    fn link_simple_function_call(&mut self, name: &str, keys: Vec<ParameterKey>, args: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
         let variable = scope.resolve(scopes::Environment::Global, name)?;
 
         match variable {

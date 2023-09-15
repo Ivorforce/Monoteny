@@ -121,13 +121,10 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
   - [ ] Stored Properties (for traits with associated Self)
     - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract traits
     - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
-    - [ ] Delegation (`delegate some_property`) (delegates all properties' traits to this trait)
-    - [ ] Properties conforming to property-like functions (automatically?)
-      - [ ] Dynamic properties implemented as functions
+    - [ ] Delegation (`@delegate(Eq) var ...`) (delegates all / selected properties' traits to this trait)
     - [ ] Deconstruction assignment (`let (x, y, z) = vec`)
       - [x] `let`: Assign new variables
       - [x] `upd`: Change existing variables
-      - [ ] `cnf`: Refutably assert equality to existing variables
     - [ ] Generic: Any used generics will automatically generify the object
   - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
   - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
@@ -163,16 +160,20 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
     - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`
   - [x] Custom expression patterns with keywords (unary / binary operators)
     - [x] Right-Unary Operators
-    - [ ] Custom precedence steps (with associativity)
   - [x] Comments
+    - [ ] Comment & Documentation transpilation
+    - [ ] Newline Separator transpilation
     - [ ] Documentation
   - [x] String Interpolation
-- [x] Inlining trivial calls
+- [x] Simple Constant Folding
+  - [x] Inline trivial calls (calls that are at most one call)
+  - [ ] Auto-Delete objects without variables (e.g. for Console.write_line())
 
 ### Monoteny 1.0
 
 - [ ] Exceptions (as monads)
   - [ ] Early return syntax
+  - [ ] `cnf`: Refutably assert equality to existing variables
 - [ ] Meta Traits (traits whose instantiations can act as traits)
   - [ ] IntX, FloatX (variable bitcount int and float) - regular ints and floats are just 'optimized special cases' of this
 - [ ] IntUnbound (int that can store any value)
@@ -188,15 +189,18 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
     - [ ] Anonymous Enums (`-> A | B`) 
   - [ ] Higher Order Functions
     - [ ] Deep Function Currying
+- [ ] Constant Folding (resolve static results post link-time)
 
 ### Monoteny 2.0
 
 - [ ] Staggered Dimensions
   - [ ] Implicit Tensors
-- [ ] Post Link-Time Shape Tests
-  - [ ] Array Dimension Index (i.e. 'anonymous enum')
-  - [ ] Closed Int Range Dimension Index
-- [ ] Constant Folding (resolve static results post link-time)
+- [ ] Link-Time Interpreter
+  - [ ] Computational (return-) types
+  - [ ] Automatic shape tests for dimensions
+    - [ ] Array Dimension Index (i.e. 'anonymous enum')
+    - [ ] Closed Int Range Dimension Index
+- [ ] Custom precedence steps (with associativity)
 - [ ] Optimization Definitions (e.g. an alternative implementation for sort() if all objects are ints)
 - [ ] System I/O API / Permission Contexts
 - [ ] Pointer Monad (-> shared object reference, mutable or immutable)

@@ -162,7 +162,7 @@ Term: Box<Term> = {
     "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Box::new(Term::Struct(<>)),
     <target: Term> "." <member_name: Identifier> => Box::new(Term::MemberAccess { <> }),
     "\"" <StringPart*> "\"" => Box::new(Term::StringLiteral(<>)),
-    "{" <(<Statement> ";")*> "}" => Box::new(Term::Scope(<>)),
+    "{" <(<Statement> ";")*> "}" => Box::new(Term::Block(<>)),
 };
 
 StructArgument: StructArgument = {

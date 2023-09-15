@@ -118,6 +118,7 @@ impl Monomorphizer {
                 }
                 ExpressionOperation::ArrayLiteral => {},
                 ExpressionOperation::StringLiteral(_) => {},
+                ExpressionOperation::Block(_) => todo!(),
             };
         }
 

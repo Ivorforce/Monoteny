@@ -179,6 +179,9 @@ pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext)
             //     }
             // }
         }
+        ExpressionOperation::Block(_) => {
+            todo!()
+        }
     }
 }
 
@@ -304,5 +307,6 @@ pub fn is_simple(operation: &ExpressionOperation) -> bool {
         ExpressionOperation::ArrayLiteral => true,
         ExpressionOperation::FunctionCall { .. } => false,
         ExpressionOperation::PairwiseOperations { .. } => false,
+        ExpressionOperation::Block(_) => todo!(),
     }
 }
