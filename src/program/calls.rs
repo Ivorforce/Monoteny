@@ -5,5 +5,5 @@ use crate::program::traits::RequirementsFulfillment;
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct FunctionBinding {
     pub function: Rc<FunctionHead>,
-    pub requirements_fulfillment: Box<RequirementsFulfillment>,
+    pub requirements_fulfillment: Rc<RequirementsFulfillment>,
 }

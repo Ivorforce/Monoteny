@@ -17,7 +17,7 @@ use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, Fu
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
 use crate::program::r#struct::Struct;
-use crate::program::traits::{RequirementsAssumption, TraitGraph};
+use crate::program::traits::{RequirementsAssumption, TraitConformanceRule, TraitGraph};
 use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
@@ -52,7 +52,9 @@ impl <'a> ImperativeLinker<'a> {
 
         // Let our scope know that our parameter types (all of type any!) conform to the requirements
         for conformance in granted_requirements.iter() {
-            scope.traits.add_conformance(Rc::clone(conformance)).unwrap();
+            scope.traits.add_conformance_rule(TraitConformanceRule::direct(
+                Rc::clone(conformance),
+            ));
         };
 
         // Add abstract function mocks to our scope to be callable.

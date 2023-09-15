@@ -8,7 +8,7 @@ use crate::linker::interface::link_function_pointer;
 use crate::parser::ast;
 use crate::program::functions::{FunctionHead, FunctionPointer};
 use crate::program::module::Module;
-use crate::program::traits::{TraitBinding, TraitConformance};
+use crate::program::traits::{TraitBinding, TraitConformance, TraitConformanceRule};
 
 pub struct UnlinkedFunctionImplementation<'a> {
     pub pointer: Rc<FunctionPointer>,
@@ -43,17 +43,18 @@ impl <'a> ConformanceLinker<'a> {
         Ok(())
     }
 
-    pub fn finalize(&self, binding: Rc<TraitBinding>, requirements: HashSet<Rc<TraitBinding>>, module: &mut Module, scope: &mut scopes::Scope) -> Result<(), LinkError> {
+    pub fn finalize_conformance(&self, binding: Rc<TraitBinding>, conformance_requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<TraitConformance>, LinkError> {
         let mut function_bindings = HashMap::new();
         let mut unmatched_implementations = self.functions.iter().map(|x| Rc::clone(&x.pointer)).collect_vec();
 
         for abstract_function in binding.trait_.abstract_functions.values() {
-            let expected_interface = Rc::new(map_interface_types(&abstract_function.target.interface, &|type_| type_.replacing_generics(&binding.generic_to_type)));
+            let mut expected_interface = map_interface_types(&abstract_function.target.interface, &|type_| type_.replacing_generics(&binding.generic_to_type));
+            expected_interface.requirements.extend(conformance_requirements.clone());
             let expected_pointer = Rc::new(FunctionPointer {
                 target: Rc::new(FunctionHead {
                     function_id: Uuid::new_v4(),
                     function_type: abstract_function.target.function_type.clone(),
-                    interface: expected_interface,
+                    interface: Rc::new(expected_interface),
                 }),
                 name: abstract_function.name.clone(),
                 form: abstract_function.form.clone(),
@@ -82,15 +83,6 @@ impl <'a> ConformanceLinker<'a> {
             return Err(LinkError::LinkError { msg: format!("Unrecognized functions for declaration {:?}: {:?}.", binding, unmatched_implementations) });
         }
 
-        let conformance = TraitConformance::new(Rc::clone(&binding), function_bindings.clone());
-        if requirements.is_empty() {
-            module.trait_conformance.add_conformance(Rc::clone(&conformance)).unwrap();
-            scope.traits.add_conformance(conformance).unwrap();
-        }
-        else {
-            module.trait_conformance.add_conformance_rule(requirements.clone(), Rc::clone(&conformance));
-            scope.traits.add_conformance_rule(requirements, conformance);
-        }
-        Ok(())
+        Ok(TraitConformance::new(Rc::clone(&binding), function_bindings.clone()))
     }
 }

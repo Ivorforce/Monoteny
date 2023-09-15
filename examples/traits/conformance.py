@@ -19,8 +19,10 @@ def main():
     """
     dog = Dog()
     cat = Cat()
-    converse_1(cat, dog)
-    converse_0(dog, cat)
+    print_(talk_0(dog))
+    print_(talk_1(cat))
+    converse_0(cat, dog)
+    converse_1(dog, cat)
 
 
 # ========================== ======== ============================
@@ -28,7 +30,20 @@ def main():
 # ========================== ======== ============================
 
 
-def converse_0(lhs: Dog, rhs: Cat):
+def talk_0(self: Dog) -> str:
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        self: TODO
+
+    Returns:
+        <TODO>
+    """
+    return "Bark"
+
+
+def converse_0(lhs: Cat, rhs: Dog):
     """
     <DOCSTRING TODO>
 
@@ -36,31 +51,59 @@ def converse_0(lhs: Dog, rhs: Cat):
         lhs: TODO
         rhs: TODO
     """
-    talk_1(lhs)
-    talk_0(rhs)
+    print_(op.add(format(talk_1(lhs)), op.add(" ", format(talk_0(rhs)))))
 
 
-def talk_0(self: Cat):
+def format(object: str) -> str:
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        object: TODO
+
+    Returns:
+        <TODO>
+    """
+    return to_string(object)
+
+
+def to_string(self: str) -> str:
     """
     <DOCSTRING TODO>
 
     Args:
         self: TODO
+
+    Returns:
+        <TODO>
     """
-    print("Meow")
+    return self
 
 
-def talk_1(self: Dog):
+def talk_1(self: Cat) -> str:
     """
     <DOCSTRING TODO>
 
     Args:
         self: TODO
+
+    Returns:
+        <TODO>
     """
-    print("Bark")
+    return "Meow"
 
 
-def converse_1(lhs: Cat, rhs: Dog):
+def print_(value: str):
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        value: TODO
+    """
+    print(to_string(value))
+
+
+def converse_1(lhs: Dog, rhs: Cat):
     """
     <DOCSTRING TODO>
 
@@ -68,8 +111,7 @@ def converse_1(lhs: Cat, rhs: Dog):
         lhs: TODO
         rhs: TODO
     """
-    talk_0(lhs)
-    talk_1(rhs)
+    print_(op.add(format(talk_0(lhs)), op.add(" ", format(talk_1(rhs)))))
 
 
 __all__ = [

@@ -33,18 +33,24 @@ def tau() -> float32:
     return float32(6.283185307179586)
 
 
-def floor_div(lhs: float32, rhs: float32) -> float32:
+def pi_ish_0() -> float32:
     """
     <DOCSTRING TODO>
-
-    Args:
-        lhs: TODO
-        rhs: TODO
 
     Returns:
         <TODO>
     """
-    return math.floor(lhs / rhs)
+    return float32(3.14)
+
+
+def e() -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return float32(2.718281828459045)
 
 
 def square(self: float32) -> float32:
@@ -60,26 +66,6 @@ def square(self: float32) -> float32:
     return self * self
 
 
-def e() -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Returns:
-        <TODO>
-    """
-    return float32(2.718281828459045)
-
-
-def pi_ish_0() -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Returns:
-        <TODO>
-    """
-    return float32(3.14)
-
-
 def pi_ish_1() -> int32:
     """
     <DOCSTRING TODO>
@@ -88,6 +74,20 @@ def pi_ish_1() -> int32:
         <TODO>
     """
     return int32(3)
+
+
+def floor_div(lhs: float32, rhs: float32) -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        lhs: TODO
+        rhs: TODO
+
+    Returns:
+        <TODO>
+    """
+    return math.floor(lhs / rhs)
 
 
 __all__ = [

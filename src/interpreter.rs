@@ -72,7 +72,7 @@ pub struct Source {
 pub struct FunctionInterpreter<'a> {
     pub runtime: &'a mut Runtime,
     pub implementation: Rc<FunctionImplementation>,
-    pub requirements_fulfillment: Box<RequirementsFulfillment>,
+    pub requirements_fulfillment: Rc<RequirementsFulfillment>,
 
     pub locals: HashMap<Uuid, Value>,
 }
@@ -183,7 +183,7 @@ impl FunctionInterpreter<'_> {
         return None
     }
 
-    pub fn combine_bindings(lhs: &RequirementsFulfillment, rhs: &RequirementsFulfillment) -> Box<RequirementsFulfillment> {
+    pub fn combine_bindings(lhs: &RequirementsFulfillment, rhs: &RequirementsFulfillment) -> Rc<RequirementsFulfillment> {
         todo!()
         // Box::new(TraitResolution {
         //     requirement_bindings: lhs.requirement_bindings.iter().chain(rhs.requirement_bindings.iter())

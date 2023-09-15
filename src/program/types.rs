@@ -104,6 +104,7 @@ impl TypeProto {
     }
 
     pub fn bitxor(lhs: &Uuid, rhs: &Uuid) -> Uuid {
+        // TODO This is technically wrong because some bits of UUID are reserved. OH WELL
         Uuid::from_u128(lhs.as_u128() ^ rhs.as_u128())
     }
 

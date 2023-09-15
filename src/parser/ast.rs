@@ -78,8 +78,8 @@ pub struct TraitDefinition {
 
 #[derive(Eq, PartialEq)]
 pub struct TraitConformanceDeclaration {
-    pub target: String,
-    pub trait_: String,
+    pub declared_for: Expression,
+    pub declared: String,
     pub statements: Vec<Box<GlobalStatement>>,
 }
 
@@ -260,7 +260,7 @@ impl Display for TraitDefinition {
 
 impl Display for TraitConformanceDeclaration {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "declare {} is {} {{}} :: ", self.target, self.trait_)?;
+        write!(fmt, "declare {} is {} {{}} :: ", self.declared_for, self.declared)?;
         Ok(())
     }
 }

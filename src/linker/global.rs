@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use itertools::Itertools;
 use uuid::Uuid;
 use crate::interpreter::Runtime;
 use crate::parser::ast;
@@ -8,10 +9,11 @@ use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{LinkError, scopes};
 use crate::linker::conformance::ConformanceLinker;
 use crate::linker::interface::{link_function_pointer, link_operator_pointer};
+use crate::linker::r#type::TypeFactory;
 use crate::linker::scopes::Environment;
 use crate::linker::traits::TraitLinker;
 use crate::program::allocation::{ObjectReference, Reference};
-use crate::program::traits::{Trait, TraitBinding, TraitConformance};
+use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::functions::{FunctionHead, FunctionType, FunctionForm, FunctionInterface, FunctionPointer};
 use crate::program::generics::TypeForest;
 use crate::program::global::BuiltinFunctionHint;
@@ -81,7 +83,7 @@ impl <'a> GlobalLinker<'a> {
                 self.add_function(fun, &syntax.body, &syntax.decorators)?;
             }
             ast::GlobalStatement::Trait(syntax) => {
-                let mut trait_ = Trait::new(syntax.name.clone());
+                let mut trait_ = Trait::new_with_self(syntax.name.clone());
 
                 let generic_self_type = trait_.create_generic_type("self");
                 // TODO module.add_trait also adds a reference; should we use the same?
@@ -107,8 +109,8 @@ impl <'a> GlobalLinker<'a> {
                     let conformance_binding = trait_.create_generic_binding(vec![("self", struct_type.clone())]);
 
                     let conformance = TraitConformance::pure(conformance_binding.clone());
-                    self.module.trait_conformance.add_conformance(Rc::clone(&conformance))?;
-                    self.global_variables.traits.add_conformance(conformance)?;
+                    self.module.trait_conformance.add_conformance_rule(TraitConformanceRule::direct(Rc::clone(&conformance)));
+                    self.global_variables.traits.add_conformance_rule(TraitConformanceRule::direct(conformance));
 
                     let new_function = Rc::new(FunctionPointer {
                         target: FunctionHead::new(
@@ -130,42 +132,38 @@ impl <'a> GlobalLinker<'a> {
                 );
             }
             ast::GlobalStatement::Conformance(syntax) => {
-                let is_generic_conformance = syntax.target.starts_with("$");
-                let target = self.global_variables.resolve(Environment::Global, match is_generic_conformance {
-                    true => &syntax.target[1..],
-                    false => &syntax.target,
-                }).unwrap();
-                let trait_ = self.global_variables.resolve(Environment::Global, &syntax.trait_).unwrap().as_trait().unwrap();
-
-                let (self_type, trait_requirements) = if !is_generic_conformance {
-                    let self_type = TypeProto::unit(TypeUnit::Struct(target.as_trait().unwrap()));
-                    (self_type, HashSet::new())
+                let mut type_factory = TypeFactory::new(&self.global_variables);
+                let self_type = type_factory.link_type(&syntax.declared_for)?;
+                let declared = self.global_variables.resolve(Environment::Global, &syntax.declared).unwrap().as_trait().unwrap();
+                if declared.generics.keys().collect_vec() != vec!["self"] {
+                    // Requires 1) parsing generics that the programmer binds
+                    // and  2) inserting new generics for each that isn't explicitly bound
+                    panic!("Declaring traits with more than self generics is not supported yet")
                 }
-                else {
-                    let target = target.as_trait().unwrap();
-                    // We make a new type because it's a generic that will be later fulfilled.
-                    // Once we have support for it, the conformance may contain more generics.
-                    let generic_self_type = target.create_generic_type("self");
-                    let requirement = target.create_generic_binding(vec![("self", generic_self_type.clone())]);
-                    (generic_self_type, HashSet::from([requirement]))
-                };
 
                 let self_ref = Reference::Object(ObjectReference::new_immutable(TypeProto::meta(self_type.clone())));
-                let self_binding = trait_.create_generic_binding(vec![("self", self_type)]);
+                let self_binding = declared.create_generic_binding(vec![("self", self_type)]);
 
                 let mut scope = self.global_variables.subscope();
                 scope.insert_singleton(Environment::Global, self_ref, "Self");
 
-                let mut linker = ConformanceLinker {
-                    functions: vec![],
-                };
+                let mut linker = ConformanceLinker { functions: vec![], };
                 for statement in syntax.statements.iter() {
-                    linker.link_statement(statement, &requirements, &scope)?;
+                    linker.link_statement(statement, &requirements.union(&type_factory.requirements).cloned().collect(), &scope)?;
                 }
 
                 // TODO To be order independent, we should finalize after sorting...
                 //  ... Or check inconsistencies only at the very end.
-                linker.finalize(self_binding, trait_requirements, &mut self.module, &mut self.global_variables)?;
+                let conformance = linker.finalize_conformance(self_binding, &type_factory.requirements)?;
+
+                let rule = Rc::new(TraitConformanceRule {
+                    generics: type_factory.generic_names(),
+                    requirements: type_factory.requirements,
+                    conformance,
+                });
+                self.module.trait_conformance.add_conformance_rule(rule.clone());
+                self.global_variables.traits.add_conformance_rule(rule);
+
                 for fun in linker.functions {
                     self.add_function(fun.pointer, fun.body, fun.decorators)?;
                 }

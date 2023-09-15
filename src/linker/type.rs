@@ -47,7 +47,7 @@ impl <'a> TypeFactory<'a> {
 
     pub fn link_type(&mut self, syntax: &ast::Expression) -> Result<Box<TypeProto>, LinkError> {
         if syntax.len() > 1 {
-            panic!("Monads etc. are not implemented yet!")
+            panic!("Monads etc. are not implemented yet: '{}'", syntax)
         }
 
         let arguments = vec![];
@@ -91,5 +91,13 @@ impl <'a> TypeFactory<'a> {
             },
             _ => panic!("Not a type!")
         }
+    }
+
+    pub fn generic_names(&self) -> HashMap<String, Uuid> {
+        self.generics.iter().map(|(key, val)| (key.clone(), match val {
+            TypeUnit::Generic(id) => *id,
+            TypeUnit::Any(id) => *id,
+            _ => panic!()
+        })).collect()
     }
 }

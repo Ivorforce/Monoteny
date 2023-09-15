@@ -157,7 +157,7 @@ pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<Function
 pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, Rc<Trait>>) -> Traits {
     let bool_type = TypeProto::simple_struct(&primitive_traits[&primitives::Type::Bool]);
 
-    let mut Eq = Trait::new("Eq".to_string());
+    let mut Eq = Trait::new_with_self("Eq".to_string());
     let eq_functions = make_eq_functions(&Eq.create_generic_type("self"), &bool_type);
     Eq.insert_functions([
         &eq_functions.equal_to,
@@ -166,7 +166,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     let Eq = Rc::new(Eq);
     module.add_trait(&Eq);
 
-    let mut Ord = Trait::new("Ord".to_string());
+    let mut Ord = Trait::new_with_self("Ord".to_string());
     let ord_functions = make_ord_functions(&Ord.create_generic_type("self"), &bool_type);
     Ord.insert_functions([
         &ord_functions.greater_than,
@@ -174,11 +174,11 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         &ord_functions.lesser_than,
         &ord_functions.lesser_than_or_equal_to,
     ].into_iter());
+    Ord.add_simple_parent_requirement(&Eq);
     let Ord = Rc::new(Ord);
     module.add_trait(&Ord);
-    module.trait_conformance.add_simple_parent_requirement(&Ord, &Eq);
 
-    let mut Number = Trait::new("Number".to_string());
+    let mut Number = Trait::new_with_self("Number".to_string());
     let number_functions = make_number_functions(&Number.create_generic_type("self"));
     Number.insert_functions([
         &number_functions.add,
@@ -188,17 +188,17 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         &number_functions.negative,
         &number_functions.modulo,
     ].into_iter());
+    Number.add_simple_parent_requirement(&Ord);
     let Number = Rc::new(Number);
     module.add_trait(&Number);
-    module.trait_conformance.add_simple_parent_requirement(&Number, &Ord);
 
-    let mut String = Trait::new("String".to_string());
+    let mut String = Trait::new_with_self("String".to_string());
     let String = Rc::new(String);
     module.add_trait(&String);
 
     // TODO String is not ToString. We could declare it on the struct, but that seems counterintuitive, no?
     //  Maybe a candidate for return self.strip().
-    let mut ToString = Trait::new("ToString".to_string());
+    let mut ToString = Trait::new_with_self("ToString".to_string());
     let to_string_function = make_to_string_function(&ToString, &String);
     ToString.insert_functions([
         &to_string_function
@@ -206,7 +206,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     let ToString = Rc::new(ToString);
     module.add_trait(&ToString);
 
-    let mut ConstructableByIntLiteral = Trait::new("ConstructableByIntLiteral".to_string());
+    let mut ConstructableByIntLiteral = Trait::new_with_self("ConstructableByIntLiteral".to_string());
     let parse_int_literal_function = FunctionPointer::new_global(
         "parse_int_literal",
         FunctionInterface::new_simple(
@@ -221,7 +221,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.add_trait(&ConstructableByIntLiteral);
 
 
-    let mut ConstructableByFloatLiteral = Trait::new("ConstructableByFloatLiteral".to_string());
+    let mut ConstructableByFloatLiteral = Trait::new_with_self("ConstructableByFloatLiteral".to_string());
     let parse_float_literal_function = FunctionPointer::new_global(
         "parse_float_literal",
         FunctionInterface::new_simple(
@@ -236,23 +236,23 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.add_trait(&ConstructableByFloatLiteral);
 
 
-    let mut Float = Trait::new("Float".to_string());
+    let mut Float = Trait::new_with_self("Float".to_string());
     let float_functions = make_float_functions(&Float.create_generic_type("self"));
     Float.insert_functions([
         &float_functions.exponent,
         &float_functions.logarithm
     ].into_iter());
+    Float.add_simple_parent_requirement(&Number);
+    Float.add_simple_parent_requirement(&ConstructableByFloatLiteral);
+    Float.add_simple_parent_requirement(&ConstructableByIntLiteral);
     let Float = Rc::new(Float);
     module.add_trait(&Float);
-    module.trait_conformance.add_simple_parent_requirement(&Float, &Number);
-    module.trait_conformance.add_simple_parent_requirement(&Float, &ConstructableByFloatLiteral);
-    module.trait_conformance.add_simple_parent_requirement(&Float, &ConstructableByIntLiteral);
 
-    let mut Int = Trait::new("Int".to_string());
+    let mut Int = Trait::new_with_self("Int".to_string());
+    Int.add_simple_parent_requirement(&Number);
+    Int.add_simple_parent_requirement(&ConstructableByIntLiteral);
     let Int = Rc::new(Int);
     module.add_trait(&Int);
-    module.trait_conformance.add_simple_parent_requirement(&Int, &Number);
-    module.trait_conformance.add_simple_parent_requirement(&Int, &ConstructableByIntLiteral);
 
     Traits {
         Eq,

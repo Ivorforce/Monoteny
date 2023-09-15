@@ -19,11 +19,16 @@ pub struct Trait {
     pub id: Uuid,
     pub name: String,
 
-    // Functions required by this trait specifically.
-    pub abstract_functions: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
-    // Generics declared by this trait, by name (via its declaration).
-    // May be used in abstract functions and requirements.
+    // Generics declared for this trait, by name (via its declaration).
+    // Used in abstract functions and requirements (collect_generics on those would yield the same GenericAliases).
     pub generics: HashMap<String, GenericAlias>,
+
+    // To conform to this trait, these other conformances are required.
+    pub requirements: HashSet<Rc<TraitBinding>>,
+
+    // Functions required by this trait specifically (not its requirements).
+    // The head of each function to its pointer (how it is defined).
+    pub abstract_functions: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
 }
 
 /// Some application of a trait with specific types.
@@ -39,8 +44,29 @@ pub struct TraitBinding {
 /// How a trait binding is fulfilled.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct TraitConformance {
+    // The binding that is being fulfilled.
     pub binding: Rc<TraitBinding>,
+    // abstract function of the trait to the function that implements it.
     pub function_mapping: HashMap<Rc<FunctionHead>, Rc<FunctionHead>>,
+}
+
+#[derive(Clone, Eq, Hash, PartialEq, Debug)]
+pub struct TraitConformanceWithTail {
+    pub conformance: Rc<TraitConformance>,
+    pub tail: Rc<RequirementsFulfillment>,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct TraitConformanceRule {
+    // Generics declared for this conformance, by name (via its declaration).
+    // Used in requirements and the conformance itself (collect_generics on those would yield the same GenericAliases).
+    pub generics: HashMap<String, GenericAlias>,
+
+    // To use this conformance, these other conformances are required.
+    pub requirements: HashSet<Rc<TraitBinding>>,
+
+    // The conformance (w.r.t. generics) defined by this rule.
+    pub conformance: Rc<TraitConformance>,
 }
 
 /// A sum of knowledge about trait conformance.
@@ -52,14 +78,18 @@ pub struct TraitGraph {
     /// For each conformance, we also know its tail - aka HOW the conformance was achieved (through dynamic rules).
     /// While the dynamic function call itself does not need this information, the dynamic dispatch (/monomorphization)
     ///  later needs to know more because the conformance's functions might call the tail's functions.
-    pub conformance: HashMap<Rc<TraitBinding>, Option<(Box<RequirementsFulfillment>, Rc<TraitConformance>)>>,
-    /// For each trait, what other traits does it require?
-    /// This causes cascading requirements on functions etc.
-    pub requirements: HashMap<Rc<Trait>, HashSet<Rc<TraitBinding>>>,
+    /// You can imagine it like so: Suppose a function is called that has a requirement.
+    /// Not only need the requirement be resolved - but if the requirement was achieved through rules, the implementations
+    ///  of the requirements' functions might (will!) call functions from any of the rule's requirements!
+    ///  e.g. Animal is required, the implementation is for any $Cat, so animal.talk() will call self.purr() - a function
+    ///  declared only on Cats. So when we use this conformance, we must also bring along the tail, which must be pre-resolved
+    ///  w.r.t. the conformance's requirements itself.
+    pub conformance_cache: HashMap<Rc<TraitBinding>, Option<Rc<TraitConformanceWithTail>>>,
+
     /// A list of conformance declarations that allow for dynamic conformance.
     /// All these use generics in the conformance, which are provided by the requirements.
     /// To use the conformance, these generics should be replaced by the matching bindings.
-    pub conformance_rules: HashMap<Rc<Trait>, Vec<(HashSet<Rc<TraitBinding>>, Rc<TraitConformance>)>>,
+    pub conformance_rules: HashMap<Rc<Trait>, Vec<Rc<TraitConformanceRule>>>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
@@ -69,88 +99,45 @@ pub struct RequirementsAssumption {
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct RequirementsFulfillment {
-    pub conformance: HashMap<Rc<TraitBinding>, (Box<RequirementsFulfillment>, Rc<TraitConformance>)>,
+    // Requirement: (tail, conformance)
+    pub conformance: HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>,
     pub generic_mapping: HashMap<Uuid, Box<TypeProto>>,
 }
 
 impl TraitGraph {
     pub fn new() -> TraitGraph {
         TraitGraph {
-            conformance: Default::default(),
-            requirements: Default::default(),
+            conformance_cache: Default::default(),
             conformance_rules: Default::default(),
         }
     }
 
-    pub fn add_graph(&mut self, graph: &TraitGraph) {
-        // TODO Check for conflicting conformance
-        self.conformance.extend(graph.conformance.clone());
-        self.requirements.extend(graph.requirements.clone());
-        self.conformance_rules.extend(graph.conformance_rules.clone());
+    pub fn clear_cache(&mut self) {
+        self.conformance_cache = HashMap::new();
     }
 
-    pub fn add_conformance(&mut self, conformance: Rc<TraitConformance>) -> Result<(), LinkError> {
-        // Check if all the requirements are satisfied
-        for requirement in self.requirements.get(&conformance.binding.trait_).unwrap_or(&Default::default()) {
-            let resolved_requirement = Rc::new(TraitBinding {
-                trait_: Rc::clone(&requirement.trait_),
-                generic_to_type: requirement.generic_to_type.iter()
-                    .map(|(key, value)| (*key, value.replacing_generics(&conformance.binding.generic_to_type)))
-                    .collect(),
-            });
-            if !self.conformance.contains_key(&resolved_requirement) {
-                return Err(LinkError::LinkError { msg: String::from(format!("{:?} cannot be declared without first declaring its requirement: {:?}", conformance.binding, requirement)) });
+    pub fn add_graph(&mut self, graph: &TraitGraph) {
+        self.conformance_cache.clear();
+        for (trait_, rules) in graph.conformance_rules.iter() {
+            match self.conformance_rules.entry(Rc::clone(trait_)) {
+                Entry::Occupied(o) => _ = o.into_mut().extend(rules.clone()),
+                Entry::Vacant(v) => _ = v.insert(rules.clone()),
             }
         }
-
-        self.conformance.insert(Rc::clone(&conformance.binding), Some((RequirementsFulfillment::empty(), conformance)));
-
-        Ok(())
     }
 
-    pub fn add_conformance_manual(&mut self, binding: Rc<TraitBinding>, function_bindings: Vec<(&Rc<FunctionHead>, &Rc<FunctionHead>)>) -> Result<(), LinkError> {
-        self.add_conformance(
-            TraitConformance::new(
-                binding,
-                HashMap::from_iter(
-                    function_bindings.into_iter().map(
-                        |(x, y)|
-                            (Rc::clone(x), Rc::clone(y)))
-                )
-            )
-        )
-    }
-
-    pub fn add_conformance_rule(&mut self, requirements: HashSet<Rc<TraitBinding>>, conformance: Rc<TraitConformance>) {
-        match self.conformance_rules.entry(Rc::clone(&conformance.binding.trait_)) {
+    pub fn add_conformance_rule(&mut self, rule: Rc<TraitConformanceRule>) {
+        match self.conformance_rules.entry(Rc::clone(&rule.conformance.binding.trait_)) {
             Entry::Occupied(e) => {
-                e.into_mut().push((requirements, conformance));
+                e.into_mut().push(rule);
             }
             Entry::Vacant(e) => {
-                e.insert(vec![(requirements, conformance)]);
+                e.insert(vec![rule]);
             }
         };
     }
 
-    pub fn add_requirement(&mut self, trait_: Rc<Trait>, requirement: Rc<TraitBinding>) {
-        match self.requirements.entry(trait_) {
-            Entry::Occupied(o) => {
-                o.into_mut().insert(requirement);
-            }
-            Entry::Vacant(v) => {
-                v.insert(HashSet::from([requirement]));
-            }
-        };
-    }
-
-    pub fn add_simple_parent_requirement(&mut self, sub_trait: &Rc<Trait>, parent_trait: &Rc<Trait>) {
-        self.add_requirement(
-            Rc::clone(sub_trait),
-            parent_trait.create_generic_binding(vec![("self", sub_trait.create_generic_type("self"))])
-        );
-    }
-
-    pub fn satisfy_requirement(&mut self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<(Box<RequirementsFulfillment>, Rc<TraitConformance>), LinkError> {
+    pub fn satisfy_requirement(&mut self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<Rc<TraitConformanceWithTail>, LinkError> {
         // TODO What if requirement is e.g. Float<Float>? Is Float declared on itself?
 
         // We resolve this binding because it might contain generics.
@@ -159,7 +146,7 @@ impl TraitGraph {
             return Err(LinkError::Ambiguous);
         }
 
-        if let Some(state) = self.conformance.get(&resolved_binding) {
+        if let Some(state) = self.conformance_cache.get(&resolved_binding) {
             // In cache
             return match state {
                 None => Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding)) }),
@@ -173,39 +160,53 @@ impl TraitGraph {
 
         // Recalculate
         // TODO clone is a bit much, but we need it to be memory safe
-        for (requirements, offered_conformance) in relevant_declarations.clone().iter() {
-            guard!(let Some(generics_map) = TraitBinding::merge(&offered_conformance.binding, &resolved_binding) else {
+        let cloned_declarations: Vec<Rc<TraitConformanceRule>> = relevant_declarations.clone();
+        'rule: for rule in cloned_declarations.iter() {
+            // TODO The type forest should be able to do this for us. Do we really have to do both?
+            guard!(let Some(generics_map) = TraitBinding::merge(&rule.conformance.binding, &resolved_binding) else {
                 continue;
             });
-            let resolved_requirements: HashSet<Rc<TraitBinding>> = requirements.iter().map(|x| x.mapping_types(&|type_| type_.replacing_generics(&generics_map))).collect();
 
-            if let Ok(fulfilled_requirements) = self.test_requirements(&resolved_requirements, mapping) {
+            // We have to make a new type forest so that the fulfillment returned by test_requirements uses generics.
+            let mut rule_mapping = mapping.clone();
+            for (generic, type_) in generics_map.iter() {
+                if rule_mapping.bind(*generic, type_).is_err() {
+                    continue 'rule;
+                }
+            }
+
+            if let Ok(fulfilled_requirements) = self.test_requirements(&rule.requirements, &rule_mapping) {
                 let resolved_conformance = TraitConformance::new(
                     resolved_binding.clone(),
                     // TODO Do we need to map the functions?
-                    offered_conformance.function_mapping.clone(),
+                    rule.conformance.function_mapping.clone(),
                 );
                 // TODO There may be more than one conflicting solution
-                let pair = (fulfilled_requirements, resolved_conformance);
-                self.conformance.insert(resolved_binding, Some(pair.clone()));
+                let pair = Rc::new(TraitConformanceWithTail {
+                    tail: Rc::new(RequirementsFulfillment {
+                        conformance: fulfilled_requirements,
+                        generic_mapping: generics_map.clone(),
+                    }),
+                    conformance: resolved_conformance,
+                });
+                self.conformance_cache.insert(resolved_binding, Some(pair.clone()));
                 return Ok(pair.clone());
             }
         }
 
-        self.conformance.insert(Rc::clone(&resolved_binding), None);
-        Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding)) })
+        self.conformance_cache.insert(Rc::clone(&resolved_binding), None);
+        Err(LinkError::LinkError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}. {} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations)) })
     }
 
-    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, mapping: &TypeForest) -> Result<Box<RequirementsFulfillment>, LinkError> {
-        let mut fulfillment = RequirementsFulfillment::empty();
+    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, mapping: &TypeForest) -> Result<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>, LinkError> {
+        let mut conformance = HashMap::new();
 
-        for r in requirements.iter() {
-            let (req_tail, req_fulfillment) = self.satisfy_requirement(r, mapping)?;
-            fulfillment.generic_mapping.extend(req_fulfillment.binding.generic_to_type.clone());
-            fulfillment.conformance.insert(Rc::clone(r), (req_tail, req_fulfillment));
+        for requirement in self.gather_deep_requirements(requirements.iter().cloned()) {
+            let trait_conformance = self.satisfy_requirement(&requirement, &mapping)?;
+            conformance.insert(requirement.clone(), trait_conformance);
         }
 
-        return Ok(fulfillment);
+        Ok(conformance)
     }
 
     pub fn gather_deep_requirements<C>(&self, bindings: C) -> Vec<Rc<TraitBinding>> where C: Iterator<Item=Rc<TraitBinding>> {
@@ -216,8 +217,7 @@ impl TraitGraph {
             if all.insert(Rc::clone(&binding)) {
                 ordered.push(Rc::clone(&binding));
                 rest.extend(
-                    self.requirements.get(&binding.trait_)
-                        .unwrap_or(&Default::default()).iter()
+                    binding.trait_.requirements.iter()
                         .map(|x| x.mapping_types(&|type_| type_.replacing_generics(&binding.generic_to_type))))
             }
         }
@@ -268,12 +268,13 @@ impl TraitGraph {
 }
 
 impl Trait {
-    pub fn new(name: String) -> Trait {
+    pub fn new_with_self(name: String) -> Trait {
         Trait {
             id: Uuid::new_v4(),
             name,
-            abstract_functions: Default::default(),
             generics: HashMap::from([("self".to_string(), Uuid::new_v4())]),
+            requirements: Default::default(),
+            abstract_functions: Default::default(),
         }
     }
 
@@ -299,6 +300,12 @@ impl Trait {
         for ptr in functions {
             self.insert_function(Rc::clone(ptr))
         }
+    }
+
+    pub fn add_simple_parent_requirement(&mut self, parent_trait: &Rc<Trait>) {
+        self.requirements.insert(
+            parent_trait.create_generic_binding(vec![("self", self.create_generic_type("self"))])
+        );
     }
 }
 
@@ -359,9 +366,33 @@ impl TraitConformance {
     }
 }
 
+impl TraitConformanceRule {
+    // Create a conformance rule that doesn't have generics or requirements.
+    pub fn direct(conformance: Rc<TraitConformance>) -> Rc<TraitConformanceRule> {
+        Rc::new(TraitConformanceRule {
+            generics: Default::default(),
+            requirements: Default::default(),
+            conformance
+        })
+    }
+
+    pub fn manual(binding: Rc<TraitBinding>, function_bindings: Vec<(&Rc<FunctionHead>, &Rc<FunctionHead>)>) -> Rc<TraitConformanceRule> {
+        Self::direct(
+            TraitConformance::new(
+                binding,
+                HashMap::from_iter(
+                    function_bindings.into_iter().map(
+                        |(x, y)|
+                            (Rc::clone(x), Rc::clone(y)))
+                )
+            )
+        )
+    }
+}
+
 impl RequirementsFulfillment {
-    pub fn empty() -> Box<RequirementsFulfillment> {
-        Box::new(RequirementsFulfillment {
+    pub fn empty() -> Rc<RequirementsFulfillment> {
+        Rc::new(RequirementsFulfillment {
             conformance: Default::default(),
             generic_mapping: Default::default(),
         })
@@ -371,8 +402,8 @@ impl RequirementsFulfillment {
         self.conformance.is_empty() && self.generic_mapping.is_empty()
     }
 
-    pub fn merge(a: &RequirementsFulfillment, b: &RequirementsFulfillment) -> Box<RequirementsFulfillment> {
-        Box::new(RequirementsFulfillment {
+    pub fn merge(a: &RequirementsFulfillment, b: &RequirementsFulfillment) -> Rc<RequirementsFulfillment> {
+        Rc::new(RequirementsFulfillment {
             conformance: a.conformance.clone().into_iter().chain(b.conformance.clone().into_iter()).collect(),
             generic_mapping: a.generic_mapping.clone().into_iter().chain(b.generic_mapping.clone().into_iter()).collect(),
         })
@@ -423,14 +454,20 @@ impl Debug for TraitBinding {
     }
 }
 
+impl Hash for TraitConformance {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.binding.hash(state);
+        for keyval in self.function_mapping.iter().sorted_by_key(|(src, dst)| src.function_id) {
+            keyval.hash(state)
+        }
+    }
+}
+
 impl Hash for RequirementsFulfillment {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        for (binding, (conformance_tail, conformance)) in self.conformance.iter().sorted_by_key(|(binding, mapping)| hash::one(binding, DefaultHasher::new())) {
+        for (binding, conformance) in self.conformance.iter().sorted_by_key(|(binding, mapping)| hash::one(binding, DefaultHasher::new())) {
             binding.hash(state);
-            conformance_tail.hash(state);
-            for keyval in conformance.function_mapping.iter().sorted_by_key(|(src, dst)| src.function_id) {
-                keyval.hash(state)
-            }
+            conformance.hash(state);
         }
 
         for (id, type_) in self.generic_mapping.iter().sorted_by_key(|(id, type_)| **id) {

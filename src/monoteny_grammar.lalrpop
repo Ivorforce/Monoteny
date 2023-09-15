@@ -130,7 +130,7 @@ Trait: Box<TraitDefinition> = {
 }
 
 Conformance: Box<TraitConformanceDeclaration> = {
-    "declare" <target: Identifier> "is" <trait_: Identifier> "{" <statements: (<GlobalStatement> ";")*> "}" => Box::new(TraitConformanceDeclaration { <> }),
+    "declare" <declared_for: Expression> "is" <declared: Identifier> "{" <statements: (<GlobalStatement> ";")*> "}" => Box::new(TraitConformanceDeclaration { <> }),
 }
 
 // =============================== Statement =====================================

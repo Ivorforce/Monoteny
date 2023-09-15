@@ -1,30 +1,32 @@
 trait Animal {
-    def {Self}.talk();
+    def {Self}.talk() -> String;
 };
 
 trait Cat {};
 
 -- Declare every Cat subtype is Animal.
 declare $Cat is Animal {
-    def {Self}.talk() :: print("Meow");
+    def {Self}.talk() -> String :: "Meow";
 };
 
 trait Dog {};
 
 -- Declare just the Dog struct is Animal.
 declare Dog is Animal {
-    def {Self}.talk() :: print("Bark");
+   def {Self}.talk() -> String :: "Bark";
 };
 
 def converse(lhs '$Animal#lhs, rhs '$Animal#rhs) :: {
-    lhs.talk();
-    rhs.talk();
+    print("\(lhs.talk()) \(rhs.talk())");
 };
 
 @main
 def main() :: {
     let dog = Dog();
     let cat = Cat();
+
+    print(dog.talk());
+    print(cat.talk());
     converse(cat, dog);
     converse(dog, cat);
 };

@@ -33,7 +33,7 @@ pub struct AmbiguousFunctionCall {
 }
 
 impl AmbiguousFunctionCall {
-    fn attempt_with_candidate(&mut self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<Box<RequirementsFulfillment>, LinkError> {
+    fn attempt_with_candidate(&mut self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<Rc<RequirementsFulfillment>, LinkError> {
         let param_types = &candidate.param_types;
 
         for (arg, param) in zip_eq(
@@ -48,17 +48,17 @@ impl AmbiguousFunctionCall {
         let mut conformance = HashMap::new();
         // TODO We should only use deep requirements once we actually use this candidate.
         //  The deep ones are guaranteed to exist if the original requirements can be satisfied.
-        for requirement in self.traits.gather_deep_requirements(candidate.requirements.clone().into_iter()).iter() {
-            let (trait_conformance_tail, trait_conformance) = self.traits
-                .satisfy_requirement(requirement, &types)?;
-            conformance.insert(requirement.mapping_types(&|x| x.seeding_generics(&self.seed)), (trait_conformance_tail, trait_conformance));
+        for requirement in self.traits.gather_deep_requirements(candidate.requirements.iter().cloned()) {
+            let trait_conformance = self.traits
+                .satisfy_requirement(&requirement, &types)?;
+            conformance.insert(requirement.mapping_types(&|x| x.seeding_generics(&self.seed)), trait_conformance);
         }
 
         let generic_mapping: HashMap<_, _> = candidate.function.interface.collect_generics().iter().map(|id| {
             (*id, TypeProto::unit(TypeUnit::Generic(TypeProto::bitxor(id, &self.seed))))
         }).collect();
 
-        Ok(Box::new(RequirementsFulfillment { generic_mapping, conformance }))
+        Ok(Rc::new(RequirementsFulfillment { generic_mapping, conformance }))
     }
 }
 

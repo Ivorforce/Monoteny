@@ -22,7 +22,7 @@ pub fn create(core: &Core) -> Transpilation {
 
     let any_type = TypeProto::unit(TypeUnit::Generic(Uuid::new_v4()));
 
-    let mut Transpiler = Trait::new("Transpiler".to_string());
+    let mut Transpiler = Trait::new_with_self("Transpiler".to_string());
     let Transpiler = Rc::new(Transpiler);
     module.add_trait(&Transpiler);
 
