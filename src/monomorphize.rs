@@ -162,7 +162,6 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMa
     let default_pair = (RequirementsFulfillment::empty(), Rc::clone(&call.function));
     let (mapped_function_tail, mapped_function) = function_replacement_map.get(&call.function)
         .unwrap_or(&default_pair);
-    println!("Call to {:?} with tail {:?}", mapped_function, mapped_function_tail);
 
     let full_conformance = RequirementsFulfillment::merge(&call.requirements_fulfillment, mapped_function_tail);
 

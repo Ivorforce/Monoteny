@@ -115,7 +115,7 @@ fn main() -> Result<(), InterpreterError> {
                         let mut f: &mut (dyn Write) = &mut f;
                         write!(f, "{}", transpiled_tree).expect("Error writing file");
 
-                        println!("{:?}", python_path);
+                        println!("{}", python_path.to_str().unwrap());
                     },
                     _ => unreachable!()
                 };

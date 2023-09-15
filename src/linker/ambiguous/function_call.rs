@@ -96,7 +96,6 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             let candidate = self.candidates.drain(..).next().unwrap();
             // TODO We can just assign linker.types to the candidate's result; it was literally just copied.
             let resolution = self.attempt_with_candidate(&mut linker.types, &candidate)?;
-            println!("Function call to {:?} with generic map: {:?}", candidate.function, resolution.generic_mapping);
 
             linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                 function: Rc::clone(&candidate.function),
