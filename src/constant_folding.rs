@@ -147,7 +147,7 @@ impl ConstantFold {
     pub fn inline_calls(&mut self, implementation: &mut FunctionImplementation) -> Option<InlineHint> {
         for expression_id in implementation.expression_forest.operations.keys().cloned().collect_vec() {
             guard!(let Some(operation) = implementation.expression_forest.operations.get(&expression_id) else {
-                continue;
+                continue  // We may have truncated this WHILE iterating the forest.
             });
             let arguments = &implementation.expression_forest.arguments[&expression_id].clone();
 
@@ -158,6 +158,7 @@ impl ConstantFold {
                             InlineHint::ReplaceCall(target_function, idx) => {
                                 implementation.expression_forest.operations.insert(expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                                     function: Rc::clone(&target_function),
+                                    // The requirements fulfillment can be empty because otherwise it wouldn't have been inlined.
                                     requirements_fulfillment: RequirementsFulfillment::empty(),
                                 })));
                                 let replacement_id = arguments[*idx];
@@ -167,9 +168,11 @@ impl ConstantFold {
                             InlineHint::YieldParameter(idx) => {
                                 let replacement_id = arguments[*idx];
                                 let new_operation = implementation.expression_forest.operations.remove(&replacement_id).unwrap();
+                                let new_arguments = implementation.expression_forest.arguments.remove(&replacement_id).unwrap();
                                 implementation.expression_forest.operations.insert(expression_id, new_operation);
+                                implementation.expression_forest.arguments.insert(expression_id, new_arguments);
+                                // We technically don't need to exclude replacement_id, but it's already been removed and would cause an error.
                                 truncate_tree(arguments.clone(), HashSet::from([replacement_id]), &mut implementation.expression_forest);
-                                implementation.expression_forest.arguments.insert(expression_id, vec![replacement_id]);
                             },
                             InlineHint::GlobalLookup(v) => {
                                 implementation.expression_forest.operations.insert(expression_id, ExpressionOperation::VariableLookup(Rc::clone(v)));
@@ -297,6 +300,9 @@ pub fn truncate_tree(mut include: Vec<ExpressionID>, exclude: HashSet<Expression
             continue;
         }
 
+        // It's enough to remove arguments and operations.
+        // The type forest may still contain orphans, but that's ok. And our type doesn't change
+        //  from inlining.
         forest.operations.remove(&next);
         include.extend(forest.arguments.remove(&next).unwrap());
     }

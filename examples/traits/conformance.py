@@ -5,11 +5,11 @@ from numpy import int8, int16, int32, int64, uint8, uint16, uint32, uint64, floa
 from typing import Any, Callable
 
 
-class Cat:
+class Dog:
     pass
 
 
-class Dog:
+class Cat:
     pass
 
 
@@ -19,8 +19,8 @@ def main():
     """
     dog = Dog()
     cat = Cat()
-    print_(talk_0(dog))
-    print_(talk_1(cat))
+    print(talk_1(dog))
+    print(talk_0(cat))
     converse_0(cat, dog)
     converse_1(dog, cat)
 
@@ -28,19 +28,6 @@ def main():
 # ========================== ======== ============================
 # ========================== Internal ============================
 # ========================== ======== ============================
-
-
-def talk_0(self: Dog) -> str:
-    """
-    <DOCSTRING TODO>
-
-    Args:
-        self: TODO
-
-    Returns:
-        <TODO>
-    """
-    return "Bark"
 
 
 def converse_0(lhs: Cat, rhs: Dog):
@@ -51,36 +38,10 @@ def converse_0(lhs: Cat, rhs: Dog):
         lhs: TODO
         rhs: TODO
     """
-    print_(op.add(format(talk_1(lhs)), op.add(" ", format(talk_0(rhs)))))
+    print(op.add(talk_0(lhs), op.add(" ", talk_1(rhs))))
 
 
-def format(object: str) -> str:
-    """
-    <DOCSTRING TODO>
-
-    Args:
-        object: TODO
-
-    Returns:
-        <TODO>
-    """
-    return to_string(object)
-
-
-def to_string(self: str) -> str:
-    """
-    <DOCSTRING TODO>
-
-    Args:
-        self: TODO
-
-    Returns:
-        <TODO>
-    """
-    return self
-
-
-def talk_1(self: Cat) -> str:
+def talk_0(self: Cat) -> str:
     """
     <DOCSTRING TODO>
 
@@ -93,16 +54,6 @@ def talk_1(self: Cat) -> str:
     return "Meow"
 
 
-def print_(value: str):
-    """
-    <DOCSTRING TODO>
-
-    Args:
-        value: TODO
-    """
-    print(to_string(value))
-
-
 def converse_1(lhs: Dog, rhs: Cat):
     """
     <DOCSTRING TODO>
@@ -111,7 +62,20 @@ def converse_1(lhs: Dog, rhs: Cat):
         lhs: TODO
         rhs: TODO
     """
-    print_(op.add(format(talk_0(lhs)), op.add(" ", format(talk_1(rhs)))))
+    print(op.add(talk_1(lhs), op.add(" ", talk_0(rhs))))
+
+
+def talk_1(self: Dog) -> str:
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        self: TODO
+
+    Returns:
+        <TODO>
+    """
+    return "Bark"
 
 
 __all__ = [
