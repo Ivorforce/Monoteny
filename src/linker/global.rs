@@ -167,7 +167,7 @@ impl <'a> GlobalLinker<'a> {
                 //  ... Or check inconsistencies only at the very end.
                 linker.finalize(self_binding, requirements, &mut self.module, &mut self.global_variables)?;
                 for fun in linker.functions {
-                    self.add_function(fun.pointer, fun.body, fun.decorators);
+                    self.add_function(fun.pointer, fun.body, fun.decorators)?;
                 }
             }
         }
