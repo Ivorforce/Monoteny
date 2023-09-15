@@ -362,6 +362,7 @@ impl <'a> ImperativeLinker<'a> {
             ast::Term::StringLiteral(parts) => {
                 precedence::Token::Expression(match &parts[..] {
                     // Simple case: Just one part means we can use it directly.
+                    [] => self.link_string_part(&ast::StringPart::Literal("".to_string()), scope)?,
                     [part] => self.link_string_part(part, scope)?,
                     _ => {
                         let mut parts: Vec<_> = parts.iter().map(|part| self.link_string_part(part, scope)).try_collect()?;
