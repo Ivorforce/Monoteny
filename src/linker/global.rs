@@ -137,7 +137,7 @@ impl <'a> GlobalLinker<'a> {
                 }).unwrap();
                 let trait_ = self.global_variables.resolve(Environment::Global, &syntax.trait_).unwrap().as_trait().unwrap();
 
-                let (self_type, requirements) = if !is_generic_conformance {
+                let (self_type, trait_requirements) = if !is_generic_conformance {
                     let self_type = TypeProto::unit(TypeUnit::Struct(target.as_trait().unwrap()));
                     (self_type, HashSet::new())
                 }
@@ -165,7 +165,7 @@ impl <'a> GlobalLinker<'a> {
 
                 // TODO To be order independent, we should finalize after sorting...
                 //  ... Or check inconsistencies only at the very end.
-                linker.finalize(self_binding, requirements, &mut self.module, &mut self.global_variables)?;
+                linker.finalize(self_binding, trait_requirements, &mut self.module, &mut self.global_variables)?;
                 for fun in linker.functions {
                     self.add_function(fun.pointer, fun.body, fun.decorators)?;
                 }

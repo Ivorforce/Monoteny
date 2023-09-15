@@ -84,12 +84,12 @@ impl <'a> ConformanceLinker<'a> {
 
         let conformance = TraitConformance::new(Rc::clone(&binding), function_bindings.clone());
         if requirements.is_empty() {
-            module.trait_conformance.add_conformance_rule(requirements.clone(), Rc::clone(&conformance));
-            scope.traits.add_conformance_rule(requirements, conformance);
-        }
-        else {
             module.trait_conformance.add_conformance(Rc::clone(&conformance)).unwrap();
             scope.traits.add_conformance(conformance).unwrap();
+        }
+        else {
+            module.trait_conformance.add_conformance_rule(requirements.clone(), Rc::clone(&conformance));
+            scope.traits.add_conformance_rule(requirements, conformance);
         }
         Ok(())
     }
