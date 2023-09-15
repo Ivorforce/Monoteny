@@ -4,7 +4,7 @@ use crate::interpreter::{InterpreterError, Runtime};
 
 pub fn load(runtime: &mut Runtime) -> Result<(), InterpreterError> {
     for name in [
-        "math", "debug", "strings",
+        "math", "strings", "debug",
     ] {
         let module = runtime.load_file(&PathBuf::from(format!("monoteny/common/{}.monoteny", name)))?;
         runtime.source.module_by_name.insert(name.into(), module);

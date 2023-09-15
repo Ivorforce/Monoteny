@@ -12,7 +12,7 @@ mod tests {
         let parsed = parser::parse_program(&"
 @main
 def main() :: {
-    print(\"Hello World!\");
+    write_line(\"Hello World!\");
 };
 
 @transpile
@@ -28,7 +28,7 @@ def transpile(transpiler 'Transpiler) :: {
                 parameters: vec![],
                 decorators: vec!["main".to_string()],
                 body: Some(Expression::from(vec![Box::new(Term::Scope(vec![Box::new(Statement::Expression(Expression::from(vec![
-                    Box::new(Term::Identifier("print".to_string())),
+                    Box::new(Term::Identifier("write_line".to_string())),
                     Box::new(Term::Struct(vec![
                         StructArgument {
                             key: ParameterKey::Positional,

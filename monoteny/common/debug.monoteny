@@ -2,8 +2,10 @@
 def panic() -> #A;
 def todo() -> #A;
 
--- Supplied by transpiler.
-def print(value '$ToString) :: _print(value.to_string());
+-- TODO This should be attached to a Console trait.
+--  But that only makes sense once we can constant fold away objects without storage.
+--  - otherwise, we'll have ugly write_line(console, "...") calls!
+def _write_line(value 'String);
 
--- This is a 'direct syscall'!
-def _print(value 'String);
+-- Bet you didn't know this was just a convenience function to call the actual write_line function!
+def write_line(value '$ToString) :: _write_line(value.to_string());

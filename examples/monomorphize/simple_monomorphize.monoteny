@@ -6,10 +6,10 @@ def {$Number}.square() -> $Number :: self * self;
 @main
 def main() :: {
     -- Call the generic function with an int32.
-    print(3.square() 'Int32);
+    write_line(3.square() 'Int32);
     -- Call the generic function with a float32.
     -- We can monomorphize the function  at compile time and generate 2 specialized functions.
-    print(3.2.square() 'Float32);
+    write_line(3.2.square() 'Float32);
 };
 
 @transpile

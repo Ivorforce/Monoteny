@@ -49,7 +49,7 @@ pub fn prepare(runtime: &Runtime) -> HashMap<Rc<FunctionHead>, TranspilationHint
         transpilation_hints_by_id.insert(
             Rc::clone(&ptr.target),
             TranspilationHint::CallProvided(match ptr.name.as_str() {
-                "_print" => "print",
+                "_write_line" => "print",
                 "panic" => "exit",
                 _ => continue,
             }.to_string())

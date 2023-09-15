@@ -17,7 +17,7 @@ declare Dog is Animal {
 };
 
 def converse(lhs '$Animal#lhs, rhs '$Animal#rhs) :: {
-    print("\(lhs.talk()) \(rhs.talk())");
+    write_line("\(lhs.talk()) \(rhs.talk())");
 };
 
 @main
@@ -25,8 +25,8 @@ def main() :: {
     let dog = Dog();
     let cat = Cat();
 
-    print(dog.talk());
-    print(cat.talk());
+    write_line(dog.talk());
+    write_line(cat.talk());
     converse(cat, dog);
     converse(dog, cat);
 };
