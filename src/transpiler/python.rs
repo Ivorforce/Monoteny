@@ -119,14 +119,15 @@ pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_
 
         // Exported functions MUST be there still, because they can't be inlined.
         transpiler_context.exported_functions.extend(exported_function_order.iter().map(|x| constant_folder.implementation_by_head.remove(x).unwrap()).collect_vec());
-        // The order of the internal functions is unimportant anyway, because they are sorted. Everything the constant
+        // The order of the internal functions is unimportant anyway, because they are sorted later.
         transpiler_context.internal_functions = constant_folder.drain_all_functions_yield_uninlined();
     }
 
-    // TODO We need to somehow sort transpiler_context.internal_functions.
-    //  One way would be to keep track of the order from before, but constant_folder may remove and add functions at will.
-    //  IDs are created randomly and are thus useless for the task. Sorting by name doesn't work because there may
-    //  be conflicting names, so those would still be assigned randomized names.
+    // TODO We need to sort the internal functions. This could be done roughly by putting them in the
+    //  order the player defined it - which leaves only different monomorpizations to be sorted.
+    //  Those can be sorted by something like the displayed 'function to string' (without randomized uuid).
+    //  This should work because two traits sharing the same name but being different IDs should be rare.
+    //  In that rare case, we can probably live with being indeterministic.
 
     create_ast(module, &transpiler_context, runtime)
 }
