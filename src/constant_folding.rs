@@ -146,52 +146,7 @@ impl ConstantFold {
 
     pub fn inline_calls(&mut self, implementation: &mut FunctionImplementation) -> Option<InlineHint> {
         for expression_id in implementation.expression_forest.operations.keys().cloned().collect_vec() {
-            guard!(let Some(operation) = implementation.expression_forest.operations.get(&expression_id) else {
-                continue  // We may have truncated this WHILE iterating the forest.
-            });
-            let arguments = &implementation.expression_forest.arguments[&expression_id].clone();
-
-            match operation {
-                ExpressionOperation::FunctionCall(f) => {
-                    if let Some(inline_hint) = self.inline_hints.get(&f.function) {
-                        match inline_hint {
-                            InlineHint::ReplaceCall(target_function, idx) => {
-                                implementation.expression_forest.operations.insert(expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
-                                    function: Rc::clone(&target_function),
-                                    // The requirements fulfillment can be empty because otherwise it wouldn't have been inlined.
-                                    requirements_fulfillment: RequirementsFulfillment::empty(),
-                                })));
-                                let replacement_id = arguments[*idx];
-                                truncate_tree(arguments.clone(), HashSet::from([replacement_id]), &mut implementation.expression_forest);
-                                implementation.expression_forest.arguments.insert(expression_id, vec![replacement_id]);
-                            }
-                            InlineHint::YieldParameter(idx) => {
-                                let replacement_id = arguments[*idx];
-                                let new_operation = implementation.expression_forest.operations.remove(&replacement_id).unwrap();
-                                let new_arguments = implementation.expression_forest.arguments.remove(&replacement_id).unwrap();
-                                implementation.expression_forest.operations.insert(expression_id, new_operation);
-                                implementation.expression_forest.arguments.insert(expression_id, new_arguments);
-                                // We technically don't need to exclude replacement_id, but it's already been removed and would cause an error.
-                                truncate_tree(arguments.clone(), HashSet::from([replacement_id]), &mut implementation.expression_forest);
-                            },
-                            InlineHint::GlobalLookup(v) => {
-                                implementation.expression_forest.operations.insert(expression_id, ExpressionOperation::VariableLookup(Rc::clone(v)));
-                                // No matter what was passed before, we need no further arguments.
-                                truncate_tree(arguments.clone(), HashSet::new(), &mut implementation.expression_forest);
-                                implementation.expression_forest.arguments.insert(expression_id, vec![]);
-                            },
-                            InlineHint::NoOp => {
-                                implementation.expression_forest.operations.remove(&expression_id);
-                                truncate_tree(arguments.clone(), HashSet::new(), &mut implementation.expression_forest);
-                            },
-                        }
-                    }
-                }
-                ExpressionOperation::PairwiseOperations { .. } => {
-                    todo!()
-                }
-                _ => {}
-            }
+            self.inline_expression(implementation, expression_id);
         }
 
         // Reverse iteration allows us to remove objects without indexes getting invalidated.
@@ -225,6 +180,58 @@ impl ConstantFold {
         }
         else {
             try_inline(implementation)
+        }
+    }
+
+    fn inline_expression(&mut self, implementation: &mut FunctionImplementation, expression_id: ExpressionID) {
+        guard!(let Some(operation) = implementation.expression_forest.operations.get(&expression_id) else {
+            return  // We may have truncated this WHILE iterating the forest.
+        });
+        let arguments = &implementation.expression_forest.arguments[&expression_id].clone();
+
+        match operation {
+            ExpressionOperation::FunctionCall(f) => {
+                if let Some(inline_hint) = self.inline_hints.get(&f.function) {
+                    match inline_hint {
+                        InlineHint::ReplaceCall(target_function, idx) => {
+                            implementation.expression_forest.operations.insert(expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
+                                function: Rc::clone(&target_function),
+                                // The requirements fulfillment can be empty because otherwise it wouldn't have been inlined.
+                                requirements_fulfillment: RequirementsFulfillment::empty(),
+                            })));
+                            let replacement_id = arguments[*idx];
+                            truncate_tree(arguments.clone(), HashSet::from([replacement_id]), &mut implementation.expression_forest);
+                            implementation.expression_forest.arguments.insert(expression_id, vec![replacement_id]);
+                        }
+                        InlineHint::YieldParameter(idx) => {
+                            let replacement_id = arguments[*idx];
+                            let new_operation = implementation.expression_forest.operations.remove(&replacement_id).unwrap();
+                            let new_arguments = implementation.expression_forest.arguments.remove(&replacement_id).unwrap();
+                            implementation.expression_forest.operations.insert(expression_id, new_operation);
+                            implementation.expression_forest.arguments.insert(expression_id, new_arguments);
+                            // We technically don't need to exclude replacement_id, but it's already been removed and would cause an error.
+                            truncate_tree(arguments.clone(), HashSet::from([replacement_id]), &mut implementation.expression_forest);
+
+                            // FIXME This is kind of lazy (recursive), but we may need to inline the expression again. Maybe we can unroll this into the loop somehow?
+                            self.inline_expression(implementation, expression_id);
+                        },
+                        InlineHint::GlobalLookup(v) => {
+                            implementation.expression_forest.operations.insert(expression_id, ExpressionOperation::VariableLookup(Rc::clone(v)));
+                            // No matter what was passed before, we need no further arguments.
+                            truncate_tree(arguments.clone(), HashSet::new(), &mut implementation.expression_forest);
+                            implementation.expression_forest.arguments.insert(expression_id, vec![]);
+                        },
+                        InlineHint::NoOp => {
+                            implementation.expression_forest.operations.remove(&expression_id);
+                            truncate_tree(arguments.clone(), HashSet::new(), &mut implementation.expression_forest);
+                        },
+                    }
+                }
+            }
+            ExpressionOperation::PairwiseOperations { .. } => {
+                todo!()
+            }
+            _ => {}
         }
     }
 
