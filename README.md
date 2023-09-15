@@ -166,7 +166,7 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
     - [ ] Custom precedence steps (with associativity)
   - [x] Comments
     - [ ] Documentation
-  - [x] String Comprehension: "Value: \(value, precision: 5)"
+  - [x] String Interpolation
 - [x] Inlining trivial calls
 
 ### Monoteny 1.0
