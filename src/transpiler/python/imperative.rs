@@ -183,7 +183,13 @@ pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext)
 }
 
 pub fn escape_string(string: &str) -> String {
+    // This is kinda sad lol. There's gotta be a better way.
+    // FIXME This will also wreck something like \\n.
     let string = string.replace("\\", "\\\\");
+    let string = string.replace("\n", "\\n");
+    let string = string.replace("\0", "\\0");
+    let string = string.replace("\t", "\\t");
+    let string = string.replace("\r", "\\r");
     let string = string.replace("\"", "\\\"");
     return string
 }
