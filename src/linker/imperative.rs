@@ -3,7 +3,6 @@ use std::rc::Rc;
 use uuid::Uuid;
 use guard::guard;
 use itertools::Itertools;
-use strum::IntoEnumIterator;
 use try_map::FallibleMapExt;
 use crate::interpreter::Runtime;
 use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation, Statement};
@@ -211,7 +210,7 @@ impl <'a> ImperativeLinker<'a> {
                     let new_value: ExpressionID = self.link_expression(&expression, &scope)?;
 
                     if let Some(type_declaration) = type_declaration {
-                        self.hint_type(new_value, type_declaration, &scope);
+                        self.hint_type(new_value, type_declaration, &scope)?;
                     }
 
                     let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(new_value)), mutability: mutability.clone() });

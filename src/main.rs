@@ -112,7 +112,7 @@ fn main() -> Result<(), InterpreterError> {
 
                         let python_path = output_path.with_extension("py");
                         let mut f = File::create(python_path.clone()).expect("Unable to create file");
-                        let mut f: &mut (dyn Write) = &mut f;
+                        let f: &mut (dyn Write) = &mut f;
                         write!(f, "{}", transpiled_tree).expect("Error writing file");
 
                         println!("{}", python_path.to_str().unwrap());

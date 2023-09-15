@@ -1,4 +1,4 @@
-use std::fmt::{Binary, Debug, Display, Error, Formatter};
+use std::fmt::{Display, Error, Formatter};
 use std::ops::{Deref, DerefMut};
 use crate::program::functions::ParameterKey;
 use crate::program::allocation::Mutability;

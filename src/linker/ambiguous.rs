@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use itertools::Itertools;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::LinkError;
 

@@ -1,7 +1,6 @@
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use guard::guard;
-use itertools::Itertools;
 use uuid::Uuid;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{scopes, LinkError};

@@ -433,7 +433,7 @@ impl Hash for RequirementsFulfillment {
             }
         }
 
-        for (id, type_) in self.generic_mapping.iter().sorted_by_key(|(id, type_)| id.clone()) {
+        for (id, type_) in self.generic_mapping.iter().sorted_by_key(|(id, type_)| **id) {
             id.hash(state);
             type_.hash(state);
         }

@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
 use std::rc::Rc;
 use uuid::Uuid;
 use crate::linker::{LinkError, scopes};

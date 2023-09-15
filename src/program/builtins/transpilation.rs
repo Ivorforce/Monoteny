@@ -7,6 +7,7 @@ use crate::program::traits::{Trait};
 use crate::program::types::{TypeProto, TypeUnit};
 
 
+#[allow(non_snake_case)]
 pub struct Transpilation {
     pub module: Rc<Module>,
     pub any_type: Box<TypeProto>,
@@ -15,6 +16,7 @@ pub struct Transpilation {
     pub add: Rc<FunctionPointer>,
 }
 
+#[allow(non_snake_case)]
 pub fn create(core: &Core) -> Transpilation {
     let mut module = Module::new("monoteny.transpiler".to_string());
 

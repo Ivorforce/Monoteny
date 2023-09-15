@@ -1,9 +1,8 @@
 use uuid::Uuid;
 use std::hash::Hash;
 use std::rc::Rc;
-use std::fmt::{Debug, Formatter, Pointer};
+use std::fmt::{Debug, Formatter};
 use std::collections::{HashMap, HashSet};
-use std::ops::BitXor;
 use itertools::Itertools;
 use crate::program::traits::{Trait};
 use crate::linker::precedence::PrecedenceGroup;

@@ -1,7 +1,6 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
 
-#[macro_export]
 #[proc_macro]
 pub fn bin_op(_item: TokenStream) -> TokenStream {
     let mut args_str = _item.to_string();  // TODO Stringifying back is stupid; is there a way to force the lexer to split just on spaces?
@@ -31,7 +30,6 @@ pub fn bin_op(_item: TokenStream) -> TokenStream {
     ", type_=type_, result_type=result_type, op=op).parse().unwrap()
 }
 
-#[macro_export]
 #[proc_macro]
 pub fn un_op(_item: TokenStream) -> TokenStream {
     let mut args = _item.into_iter();
@@ -53,7 +51,6 @@ pub fn un_op(_item: TokenStream) -> TokenStream {
         }}", type_=type_, op=op).parse().unwrap()
 }
 
-#[macro_export]
 #[proc_macro]
 pub fn fun_op(_item: TokenStream) -> TokenStream {
     let args_str = _item.to_string(); // TODO Stringifying back is stupid; is there a way to force the lexer to split just on spaces?
@@ -81,7 +78,6 @@ pub fn fun_op(_item: TokenStream) -> TokenStream {
     ", type_=type_, result_type=result_type, op=op).parse().unwrap()
 }
 
-#[macro_export]
 #[proc_macro]
 pub fn parse_op(_item: TokenStream) -> TokenStream {
     let mut args = _item.into_iter();
@@ -101,7 +97,6 @@ pub fn parse_op(_item: TokenStream) -> TokenStream {
         }}", type_=type_).parse().unwrap()
 }
 
-#[macro_export]
 #[proc_macro]
 pub fn to_string_op(_item: TokenStream) -> TokenStream {
     let mut args = _item.into_iter();
@@ -122,7 +117,6 @@ pub fn to_string_op(_item: TokenStream) -> TokenStream {
         }}", type_=type_).parse().unwrap()
 }
 
-#[macro_export]
 #[proc_macro]
 pub fn load_constant(_item: TokenStream) -> TokenStream {
     let mut args = _item.into_iter();

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::rc::Rc;
-use itertools::Itertools;
 use crate::linker::scopes;
 use crate::program::module::Module;
 

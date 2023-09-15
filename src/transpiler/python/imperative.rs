@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use guard::guard;
-use itertools::{Itertools, zip_eq};
+use itertools::zip_eq;
 use uuid::Uuid;
 use regex;
 use crate::interpreter::Runtime;

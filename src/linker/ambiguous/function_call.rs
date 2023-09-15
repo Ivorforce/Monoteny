@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter, Pointer};
+use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;

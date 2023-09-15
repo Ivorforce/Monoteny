@@ -22,6 +22,7 @@ pub fn create_traits(module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>
     traits
 }
 
+#[allow(non_snake_case)]
 pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<primitives::Type, Rc<Trait>>) {
     let bool_type = TypeProto::simple_struct(&basis[&primitives::Type::Bool]);
 

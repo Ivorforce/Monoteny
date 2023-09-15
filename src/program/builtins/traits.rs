@@ -7,6 +7,7 @@ use crate::program::traits::Trait;
 use crate::program::types::{TypeProto, TypeUnit};
 
 
+#[allow(non_snake_case)]
 pub struct Traits {
     pub Eq: Rc<Trait>,
     pub Eq_functions: EqFunctions,
@@ -140,6 +141,7 @@ pub fn make_float_functions(type_: &Box<TypeProto>) -> FloatFunctions {
     }
 }
 
+#[allow(non_snake_case)]
 pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<FunctionPointer> {
     FunctionPointer::new_member(
         "to_string",
@@ -151,6 +153,7 @@ pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<Function
     )
 }
 
+#[allow(non_snake_case)]
 pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, Rc<Trait>>) -> Traits {
     let bool_type = TypeProto::simple_struct(&primitive_traits[&primitives::Type::Bool]);
 

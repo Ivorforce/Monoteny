@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
-use std::hash::Hash;
 use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
@@ -165,7 +164,7 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMa
 
     let full_conformance = RequirementsFulfillment::merge(&call.requirements_fulfillment, mapped_function_tail);
 
-    let mut generic_replacement_map: HashMap<Uuid, Box<TypeProto>> = full_conformance.generic_mapping.iter().map(|(any_id, type_)| {
+    let generic_replacement_map: HashMap<Uuid, Box<TypeProto>> = full_conformance.generic_mapping.iter().map(|(any_id, type_)| {
         (*any_id, type_forest.resolve_type(type_).unwrap().replacing_anys(generic_replacement_map))
     }).collect();
 
