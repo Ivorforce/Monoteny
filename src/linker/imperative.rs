@@ -201,6 +201,7 @@ impl <'a> ImperativeLinker<'a> {
 
                     let expression_id = self.register_new_expression(vec![new_value]);
                     self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(object_ref));
+                    self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
                     statements.push(expression_id);
                 },
                 ast::Statement::VariableAssignment { variable_name, new_value } => {
@@ -212,6 +213,7 @@ impl <'a> ImperativeLinker<'a> {
 
                     let expression_id = self.register_new_expression(vec![new_value]);
                     self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(Rc::clone(&object_ref)));
+                    self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
                     statements.push(expression_id);
                 }
                 ast::Statement::Return(expression) => {
@@ -225,6 +227,7 @@ impl <'a> ImperativeLinker<'a> {
 
                         let expression_id = self.register_new_expression(vec![result]);
                         self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
+                        self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
                         statements.push(expression_id);
                     }
                     else {
@@ -234,6 +237,7 @@ impl <'a> ImperativeLinker<'a> {
 
                         let expression_id = self.register_new_expression(vec![]);
                         self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
+                        self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
                         statements.push(expression_id);
                     }
                 },
