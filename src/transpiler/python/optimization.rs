@@ -73,9 +73,14 @@ pub fn prepare<'a>(runtime: &Runtime) -> HashMap<Rc<FunctionHead>, Transpilation
 
 pub fn optimize_implementations<'a>(transpilation_hints: &mut HashMap<Rc<FunctionHead>, TranspilationHint>, builtin_hints: &HashMap<Rc<FunctionHead>, BuiltinFunctionHint>, functions: impl Iterator<Item=&'a Box<FunctionImplementation>>) {
     'function: for function in functions {
-        if function.head.interface.parameters.is_empty() {
+        // TODO The !is_void avoids making 'print' a constant for now, but we should mark that function as having
+        //  side effects - recursively. When we do this, we should add a way to remove all print calls deeply.
+        if function.head.interface.parameters.is_empty() && !function.head.interface.return_type.unit.is_void() {
             // Could be a constant!
             for op in function.expression_forest.operations.values() {
+                // TODO We should have a better way of determining whether a function is a python-builtin
+                //  than 'optimizations' and 'builtin hints' - both of which might still mean anything.
+                // TODO We can still make constants if they use other functions as long as we can sort them.
                 match op {
                     ExpressionOperation::FunctionCall(f) => {
                         if let Some(TranspilationHint::CallProvided(_)) = transpilation_hints.get(&f.function) {
