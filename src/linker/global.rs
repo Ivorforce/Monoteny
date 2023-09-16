@@ -51,7 +51,7 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime)
             function: Rc::clone(&head),
             runtime,
             types: Box::new(TypeForest::new()),
-            expressions: Box::new(ExpressionForest::new()),
+            expressions: Box::new(ExpressionTree::new()),
             variable_names,
             ambiguities: vec![]
         });

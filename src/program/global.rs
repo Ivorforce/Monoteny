@@ -2,7 +2,7 @@ use std::rc::Rc;
 use uuid::Uuid;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use crate::program::computation_tree::{ExpressionForest, Statement};
+use crate::program::computation_tree::{ExpressionTree, ExpressionID};
 use crate::program::functions::FunctionHead;
 use crate::program::allocation::ObjectReference;
 use crate::program::generics::TypeForest;
@@ -16,8 +16,8 @@ pub struct FunctionImplementation {
 
     pub requirements_assumption: Box<RequirementsAssumption>,
 
-    pub statements: Vec<Box<Statement>>,
-    pub expression_forest: Box<ExpressionForest>,
+    pub root_expression_id: ExpressionID,
+    pub expression_forest: Box<ExpressionTree>,
     pub type_forest: Box<TypeForest>,
 
     pub parameter_variables: Vec<Rc<ObjectReference>>,

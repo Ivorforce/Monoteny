@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use guard::guard;
-use itertools::zip_eq;
+use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use regex;
 use crate::interpreter::Runtime;
@@ -21,7 +21,7 @@ pub struct FunctionContext<'a> {
     pub runtime: &'a Runtime,
     pub fn_transpilation_hints: &'a HashMap<Rc<FunctionHead>, TranspilationHint>,
 
-    pub expressions: &'a ExpressionForest,
+    pub expressions: &'a ExpressionTree,
     pub types: &'a TypeForest,
 }
 
@@ -68,22 +68,31 @@ pub fn transpile_function(function: &FunctionImplementation, context: &FunctionC
     //     };
     // }
 
-    for statement in function.statements.iter() {
-        syntax.statements.push(Box::new(match statement.as_ref() {
-                Statement::Return(value) => {
-                    ast::Statement::Return(value.map(|value| transpile_expression(value.clone(), context)))
-                }
-                Statement::VariableAssignment(variable, expression) => {
-                    ast::Statement::VariableAssignment {
-                        variable_name: context.names[&variable.id].clone(),
-                        value: transpile_expression(expression.clone(), context),
-                    }
-                }
-                Statement::Expression(expression) => {
-                    ast::Statement::Expression(transpile_expression(expression.clone(), context))
+    let statements = match &function.expression_forest.operations[&function.root_expression_id] {
+        ExpressionOperation::Block => {
+            function.expression_forest.arguments[&function.root_expression_id].clone()
+        }
+        _ => {
+            vec![function.root_expression_id]
+        }
+    };
+
+    for statement in statements {
+        let operation = &function.expression_forest.operations[&statement];
+        syntax.statements.push(Box::new(match operation {
+            ExpressionOperation::Block => todo!(),
+            ExpressionOperation::VariableAssignment(variable) => {
+                ast::Statement::VariableAssignment {
+                    variable_name: context.names[&variable.id].clone(),
+                    value: transpile_expression(function.expression_forest.arguments[&statement][0], context),
                 }
             }
-        ));
+            ExpressionOperation::Return => {
+                let value = function.expression_forest.arguments[&statement].iter().exactly_one().ok();
+                ast::Statement::Return(value.map(|value| transpile_expression(*value, context)))
+            }
+            _ => ast::Statement::Expression(transpile_expression(statement, context)),
+        }));
     }
 
     syntax
@@ -179,9 +188,9 @@ pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext)
             //     }
             // }
         }
-        ExpressionOperation::Block(_) => {
-            todo!()
-        }
+        ExpressionOperation::Block => todo!(),
+        ExpressionOperation::VariableAssignment(_) => panic!("Variable assignment not allowed as expression."),
+        ExpressionOperation::Return => panic!("Return not allowed as expression."),
     }
 }
 
@@ -307,6 +316,8 @@ pub fn is_simple(operation: &ExpressionOperation) -> bool {
         ExpressionOperation::ArrayLiteral => true,
         ExpressionOperation::FunctionCall { .. } => false,
         ExpressionOperation::PairwiseOperations { .. } => false,
-        ExpressionOperation::Block(_) => todo!(),
+        ExpressionOperation::Block => todo!(),
+        ExpressionOperation::VariableAssignment(_) => false,
+        ExpressionOperation::Return => false,
     }
 }

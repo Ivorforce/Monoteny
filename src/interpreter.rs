@@ -16,7 +16,7 @@ use crate::{linker, parser};
 use crate::parser::ast;
 use crate::program::allocation::ObjectReference;
 use crate::program::builtins::Builtins;
-use crate::program::computation_tree::{ExpressionID, ExpressionOperation, Statement};
+use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionHead, FunctionPointer, FunctionType};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::module::Module;
@@ -161,26 +161,7 @@ impl FunctionInterpreter<'_> {
 
     pub unsafe fn run(&mut self) -> Option<Value> {
         // Avoid borrowing self.
-        let self_implementation = Rc::clone(&self.implementation);
-        for statement in self_implementation.statements.iter() {
-            match statement.as_ref() {
-                Statement::VariableAssignment(target, value) => {
-                    let value = self.evaluate(*value);
-                    self.locals.insert(target.id.clone(), value.unwrap());
-                }
-                Statement::Expression(expression_id) => {
-                    self.evaluate(*expression_id);
-                }
-                Statement::Return(return_value) => {
-                    return match return_value {
-                        None => None,
-                        Some(expression_id) => self.evaluate(*expression_id),
-                    }
-                }
-            }
-        }
-
-        return None
+        self.evaluate(self.implementation.root_expression_id)
     }
 
     pub fn combine_bindings(lhs: &RequirementsFulfillment, rhs: &RequirementsFulfillment) -> Rc<RequirementsFulfillment> {
@@ -225,13 +206,13 @@ impl FunctionInterpreter<'_> {
 
                 // Copy it to release the borrow on self.
                 let implementation: FunctionInterpreterImpl = Rc::clone(&implementation);
-                return implementation(self, expression_id, &call.requirements_fulfillment)
+                implementation(self, expression_id, &call.requirements_fulfillment)
             }
             ExpressionOperation::PairwiseOperations { .. } => {
                 panic!()
             }
             ExpressionOperation::VariableLookup(variable) => {
-                return Some(
+                Some(
                     self.locals.get(&variable.id)
                         .or(self.runtime.global_assignments.get(&variable.id))
                         .expect(format!("Unknown Variable: {:?}", variable).as_str())
@@ -245,10 +226,34 @@ impl FunctionInterpreter<'_> {
                 let string_layout = Layout::new::<String>();
                 let ptr = alloc(string_layout);
                 *(ptr as *mut String) = value.clone();
-                return Some(Value { data: ptr, layout: string_layout })
+                Some(Value { data: ptr, layout: string_layout })
             }
-            ExpressionOperation::Block(_) => {
-                todo!()
+            ExpressionOperation::Block => {
+                let statements = &self_implementation.expression_forest.arguments[&expression_id];
+                for statement in statements.iter() {
+                    self.evaluate(*statement);
+                }
+                None  // Unusual, but a block might be just used inside a block, or a function that has no return value.
+            }
+            ExpressionOperation::VariableAssignment(target) => {
+                let arguments = &self_implementation.expression_forest.arguments[&expression_id];
+                assert_eq!(arguments.len(), 1);
+                let new_value = self.evaluate(arguments[0]).unwrap();
+                self.locals.insert(target.id.clone(), new_value);
+                None
+            }
+            ExpressionOperation::Return => {
+                let arguments = &self_implementation.expression_forest.arguments[&expression_id];
+
+                // TODO Need a way to somehow bubble up to a 'named block'.
+                match &arguments[..] {
+                    [] => todo!(),
+                    [arg] => {
+                        let return_value = self.evaluate(*arg);
+                        todo!()
+                    },
+                    _ => panic!()
+                }
             }
         }
     }

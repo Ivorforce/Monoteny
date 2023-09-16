@@ -5,7 +5,7 @@ use guard::guard;
 use itertools::Itertools;
 use try_map::FallibleMapExt;
 use crate::interpreter::Runtime;
-use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation, Statement};
+use crate::program::computation_tree::{ExpressionTree, ExpressionID, ExpressionOperation};
 use crate::linker::{LinkError, precedence, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberLiteral, LinkerAmbiguity};
 use crate::linker::precedence::link_patterns;
@@ -25,7 +25,7 @@ pub struct ImperativeLinker<'a> {
     pub runtime: &'a Runtime,
 
     pub types: Box<TypeForest>,
-    pub expressions: Box<ExpressionForest>,
+    pub expressions: Box<ExpressionTree>,
     pub ambiguities: Vec<Box<dyn LinkerAmbiguity>>,
 
     pub variable_names: HashMap<Rc<ObjectReference>, String>,
@@ -89,7 +89,8 @@ impl <'a> ImperativeLinker<'a> {
             parameter_variables.push(parameter_variable);
         }
 
-        let statements: Vec<Box<Statement>> = self.link_top_scope(body, &scope)?;
+        let head_expression = self.link_expression(body, &scope)?;
+        self.types.bind(head_expression, &self.function.interface.return_type.freezing_generics_to_any().as_ref())?;
 
         let mut has_changed = true;
         while !self.ambiguities.is_empty() {
@@ -115,34 +116,12 @@ impl <'a> ImperativeLinker<'a> {
             implementation_id: self.function.function_id,
             head: self.function,
             requirements_assumption: Box::new(RequirementsAssumption { conformance: HashMap::from_iter(granted_requirements.into_iter().map(|c| (Rc::clone(&c.binding), c))) }),
-            statements,
+            root_expression_id: head_expression,
             expression_forest: self.expressions,
             type_forest: self.types,
             parameter_variables,
             variable_names: self.variable_names.clone(),
         }))
-    }
-
-    pub fn link_top_scope(&mut self, body: &ast::Expression, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
-        if let [term] = &body[..] {
-            if let ast::Term::Block(body ) = term.as_ref() {
-                // Single-Scope function; for simplicity's sake we'll just collapse it here.
-                return self.link_block(body, &scope)
-            }
-        }
-
-        // Single-Expression function; let's figure out if we need to infer a Return statement.
-
-        let expression_id = self.link_expression(body, &scope)?;
-        // Can be either void or a type, but either way should match the expression
-        self.types.bind(expression_id, &self.function.interface.return_type.freezing_generics_to_any())?;
-
-        if self.function.interface.return_type.unit.is_void() {
-            return Ok(vec![Box::new(Statement::Expression(expression_id))])
-        }
-        else {
-            return Ok(vec![Box::new(Statement::Return(Some(expression_id)))])
-        }
     }
 
     pub fn link_unambiguous_expression(&mut self, arguments: Vec<ExpressionID>, return_type: &TypeProto, operation: ExpressionOperation) -> Result<ExpressionID, LinkError> {
@@ -199,9 +178,9 @@ impl <'a> ImperativeLinker<'a> {
         Ok(())
     }
 
-    pub fn link_block(&mut self, body: &Vec<Box<ast::Statement>>, scope: &scopes::Scope) -> Result<Vec<Box<Statement>>, LinkError> {
+    pub fn link_block(&mut self, body: &Vec<Box<ast::Statement>>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
         let mut scope = scope.subscope();
-        let mut statements: Vec<Box<Statement>> = Vec::new();
+        let mut statements: Vec<ExpressionID> = Vec::new();
 
         for statement in body.iter() {
             match statement.as_ref() {
@@ -217,50 +196,57 @@ impl <'a> ImperativeLinker<'a> {
                     let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(new_value)), mutability: mutability.clone() });
                     let variable = Reference::Object(Rc::clone(&object_ref));
 
-                    statements.push(Box::new(
-                        Statement::VariableAssignment(Rc::clone(&object_ref), new_value)
-                    ));
-                    self.variable_names.insert(object_ref, identifier.clone());
+                    self.variable_names.insert(Rc::clone(&object_ref), identifier.clone());
                     scope.override_reference(scopes::Environment::Global, variable, identifier);
+
+                    let expression_id = self.register_new_expression(vec![new_value]);
+                    self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(object_ref));
+                    statements.push(expression_id);
                 },
+                ast::Statement::VariableAssignment { variable_name, new_value } => {
+                    let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
+
+                    let object_ref = scope.resolve(scopes::Environment::Global, variable_name)?
+                        .as_object_ref(true)?;
+                    self.types.bind(new_value, &object_ref.type_)?;
+
+                    let expression_id = self.register_new_expression(vec![new_value]);
+                    self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(Rc::clone(&object_ref)));
+                    statements.push(expression_id);
+                }
                 ast::Statement::Return(expression) => {
                     if let Some(expression) = expression {
                         if self.function.interface.return_type.unit.is_void() {
-                            panic!("Return statement offers a value when the function declares void.")
+                            return Err(LinkError::LinkError { msg: format!("Return statement offers a value when the function declares void.") })
                         }
 
                         let result: ExpressionID = self.link_expression(expression, &scope)?;
                         self.types.bind(result, &self.function.interface.return_type.freezing_generics_to_any().as_ref())?;
 
-                        statements.push(Box::new(Statement::Return(Some(result))));
+                        let expression_id = self.register_new_expression(vec![result]);
+                        self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
+                        statements.push(expression_id);
                     }
                     else {
                         if !self.function.interface.return_type.unit.is_void() {
-                            panic!("Return statement offers no value when the function declares an object.")
+                            return Err(LinkError::LinkError { msg: format!("Return statement offers no value when the function declares an object.") })
                         }
 
-                        statements.push(Box::new(Statement::Return(None)));
+                        let expression_id = self.register_new_expression(vec![]);
+                        self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
+                        statements.push(expression_id);
                     }
                 },
                 ast::Statement::Expression(expression) => {
-                    let expression: ExpressionID = self.link_expression(&expression, &scope)?;
-                    statements.push(Box::new(Statement::Expression(expression)));
-                }
-                ast::Statement::VariableAssignment { variable_name, new_value } => {
-                    let ref_ = scope.resolve(scopes::Environment::Global, variable_name)?
-                        .as_object_ref(true)?;
-
-                    let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
-                    self.types.bind(new_value, &ref_.type_)?;
-
-                    statements.push(Box::new(
-                        Statement::VariableAssignment(Rc::clone(&ref_), new_value)
-                    ));
+                    statements.push(self.link_expression(&expression, &scope)?);
                 }
             }
         }
 
-        Ok(statements)
+        let expression_id = self.register_new_expression(statements);
+        self.expressions.operations.insert(expression_id, ExpressionOperation::Block);
+
+        Ok(expression_id)
     }
 
     fn link_expression_with_type(&mut self, syntax: &ast::Expression, type_declaration: &Option<ast::Expression>, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
@@ -377,14 +363,7 @@ impl <'a> ImperativeLinker<'a> {
                 })
             }
             ast::Term::Block(statements) => {
-                let expression_id = self.register_new_expression(vec![]);
-
-                // TODO The important part is we need to link yield types with our result.
-                let statements = self.link_block(statements, &scope)?;
-
-                self.expressions.operations.insert(expression_id, ExpressionOperation::Block(statements));
-
-                precedence::Token::Expression(expression_id)
+                precedence::Token::Expression(self.link_block(statements, &scope)?)
             }
         })
     }

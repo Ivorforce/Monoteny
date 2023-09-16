@@ -4,7 +4,7 @@ use guard::guard;
 use itertools::Itertools;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
-use crate::program::computation_tree::{ExpressionForest, ExpressionID, ExpressionOperation, Statement};
+use crate::program::computation_tree::{ExpressionTree, ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
@@ -150,24 +150,13 @@ impl ConstantFold {
         }
 
         // Reverse iteration allows us to remove objects without indexes getting invalidated.
-        for i in (0 .. implementation.statements.len()).rev() {
-            match &implementation.statements[i].as_ref() {
-                Statement::VariableAssignment(v, e) => {
-                    if !implementation.expression_forest.operations.contains_key(e) {
-                        panic!("Accidentally truncated variable assignment.")
-                    }
-                },
-                Statement::Expression(e) => {
-                    if !implementation.expression_forest.operations.contains_key(e) {
-                        implementation.statements.remove(i);
-                    }
+        for (expression_id, operation) in implementation.expression_forest.operations.iter() {
+            match operation {
+                ExpressionOperation::Block => {
+                    let arguments = implementation.expression_forest.arguments.get_mut(expression_id).unwrap();
+                    arguments.retain(|a| implementation.expression_forest.operations.contains_key(a));
                 }
-                Statement::Return(Some(e)) => {
-                    if !implementation.expression_forest.operations.contains_key(e) {
-                        panic!("Accidentally truncated return statement.")
-                    }
-                }
-                Statement::Return(None) => {},
+                _ => {}
             }
         }
 
@@ -248,16 +237,13 @@ pub fn try_inline(implementation: &FunctionImplementation) -> Option<InlineHint>
         return None;
     }
 
-    if let [statement] = &implementation.statements[..] {
-        match statement.as_ref() {
-            Statement::Expression(e) => get_trivial_expression_call_target(e, implementation),
-            Statement::Return(Some(e)) => get_trivial_expression_call_target(e, implementation),
-            Statement::Return(None) => Some(InlineHint::NoOp),
-            _ => None,
-        }
-    }
-    else {
-        None
+    match (&implementation.expression_forest.operations[&implementation.root_expression_id], &implementation.expression_forest.arguments[&implementation.root_expression_id].as_slice()) {
+        (ExpressionOperation::Block, []) => Some(InlineHint::NoOp),
+        // While this might result in a return where one wasn't expected, any function that expects a void return won't do anything with the return value.
+        // So it's fine.
+        (ExpressionOperation::Block, [arg]) => get_trivial_expression_call_target(arg, implementation),
+        (ExpressionOperation::Return, [arg]) => get_trivial_expression_call_target(arg, implementation),
+        _ => get_trivial_expression_call_target(&implementation.root_expression_id, implementation),
     }
 }
 
@@ -301,7 +287,7 @@ pub fn get_trivial_expression_call_target(expression_id: &ExpressionID, implemen
     None
 }
 
-pub fn truncate_tree(mut include: Vec<ExpressionID>, exclude: HashSet<ExpressionID>, forest: &mut ExpressionForest) {
+pub fn truncate_tree(mut include: Vec<ExpressionID>, exclude: HashSet<ExpressionID>, forest: &mut ExpressionTree) {
     while let Some(next) = include.pop() {
         if exclude.contains(&next) {
             continue;

@@ -5,7 +5,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
-use crate::program::computation_tree::{ExpressionOperation, Statement};
+use crate::program::computation_tree::{ExpressionOperation};
 use crate::program::functions::{FunctionHead, FunctionType, FunctionInterface, Parameter};
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
@@ -49,14 +49,14 @@ impl Monomorphizer {
             .collect();
 
         // Map statements. Expressions are mapped elsewhere, so this should be easy.
-        implementation.statements.iter_mut().map(|x| {
-            Box::new(match x.as_ref() {
-                Statement::VariableAssignment(v, e) => {
-                    Statement::VariableAssignment(Rc::clone(&variable_map[v]), e.clone())
-                },
-                _ => x.as_ref().clone(),
-            })
-        }).collect_vec();
+        for (expression_id, operation) in implementation.expression_forest.operations.iter_mut() {
+            match &operation {
+                ExpressionOperation::VariableAssignment(v) => {
+                    *operation = ExpressionOperation::VariableAssignment(Rc::clone(&variable_map[v]))
+                }
+                _ => {}
+            }
+        }
 
         // The implementation self-injected assmumption functions based on requirements.
         // Now it's time we replace them depending on the actual requirements fulfillment.
@@ -116,9 +116,13 @@ impl Monomorphizer {
                     // If we cannot find a replacement, it's a static variable. Unless we have a bug.
                     *operation = ExpressionOperation::VariableLookup(Rc::clone(variable_map.get(v).unwrap_or(v)))
                 }
+                ExpressionOperation::VariableAssignment(v) => {
+                    *operation = ExpressionOperation::VariableAssignment(Rc::clone(variable_map.get(v).unwrap_or(v)))
+                }
                 ExpressionOperation::ArrayLiteral => {},
                 ExpressionOperation::StringLiteral(_) => {},
-                ExpressionOperation::Block(_) => todo!(),
+                ExpressionOperation::Block => {},
+                ExpressionOperation::Return => {}
             };
         }
 
