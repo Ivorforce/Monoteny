@@ -109,32 +109,33 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
 
 - [x] Generics
   - [x] Monomorphization: Specialize functions and types at compile-time.
-    - [ ] Generic Export: Allow the export of unspecialized functions through a trait conformance parameter. 
   - [x] Reverse generic type checking (output types determined from inputs)
   - [x] Implicit generics (`#A`)
     - [x] ... in imperative code
     - [x] ... with implicit trait conformance requirements (`$Number` -> `if $Number: Number {}`)
     - [ ] ... recursive (`$$Number: $Number`)
-    - [ ] ... anonymous (`#(a: a, b: b)` or `#.a`)
+    - [ ] ... anonymous (e.g. `#(a: a, b: b)` or `#.a`)
 - [x] `trait`: Objects that functions can be associated with.
   - [x] `trait` `inherit`: Require trait conformance to another trait
+  - [x] Abstract Functions, Conformance Declarations
   - [ ] Stored Properties (for traits with associated Self)
     - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract traits
     - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
-    - [ ] Delegation (`@delegate(Eq) var ...`) (delegates all / selected properties' traits to this trait)
+    - [ ] Delegation (`@delegate(Eq) var ...`) (implement all / selected trait offered by the property by calling it on the property)
     - [ ] Deconstruction assignment (`let (x, y, z) = vec`)
       - [x] `let`: Assign new variables
       - [x] `upd`: Change existing variables
     - [ ] Generic: Any used generics will automatically generify the object
   - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
-  - [ ] Subtype Coercion (`A: B`, `declare SomeTrait if Self: B { fun f() }`, `a.f()  // a: A`)
+- Running
+  - [x] `@main` decorates functions that can be run from the cli.
+  - [x] `@transpile` decorates functions that can transpile the code.
+  - [ ] Pass parameters to `@main` and `@transpile` from the cli (array of strings).
 - [ ] Modules (imports)
+  - [ ] Namespaces
   - [ ] `use` statements: Use parts of a module without changing or re-exporting it.
-  - [x] `@transpile` decorators: Functions that are called when making a transpilation target. 
   - [ ] `@private` decorators: Functions or traits that can only be referenced using qualified syntax.
   - [ ] `inherit` statements: Use and expose another module within your module, allowing additions and overrides.
-  - [x] Abstract Functions, Conformance Declarations
-  - [ ] Namespaces
 - [ ] Control Callbacks (e.g. `def if(expression 'Bool, onTrue 'fun, onFalse 'Fun[Option]) { ... }`))
   - [ ] `if ... :: { } else :: { }`
   - [ ] `guard ... else :: { }`
@@ -160,10 +161,10 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
   - [x] Custom expression patterns with keywords (unary / binary operators)
     - [x] Right-Unary Operators
   - [x] Comments
-    - [ ] Comment & Documentation transpilation
-    - [ ] Newline Separator transpilation
-    - [ ] Documentation
   - [x] String Interpolation
+  - Style transpilation
+    - [ ] Comment & Documentation
+    - [ ] Newline Separator transpilation
 - [x] Simple Constant Folding
   - [x] Inline trivial calls (calls that are at most one call)
   - [ ] Auto-Delete objects without variables (e.g. for Console.write_line())
@@ -178,6 +179,7 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
     - [ ] `guard let Some(a) = a else { }`
 - [ ] Meta Traits (traits whose instantiations can act as traits)
   - [ ] IntX, FloatX (variable bitcount int and float) - regular ints and floats are just 'optimized special cases' of this
+- [ ] Generic Export: Allow the export of unspecialized functions through a trait conformance parameter.
 - [ ] BigInt ($Int object that can store any value)
 - [ ] `match x with [0: { ... }]`
 - [ ] Local functions and declarations
@@ -215,6 +217,7 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
 - [ ] Collection reductions (sum, std, any, etc.)
 - [ ] 1D timeseries data functions (filter, gaussian, running mean, etc.)
 - [ ] String Handling (e.g. UTF8 (-> UInt8), replace, index_of)
+- [ ] CLI Argument Parser
 
 ### Common Dialects
 
