@@ -176,9 +176,10 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
     - [ ] `if let Some(a) = a :: { }`
     - [ ] `guard let Some(a) = a else { }`
 - [ ] Meta Traits (traits whose instantiations can act as traits)
-  - [ ] IntX, FloatX (variable bitcount int and float) - regular ints and floats are just 'optimized special cases' of this
+  - [ ] IntX, FloatX (types implementing int and float math depending on a bit count) 
+    - [ ] Demote existing fixed-width ints and floats (e.g. Int32) to optimizations of IntX
+- [ ] BigInt ($Int of auto-adjusting width)
 - [ ] Generic Export: Allow the export of unspecialized functions through a trait conformance parameter.
-- [ ] BigInt ($Int object that can store any value)
 - [ ] `match x with [0: { ... }]`
 - [ ] Local functions and declarations
   - [ ] Anonymous functions
