@@ -1,4 +1,5 @@
-use std::fmt::{Display, Formatter};
+use std::collections::HashSet;
+use std::fmt::{Display, Formatter, Pointer};
 use itertools::Itertools;
 use crate::program::functions::ParameterKey;
 use crate::transpiler::python::imperative::escape_string;
@@ -7,10 +8,10 @@ pub struct Module {
     // TODO We should use Statement objects instead of 'hardcoding' our structure into this
     //  ast representation.
     //  But before that happens we need to be able to inject comments and have a good indenter.
-    pub exported_classes: Vec<Box<Class>>,
-    pub exported_functions: Vec<Box<Function>>,
-    pub internal_functions: Vec<Box<Function>>,
+    pub exported_statements: Vec<Box<Statement>>,
+    pub internal_statements: Vec<Box<Statement>>,
 
+    pub exported_names: HashSet<String>,
     pub main_function: Option<String>,
 }
 
@@ -23,12 +24,8 @@ impl Display for Module {
         writeln!(f, "from typing import Any, Callable")?;
         write!(f, "\n\n")?;
 
-        for struct_ in self.exported_classes.iter() {
-            write!(f, "{}\n\n", struct_)?;
-        }
-
-        for function in self.exported_functions.iter() {
-            write!(f, "{}\n\n", function)?;
+        for statement in self.exported_statements.iter() {
+            write!(f, "{}\n\n", statement)?;
         }
 
         writeln!(f, "# ========================== ======== ============================")?;
@@ -36,13 +33,12 @@ impl Display for Module {
         writeln!(f, "# ========================== ======== ============================")?;
         write!(f, "\n\n")?;
 
-        for function in self.internal_functions.iter() {
-            write!(f, "{}\n\n", function)?;
+        for statement in self.internal_statements.iter() {
+            write!(f, "{}\n\n", statement)?;
         }
 
         writeln!(f, "__all__ = [")?;
-        for name in self.exported_functions.iter().map(|x| &x.name)
-            .chain(self.exported_classes.iter().map(|x| &x.name)).sorted() {
+        for name in self.exported_names.iter().sorted() {
             writeln!(f, "    \"{}\",", name)?;
         }
         writeln!(f, "]")?;
@@ -109,12 +105,12 @@ impl Display for Function {
         write!(f, "\n    \"\"\"\n")?;
 
         if self.statements.is_empty() {
-            write!(f, "pass\n")?;
+            writeln!(f, "pass")?;
             return Ok(());
         }
 
         for statement in self.statements.iter() {
-            writeln!(f, "    {}", statement)?;
+            write!(f, "    {}", statement)?;
         }
 
         Ok(())
@@ -125,21 +121,25 @@ pub enum Statement {
     VariableAssignment { variable_name: String, value: Box<Expression> },
     Expression(Box<Expression>),
     Return(Option<Box<Expression>>),
+    Class(Box<Class>),
+    Function(Box<Function>),
 }
 
 impl Display for Statement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Statement::VariableAssignment { variable_name, value } => {
-                write!(f, "{} = {}", variable_name, value)
+                writeln!(f, "{} = {}", variable_name, value)
             }
-            Statement::Expression(e) => e.fmt(f),
+            Statement::Expression(e) => writeln!(f, "{}", e),
             Statement::Return(Some(expression)) => {
-                write!(f, "return {}", expression)
+                writeln!(f, "return {}", expression)
             }
             Statement::Return(None) => {
-                write!(f, "return")
+                writeln!(f, "return")
             }
+            Statement::Class(c) => write!(f, "{}", c),
+            Statement::Function(fun) => write!(f, "{}", fun),
         }
     }
 }

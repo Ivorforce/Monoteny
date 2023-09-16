@@ -26,9 +26,10 @@ use crate::program::module::Module;
 use crate::program::traits::RequirementsFulfillment;
 use crate::program::types::TypeUnit;
 use crate::transpiler::namespaces;
+use crate::transpiler::python::ast::Statement;
 use crate::transpiler::python::class::{ClassContext, transpile_class};
 use crate::transpiler::python::imperative::{FunctionContext, transpile_function};
-use crate::transpiler::python::optimization::TranspilationHint;
+use crate::transpiler::python::optimization::{TranspilationHint, try_transpile_optimized_implementation};
 
 
 pub struct TranspilerContext {
@@ -123,6 +124,12 @@ pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_
         transpiler_context.internal_functions = constant_folder.drain_all_functions_yield_uninlined();
     }
 
+    optimization::optimize_implementations(
+        &mut transpiler_context.fn_transpilation_hints,
+        &runtime.source.fn_builtin_hints,
+        transpiler_context.internal_functions.iter().chain(transpiler_context.exported_functions.iter())
+    );
+
     // TODO We need to sort the internal functions. This could be done roughly by putting them in the
     //  order the player defined it - which leaves only different monomorpizations to be sorted.
     //  Those can be sorted by something like the displayed 'function to string' (without randomized uuid).
@@ -191,11 +198,9 @@ pub fn create_ast(module: &Module, transpiler_context: &TranspilerContext, runti
     }
 
     let mut module = Box::new(ast::Module {
-        // TODO Only classes used in the interface of exported functions should be exported.
-        //  Everything else is an internal class.
-        exported_classes: vec![],
-        exported_functions: vec![],
-        internal_functions: vec![],
+        exported_statements: vec![],
+        internal_statements: vec![],
+        exported_names: HashSet::new(),
         main_function: module.main_functions.iter().exactly_one().ok()
             .map(|head| names[&head.function_id].clone())
     });
@@ -211,12 +216,17 @@ pub fn create_ast(module: &Module, transpiler_context: &TranspilerContext, runti
             runtime,
         };
 
-        module.exported_classes.push(transpile_class(struct_type, &context));
+        let statement = Box::new(Statement::Class(transpile_class(struct_type, &context)));
+
+        // TODO Only classes used in the interface of exported functions should be exported.
+        //  Everything else is an internal class.
+        module.exported_statements.push(statement);
+        module.exported_names.insert(context.names[id].clone());
     }
 
-    for (ref_, implementations) in [
-        (&mut module.exported_functions, &transpiler_context.exported_functions),
-        (&mut module.internal_functions, &transpiler_context.internal_functions),
+    for (implementations, is_exported) in [
+        (&transpiler_context.exported_functions, true),
+        (&transpiler_context.internal_functions, false),
     ] {
         for implementation in implementations.iter() {
             let context = FunctionContext {
@@ -228,7 +238,16 @@ pub fn create_ast(module: &Module, transpiler_context: &TranspilerContext, runti
                 fn_transpilation_hints: &transpiler_context.fn_transpilation_hints,
             };
 
-            ref_.push(transpile_function(implementation, &context));
+            let transpiled = try_transpile_optimized_implementation(implementation, &context)
+                .unwrap_or(Box::new(Statement::Function(transpile_function(implementation, &context))));
+
+            if is_exported {
+                module.exported_names.insert(context.names[&implementation.head.function_id].clone());
+                module.exported_statements.push(transpiled);
+            }
+            else {
+                module.internal_statements.push(transpiled);
+            }
         }
     }
 
