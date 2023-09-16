@@ -136,23 +136,22 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
   - [x] Abstract Functions, Conformance Declarations
   - [ ] Namespaces
 - [ ] Control Callbacks (e.g. `def if(expression 'Bool, onTrue 'fun, onFalse 'Fun[Option]) { ... }`))
-  - [ ] If / Else
-  - [ ] If let (refutable patterns)
-  - [ ] Guard: call a closure with everything after the guard as a function (e.g. `guard if let` or `guard with`)
-  - [ ] Expression Scopes (`let a = { ... yield b; };`)
+  - [ ] `if ... :: { } else :: { }`
+  - [ ] `guard ... else :: { }`
+- [x] Anonymous Blocks
+  - [ ] Yield Statements (`let a = { ... yield b; };`)
 - [ ] Type Alias, aka `String = Character[Int...]` (defining functions on alias doesn't define them for the equal type)
   - [ ] Enums / Enum type inheritance (achieved through type alias)
 - [ ] Monads
   - [ ] Tuple Dimension Index
+  - [ ] Defaults (`a: $Float[Default]` for parameters to be omittable)
   - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
   - [ ] Open Int Range Dimension Index, array start / end handle syntax (|>, <|)
   - [ ] Auto Broadcast
-  - [ ] Varargs: Int keying with infinite parameters (syntax: `a...: Type[0...]` for `print(a, b)` and `a...: Type[String]` for `print(a: a, b: b)`)
   - [ ] Optionals
   - [ ] Sets
   - [ ] Dict Literals
   - [ ] Iterators
-  - [ ] Defaults (`a: $Float[Default]` for parameters to be omittable)
 - Syntax
   - [x] Constant-Like function syntax (without `()`)
   - [x] `(a:)` syntax: 'argument keyed by its variable name' for consistent function definitions, -calls and deconstructions
@@ -173,12 +172,14 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
 
 - [ ] Exceptions (as monads)
   - [ ] Early return syntax
-  - [ ] `cnf`: Refutably assert equality to existing variables
+  - [ ] Refutable Patterns
+    - [ ] `cnf`: Refutably assert equality to existing variables
+    - [ ] `if let Some(a) = a :: { }`
+    - [ ] `guard let Some(a) = a else { }`
 - [ ] Meta Traits (traits whose instantiations can act as traits)
   - [ ] IntX, FloatX (variable bitcount int and float) - regular ints and floats are just 'optimized special cases' of this
-- [ ] IntUnbound (int that can store any value)
-- [ ] IntNative, FloatNative (platform-optimized int and float)
-- [ ] Switch / Match
+- [ ] BigInt ($Int object that can store any value)
+- [ ] `match x with [0: { ... }]`
 - [ ] Local functions and declarations
   - [ ] Anonymous functions
 - [ ] Custom Decorators (on structs, definitions)
@@ -190,6 +191,7 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
   - [ ] Higher Order Functions
     - [ ] Deep Function Currying
 - [ ] Constant Folding (resolve static results post link-time)
+- [ ] Varargs: Int keying with infinite parameters (syntax: `a...: Type[0...]` for `print(a, b)` and `a...: Type[String]` for `print(a: a, b: b)`)
 
 ### Monoteny 2.0
 

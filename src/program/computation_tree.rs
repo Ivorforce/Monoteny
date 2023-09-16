@@ -10,6 +10,16 @@ pub type ExpressionID = GenericAlias;
 
 #[derive(Clone)]
 pub enum ExpressionOperation {
+    // TODO Blocks are a tough one to transpile as no language supports yields.
+    //  They will probably have to be inlined as a variable, like e.g.:
+    //  var x: Int;
+    //  for i in 0 ..< 1 {
+    //      ...
+    //      // yield 5;
+    //      x = 5;
+    //      break;
+    //  }
+    //  This syntax, while stupid, is at least supported in pretty much every language.
     Block,
 
     VariableAssignment(Rc<ObjectReference>),
