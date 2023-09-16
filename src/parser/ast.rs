@@ -226,10 +226,7 @@ impl Display for OperatorFunction {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         write!(fmt, "def ")?;
         for argument in self.parts.iter() {
-            match argument.as_ref() {
-                OperatorArgument::Parameter(param) => write!(fmt, "{{{}}} ", param)?,
-                OperatorArgument::Keyword(keyword) => write!(fmt, "{} ", keyword)?,
-            }
+            write!(fmt, "{} ", argument)?;
         }
         if let Some(return_type) = &self.return_type {
             write!(fmt, "-> {}", return_type)?;
@@ -373,6 +370,15 @@ impl Display for StringPart {
                 write_comma_separated_list(f, arguments)?;
                 write!(f, ")")
             },
+        }
+    }
+}
+
+impl Display for OperatorArgument {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OperatorArgument::Parameter(param) => write!(f, "{{{}}}", param),
+            OperatorArgument::Keyword(keyword) => write!(f, "{}", keyword),
         }
     }
 }

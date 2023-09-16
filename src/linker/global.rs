@@ -68,6 +68,7 @@ impl <'a> GlobalLinker<'a> {
         match statement {
             ast::GlobalStatement::Pattern(pattern) => {
                 let pattern = self.link_pattern(pattern)?;
+                self.module.patterns.insert(Rc::clone(&pattern));
                 self.global_variables.add_pattern(pattern)?;
             }
             ast::GlobalStatement::FunctionDeclaration(syntax) => {
