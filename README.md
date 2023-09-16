@@ -151,13 +151,11 @@ What this results in is a somewhat unusual 2-layer transpilation: Those function
   - [ ] Auto Broadcast
   - [ ] Optionals
   - [ ] Sets
-  - [ ] Dict Literals
   - [ ] Iterators
 - Syntax
   - [x] Constant-Like function syntax (without `()`)
   - [x] `(a:)` syntax: 'argument keyed by its variable name' for consistent function definitions, -calls and deconstructions
-  - [ ] 'equivalence transformation' syntax: `((a + b) * c).any()` becomes `a + b .. * c .. .any()`
-    - [ ] 'transformation assignment' syntax: `a .= + 5`; `b .= .union(c)`
+  - [ ] 'transformation assignment' syntax: `a .= $0 + 5`; `b .= $0.union(c)`
   - [x] Custom expression patterns with keywords (unary / binary operators)
     - [x] Right-Unary Operators
   - [x] Comments
