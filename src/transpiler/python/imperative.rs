@@ -10,7 +10,7 @@ use crate::program::functions::{FunctionHead, FunctionType, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation, PrimitiveOperation};
 use crate::program::traits::TraitBinding;
-use crate::program::types::TypeProto;
+use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::python::optimization::{TranspilationHint, try_transpile_optimization};
 use crate::transpiler::python::{ast, types};
 
@@ -91,7 +91,13 @@ pub fn transpile_function(function: &FunctionImplementation, context: &FunctionC
                 let value = function.expression_forest.arguments[&statement].iter().exactly_one().ok();
                 ast::Statement::Return(value.map(|value| transpile_expression(*value, context)))
             }
-            _ => ast::Statement::Expression(transpile_expression(statement, context)),
+            _ => {
+                let expression = transpile_expression(statement, context);
+                match function.head.interface.return_type.unit {
+                    TypeUnit::Void => ast::Statement::Expression(expression),
+                    _ => ast::Statement::Return(Some(expression)),
+                }
+            },
         }));
     }
 
