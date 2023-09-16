@@ -11,6 +11,7 @@ def +{$Number} -> $Number :: arg;
 
 def {$Float}.factorial() -> $Float;
 
+-- TODO Use CORDIC for sin and cos
 def sin(x '$Float) -> $Float;
 def cos(x '$Float) -> $Float;
 def tan(x '$Float) -> $Float;
