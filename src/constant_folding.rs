@@ -239,8 +239,9 @@ pub fn try_inline(implementation: &FunctionImplementation) -> Option<InlineHint>
 
     match (&implementation.expression_forest.operations[&implementation.root_expression_id], &implementation.expression_forest.arguments[&implementation.root_expression_id].as_slice()) {
         (ExpressionOperation::Block, []) => Some(InlineHint::NoOp),
-        // While this might result in a return where one wasn't expected, any function that expects a void return won't do anything with the return value.
-        // So it's fine.
+        // While this might result in a return where one wasn't expected,
+        // any receiver that can handle a void return won't do anything with the return value.
+        // Basically the receiver is guaranteed to be a block or a no-return function. So it's fine.
         (ExpressionOperation::Block, [arg]) => get_trivial_expression_call_target(arg, implementation),
         (ExpressionOperation::Return, [arg]) => get_trivial_expression_call_target(arg, implementation),
         _ => get_trivial_expression_call_target(&implementation.root_expression_id, implementation),
