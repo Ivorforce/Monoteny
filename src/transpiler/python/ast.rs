@@ -118,7 +118,7 @@ impl Display for Function {
 }
 
 pub enum Statement {
-    VariableAssignment { variable_name: String, value: Box<Expression> },
+    VariableAssignment { variable_name: String, value: Box<Expression>, type_annotation: Option<String> },
     Expression(Box<Expression>),
     Return(Option<Box<Expression>>),
     Class(Box<Class>),
@@ -128,8 +128,13 @@ pub enum Statement {
 impl Display for Statement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Statement::VariableAssignment { variable_name, value } => {
-                writeln!(f, "{} = {}", variable_name, value)
+            Statement::VariableAssignment { variable_name, value, type_annotation } => {
+                if let Some(type_annotation) = type_annotation {
+                    writeln!(f, "{}: {} = {}", variable_name, type_annotation, value)
+                }
+                else {
+                    writeln!(f, "{} = {}", variable_name, value)
+                }
             }
             Statement::Expression(e) => writeln!(f, "{}", e),
             Statement::Return(Some(expression)) => {

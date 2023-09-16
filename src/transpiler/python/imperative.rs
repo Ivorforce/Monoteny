@@ -85,6 +85,8 @@ pub fn transpile_function(function: &FunctionImplementation, context: &FunctionC
                 ast::Statement::VariableAssignment {
                     variable_name: context.names[&variable.id].clone(),
                     value: transpile_expression(function.expression_forest.arguments[&statement][0], context),
+                    // TODO We can omit the type annotation if we assign the variable a second time
+                    type_annotation: Some(types::transpile(&variable.type_, context)),
                 }
             }
             ExpressionOperation::Return => {

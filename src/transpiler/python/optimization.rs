@@ -4,7 +4,7 @@ use crate::interpreter::Runtime;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
-use crate::transpiler::python::FunctionContext;
+use crate::transpiler::python::{FunctionContext, types};
 use crate::transpiler::python::imperative::transpile_expression;
 use crate::transpiler::python::ast::{Expression, Statement};
 
@@ -139,6 +139,7 @@ pub fn try_transpile_optimized_implementation(implementation: &FunctionImplement
                 return Some(Box::new(Statement::VariableAssignment {
                     variable_name: context.names[&implementation.head.function_id].clone(),
                     value: transpile_expression(implementation.root_expression_id, context),
+                    type_annotation: Some(types::transpile(&implementation.head.interface.return_type, context)),
                 }))
             }
             TranspilationHint::CallProvided(_) => panic!("Shouldn't try to implement builtin function!")

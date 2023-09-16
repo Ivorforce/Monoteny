@@ -44,7 +44,7 @@ impl Monomorphizer {
         //  type must be properly resolved. So we might as well map all variables to resolved types.
         let variable_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = implementation.variable_names.keys()
             .map(|v| {
-                (Rc::clone(v), map_variable(v, &generic_replacement_map))
+                (Rc::clone(v), map_variable(v, &implementation.type_forest, &generic_replacement_map))
             })
             .collect();
 
@@ -220,10 +220,10 @@ pub fn monomorphize_call(call: &Rc<FunctionBinding>) -> Rc<FunctionBinding> {
     })
 }
 
-pub fn map_variable(variable: &ObjectReference, type_replacement_map: &HashMap<Uuid, Box<TypeProto>>) -> Rc<ObjectReference> {
+pub fn map_variable(variable: &ObjectReference, type_forest: &TypeForest, type_replacement_map: &HashMap<Uuid, Box<TypeProto>>) -> Rc<ObjectReference> {
     Rc::new(ObjectReference {
         id: variable.id.clone(),
-        type_: variable.type_.replacing_anys(type_replacement_map),
+        type_: type_forest.resolve_type(&variable.type_).unwrap().replacing_anys(type_replacement_map),
         mutability: variable.mutability.clone(),
     })
 }
