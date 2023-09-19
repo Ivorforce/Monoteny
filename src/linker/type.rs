@@ -77,7 +77,7 @@ impl <'a> TypeFactory<'a> {
 
                                 let requirement_trait = self.resolve_trait(&type_name);
                                 self.register_requirement(Rc::new(TraitBinding {
-                                    generic_to_type: HashMap::from([(requirement_trait.generics["self"], type_.clone())]),
+                                    generic_to_type: HashMap::from([(requirement_trait.generics["Self"], type_.clone())]),
                                     trait_: requirement_trait,
                                 }));
                             }

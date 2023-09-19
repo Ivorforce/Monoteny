@@ -86,7 +86,7 @@ impl <'a> GlobalLinker<'a> {
             ast::GlobalStatement::Trait(syntax) => {
                 let mut trait_ = Trait::new_with_self(syntax.name.clone());
 
-                let generic_self_type = trait_.create_generic_type("self");
+                let generic_self_type = trait_.create_generic_type("Self");
                 // TODO module.add_trait also adds a reference; should we use the same?
                 let generic_self_type_ref = Reference::Object(ObjectReference::new_immutable(TypeProto::meta(generic_self_type.clone())));
 
@@ -107,7 +107,7 @@ impl <'a> GlobalLinker<'a> {
                     // Can be instantiated as a struct!
 
                     let struct_type = TypeProto::unit(TypeUnit::Struct(Rc::clone(&trait_)));
-                    let conformance_binding = trait_.create_generic_binding(vec![("self", struct_type.clone())]);
+                    let conformance_binding = trait_.create_generic_binding(vec![("Self", struct_type.clone())]);
 
                     let conformance = TraitConformance::pure(conformance_binding.clone());
                     self.module.trait_conformance.add_conformance_rule(TraitConformanceRule::direct(Rc::clone(&conformance)));
@@ -136,14 +136,14 @@ impl <'a> GlobalLinker<'a> {
                 let mut type_factory = TypeFactory::new(&self.global_variables);
                 let self_type = type_factory.link_type(&syntax.declared_for)?;
                 let declared = self.global_variables.resolve(Environment::Global, &syntax.declared).unwrap().as_trait().unwrap();
-                if declared.generics.keys().collect_vec() != vec!["self"] {
+                if declared.generics.keys().collect_vec() != vec!["Self"] {
                     // Requires 1) parsing generics that the programmer binds
                     // and  2) inserting new generics for each that isn't explicitly bound
                     panic!("Declaring traits with more than self generics is not supported yet")
                 }
 
                 let self_ref = Reference::Object(ObjectReference::new_immutable(TypeProto::meta(self_type.clone())));
-                let self_binding = declared.create_generic_binding(vec![("self", self_type)]);
+                let self_binding = declared.create_generic_binding(vec![("Self", self_type)]);
 
                 let mut scope = self.global_variables.subscope();
                 scope.insert_singleton(Environment::Global, self_ref, "Self");

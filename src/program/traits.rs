@@ -284,7 +284,7 @@ impl Trait {
         Trait {
             id: Uuid::new_v4(),
             name,
-            generics: HashMap::from([("self".to_string(), Uuid::new_v4())]),
+            generics: HashMap::from([("Self".to_string(), Uuid::new_v4())]),
             requirements: Default::default(),
             abstract_functions: Default::default(),
         }
@@ -316,7 +316,7 @@ impl Trait {
 
     pub fn add_simple_parent_requirement(&mut self, parent_trait: &Rc<Trait>) {
         self.requirements.insert(
-            parent_trait.create_generic_binding(vec![("self", self.create_generic_type("self"))])
+            parent_trait.create_generic_binding(vec![("Self", self.create_generic_type("Self"))])
         );
     }
 }

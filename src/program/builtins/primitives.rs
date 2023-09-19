@@ -44,7 +44,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         add_function(&eq_functions.not_equal_to, primitive_type, PrimitiveOperation::NotEqualTo, module);
 
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
-            traits.Eq.create_generic_binding(vec![("self", type_.clone())]),
+            traits.Eq.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
                 (&traits.Eq_functions.equal_to.target, &eq_functions.equal_to.target),
                 (&traits.Eq_functions.not_equal_to.target, &eq_functions.not_equal_to.target),
@@ -54,7 +54,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         let to_string_function = make_to_string_function(&traits.ToString, &traits.String);
         add_function(&to_string_function, primitive_type, PrimitiveOperation::ToString, module);
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
-            traits.ToString.create_generic_binding(vec![("self", type_.clone())]),
+            traits.ToString.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
                 (&traits.to_string_function.target, &to_string_function.target),
             ]
@@ -72,7 +72,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         add_function(&ord_functions.lesser_than_or_equal_to, primitive_type, PrimitiveOperation::LesserThanOrEqual, module);
 
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
-            traits.Ord.create_generic_binding(vec![("self", type_.clone())]),
+            traits.Ord.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
                 (&traits.Ord_functions.greater_than.target, &ord_functions.greater_than.target),
                 (&traits.Ord_functions.greater_than_or_equal_to.target, &ord_functions.greater_than_or_equal_to.target),
@@ -96,14 +96,14 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         );
         add_function(&_parse_int_literal, primitive_type, PrimitiveOperation::ParseIntString, module);
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
-            traits.ConstructableByIntLiteral.create_generic_binding(vec![("self", type_.clone())]),
+            traits.ConstructableByIntLiteral.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
                 (&traits.parse_int_literal_function.target, &_parse_int_literal.target),
             ]
         ));
 
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
-            traits.Number.create_generic_binding(vec![("self", type_.clone())]),
+            traits.Number.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
                 (&traits.Number_functions.add.target, &number_functions.add.target),
                 (&traits.Number_functions.subtract.target, &number_functions.subtract.target),
@@ -117,7 +117,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
 
         if primitive_type.is_int() {
             module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
-                traits.Int.create_generic_binding(vec![("self", type_.clone())]),
+                traits.Int.create_generic_binding(vec![("Self", type_.clone())]),
                 vec![]
             ));
         }
@@ -136,14 +136,14 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         );
         add_function(&_parse_float_literal, primitive_type, PrimitiveOperation::ParseFloatString, module);
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
-            traits.ConstructableByFloatLiteral.create_generic_binding(vec![("self", type_.clone())]),
+            traits.ConstructableByFloatLiteral.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
                 (&traits.parse_float_literal_function.target, &_parse_float_literal.target),
             ]
         ));
 
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
-            traits.Float.create_generic_binding(vec![("self", type_)]),
+            traits.Float.create_generic_binding(vec![("Self", type_)]),
             vec![
                 (&traits.Float_functions.exponent.target, &float_functions.exponent.target),
                 (&traits.Float_functions.logarithm.target, &float_functions.logarithm.target),

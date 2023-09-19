@@ -146,7 +146,7 @@ pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<Function
     FunctionPointer::new_member(
         "to_string",
         FunctionInterface::new_member(
-            type_.create_generic_type("self"),
+            type_.create_generic_type("Self"),
             [].into_iter(),
             TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))
         )
@@ -158,7 +158,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     let bool_type = TypeProto::simple_struct(&primitive_traits[&primitives::Type::Bool]);
 
     let mut Eq = Trait::new_with_self("Eq".to_string());
-    let eq_functions = make_eq_functions(&Eq.create_generic_type("self"), &bool_type);
+    let eq_functions = make_eq_functions(&Eq.create_generic_type("Self"), &bool_type);
     Eq.insert_functions([
         &eq_functions.equal_to,
         &eq_functions.not_equal_to,
@@ -167,7 +167,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.add_trait(&Eq);
 
     let mut Ord = Trait::new_with_self("Ord".to_string());
-    let ord_functions = make_ord_functions(&Ord.create_generic_type("self"), &bool_type);
+    let ord_functions = make_ord_functions(&Ord.create_generic_type("Self"), &bool_type);
     Ord.insert_functions([
         &ord_functions.greater_than,
         &ord_functions.greater_than_or_equal_to,
@@ -179,7 +179,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.add_trait(&Ord);
 
     let mut Number = Trait::new_with_self("Number".to_string());
-    let number_functions = make_number_functions(&Number.create_generic_type("self"));
+    let number_functions = make_number_functions(&Number.create_generic_type("Self"));
     Number.insert_functions([
         &number_functions.add,
         &number_functions.subtract,
@@ -211,7 +211,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         "parse_int_literal",
         FunctionInterface::new_simple(
             [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
-            ConstructableByIntLiteral.create_generic_type("self"),
+            ConstructableByIntLiteral.create_generic_type("Self"),
         )
     );
     ConstructableByIntLiteral.insert_functions([
@@ -226,7 +226,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         "parse_float_literal",
         FunctionInterface::new_simple(
             [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
-            ConstructableByFloatLiteral.create_generic_type("self")
+            ConstructableByFloatLiteral.create_generic_type("Self")
         ),
     );
     ConstructableByFloatLiteral.insert_functions([
@@ -237,7 +237,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
 
 
     let mut Float = Trait::new_with_self("Float".to_string());
-    let float_functions = make_float_functions(&Float.create_generic_type("self"));
+    let float_functions = make_float_functions(&Float.create_generic_type("Self"));
     Float.insert_functions([
         &float_functions.exponent,
         &float_functions.logarithm
