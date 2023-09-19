@@ -10,13 +10,11 @@ mod tests {
     #[test]
     fn hello_world() {
         let parsed = parser::parse_program(&"
-@main
-def main() :: {
+def @main :: {
     write_line(\"Hello World!\");
 };
 
-@transpile
-def transpile(transpiler 'Transpiler) :: {
+def @transpile :: {
     transpiler.add(main);
 };
 ".to_string())?;
@@ -67,12 +65,11 @@ def transpile(transpiler 'Transpiler) :: {
     #[test]
     fn math() {
         let parsed = parser::parse_program(&"
-def main() :: {
+def @main :: {
     print(1 + 2 'Float32);
 };
 
-@transpile
-def transpile(transpiler 'Transpiler) :: {
+def @transpile :: {
     transpiler.add(main);
 };
 ".to_string())?;
