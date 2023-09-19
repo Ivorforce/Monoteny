@@ -21,7 +21,7 @@ pub struct ConstantFold {
 
 #[derive(Clone, Debug)]
 pub enum InlineHint {
-    ReplaceCall(Rc<FunctionHead>, usize),
+    ReplaceCall(Rc<FunctionHead>, Vec<usize>),
     YieldParameter(usize),
     GlobalLookup(Rc<ObjectReference>),
     NoOp,
@@ -114,19 +114,19 @@ impl ConstantFold {
 
     fn _inline_cascade(&mut self, head: &Rc<FunctionHead>, hint: InlineHint) {
         match &hint {
-            InlineHint::ReplaceCall(target, arg_idx) => {
+            InlineHint::ReplaceCall(target, arg_idxs) => {
                 match self.inline_hints.get(target) {
                     None => self.inline_hints.insert(Rc::clone(head), hint),
-                    Some(InlineHint::ReplaceCall(new_head, other_arg_idx)) => {
-                        // We could only have been inlined if we performed a call without swizzle (just one of our arguments).
-                        // So the other function can only have had exactly one function.
-                        assert_eq!(*other_arg_idx, 0);
-                        self.inline_hints.insert(Rc::clone(&head), InlineHint::ReplaceCall(Rc::clone(new_head), *arg_idx))
+                    Some(InlineHint::ReplaceCall(target_head, target_arg_idxs)) => {
+                        self.inline_hints.insert(
+                            Rc::clone(&head),
+                            InlineHint::ReplaceCall(Rc::clone(target_head), target_arg_idxs.iter().map(|idx| arg_idxs[*idx].clone()).collect_vec())
+                        )
                     }
-                    Some(InlineHint::YieldParameter(other_arg_idx)) => {
+                    Some(InlineHint::YieldParameter(yield_idx)) => {
                         // Same as above here.
-                        assert_eq!(*other_arg_idx, 0);
-                        self.inline_hints.insert(Rc::clone(&head), InlineHint::YieldParameter(*arg_idx))
+                        assert_eq!(*yield_idx, 0);
+                        self.inline_hints.insert(Rc::clone(&head), InlineHint::YieldParameter(arg_idxs[*yield_idx]))
                     }
                     Some(other_hint) => self.inline_hints.insert(Rc::clone(head), other_hint.clone()),
                 }
@@ -182,15 +182,15 @@ impl ConstantFold {
             ExpressionOperation::FunctionCall(f) => {
                 if let Some(inline_hint) = self.inline_hints.get(&f.function) {
                     match inline_hint {
-                        InlineHint::ReplaceCall(target_function, idx) => {
+                        InlineHint::ReplaceCall(target_function, idxs) => {
                             implementation.expression_forest.operations.insert(expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                                 function: Rc::clone(&target_function),
                                 // The requirements fulfillment can be empty because otherwise it wouldn't have been inlined.
                                 requirements_fulfillment: RequirementsFulfillment::empty(),
                             })));
-                            let replacement_id = arguments[*idx];
-                            truncate_tree(arguments.clone(), HashSet::from([replacement_id]), &mut implementation.expression_forest);
-                            implementation.expression_forest.arguments.insert(expression_id, vec![replacement_id]);
+                            let replacement_expressions = idxs.iter().map(|idx| arguments[*idx]).collect_vec();
+                            truncate_tree(arguments.clone(), HashSet::from_iter(replacement_expressions.iter().cloned()), &mut implementation.expression_forest);
+                            implementation.expression_forest.arguments.insert(expression_id, replacement_expressions);
                         }
                         InlineHint::YieldParameter(idx) => {
                             let replacement_id = arguments[*idx];
@@ -259,20 +259,26 @@ pub fn get_trivial_expression_call_target(expression_id: &ExpressionID, implemen
                 return None
             }
 
-            guard!(let [arg] = &implementation.expression_forest.arguments[expression_id][..] else {
-                return None
-            });
-
-            match &implementation.expression_forest.operations[arg] {
-                ExpressionOperation::VariableLookup(v) => {
-                    if let Some(idx) = implementation.parameter_variables.iter().position(|ref_| ref_ == v) {
-                        return Some(InlineHint::ReplaceCall(Rc::clone(&f.function), idx))
+            let replace_args: Vec<_> = implementation.expression_forest.arguments[expression_id].iter().map(|arg| {
+                match &implementation.expression_forest.operations[arg] {
+                    ExpressionOperation::VariableLookup(v) => {
+                        if let Some(idx) = implementation.parameter_variables.iter().position(|ref_| ref_ == v) {
+                            return Some(idx)
+                        }
                     }
+                    _ => { },
                 }
-                _ => { },
+
+                None
+            }).collect::<Option<_>>()?;
+            if replace_args.iter().duplicates().next().is_some() {
+                // If we use the same argument twice, we cannot trivially be inlined because arguments
+                //  would have to be copied to variables first - otherwise, we reference the same
+                //  expression twice in the expression forest.
+                return None
             }
 
-            return None
+            return Some(InlineHint::ReplaceCall(Rc::clone(&f.function), replace_args))
         },
         ExpressionOperation::VariableLookup(v) => {
             if let Some(idx) = implementation.parameter_variables.iter().position(|ref_| ref_ == v) {
