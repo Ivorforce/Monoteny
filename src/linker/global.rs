@@ -172,7 +172,7 @@ impl <'a> GlobalLinker<'a> {
             ast::GlobalStatement::Macro(syntax) => {
                 let fun = match syntax.macro_name.as_str() {
                     "main" => {
-                        Rc::new(FunctionPointer {
+                        let fun = Rc::new(FunctionPointer {
                             target: FunctionHead::new(
                                 Rc::new(FunctionInterface {
                                     parameters: vec![],
@@ -183,10 +183,12 @@ impl <'a> GlobalLinker<'a> {
                             ),
                             name: "main".to_string(),
                             form: FunctionForm::Global,
-                        })
+                        });
+                        self.module.main_functions.push(Rc::clone(&fun.target));
+                        fun
                     },
                     "transpile" => {
-                        Rc::new(FunctionPointer {
+                        let fun = Rc::new(FunctionPointer {
                             target: FunctionHead::new(
                                 Rc::new(FunctionInterface {
                                     parameters: vec![
@@ -203,12 +205,14 @@ impl <'a> GlobalLinker<'a> {
                             ),
                             name: "transpile".to_string(),
                             form: FunctionForm::Global,
-                        })
+                        });
+                        self.module.transpile_functions.push(Rc::clone(&fun.target));
+                        fun
                     },
                     _ => return Err(LinkError::LinkError { msg: format!("Function macro could not be resolved: {}", syntax.macro_name) }),
                 };
 
-                self.add_function(fun, &syntax.body, &syntax.decorators.iter().cloned().chain([syntax.macro_name.to_string()]).collect_vec())?;
+                self.add_function(fun, &syntax.body, &syntax.decorators)?;
             }
         }
 
@@ -239,11 +243,7 @@ impl <'a> GlobalLinker<'a> {
         }
 
         for decorator in decorators.iter() {
-            match decorator.as_str() {
-                "main" => self.module.main_functions.push(Rc::clone(&pointer.target)),
-                "transpile" => self.module.transpile_functions.push(Rc::clone(&pointer.target)),
-                _ => return Err(LinkError::LinkError { msg: format!("Decorator could not be resolved: {}", decorator) }),
-            }
+            return Err(LinkError::LinkError { msg: format!("Decorator could not be resolved: {}", decorator) })
         }
 
         Ok(())
