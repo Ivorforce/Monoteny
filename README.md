@@ -41,8 +41,7 @@ def {'Float[Cartesian]}.to_spherical() -> Float[Spherical] :: {
   );
 };
 
-@main
-def main() :: {
+def @main :: {
   -- Define dimensions
   let n, coord;
   
@@ -56,8 +55,7 @@ def main() :: {
   print(lea);
 };
 
-@transpile
-def transpile(transpiler 'Transpiler) :: {
+def @transpile :: {
   transpiler.add(main);
 };
 ```
