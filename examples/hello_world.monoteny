@@ -1,0 +1,9 @@
+import(monoteny.dialects.common.0);
+
+def @main :: {
+    Console.write_line("Hello World!");
+};
+
+def @transpile :: {
+    transpiler.add(main);
+};
