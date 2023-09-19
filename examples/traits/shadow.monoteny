@@ -7,17 +7,15 @@ trait Cat {
     @inherit(Animal);
 };
 
-@main
-def main() :: {
+def @main :: {
     -- Create a cat with pre-defined name and height.
     let cat = Cat(height_cm: 180);
     -- This matches Cat.height_cm, because Animal.height_cm is shadowed.
-    print(cat.height_cm);
+    write_line(cat.height_cm);
     -- This matches Animal.height_cm.
-    print((cat as $Animal).height_cm);
+    write_line((cat as $Animal).height_cm);
 };
 
-@transpile
-def transpile(transpiler 'Transpiler) :: {
+def @transpile :: {
     transpiler.add(main);
 };

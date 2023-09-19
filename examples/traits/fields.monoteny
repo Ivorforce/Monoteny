@@ -16,26 +16,24 @@ trait Cat {
 };
 
 def update_height(animal '$Animal) :: {
-    print(animal.species);
-    print(animal.name);
+    write_line(animal.species);
+    write_line(animal.name);
 
-    print("Before:");
-    print(animal.height_cm);
+    write_line("Before:");
+    write_line(animal.height_cm);
 
     -- We can set height_cm, but not species or name.
     animal.height_cm = 25;
-    print("After:");
-    print(animal.height_cm);
+    write_line("After:");
+    write_line(animal.height_cm);
 };
 
-@main
-def main() :: {
+def @main :: {
     -- Create a cat with pre-defined name and height.
     var cat = Cat(name: "Noir", height_cm: 180);
     update_height(cat);
 };
 
-@transpile
-def transpile(transpiler 'Transpiler) :: {
+def @transpile :: {
     transpiler.add(main);
 };
