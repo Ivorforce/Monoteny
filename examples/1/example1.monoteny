@@ -17,8 +17,7 @@ def square(value: '$Number) -> $Number :: value.square();
 def pi_ish -> $Float :: 3.14;
 def pi_ish -> $Int :: 3;
 
-@main
-def main() :: {
+def @main :: {
     -- Print string
     write_line("Test: \"Success\"");
 
@@ -37,8 +36,7 @@ def main() :: {
     write_line("Bool Value: \(b < 2 and not (value > 2) and true)");
 };
 
-@transpile
-def transpile(transpiler 'Transpiler) :: {
+def @transpile :: {
     -- The idea is that if we transpile this and run it, it should yield the same output
     -- as if running using the interpreter.
 

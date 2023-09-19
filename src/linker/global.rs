@@ -14,7 +14,7 @@ use crate::linker::scopes::Environment;
 use crate::linker::traits::TraitLinker;
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
-use crate::program::functions::{FunctionHead, FunctionType, FunctionForm, FunctionInterface, FunctionPointer};
+use crate::program::functions::{FunctionHead, FunctionType, FunctionForm, FunctionInterface, FunctionPointer, Parameter, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::global::BuiltinFunctionHint;
 use crate::program::module::Module;
@@ -168,6 +168,47 @@ impl <'a> GlobalLinker<'a> {
                 for fun in linker.functions {
                     self.add_function(fun.pointer, fun.body, fun.decorators)?;
                 }
+            }
+            ast::GlobalStatement::Macro(syntax) => {
+                let fun = match syntax.macro_name.as_str() {
+                    "main" => {
+                        Rc::new(FunctionPointer {
+                            target: FunctionHead::new(
+                                Rc::new(FunctionInterface {
+                                    parameters: vec![],
+                                    return_type: TypeProto::unit(TypeUnit::Void),
+                                    requirements: Default::default(),
+                                }),
+                                FunctionType::Static
+                            ),
+                            name: "main".to_string(),
+                            form: FunctionForm::Global,
+                        })
+                    },
+                    "transpile" => {
+                        Rc::new(FunctionPointer {
+                            target: FunctionHead::new(
+                                Rc::new(FunctionInterface {
+                                    parameters: vec![
+                                        Parameter {
+                                            external_key: ParameterKey::Positional,
+                                            internal_name: String::from("transpiler"),
+                                            type_: TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.transpilation.Transpiler))),
+                                        }
+                                    ],
+                                    return_type: TypeProto::unit(TypeUnit::Void),
+                                    requirements: Default::default(),
+                                }),
+                                FunctionType::Static
+                            ),
+                            name: "transpile".to_string(),
+                            form: FunctionForm::Global,
+                        })
+                    },
+                    _ => return Err(LinkError::LinkError { msg: format!("Function macro could not be resolved: {}", syntax.macro_name) }),
+                };
+
+                self.add_function(fun, &syntax.body, &syntax.decorators.iter().cloned().chain([syntax.macro_name.to_string()]).collect_vec())?;
             }
         }
 

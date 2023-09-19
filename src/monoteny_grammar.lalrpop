@@ -75,6 +75,7 @@ pub GlobalStatement: Box<GlobalStatement> = {
     OperatorFunction => Box::new(GlobalStatement::Operator(<>)),
     Trait => Box::new(GlobalStatement::Trait(<>)),
     Conformance => Box::new(GlobalStatement::Conformance(<>)),
+    GlobalMacro => Box::new(GlobalStatement::Macro(<>)),
 };
 
 Pattern: Box<PatternDeclaration> = {
@@ -92,6 +93,10 @@ Function: Box<Function> = {
 
 OperatorFunction: Box<OperatorFunction> = {
     <decorators: Decorator*> "def" <parts: OperatorArgument+> <return_type: ("->" <Expression>)?> <body: ("::" <FunctionBody>)?> => Box::new(OperatorFunction { <> }),
+}
+
+GlobalMacro: Box<GlobalMacro> = {
+    <decorators: Decorator*> "def" "@" <macro_name: Identifier> <body: ("::" <FunctionBody>)?> => Box::new(GlobalMacro { <> }),
 }
 
 Decorator: String = {

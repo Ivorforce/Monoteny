@@ -3,22 +3,20 @@ def format(value '$Float32, rounded: Bool) -> String :: match rounded [
     false: value.to_string(),
 ];
 
-@main
-def main() :: {
+def @main :: {
     let height 'Float32 = 5.233;
     -- Calls (height as $ToString).to_string(),
     --  a shortcut through format(height '$ToString) which does the same.
     -- The string is concatenated with a string builder.
-    print("Height is \(height)");
+    write_line("Height is \(height)");
 
     -- Calls format(height, precision: 1)
-    print("Height is \(height, precision: 1)");
+    write_line("Height is \(height, precision: 1)");
 
     -- Calls the above declared format function.
-    print("Height is \(height, rounded: true)");
+    write_line("Height is \(height, rounded: true)");
 };
 
-@transpile
-def transpile(transpiler 'Transpiler) :: {
+def @transpile :: {
     transpiler.add(main);
 };

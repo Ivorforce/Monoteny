@@ -3,8 +3,7 @@
 -- Define a function on 2 numbers.
 def {$Number}.square() -> $Number :: self * self;
 
-@main
-def main() :: {
+def @main :: {
     -- Call the generic function with an int32.
     write_line(3.square() 'Int32);
     -- Call the generic function with a float32.
@@ -12,7 +11,6 @@ def main() :: {
     write_line(3.2.square() 'Float32);
 };
 
-@transpile
-def transpile(transpiler 'Transpiler) :: {
+def @transpile :: {
     transpiler.add(main);
 };

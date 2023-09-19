@@ -19,6 +19,7 @@ pub enum GlobalStatement {
     Pattern(Box<PatternDeclaration>),
     Trait(Box<TraitDefinition>),
     Conformance(Box<TraitConformanceDeclaration>),
+    Macro(Box<GlobalMacro>),
 }
 
 #[derive(Eq, PartialEq)]
@@ -35,6 +36,13 @@ pub struct Function {
     pub parameters: Vec<Box<KeyedParameter>>,
     pub return_type: Option<Expression>,
 
+    pub body: Option<Expression>,
+}
+
+#[derive(Eq, PartialEq)]
+pub struct GlobalMacro {
+    pub decorators: Vec<String>,
+    pub macro_name: String,
     pub body: Option<Expression>,
 }
 
@@ -188,6 +196,7 @@ impl Display for GlobalStatement {
             GlobalStatement::Operator(operator) => write!(fmt, "{}", operator),
             GlobalStatement::Trait(trait_) => write!(fmt, "{}", trait_),
             GlobalStatement::Conformance(conformance) => write!(fmt, "{}", conformance),
+            GlobalStatement::Macro(macro_) => write!(fmt, "{}", macro_),
         }?;
 
         write!(fmt, ";")
@@ -204,6 +213,9 @@ impl Display for MemberStatement {
 
 impl Display for Function {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        for decorator in self.decorators.iter() {
+            writeln!(fmt, "@{}", decorator)?;
+        }
         write!(fmt, "def ")?;
         if let Some(target_type) = &self.target_type {
             write!(fmt, "{{{}}}.", target_type)?;
@@ -214,9 +226,8 @@ impl Display for Function {
         if let Some(return_type) = &self.return_type {
             write!(fmt, " -> {}", return_type)?;
         }
-        write!(fmt, " :: ")?;
         if let Some(body) = &self.body {
-            write!(fmt, "{}", body)?;
+            write!(fmt, " :: {}", body)?;
         }
         return Ok(())
     }
@@ -224,6 +235,9 @@ impl Display for Function {
 
 impl Display for OperatorFunction {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        for decorator in self.decorators.iter() {
+            writeln!(fmt, "@{}", decorator)?;
+        }
         write!(fmt, "def ")?;
         for argument in self.parts.iter() {
             write!(fmt, "{} ", argument)?;
@@ -231,9 +245,21 @@ impl Display for OperatorFunction {
         if let Some(return_type) = &self.return_type {
             write!(fmt, "-> {}", return_type)?;
         }
-        write!(fmt, " :: ")?;
         if let Some(body) = &self.body {
-            write!(fmt, "{}", body)?;
+            write!(fmt, " :: {}", body)?;
+        }
+        return Ok(())
+    }
+}
+
+impl Display for GlobalMacro {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        for decorator in self.decorators.iter() {
+            writeln!(fmt, "@{}", decorator)?;
+        }
+        write!(fmt, "def @{}", self.macro_name)?;
+        if let Some(body) = &self.body {
+            write!(fmt, " :: {}", body)?;
         }
         return Ok(())
     }
