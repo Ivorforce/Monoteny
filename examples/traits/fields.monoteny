@@ -16,16 +16,11 @@ trait Cat {
 };
 
 def update_height(animal '$Animal) :: {
-    write_line(animal.species);
-    write_line(animal.name);
-
-    write_line("Before:");
-    write_line(animal.height_cm);
+    write_line("\(animal.name) (\(animal.species)) was: \(animal.height_cm)cm");
 
     -- We can set height_cm, but not species or name.
     animal.height_cm = 25;
-    write_line("After:");
-    write_line(animal.height_cm);
+    write_line("And is now: \(animal.height_cm)");
 };
 
 def @main :: {

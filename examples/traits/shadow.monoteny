@@ -11,9 +11,9 @@ def @main :: {
     -- Create a cat with pre-defined name and height.
     let cat = Cat(height_cm: 180);
     -- This matches Cat.height_cm, because Animal.height_cm is shadowed.
-    write_line(cat.height_cm);
+    write_line("Cat height is \(cat.height_cm).");
     -- This matches Animal.height_cm.
-    write_line((cat as $Animal).height_cm);
+    write_line("Animal height is \((cat as $Animal).height_cm).");
 };
 
 def @transpile :: {
