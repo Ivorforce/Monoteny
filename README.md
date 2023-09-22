@@ -10,7 +10,7 @@ Monoteny specializes in reusability, runtime safety and readability. Why not che
 
 Let's quick-fire some language design decisions:
 
-- **Many transpilation targets:** Writing your code in Monoteny ensures it lives forever.
+- **Many transpilation targets:** Writing your code in Monoteny ensures it can be used by everyone.
 - **Implicit Safety:** Monoteny code cannot do anything bad to you except crash or freeze the program. There are no syscalls!
 - **Flexible Runtime:** You can generate new code from text, tokens or specialization on the fly.
 - **Monomorphization:** Transpilation will result in code that doesn't use dynamic dispatch, even when using generics. This makes it fast!
