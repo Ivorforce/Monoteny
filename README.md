@@ -67,7 +67,7 @@ More code can be found in the [examples](./examples) directory.
 
 ### Targets
 
-The following targets are currently planned for active support:
+The following targets will be officially supported:
 
 * [WIP] Python with NumPy
 * [Future] Monoteny Dialect
@@ -77,7 +77,7 @@ The following targets are currently planned for active support:
 * [Future] Julia
 * [Future] LaTeX Expressions
 
-Other targets may yet be implemented by other people.
+In addition, the transpilation API will allow 3rd parties to target more ecosystems as plugins.
 
 
 ### Monoteny 0.1 (Toy Language Stage)
