@@ -2,7 +2,7 @@
 
 Welcome to the mathemagical land of Monoteny! 
 
-Monoteny is a programming language intended for making libraries. It transpiles to many other programming languages and ecosystems so you don't need to reinvent the wheel!
+Monoteny is a programming language intended for making libraries. It transpiles to many other programming languages and ecosystems so nobody needs to reinvent the wheel!
 
 Monoteny specializes in reusability, runtime safety and readability. Why not check out [Monoteny 101](https://www.craft.me/s/dYSfJhYM9TAsne)?
 
@@ -11,7 +11,8 @@ Monoteny specializes in reusability, runtime safety and readability. Why not che
 Let's quick-fire some language design decisions:
 
 - **Many transpilation targets:** Writing your code in Monoteny ensures it can be used by everyone.
-- **Implicit Safety:** Monoteny code cannot do anything bad to you except crash or freeze the program. There are no syscalls!
+- **Simplicity:** Many good general purpose programming languages already exist. Monoteny aims to double down on its strengths, rather than supporting use-cases it's not well suited for.
+- **Implicit Safety:** Monoteny code cannot do anything bad to you except crash or freeze the program. There are no (general purpose) syscalls!
 - **Flexible Runtime:** You can generate new code from text, tokens or specialization on the fly.
 - **Monomorphization:** Transpilation will result in code that doesn't use dynamic dispatch, even when using generics. This makes it fast!
 - **Monads:** Monoteny loves monads. Monads make your code short and easy to read!
@@ -65,9 +66,6 @@ More code can be found in the [examples](./examples) directory.
 ## Roadmap
 
 ### Targets
-
-Monoteny does not offer many features required to build many end-to-end applications. Many suitable general purpose languages already exist.
-Instead, Monoteny focuses on its most central feature: To be a minimal and understandable imperative logic language, which is transpiled into other ecosystems.
 
 The following targets are currently planned for active support:
 
