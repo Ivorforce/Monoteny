@@ -66,28 +66,20 @@ More code can be found in the [examples](./examples) directory.
 
 ### Targets
 
-Monoteny lacks many features required to build full apps. Luckily, many excellent ecosystems exist where it is possible to build such things.
-Therefore, instead, Monoteny aims to focus on its most vital feature: Being a minimal and understandable imperative logic language.
+Monoteny does not offer many features required to build many end-to-end applications. Many suitable general purpose languages already exist.
+Instead, Monoteny focuses on its most central feature: To be a minimal and understandable imperative logic language, which is transpiled into other ecosystems.
 
-This will be possible through Monoteny coming with several transpilers.
-Hereby, any algorithms built in Monoteny will be usable in _any_ of those ecosystems.
-In addition, an interpreter is used to fold constant code and run during transpile time.
-The planned targets are:
+The following targets are currently planned for active support:
 
-* [WIP] Interpreter
 * [WIP] Python with NumPy
 * [Future] Monoteny Dialect
 * [Future] Octave / MatLab
 * [Future] C++ with Eigen
 * [Future] R
-* [Future] LaTeX (expressions)
+* [Future] Julia
+* [Future] LaTeX Expressions
 
-Note: Monoteny has some features that do not translate easily to other languages. For example: In Monoteny, a constant is a function requiring arguments on the return type and inferred function binds.
-This amount of flexibility would be confusing and difficult to use in Python or C.
-
-For this reason, transpilation responsibility is handed over to the programmer.
-They will ultimately decide how, especially w.r.t. different languages, code should be transpiled.
-What this results in is a somewhat unusual 2-layer transpilation: Those functions and types that are designed to work with the outside, and those that 'just need to work'.
+Other targets may yet be implemented by other people.
 
 
 ### Monoteny 0.1 (Toy Language Stage)
