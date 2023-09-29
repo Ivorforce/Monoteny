@@ -5,6 +5,7 @@ use crate::program::functions::FunctionHead;
 use crate::program::global::FunctionImplementation;
 use crate::program::types::TypeProto;
 
+#[derive(Clone)]
 pub struct Representations {
     pub builtin_functions: HashSet<Rc<FunctionHead>>,
     pub function_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>,

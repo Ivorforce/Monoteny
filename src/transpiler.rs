@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;
 use std::rc::Rc;
 use guard::guard;
@@ -19,17 +19,25 @@ pub mod namespaces;
 
 pub struct Transpiler {
     pub monomorphizer: Box<Monomorphizer>,
+    pub main_function: Option<Rc<FunctionHead>>,
     pub exported_functions: Vec<Box<FunctionImplementation>>,
     pub internal_functions: Vec<Box<FunctionImplementation>>,
 }
 
-pub struct Context {
-    pub builtin_functions: HashSet<Rc<FunctionHead>>,
+pub trait Context {
+    fn builtin_functions(&self) -> HashSet<Rc<FunctionHead>>;
+
+    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, InterpreterError>;
 }
 
-pub fn run(module: &Module, runtime: &mut Runtime, context: Context) -> Result<Transpiler, InterpreterError> {
+pub fn run(module: &Module, runtime: &mut Runtime, context: &impl Context) -> Result<Transpiler, InterpreterError> {
+    let builtin_functions = context.builtin_functions();
+
     let transpiler = Transpiler {
         monomorphizer: Box::new(Monomorphizer::new()),
+        main_function: module.main_functions.iter().at_most_one()
+            .map_err(|_| InterpreterError::RuntimeError { msg: format!("Too many @main functions declared: {:?}", module.main_functions) })?
+            .cloned(),
         exported_functions: vec![],
         internal_functions: vec![],
     };
@@ -57,7 +65,7 @@ pub fn run(module: &Module, runtime: &mut Runtime, context: Context) -> Result<T
                 // Unless generics are bound in the transpile directive, which is TODO
                 requirements_fulfillment: RequirementsFulfillment::empty(),
             }),
-            &|f| !context.builtin_functions.contains(&f.function)
+            &|f| !builtin_functions.contains(&f.function)
         );
 
         transpiler_context.exported_functions.push(mono_implementation);
@@ -79,12 +87,18 @@ pub fn run(module: &Module, runtime: &mut Runtime, context: Context) -> Result<T
             transpiler.monomorphizer.monomorphize_function(
                 &mut mono_implementation,
                 &function_binding,
-                &|f| !context.builtin_functions.contains(&f.function)
+                &|f| !builtin_functions.contains(&f.function)
             );
         };
 
         transpiler.internal_functions.push(mono_implementation);
     }
+
+    // TODO We should sort the internal functions. This could be done roughly by putting them in the
+    //  order the player defined it - which leaves only different monomorpizations to be sorted.
+    //  Those can be sorted by something like the displayed 'function to string' (without randomized uuid).
+    //  This should work because two traits sharing the same name but being different IDs should be rare.
+    //  In that rare case, we can probably live with being indeterministic.
 
     Ok(transpiler)
 }

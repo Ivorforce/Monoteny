@@ -5,69 +5,79 @@ pub mod ast;
 pub mod imperative;
 pub mod representations;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::ops::DerefMut;
+use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::transpiler;
 use crate::interpreter::{Runtime, InterpreterError};
 
 use crate::program::computation_tree::*;
+use crate::program::functions::FunctionHead;
 use crate::program::global::BuiltinFunctionHint;
 use crate::program::module::Module;
 use crate::program::types::TypeUnit;
-use crate::transpiler::{constant_fold, namespaces, Transpiler};
+use crate::transpiler::{namespaces, Transpiler};
 use crate::transpiler::python::ast::Statement;
 use crate::transpiler::python::class::{ClassContext, transpile_class};
 use crate::transpiler::python::imperative::{FunctionContext, transpile_function};
 use crate::transpiler::python::representations::Representations;
 
 
-pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_fold: bool) -> Result<Box<ast::Module>, InterpreterError> {
-    let mut representations = Representations::new();
-    let builtin_namespace = builtins::register(runtime, &mut representations);
-
-    // Run interpreter
-    let mut transpiler = transpiler::run(module, runtime, transpiler::Context {
-        builtin_functions: representations.builtin_functions.clone(),
-    })?;
-
-    if should_constant_fold {
-        constant_fold(&mut transpiler);
-    }
-
-    // TODO We should sort the internal functions. This could be done roughly by putting them in the
-    //  order the player defined it - which leaves only different monomorpizations to be sorted.
-    //  Those can be sorted by something like the displayed 'function to string' (without randomized uuid).
-    //  This should work because two traits sharing the same name but being different IDs should be rare.
-    //  In that rare case, we can probably live with being indeterministic.
-
-    create_ast(module, &transpiler, representations, runtime, builtin_namespace)
+pub struct Context {
+    pub representations: Representations,
+    pub builtin_namespace: namespaces::Level,
 }
 
-pub fn create_ast(module: &Module, transpiler_context: &Transpiler, mut representations: Representations, runtime: &Runtime, mut builtin_namespace: namespaces::Level) -> Result<Box<ast::Module>, InterpreterError> {
+impl transpiler::Context for Context {
+    fn builtin_functions(&self) -> HashSet<Rc<FunctionHead>> {
+        self.representations.builtin_functions.clone()
+    }
+
+    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, InterpreterError> {
+        let ast = create_ast(transpiler, self, runtime)?;
+
+        Ok(HashMap::from([
+            (format!("{}.py", filename), ast.to_string())
+        ]))
+    }
+}
+
+pub fn create_context(runtime: &Runtime) -> Context {
+    let mut representations = Representations::new();
+    Context {
+        builtin_namespace: builtins::register(runtime, &mut representations),
+        representations,
+    }
+}
+
+pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime) -> Result<Box<ast::Module>, InterpreterError> {
+    let mut representations = context.representations.clone();
     let builtin_structs: HashSet<_> = representations.type_ids.keys().map(Clone::clone).collect();
-    let mut file_namespace = builtin_namespace.add_sublevel();
+
+    let mut global_namespace = context.builtin_namespace.clone();
+    let mut file_namespace = global_namespace.add_sublevel();
     let mut object_namespace = namespaces::Level::new();  // TODO Actual keywords can't be in object namespace either
 
-    let reverse_mapped_calls = transpiler_context.monomorphizer.get_mono_call_to_original_call();
+    let reverse_mapped_calls = transpiler.monomorphizer.get_mono_call_to_original_call();
 
     // ================= Names ==================
 
-    for implementation in transpiler_context.exported_functions.iter() {
+    for implementation in transpiler.exported_functions.iter() {
         // TODO Register with priority over internal symbols
         let ptr = &runtime.source.fn_pointers[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
         file_namespace.insert_name(implementation.head.function_id, &ptr.name);
     }
 
-    for implementation in transpiler_context.internal_functions.iter() {
+    for implementation in transpiler.internal_functions.iter() {
         let ptr = &runtime.source.fn_pointers[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
         // TODO Use underscore names?
         file_namespace.insert_name(implementation.head.function_id, &ptr.name);
     }
 
-    for implementation in transpiler_context.exported_functions.iter().chain(transpiler_context.internal_functions.iter()) {
+    for implementation in transpiler.exported_functions.iter().chain(transpiler.internal_functions.iter()) {
         let function_namespace = file_namespace.add_sublevel();
         for (variable, name) in implementation.variable_names.iter() {
             function_namespace.insert_name(variable.id.clone(), name);
@@ -95,7 +105,7 @@ pub fn create_ast(module: &Module, transpiler_context: &Transpiler, mut represen
         }
     }
 
-    let mut names = builtin_namespace.map_names();
+    let mut names = global_namespace.map_names();
     names.extend(object_namespace.map_names());
 
     // ================= Representations ==================
@@ -103,7 +113,7 @@ pub fn create_ast(module: &Module, transpiler_context: &Transpiler, mut represen
     representations::find_for_functions(
         &mut representations.function_representations,
         &names,
-        transpiler_context.exported_functions.iter().chain(transpiler_context.internal_functions.iter())
+        transpiler.exported_functions.iter().chain(transpiler.internal_functions.iter())
     );
 
     // ================= Build AST ==================
@@ -112,9 +122,7 @@ pub fn create_ast(module: &Module, transpiler_context: &Transpiler, mut represen
         exported_statements: vec![],
         internal_statements: vec![],
         exported_names: HashSet::new(),
-        main_function: module.main_functions.iter().at_most_one()
-            .map_err(|_| InterpreterError::RuntimeError { msg: format!("Too many @main functions declared: {:?}", module.main_functions) })?
-            .map(|head| names[&head.function_id].clone())
+        main_function: transpiler.main_function.clone().map(|head| names[&head.function_id].clone())
     });
 
     for (struct_type, id) in representations.type_ids.iter() {
@@ -137,8 +145,8 @@ pub fn create_ast(module: &Module, transpiler_context: &Transpiler, mut represen
     }
 
     for (implementations, is_exported) in [
-        (&transpiler_context.exported_functions, true),
-        (&transpiler_context.internal_functions, false),
+        (&transpiler.exported_functions, true),
+        (&transpiler.internal_functions, false),
     ] {
         for implementation in implementations.iter() {
             let context = FunctionContext {

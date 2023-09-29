@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct Level {
     claims: HashMap<String, Vec<Uuid>>,
     // These claims always use the desired name, even if multiple claims exist

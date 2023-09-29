@@ -20,6 +20,7 @@ use std::path::PathBuf;
 use clap::{arg, Command};
 use crate::interpreter::{Runtime, InterpreterError, common};
 use crate::linker::LinkError;
+use crate::transpiler::Context;
 
 
 fn cli() -> Command<'static> {
@@ -85,16 +86,19 @@ fn main() -> Result<(), InterpreterError> {
         },
         Some(("transpile", sub_matches)) => {
             let input_path = sub_matches.get_one::<PathBuf>("INPUT").unwrap();
-            let output_path = match sub_matches.contains_id("OUTPUT") {
+            let output_path_proto = match sub_matches.contains_id("OUTPUT") {
                 true => sub_matches.get_one::<PathBuf>("OUTPUT").unwrap().clone(),
                 false => input_path.with_extension(""),
             };
+            let base_filename = output_path_proto.file_name().and_then(OsStr::to_str).unwrap();
+            let base_output_path = output_path_proto.parent().unwrap();
+
             let should_output_all = sub_matches.is_present("ALL");
             let should_constant_fold = !sub_matches.is_present("NOFOLD");
 
             let output_extensions: Vec<&str> = match should_output_all {
                 true => vec!["py"],
-                false => vec![output_path.extension().and_then(OsStr::to_str).unwrap()]
+                false => vec![output_path_proto.extension().and_then(OsStr::to_str).unwrap()]
             };
 
             let builtins = program::builtins::create_builtins();
@@ -104,21 +108,26 @@ fn main() -> Result<(), InterpreterError> {
             let module = runtime.load_file(input_path)?;
 
             for output_extension in output_extensions {
-                match output_extension {
-                    "py" => {
-                        let transpiled_tree = transpiler::python::transpile_module(
-                            &module, &mut runtime, should_constant_fold
-                        )?;
-
-                        let python_path = output_path.with_extension("py");
-                        let mut f = File::create(python_path.clone()).expect("Unable to create file");
-                        let f: &mut (dyn Write) = &mut f;
-                        write!(f, "{}", transpiled_tree).expect("Error writing file");
-
-                        println!("{}", python_path.to_str().unwrap());
-                    },
+                let context = match output_extension {
+                    "py" => transpiler::python::create_context(&runtime),
                     _ => unreachable!()
                 };
+
+                let mut transpiler = transpiler::run(&module, &mut runtime, &context)?;
+
+                if should_constant_fold {
+                    transpiler::constant_fold(&mut transpiler);
+                }
+
+                let file_map = context.make_files(base_filename, &runtime, &transpiler)?;
+                for (filename, content) in file_map {
+                    let file_path = base_output_path.join(filename);
+                    let mut f = File::create(file_path.clone()).expect("Unable to create file");
+                    let f: &mut (dyn Write) = &mut f;
+                    write!(f, "{}", content).expect("Error writing file");
+
+                    println!("{}", file_path.to_str().unwrap());
+                }
             }
         },
         _ => {
