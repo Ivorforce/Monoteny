@@ -17,7 +17,6 @@ use crate::interpreter::{Runtime, InterpreterError};
 use crate::program::computation_tree::*;
 use crate::program::functions::FunctionHead;
 use crate::program::global::BuiltinFunctionHint;
-use crate::program::module::Module;
 use crate::program::types::TypeUnit;
 use crate::transpiler::{namespaces, Transpiler};
 use crate::transpiler::python::ast::Statement;

@@ -108,12 +108,12 @@ fn main() -> Result<(), InterpreterError> {
             let module = runtime.load_file(input_path)?;
 
             for output_extension in output_extensions {
-                let context = match output_extension {
+                let mut context = match output_extension {
                     "py" => transpiler::python::create_context(&runtime),
                     _ => unreachable!()
                 };
 
-                let mut transpiler = transpiler::run(&module, &mut runtime, &context)?;
+                let mut transpiler = transpiler::run(&module, &mut runtime, &mut context)?;
 
                 if should_constant_fold {
                     transpiler::constant_fold(&mut transpiler);

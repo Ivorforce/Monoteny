@@ -18,6 +18,7 @@ pub mod python;
 pub mod namespaces;
 
 pub struct Transpiler {
+    // In the future, this should all be accessible by monoteny code itself - including the context.
     pub monomorphizer: Box<Monomorphizer>,
     pub main_function: Option<Rc<FunctionHead>>,
     pub exported_functions: Vec<Box<FunctionImplementation>>,
@@ -30,7 +31,7 @@ pub trait Context {
     fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, InterpreterError>;
 }
 
-pub fn run(module: &Module, runtime: &mut Runtime, context: &impl Context) -> Result<Transpiler, InterpreterError> {
+pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -> Result<Transpiler, InterpreterError> {
     let builtin_functions = context.builtin_functions();
 
     let transpiler = Transpiler {
