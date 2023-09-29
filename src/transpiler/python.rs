@@ -2,8 +2,8 @@ pub mod types;
 pub mod builtins;
 pub mod class;
 pub mod ast;
-pub mod optimization;
 pub mod imperative;
+pub mod representations;
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -20,7 +20,6 @@ use crate::interpreter::{Runtime, InterpreterError};
 
 use crate::program::computation_tree::*;
 use crate::program::calls::FunctionBinding;
-use crate::program::functions::FunctionHead;
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::module::Module;
 use crate::program::traits::RequirementsFulfillment;
@@ -29,26 +28,24 @@ use crate::transpiler::namespaces;
 use crate::transpiler::python::ast::Statement;
 use crate::transpiler::python::class::{ClassContext, transpile_class};
 use crate::transpiler::python::imperative::{FunctionContext, transpile_function};
-use crate::transpiler::python::optimization::{TranspilationHint, try_transpile_optimized_implementation};
+use crate::transpiler::python::representations::Representations;
 
 
 pub struct TranspilerContext {
     monomorphizer: Box<Monomorphizer>,
     exported_functions: Vec<Box<FunctionImplementation>>,
     internal_functions: Vec<Box<FunctionImplementation>>,
-    fn_transpilation_hints: HashMap<Rc<FunctionHead>, TranspilationHint>,
 }
 
 pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_fold: bool) -> Result<Box<ast::Module>, InterpreterError> {
+    let mut representations = Representations::new();
+    let builtin_level = builtins::register(runtime, &mut representations);
+
     let transpiler_context = TranspilerContext {
         monomorphizer: Box::new(Monomorphizer::new()),
         exported_functions: vec![],
         internal_functions: vec![],
-        fn_transpilation_hints: optimization::prepare(runtime),
     };
-
-    let strictly_polymorphic_functions: HashSet<_> = runtime.source.fn_builtin_hints.keys()
-        .chain(transpiler_context.fn_transpilation_hints.keys()).cloned().collect();
 
     let transpiler_context = Rc::new(RefCell::new(transpiler_context));
 
@@ -75,7 +72,7 @@ pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_
                 // Unless generics are bound in the transpile directive, which is TODO
                 requirements_fulfillment: RequirementsFulfillment::empty(),
             }),
-            &|f| !strictly_polymorphic_functions.contains(&f.function)
+            &|f| !representations.builtin_functions.contains(&f.function)
         );
 
         transpiler_context.exported_functions.push(mono_implementation);
@@ -98,7 +95,7 @@ pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_
             transpiler_context.monomorphizer.monomorphize_function(
                 &mut mono_implementation,
                 &function_binding,
-                &|f| !strictly_polymorphic_functions.contains(&f.function)
+                &|f| !representations.builtin_functions.contains(&f.function)
             );
         };
 
@@ -124,54 +121,47 @@ pub fn transpile_module(module: &Module, runtime: &mut Runtime, should_constant_
         transpiler_context.internal_functions = constant_folder.drain_all_functions_yield_uninlined();
     }
 
-    optimization::optimize_implementations(
-        &mut transpiler_context.fn_transpilation_hints,
-        &runtime.source.fn_builtin_hints,
-        transpiler_context.internal_functions.iter().chain(transpiler_context.exported_functions.iter())
-    );
-
     // TODO We need to sort the internal functions. This could be done roughly by putting them in the
     //  order the player defined it - which leaves only different monomorpizations to be sorted.
     //  Those can be sorted by something like the displayed 'function to string' (without randomized uuid).
     //  This should work because two traits sharing the same name but being different IDs should be rare.
     //  In that rare case, we can probably live with being indeterministic.
 
-    create_ast(module, &transpiler_context, runtime)
+    create_ast(module, &transpiler_context, representations, runtime)
 }
 
-pub fn create_ast(module: &Module, transpiler_context: &TranspilerContext, runtime: &Runtime) -> Result<Box<ast::Module>, InterpreterError> {
-    let mut struct_ids = HashMap::new();
-
-    let mut global_namespace = builtins::create_name_level(&runtime.builtins, &mut struct_ids);
-    let builtin_structs: HashSet<_> = struct_ids.keys().map(Clone::clone).collect();
+pub fn create_ast(module: &Module, transpiler_context: &TranspilerContext, mut representations: Representations, runtime: &Runtime) -> Result<Box<ast::Module>, InterpreterError> {
+    let mut global_namespace = builtins::register(runtime, &mut representations);
+    let builtin_structs: HashSet<_> = representations.type_ids.keys().map(Clone::clone).collect();
     let mut file_namespace = global_namespace.add_sublevel();
-    let mut object_namespace = namespaces::Level::new();  // TODO Keywords can't be in object namespace either
+    let mut object_namespace = namespaces::Level::new();  // TODO Actual keywords can't be in object namespace either
 
     let reverse_mapped_calls = transpiler_context.monomorphizer.get_mono_call_to_original_call();
 
-    // Build ast
+    // ================= Names ==================
+
     for implementation in transpiler_context.exported_functions.iter() {
         // TODO Register with priority over internal symbols
         let ptr = &runtime.source.fn_pointers[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
-        file_namespace.register_definition(implementation.head.function_id, &ptr.name);
+        file_namespace.insert_name(implementation.head.function_id, &ptr.name);
     }
 
     for implementation in transpiler_context.internal_functions.iter() {
         let ptr = &runtime.source.fn_pointers[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
         // TODO Use underscore names?
-        file_namespace.register_definition(implementation.head.function_id, &ptr.name);
+        file_namespace.insert_name(implementation.head.function_id, &ptr.name);
     }
 
     for implementation in transpiler_context.exported_functions.iter().chain(transpiler_context.internal_functions.iter()) {
         let function_namespace = file_namespace.add_sublevel();
         for (variable, name) in implementation.variable_names.iter() {
-            function_namespace.register_definition(variable.id.clone(), name);
+            function_namespace.insert_name(variable.id.clone(), name);
         }
         for (expression_id, operation) in implementation.expression_forest.operations.iter() {
             if let ExpressionOperation::FunctionCall(fun) = operation {
                 if let Some(BuiltinFunctionHint::Constructor) = runtime.source.fn_builtin_hints.get(&fun.function) {
                     let type_ = implementation.type_forest.resolve_binding_alias(expression_id).unwrap();
-                    if let Entry::Vacant(entry) = struct_ids.entry(type_.clone()) {
+                    if let Entry::Vacant(entry) = representations.type_ids.entry(type_.clone()) {
                         // TODO If we have generics, we should include their bindings in the name somehow.
                         //  Eg. ArrayFloat. Probably only if it's exactly one. Otherwise, we need to be ok with
                         //  just the auto-renames.
@@ -183,7 +173,7 @@ pub fn create_ast(module: &Module, transpiler_context: &TranspilerContext, runti
                         let id = Uuid::new_v4();
                         entry.insert(id);
                         // TODO Find proper names
-                        file_namespace.register_definition(id, name);
+                        file_namespace.insert_name(id, name);
                     }
                 }
             }
@@ -197,6 +187,16 @@ pub fn create_ast(module: &Module, transpiler_context: &TranspilerContext, runti
         return Err(InterpreterError::RuntimeError { msg: format!("Too many @main functions declared: {:?}", module.main_functions) });
     }
 
+    // ================= Representations ==================
+
+    representations::find_for_functions(
+        &mut representations.function_representations,
+        &names,
+        transpiler_context.exported_functions.iter().chain(transpiler_context.internal_functions.iter())
+    );
+
+    // ================= Build AST ==================
+
     let mut module = Box::new(ast::Module {
         exported_statements: vec![],
         internal_statements: vec![],
@@ -205,15 +205,15 @@ pub fn create_ast(module: &Module, transpiler_context: &TranspilerContext, runti
             .map(|head| names[&head.function_id].clone())
     });
 
-    for (struct_type, id) in struct_ids.iter() {
+    for (struct_type, id) in representations.type_ids.iter() {
         if builtin_structs.contains(struct_type) {
             continue
         }
 
         let context = ClassContext {
             names: &names,
-            struct_ids: &struct_ids,
             runtime,
+            representations: &representations,
         };
 
         let statement = Box::new(Statement::Class(transpile_class(struct_type, &context)));
@@ -233,13 +233,11 @@ pub fn create_ast(module: &Module, transpiler_context: &TranspilerContext, runti
                 names: &names,
                 expressions: &implementation.expression_forest,
                 types: &implementation.type_forest,
-                struct_ids: &struct_ids,
                 runtime,
-                fn_transpilation_hints: &transpiler_context.fn_transpilation_hints,
+                representations: &representations,
             };
 
-            let transpiled = try_transpile_optimized_implementation(implementation, &context)
-                .unwrap_or(Box::new(Statement::Function(transpile_function(implementation, &context))));
+            let transpiled = transpile_function(implementation, &context);
 
             if is_exported {
                 module.exported_names.insert(context.names[&implementation.head.function_id].clone());

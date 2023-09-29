@@ -4,7 +4,8 @@ use uuid::Uuid;
 
 pub struct Level {
     claims: HashMap<String, Vec<Uuid>>,
-    keywords: HashSet<Uuid>,
+    // These claims always use the desired name, even if multiple claims exist
+    fixed_names: HashSet<Uuid>,
     sublevels: Vec<Level>
 }
 
@@ -12,12 +13,12 @@ impl Level {
     pub fn new() -> Level {
         Level {
             claims: HashMap::new(),
-            keywords: HashSet::new(),
+            fixed_names: HashSet::new(),
             sublevels: Vec::new(),
         }
     }
 
-    pub fn register_definition(&mut self, uuid: Uuid, name: &str) {
+    pub fn insert_name(&mut self, uuid: Uuid, name: &str) {
         if let Some(existing) = self.claims.get_mut(name) {
             existing.push(uuid);
         }
@@ -29,9 +30,9 @@ impl Level {
         }
     }
 
-    pub fn insert_keyword(&mut self, uuid: Uuid, name: &str) {
-        self.register_definition(uuid, name);
-        self.keywords.insert(uuid);
+    pub fn insert_fixed_name(&mut self, uuid: Uuid, name: &str) {
+        self.insert_name(uuid, name);
+        self.fixed_names.insert(uuid);
     }
 
     pub fn add_sublevel(&mut self) -> &mut Level {
@@ -66,7 +67,7 @@ impl Level {
 
                 let mut idx = 0;
                 for claim in claims.iter() {
-                    if self.keywords.contains(claim) {
+                    if self.fixed_names.contains(claim) {
                         reserved.insert(name.clone());
                         mapping.insert(claim.clone(), name.clone());
                     }
