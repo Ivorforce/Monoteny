@@ -98,10 +98,6 @@ pub fn create_ast(module: &Module, transpiler_context: &Transpiler, mut represen
     let mut names = builtin_namespace.map_names();
     names.extend(object_namespace.map_names());
 
-    if module.main_functions.len() > 1 {
-        return Err(InterpreterError::RuntimeError { msg: format!("Too many @main functions declared: {:?}", module.main_functions) });
-    }
-
     // ================= Representations ==================
 
     representations::find_for_functions(
@@ -116,7 +112,8 @@ pub fn create_ast(module: &Module, transpiler_context: &Transpiler, mut represen
         exported_statements: vec![],
         internal_statements: vec![],
         exported_names: HashSet::new(),
-        main_function: module.main_functions.iter().exactly_one().ok()
+        main_function: module.main_functions.iter().at_most_one()
+            .map_err(|_| InterpreterError::RuntimeError { msg: format!("Too many @main functions declared: {:?}", module.main_functions) })?
             .map(|head| names[&head.function_id].clone())
     });
 
