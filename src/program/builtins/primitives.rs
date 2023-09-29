@@ -7,7 +7,7 @@ use crate::program::functions::{FunctionInterface, FunctionPointer};
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitConformance, TraitConformanceRule};
+use crate::program::traits::{Trait, TraitConformanceRule};
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub fn create_traits(module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>> {

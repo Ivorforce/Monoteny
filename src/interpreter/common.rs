@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use std::rc::Rc;
-use itertools::Itertools;
 use crate::interpreter::{InterpreterError, Runtime};
 
 pub fn load(runtime: &mut Runtime) -> Result<(), InterpreterError> {

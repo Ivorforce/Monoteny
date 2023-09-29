@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 use std::rc::Rc;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;

@@ -6,7 +6,7 @@ pub mod imperative;
 pub mod representations;
 
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::collections::hash_map::Entry;
 use std::ops::DerefMut;
 use std::rc::Rc;

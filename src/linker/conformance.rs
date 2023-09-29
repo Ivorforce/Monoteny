@@ -7,8 +7,7 @@ use crate::linker::{LinkError, scopes};
 use crate::linker::interface::link_function_pointer;
 use crate::parser::ast;
 use crate::program::functions::{FunctionHead, FunctionPointer};
-use crate::program::module::Module;
-use crate::program::traits::{TraitBinding, TraitConformance, TraitConformanceRule};
+use crate::program::traits::{TraitBinding, TraitConformance};
 
 pub struct UnlinkedFunctionImplementation<'a> {
     pub pointer: Rc<FunctionPointer>,

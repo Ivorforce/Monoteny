@@ -34,8 +34,8 @@ pub fn transpile_function(implementation: &FunctionImplementation, context: &Fun
             })
         }
         FunctionRepresentation::FunctionCall(_) => Box::new(ast::Statement::Function(transpile_plain_function(implementation, context))),
-        FunctionRepresentation::Unary(op) => panic!("Custom static unary functions ({}) are not supported in python; something must have gone wrong.", op),
-        FunctionRepresentation::Binary(op) => panic!("Custom static binary functions ({}) are not supported in python; something must have gone wrong.", op),
+        FunctionRepresentation::Unary(op) => panic!("Internal Error: Custom static unary functions are not supported in python: {}", op),
+        FunctionRepresentation::Binary(op) => panic!("Internal Error: Custom static binary functions are not supported in python: {}", op),
     }
 }
 
@@ -290,28 +290,4 @@ pub fn transpile_parse_function(supported_regex: &str, arguments: &Vec<Expressio
         types::transpile(&context.types.resolve_binding_alias(expression_id).unwrap(), context),
         vec![(ParameterKey::Positional, value)]
     ))
-}
-
-pub fn transpile_single_arg_function_call(function_name: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Box<ast::Expression> {
-    guard!(let [argument_expression_id] = arguments[..] else {
-        panic!("{} function got {} arguments", function_name, arguments.len());
-    });
-
-    Box::new(ast::Expression::FunctionCall(
-        function_name.to_string(),
-        vec![(ParameterKey::Positional, transpile_expression(argument_expression_id, context))]
-    ))
-}
-
-pub fn is_simple(operation: &ExpressionOperation) -> bool {
-    match operation {
-        ExpressionOperation::VariableLookup(_) => true,
-        ExpressionOperation::StringLiteral(_) => true,
-        ExpressionOperation::ArrayLiteral => true,
-        ExpressionOperation::FunctionCall { .. } => false,
-        ExpressionOperation::PairwiseOperations { .. } => false,
-        ExpressionOperation::Block => todo!(),
-        ExpressionOperation::VariableAssignment(_) => false,
-        ExpressionOperation::Return => false,
-    }
 }
