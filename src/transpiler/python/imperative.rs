@@ -82,18 +82,29 @@ pub fn transpile_plain_function(implementation: &FunctionImplementation, context
     //     };
     // }
 
-    let statements = match &implementation.expression_forest.operations[&implementation.root_expression_id] {
+    syntax.statements = match &implementation.expression_forest.operations[&implementation.root_expression_id] {
         ExpressionOperation::Block => {
-            implementation.expression_forest.arguments[&implementation.root_expression_id].clone()
+            transpile_block(&implementation, context, &implementation.expression_forest.arguments[&implementation.root_expression_id])
         }
         _ => {
-            vec![implementation.root_expression_id]
+            let expression = transpile_expression(implementation.root_expression_id, context);
+
+            vec![Box::new(match implementation.head.interface.return_type.unit.is_void() {
+                true => ast::Statement::Expression(expression),
+                false => ast::Statement::Return(Some(expression)),
+            })]
         }
     };
 
+    syntax
+}
+
+fn transpile_block(implementation: &&FunctionImplementation, context: &FunctionContext, statements: &Vec<ExpressionID>) -> Vec<Box<ast::Statement>> {
+    let mut statements_ = vec![];
+
     for statement in statements {
         let operation = &implementation.expression_forest.operations[&statement];
-        syntax.statements.push(Box::new(match operation {
+        statements_.push(Box::new(match operation {
             ExpressionOperation::Block => todo!(),
             ExpressionOperation::VariableAssignment(variable) => {
                 ast::Statement::VariableAssignment {
@@ -107,17 +118,11 @@ pub fn transpile_plain_function(implementation: &FunctionImplementation, context
                 let value = implementation.expression_forest.arguments[&statement].iter().exactly_one().ok();
                 ast::Statement::Return(value.map(|value| transpile_expression(*value, context)))
             }
-            _ => {
-                let expression = transpile_expression(statement, context);
-                match implementation.head.interface.return_type.unit {
-                    TypeUnit::Void => ast::Statement::Expression(expression),
-                    _ => ast::Statement::Return(Some(expression)),
-                }
-            },
+            _ => ast::Statement::Expression(transpile_expression(*statement, context)),
         }));
     }
 
-    syntax
+    statements_
 }
 
 pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext) -> Box<ast::Expression> {
