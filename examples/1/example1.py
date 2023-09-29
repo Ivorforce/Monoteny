@@ -10,11 +10,11 @@ def main():
     <DOCSTRING TODO>
     """
     print("Test: \"Success\"")
-    value: float32 = square(float32(2.2)) * math.sin(e())
+    value: float32 = square(float32(2.2)) * math.sin(e)
     print("Value: " + str(value))
-    b: float32 = square(value) + pi_ish_0()
-    b: float32 = floor_div(square(b) ** (-float32(2.2)), value) + tau()
-    c: int32 = pi_ish_1() // int32(2)
+    b: float32 = square(value) + pi_ish_1
+    b: float32 = floor_div(square(b) ** (-float32(2.2)), value) + tau
+    c: int32 = pi_ish_0 // int32(2)
     print("Bool Value: " + str(((b < float32(2)) and (not (value > float32(2)))) and True))
 
 
@@ -23,24 +23,23 @@ def main():
 # ========================== ======== ============================
 
 
-def pi_ish_0() -> float32:
+def square(self: float32) -> float32:
     """
     <DOCSTRING TODO>
+
+    Args:
+        self: TODO
 
     Returns:
         <TODO>
     """
-    return float32(3.14)
+    return self * self
 
 
-def pi_ish_1() -> int32:
-    """
-    <DOCSTRING TODO>
+e: float32 = float32(2.718281828459045)
 
-    Returns:
-        <TODO>
-    """
-    return int32(3)
+
+tau: float32 = float32(6.283185307179586)
 
 
 def floor_div(lhs: float32, rhs: float32) -> float32:
@@ -57,37 +56,10 @@ def floor_div(lhs: float32, rhs: float32) -> float32:
     return math.floor(lhs / rhs)
 
 
-def e() -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Returns:
-        <TODO>
-    """
-    return float32(2.718281828459045)
+pi_ish_0: int32 = int32(3)
 
 
-def tau() -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Returns:
-        <TODO>
-    """
-    return float32(6.283185307179586)
-
-
-def square(self: float32) -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Args:
-        self: TODO
-
-    Returns:
-        <TODO>
-    """
-    return self * self
+pi_ish_1: float32 = float32(3.14)
 
 
 __all__ = [
