@@ -110,7 +110,7 @@ fn main() -> Result<(), InterpreterError> {
             for output_extension in output_extensions {
                 let mut context = match output_extension {
                     "py" => transpiler::python::create_context(&runtime),
-                    _ => unreachable!()
+                    output_extension => panic!("File type not supported: {}", output_extension)
                 };
 
                 let mut transpiler = transpiler::run(&module, &mut runtime, &mut context)?;
