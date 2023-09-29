@@ -1,6 +1,7 @@
 -- Supplied by transpiler.
 def panic() -> #;
 def todo() -> #;
+def unreachable() -> #;
 
 -- TODO This should be attached to a Console trait.
 --  But that only makes sense once we can constant fold away objects without storage.

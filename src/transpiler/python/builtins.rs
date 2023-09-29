@@ -201,6 +201,8 @@ pub fn register(runtime: &Runtime, representations: &mut Representations) -> nam
         let representation = match ptr.name.as_str() {
             "_write_line" => FunctionRepresentation::FunctionCall("print".to_string()),
             "panic" => FunctionRepresentation::FunctionCall("exit".to_string()),
+            "todo" => FunctionRepresentation::FunctionCall("exit".to_string()),
+            "unreachable" => FunctionRepresentation::FunctionCall("exit".to_string()),
             _ => continue,
         };
 

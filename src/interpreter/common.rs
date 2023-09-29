@@ -21,11 +21,15 @@ pub fn load(runtime: &mut Runtime) -> Result<(), InterpreterError> {
                     None
                 }}
             }}),
+            // TODO This is kinda funny but should probably all have custom implementations.
             "panic" => Rc::new(move |interpreter, expression_id, binding| {{
                 panic!()
             }}),
             "todo" => Rc::new(move |interpreter, expression_id, binding| {{
                 todo!()
+            }}),
+            "unreachable" => Rc::new(move |interpreter, expression_id, binding| {{
+                unreachable!()
             }})
             ,
             _ => continue,
