@@ -12,7 +12,7 @@ pub fn load(runtime: &mut Runtime) -> Result<(), InterpreterError> {
 
     for ptr in runtime.source.module_by_name["debug"].fn_pointers.values() {
         runtime.function_evaluators.insert(ptr.target.unwrap_id(), match ptr.name.as_str() {
-            "_print" => Rc::new(move |interpreter, expression_id, binding| {{
+            "_write_line" => Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
                     let args = interpreter.implementation.expression_forest.arguments[&expression_id].clone();
                     let arg = interpreter.evaluate(args[0]).unwrap();
@@ -21,17 +21,14 @@ pub fn load(runtime: &mut Runtime) -> Result<(), InterpreterError> {
                     None
                 }}
             }}),
-            // TODO This is kinda funny but should probably all have custom implementations.
-            "panic" => Rc::new(move |interpreter, expression_id, binding| {{
-                panic!()
+            "_exit_with_error" => Rc::new(move |interpreter, expression_id, binding| {{
+                unsafe {{
+                    let args = interpreter.implementation.expression_forest.arguments[&expression_id].clone();
+                    let arg = interpreter.evaluate(args[0]).unwrap();
+
+                    panic!("{}", *(arg.data as *const String));
+                }}
             }}),
-            "todo" => Rc::new(move |interpreter, expression_id, binding| {{
-                todo!()
-            }}),
-            "unreachable" => Rc::new(move |interpreter, expression_id, binding| {{
-                unreachable!()
-            }})
-            ,
             _ => continue,
         });
     }

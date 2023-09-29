@@ -200,9 +200,7 @@ pub fn register(runtime: &Runtime, representations: &mut Representations) -> nam
     for ptr in runtime.source.module_by_name["debug"].fn_pointers.values() {
         let representation = match ptr.name.as_str() {
             "_write_line" => FunctionRepresentation::FunctionCall("print".to_string()),
-            "panic" => FunctionRepresentation::FunctionCall("exit".to_string()),
-            "todo" => FunctionRepresentation::FunctionCall("exit".to_string()),
-            "unreachable" => FunctionRepresentation::FunctionCall("exit".to_string()),
+            "_exit_with_error" => FunctionRepresentation::FunctionCall("exit".to_string()),
             _ => continue,
         };
 

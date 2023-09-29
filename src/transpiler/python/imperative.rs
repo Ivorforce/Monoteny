@@ -130,7 +130,6 @@ pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext)
         }
         ExpressionOperation::FunctionCall(call) => {
             let function = &call.function;
-            let resolution = &call.requirements_fulfillment;
             let arguments = context.expressions.arguments.get(&expression).unwrap();
 
             if let Some(s) = try_transpile_optimization(function, &expression, arguments, context) {
@@ -138,8 +137,8 @@ pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext)
             }
             else {
                 match &context.representations.function_representations[function] {
-                    FunctionRepresentation::Constant(c) => Box::new(ast::Expression::VariableLookup(context.names[&function.function_id].clone())),
-                    FunctionRepresentation::FunctionCall(f) => transpile_function_call(context, &function, arguments),
+                    FunctionRepresentation::Constant(_) => Box::new(ast::Expression::VariableLookup(context.names[&function.function_id].clone())),
+                    FunctionRepresentation::FunctionCall(_) => transpile_function_call(context, &function, arguments),
                     FunctionRepresentation::Unary(op) => transpile_unary_operator(op, arguments, context),
                     FunctionRepresentation::Binary(op) => transpile_binary_operator(op, arguments, context),
                 }

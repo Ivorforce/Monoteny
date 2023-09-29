@@ -1,7 +1,17 @@
 -- Supplied by transpiler.
-def panic() -> #;
-def todo() -> #;
-def unreachable() -> #;
+def _exit_with_error() -> #;
+
+def exit_with_error(error '$ToString) -> # :: {
+    write_line(error);
+    return _exit_with_error();
+};
+-- TODO These should accept Default / varargs parameters.
+def panic() -> # :: exit_with_error("internal error");
+def panic(error '$ToString) -> # :: exit_with_error("internal error (\(error))");
+def todo() -> # :: panic("not yet implemented");
+def todo(error '$ToString) -> # :: panic("not yet implemented: \(error)");
+def unreachable() -> # :: panic("entered unreachable code");
+def unreachable(error '$ToString) -> # :: panic("entered unreachable code: \(error)");
 
 -- TODO This should be attached to a Console trait.
 --  But that only makes sense once we can constant fold away objects without storage.
