@@ -175,7 +175,12 @@ impl Display for Expression {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Expression::UnaryOperation(op, ex) => {
-                write!(f, "{}", op)?;
+                if matches!(op.as_str(), "+" | "-") {
+                    write!(f, "{}", op)?;
+                }
+                else {
+                    write!(f, "{} ", op)?;
+                }
                 write_maybe_paranthesized(f, ex, !ex.is_simple())
             }
             Expression::BinaryOperation(lhs, op, rhs) => {

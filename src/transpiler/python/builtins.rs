@@ -28,15 +28,15 @@ pub fn register(runtime: &Runtime, representations: &mut Representations) -> nam
 
     // Keywords
     for keyword in [
-        "False", "class", "from", "or",
+        "False", "class", "from",
         "None", "continue", "global", "pass",
-        "True", "def", "if", "raise", "and",
+        "True", "def", "if", "raise",
         "del", "import", "return", "as",
         "elif", "in", "try", "assert",
         "else", "is", "while", "async",
         "except", "lambda", "with", "await",
         "finally", "nonlocal", "yield", "break",
-        "for", "not"
+        "for"
     ] {
         // Don't really need an ID but it's easy to just do it like this here.
         namespace.insert_fixed_name(Uuid::new_v4(), keyword);
