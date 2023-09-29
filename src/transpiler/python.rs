@@ -58,7 +58,6 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
 
     let mut global_namespace = context.builtin_namespace.clone();
     let mut file_namespace = global_namespace.add_sublevel();
-    let mut object_namespace = namespaces::Level::new();  // TODO Actual keywords can't be in object namespace either
 
     let reverse_mapped_calls = transpiler.monomorphizer.get_mono_call_to_original_call();
 
@@ -105,7 +104,6 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
     }
 
     let mut names = global_namespace.map_names();
-    names.extend(object_namespace.map_names());
 
     // ================= Representations ==================
 
