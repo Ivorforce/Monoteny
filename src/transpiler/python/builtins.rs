@@ -167,6 +167,7 @@ pub fn register(runtime: &Runtime, representations: &mut Representations) -> nam
         namespace.insert_fixed_name(id, &name.to_string());
     }
 
+    // TODO Some of these sneakily convert the type - especially float to int and vice versa.
     for ptr in runtime.source.module_by_name["math"].fn_pointers.values() {
         let representation = match ptr.name.as_str() {
             "factorial" => FunctionRepresentation::FunctionCall("math.factorial".to_string()),
