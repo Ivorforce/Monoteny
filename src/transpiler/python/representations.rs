@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
+use crate::program::computation_tree::ExpressionOperation;
 use crate::program::functions::FunctionHead;
 use crate::program::global::FunctionImplementation;
 use crate::program::types::TypeProto;
@@ -42,11 +43,16 @@ impl FunctionRepresentation {
 }
 
 pub fn find_for_functions<'a>(function_representations: &mut HashMap<Rc<FunctionHead>, FunctionRepresentation>, names: &HashMap<Uuid, String>, functions: impl Iterator<Item=&'a Box<FunctionImplementation>>) {
-    // TODO EVERYTHING without side effects can be a constant.
-    //  We should figure out whether we have side effects and then act accordingly.
-    // TODO We'll also need to sort functions by who calls who.
-
     for function in functions {
+        if function.parameter_variables.is_empty() {
+            // TODO We could make a helper function and still use a constant even if we use blocks.
+            let has_blocks = function.expression_forest.operations.values().any(|op| matches!(op, ExpressionOperation::Block));
+            if !has_blocks {
+                function_representations.insert(Rc::clone(&function.head), FunctionRepresentation::Constant(names[&function.head.function_id].clone()));
+                continue
+            }
+        }
+
         function_representations.insert(Rc::clone(&function.head), FunctionRepresentation::FunctionCall(names[&function.head.function_id].clone()));
     }
 }
