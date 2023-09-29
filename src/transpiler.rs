@@ -101,6 +101,9 @@ pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -
     //  This should work because two traits sharing the same name but being different IDs should be rare.
     //  In that rare case, we can probably live with being indeterministic.
 
+    // I should note that 0 parameter functions should NOT create circles - although they may if they're
+    //  badly implemented. This should be caught by the same sorter and throw if it happens.
+
     Ok(transpiler)
 }
 
