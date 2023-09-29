@@ -211,7 +211,7 @@ pub fn register(runtime: &Runtime, representations: &mut Representations) -> nam
 
     for ptr in runtime.source.module_by_name["strings"].fn_pointers.values() {
         let representation = match ptr.name.as_str() {
-            "add" => FunctionRepresentation::FunctionCall("op.add".to_string()),
+            "add" => FunctionRepresentation::Binary("+".to_string()),
             _ => continue,
         };
 

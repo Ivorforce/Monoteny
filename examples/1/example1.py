@@ -10,12 +10,12 @@ def main():
     <DOCSTRING TODO>
     """
     print("Test: \"Success\"")
-    value: float32 = square(float32(2.2)) * math.sin(e)
-    print(op.add("Value: ", str(value)))
-    b: float32 = square(value) + pi_ish_0
-    b: float32 = floor_div(square(b) ** (-float32(2.2)), value) + tau
-    c: int32 = pi_ish_1 // int32(2)
-    print(op.add("Bool Value: ", str(((b < float32(2)) and (not (value > float32(2)))) and True)))
+    value: float32 = square(float32(2.2)) * math.sin(e())
+    print("Value: " + str(value))
+    b: float32 = square(value) + pi_ish_0()
+    b: float32 = floor_div(square(b) ** (-float32(2.2)), value) + tau()
+    c: int32 = pi_ish_1() // int32(2)
+    print("Bool Value: " + str(((b < float32(2)) and (not(value > float32(2)))) and True))
 
 
 # ========================== ======== ============================
@@ -23,24 +23,14 @@ def main():
 # ========================== ======== ============================
 
 
-def floor_div(lhs: float32, rhs: float32) -> float32:
+def pi_ish_0() -> float32:
     """
     <DOCSTRING TODO>
-
-    Args:
-        lhs: TODO
-        rhs: TODO
 
     Returns:
         <TODO>
     """
-    return math.floor(lhs / rhs)
-
-
-tau: float32 = float32(6.283185307179586)
-
-
-e: float32 = float32(2.718281828459045)
+    return float32(3.14)
 
 
 def square(self: float32) -> float32:
@@ -56,10 +46,48 @@ def square(self: float32) -> float32:
     return self * self
 
 
-pi_ish_0: float32 = float32(3.14)
+def e() -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return float32(2.718281828459045)
 
 
-pi_ish_1: int32 = int32(3)
+def pi_ish_1() -> int32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return int32(3)
+
+
+def tau() -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Returns:
+        <TODO>
+    """
+    return float32(6.283185307179586)
+
+
+def floor_div(lhs: float32, rhs: float32) -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        lhs: TODO
+        rhs: TODO
+
+    Returns:
+        <TODO>
+    """
+    return math.floor(lhs / rhs)
 
 
 __all__ = [
