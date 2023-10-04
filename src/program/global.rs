@@ -44,7 +44,7 @@ pub enum PrimitiveOperation {
     GreaterThan, LesserThan,
     GreaterThanOrEqual, LesserThanOrEqual,
     ParseIntString,
-    ParseFloatString,
+    ParseRealString,
     ToString,
 }
 

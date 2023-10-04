@@ -126,27 +126,27 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
             continue;
         }
 
-        let float_functions = traits::make_float_functions(&type_);
-        add_function(&float_functions.exponent, primitive_type, PrimitiveOperation::Exp, module);
-        add_function(&float_functions.logarithm, primitive_type, PrimitiveOperation::Log, module);
+        let real_functions = traits::make_real_functions(&type_);
+        add_function(&real_functions.exponent, primitive_type, PrimitiveOperation::Exp, module);
+        add_function(&real_functions.logarithm, primitive_type, PrimitiveOperation::Log, module);
 
-        let _parse_float_literal = FunctionPointer::new_global(
-            "parse_float_literal",
+        let _parse_real_literal = FunctionPointer::new_global(
+            "parse_real_literal",
             FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_)
         );
-        add_function(&_parse_float_literal, primitive_type, PrimitiveOperation::ParseFloatString, module);
+        add_function(&_parse_real_literal, primitive_type, PrimitiveOperation::ParseRealString, module);
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.ConstructableByRealLiteral.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
-                (&traits.parse_real_literal_function.target, &_parse_float_literal.target),
+                (&traits.parse_real_literal_function.target, &_parse_real_literal.target),
             ]
         ));
 
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.Real.create_generic_binding(vec![("Self", type_)]),
             vec![
-                (&traits.Real_functions.exponent.target, &float_functions.exponent.target),
-                (&traits.Real_functions.logarithm.target, &float_functions.logarithm.target),
+                (&traits.Real_functions.exponent.target, &real_functions.exponent.target),
+                (&traits.Real_functions.logarithm.target, &real_functions.logarithm.target),
             ]
         ));
     }

@@ -236,7 +236,7 @@ pub fn try_transpile_optimization(function: &Rc<FunctionHead>, expression_id: &E
         BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
             match operation {
                 PrimitiveOperation::ParseIntString => transpile_parse_function("^[0-9]+$", arguments, expression_id, context),
-                PrimitiveOperation::ParseFloatString => transpile_parse_function("^[0-9]+\\.[0-9]*$", arguments, expression_id, context),
+                PrimitiveOperation::ParseRealString => transpile_parse_function("^[0-9]+\\.[0-9]*$", arguments, expression_id, context),
                 _ => return None,
             }
         }

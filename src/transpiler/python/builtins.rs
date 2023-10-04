@@ -126,7 +126,7 @@ pub fn register(runtime: &Runtime, representations: &mut Representations) -> nam
                     continue
                 }
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ParseFloatString, type_ } => {
+            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ParseRealString, type_ } => {
                 if let Some(builtin_name) = primitive_map.get(type_) {
                     (builtin_name.clone(), FunctionRepresentation::FunctionCall(builtin_name.to_string()))
                 }

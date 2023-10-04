@@ -128,7 +128,7 @@ pub struct RealFunctions {
     pub logarithm: Rc<FunctionPointer>,
 }
 
-pub fn make_float_functions(type_: &Box<TypeProto>) -> RealFunctions {
+pub fn make_real_functions(type_: &Box<TypeProto>) -> RealFunctions {
     RealFunctions {
         exponent: FunctionPointer::new_global(
             "exponent",
@@ -221,29 +221,29 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.add_trait(&ConstructableByIntLiteral);
 
 
-    let mut ConstructableByFloatLiteral = Trait::new_with_self("ConstructableByFloatLiteral".to_string());
-    let parse_float_literal_function = FunctionPointer::new_global(
-        "parse_float_literal",
+    let mut ConstructableByRealLiteral = Trait::new_with_self("ConstructableByRealLiteral".to_string());
+    let parse_real_literal_function = FunctionPointer::new_global(
+        "parse_real_literal",
         FunctionInterface::new_simple(
             [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
-            ConstructableByFloatLiteral.create_generic_type("Self")
+            ConstructableByRealLiteral.create_generic_type("Self")
         ),
     );
-    ConstructableByFloatLiteral.insert_functions([
-        &parse_float_literal_function
+    ConstructableByRealLiteral.insert_functions([
+        &parse_real_literal_function
     ].into_iter());
-    let ConstructableByFloatLiteral = Rc::new(ConstructableByFloatLiteral);
-    module.add_trait(&ConstructableByFloatLiteral);
+    let ConstructableByRealLiteral = Rc::new(ConstructableByRealLiteral);
+    module.add_trait(&ConstructableByRealLiteral);
 
 
     let mut Real = Trait::new_with_self("Real".to_string());
-    let float_functions = make_float_functions(&Real.create_generic_type("Self"));
+    let float_functions = make_real_functions(&Real.create_generic_type("Self"));
     Real.insert_functions([
         &float_functions.exponent,
         &float_functions.logarithm
     ].into_iter());
     Real.add_simple_parent_requirement(&Number);
-    Real.add_simple_parent_requirement(&ConstructableByFloatLiteral);
+    Real.add_simple_parent_requirement(&ConstructableByRealLiteral);
     Real.add_simple_parent_requirement(&ConstructableByIntLiteral);
     let Real = Rc::new(Real);
     module.add_trait(&Real);
@@ -267,8 +267,8 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
 
         ConstructableByIntLiteral,
         parse_int_literal_function,
-        ConstructableByRealLiteral: ConstructableByFloatLiteral,
-        parse_real_literal_function: parse_float_literal_function,
+        ConstructableByRealLiteral,
+        parse_real_literal_function,
 
         Number,
         Number_functions: number_functions,

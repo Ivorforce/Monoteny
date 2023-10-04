@@ -253,8 +253,8 @@ pub fn create_primitive_op(type_: primitives::Type, operation: PrimitiveOperatio
         (primitives::Type::Float32, PrimitiveOperation::ParseIntString) => parse_op!(f32),
         (primitives::Type::Float64, PrimitiveOperation::ParseIntString) => parse_op!(f64),
 
-        (primitives::Type::Float32, PrimitiveOperation::ParseFloatString) => parse_op!(f32),
-        (primitives::Type::Float64, PrimitiveOperation::ParseFloatString) => parse_op!(f64),
+        (primitives::Type::Float32, PrimitiveOperation::ParseRealString) => parse_op!(f32),
+        (primitives::Type::Float64, PrimitiveOperation::ParseRealString) => parse_op!(f64),
 
         // -------------------------------------- ToString --------------------------------------
         (primitives::Type::Bool, PrimitiveOperation::ToString) => to_string_op!(bool),
