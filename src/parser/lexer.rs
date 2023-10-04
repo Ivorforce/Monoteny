@@ -7,9 +7,9 @@ use std::str::CharIndices;
 pub enum Token<'a> {
     Identifier(&'a str),
     OperatorIdentifier(&'a str),
-    StringConstant(String),
-    Int(&'a str),
-    Float(&'a str),
+    StringLiteral(String),
+    IntLiteral(&'a str),
+    RealLiteral(&'a str),
     Symbol(&'a str),
 }
 
@@ -109,10 +109,10 @@ impl<'i> Iterator for Lexer<'i> {
                 }
             }
 
-            // If the string is empty it's not worth emitting a StringConstant for.
+            // If the string is empty it's not worth emitting a StringLiteral for.
             if !builder.is_empty() {
                 let end = string_start + builder.as_bytes().len();
-                return Some(Ok((string_start, Token::StringConstant(builder), end)))
+                return Some(Ok((string_start, Token::StringLiteral(builder), end)))
             }
 
             // Either way we definitely have a token planned. Either " or (
@@ -182,7 +182,7 @@ impl<'i> Iterator for Lexer<'i> {
                     advance(&mut self.input, len - 1);
                     let end = self.peek_next_pos(input);
                     let slice = unsafe { self.source.get_unchecked(start..end) };
-                    return Some(Ok((start, if is_float { Token::Float(slice) } else { Token::Int(slice)}, end)));
+                    return Some(Ok((start, if is_float { Token::RealLiteral(slice) } else { Token::IntLiteral(slice)}, end)));
                 }
 
                 if matches!(ch, 'a'..='z' | 'A'..='Z' | '_' | '$' | '#') {
@@ -286,10 +286,10 @@ impl<'i> Display for Token<'i> {
         match self {
             Token::Identifier(s) => write!(f, "{}", s),
             Token::OperatorIdentifier(s) => write!(f, "{}", s),
-            Token::Int(s) => write!(f, "{}", s),
-            Token::Float(s) => write!(f, "{}", s),
+            Token::IntLiteral(s) => write!(f, "{}", s),
+            Token::RealLiteral(s) => write!(f, "{}", s),
             Token::Symbol(s) => write!(f, "{}", s),
-            Token::StringConstant(s) => write!(f, "{}", s),
+            Token::StringLiteral(s) => write!(f, "{}", s),
         }
     }
 }

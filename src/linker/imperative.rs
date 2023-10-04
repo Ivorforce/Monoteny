@@ -7,7 +7,7 @@ use try_map::FallibleMapExt;
 use crate::interpreter::Runtime;
 use crate::program::computation_tree::{ExpressionTree, ExpressionID, ExpressionOperation};
 use crate::linker::{LinkError, precedence, scopes};
-use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousNumberLiteral, LinkerAmbiguity};
+use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousAbstractCall, LinkerAmbiguity};
 use crate::linker::precedence::link_patterns;
 use crate::linker::r#type::TypeFactory;
 use crate::parser::ast;
@@ -16,7 +16,7 @@ use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, Fu
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
 use crate::program::r#struct::Struct;
-use crate::program::traits::{RequirementsAssumption, TraitConformanceRule, TraitGraph};
+use crate::program::traits::{RequirementsAssumption, Trait, TraitConformanceRule, TraitGraph};
 use crate::program::types::*;
 
 pub struct ImperativeLinker<'a> {
@@ -145,15 +145,26 @@ impl <'a> ImperativeLinker<'a> {
         }
     }
 
-    pub fn link_primitive(&mut self, value: &str, traits: TraitGraph, is_float: bool) -> Result<ExpressionID, LinkError> {
-        let expression_id = self.register_new_expression(vec![]);
-        self.register_ambiguity(Box::new(AmbiguousNumberLiteral {
+    pub fn link_abstract_function_call(&mut self, arguments: Vec<ExpressionID>, interface: Rc<Trait>, abstract_function: Rc<FunctionHead>, traits: TraitGraph) -> Result<ExpressionID, LinkError> {
+        let expression_id = self.register_new_expression(arguments.clone());
+
+        self.register_ambiguity(Box::new(AmbiguousAbstractCall {
             expression_id,
-            value: value.to_string(),
+            arguments,
+            interface,
+            abstract_function,
             traits,
-            is_float
         }))?;
-        Ok(expression_id)
+
+        return Ok(expression_id);
+    }
+
+    pub fn link_string_literal(&mut self, value: &str) -> Result<ExpressionID, LinkError> {
+        self.link_unambiguous_expression(
+            vec![],
+            &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.core.traits.String))),
+            ExpressionOperation::StringLiteral(value.to_string())
+        )
     }
 
     pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &ast::Expression, scope: &scopes::Scope) -> Result<(), LinkError> {
@@ -305,18 +316,24 @@ impl <'a> ImperativeLinker<'a> {
                     }
                 }
             }
-            ast::Term::Int(string) => {
-                precedence::Token::Expression(self.link_primitive(
-                    string,
+            ast::Term::IntLiteral(string) => {
+                let string_expression_id = self.link_string_literal(string)?;
+
+                precedence::Token::Expression(self.link_abstract_function_call(
+                    vec![string_expression_id],
+                    Rc::clone(&self.runtime.builtins.core.traits.ConstructableByIntLiteral),
+                    Rc::clone(&self.runtime.builtins.core.traits.parse_int_literal_function.target),
                     scope.traits.clone(),
-                    false,
                 )?)
             }
-            ast::Term::Float(string) => {
-                precedence::Token::Expression(self.link_primitive(
-                    string,
+            ast::Term::RealLiteral(string) => {
+                let string_expression_id = self.link_string_literal(string)?;
+
+                precedence::Token::Expression(self.link_abstract_function_call(
+                    vec![string_expression_id],
+                    Rc::clone(&self.runtime.builtins.core.traits.ConstructableByRealLiteral),
+                    Rc::clone(&self.runtime.builtins.core.traits.parse_real_literal_function.target),
                     scope.traits.clone(),
-                    true,
                 )?)
             }
             ast::Term::MemberAccess { target, member_name } => {
@@ -388,12 +405,8 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_string_part(&mut self, part: &ast::StringPart, scope: &scopes::Scope) -> Result<ExpressionID, LinkError> {
         match part {
             ast::StringPart::Literal(literal) => {
-                self.link_unambiguous_expression(
-                    vec![],
-                    &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.core.traits.String))),
-                    ExpressionOperation::StringLiteral(literal.clone())
-                )
-            }
+                self.link_string_literal(literal)
+            },
             ast::StringPart::Object(o) => {
                 let struct_ = self.link_struct(scope, o)?;
                 // Call format(<args>)

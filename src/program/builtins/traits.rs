@@ -22,14 +22,14 @@ pub struct Traits {
     pub ConstructableByIntLiteral: Rc<Trait>,
     pub parse_int_literal_function: Rc<FunctionPointer>,
 
-    pub ConstructableByFloatLiteral: Rc<Trait>,
-    pub parse_float_literal_function: Rc<FunctionPointer>,
+    pub ConstructableByRealLiteral: Rc<Trait>,
+    pub parse_real_literal_function: Rc<FunctionPointer>,
 
     pub Number: Rc<Trait>,
     pub Number_functions: NumberFunctions,
 
-    pub Float: Rc<Trait>,
-    pub Float_functions: FloatFunctions,
+    pub Real: Rc<Trait>,
+    pub Real_functions: RealFunctions,
 
     pub Int: Rc<Trait>,
 }
@@ -123,13 +123,13 @@ pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
     }
 }
 
-pub struct FloatFunctions {
+pub struct RealFunctions {
     pub exponent: Rc<FunctionPointer>,
     pub logarithm: Rc<FunctionPointer>,
 }
 
-pub fn make_float_functions(type_: &Box<TypeProto>) -> FloatFunctions {
-    FloatFunctions {
+pub fn make_float_functions(type_: &Box<TypeProto>) -> RealFunctions {
+    RealFunctions {
         exponent: FunctionPointer::new_global(
             "exponent",
             FunctionInterface::new_operator(2, type_, type_)
@@ -267,14 +267,14 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
 
         ConstructableByIntLiteral,
         parse_int_literal_function,
-        ConstructableByFloatLiteral,
-        parse_float_literal_function,
+        ConstructableByRealLiteral: ConstructableByFloatLiteral,
+        parse_real_literal_function: parse_float_literal_function,
 
         Number,
         Number_functions: number_functions,
 
-        Float,
-        Float_functions: float_functions,
+        Real: Float,
+        Real_functions: float_functions,
 
         Int,
     }

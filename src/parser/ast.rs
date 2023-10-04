@@ -133,8 +133,8 @@ impl From<Vec<Box<Term>>> for Expression {
 #[derive(Eq, PartialEq)]
 pub enum Term {
     Identifier(String),
-    Int(String),
-    Float(String),
+    IntLiteral(String),
+    RealLiteral(String),
     MemberAccess { target: Box<Term>, member_name: String },
     Struct(Vec<StructArgument>),
     Array(Vec<ArrayArgument>),
@@ -319,8 +319,8 @@ impl Display for Term {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
             Term::Identifier(s) => write!(fmt, "{}", s),
-            Term::Int(s) => write!(fmt, "{}", s),
-            Term::Float(s) => write!(fmt, "{}", s),
+            Term::IntLiteral(s) => write!(fmt, "{}", s),
+            Term::RealLiteral(s) => write!(fmt, "{}", s),
             Term::StringLiteral(parts) => {
                 write!(fmt, "\"")?;
                 for part in parts {

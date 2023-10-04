@@ -136,17 +136,17 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         );
         add_function(&_parse_float_literal, primitive_type, PrimitiveOperation::ParseFloatString, module);
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
-            traits.ConstructableByFloatLiteral.create_generic_binding(vec![("Self", type_.clone())]),
+            traits.ConstructableByRealLiteral.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
-                (&traits.parse_float_literal_function.target, &_parse_float_literal.target),
+                (&traits.parse_real_literal_function.target, &_parse_float_literal.target),
             ]
         ));
 
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
-            traits.Float.create_generic_binding(vec![("Self", type_)]),
+            traits.Real.create_generic_binding(vec![("Self", type_)]),
             vec![
-                (&traits.Float_functions.exponent.target, &float_functions.exponent.target),
-                (&traits.Float_functions.logarithm.target, &float_functions.logarithm.target),
+                (&traits.Real_functions.exponent.target, &float_functions.exponent.target),
+                (&traits.Real_functions.logarithm.target, &float_functions.logarithm.target),
             ]
         ));
     }

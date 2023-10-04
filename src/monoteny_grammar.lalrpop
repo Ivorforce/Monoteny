@@ -14,9 +14,9 @@ extern {
     enum Token<'i> {
         _Identifier => Token::Identifier(_),
         _OperatorIdentifier => Token::OperatorIdentifier(_),
-        _Int => Token::Int(_),
-        _Float => Token::Float(_),
-        StringConstant => Token::StringConstant(_),
+        _IntLiteral => Token::IntLiteral(_),
+        _RealLiteral => Token::RealLiteral(_),
+        StringLiteral => Token::StringLiteral(_),
 
         "def" => Token::Symbol("def"),
         "pattern" => Token::Symbol("pattern"),
@@ -53,8 +53,8 @@ extern {
 
 Identifier: String = { _Identifier => <>.to_string() };
 OperatorIdentifier: String = { _OperatorIdentifier => <>.to_string(), };
-Int: String = { _Int => <>.to_string() };
-Float: String = { _Float => <>.to_string() };
+IntLiteral: String = { _IntLiteral => <>.to_string() };
+RealLiteral: String = { _RealLiteral => <>.to_string() };
 
 AnyIdentifier: String = {
     Identifier,
@@ -161,8 +161,8 @@ Expression: Expression = {
 
 Term: Box<Term> = {
     AnyIdentifier => Box::new(Term::Identifier(<>)),
-    Int => Box::new(Term::Int(<>)),
-    Float => Box::new(Term::Float(<>)),
+    IntLiteral => Box::new(Term::IntLiteral(<>)),
+    RealLiteral => Box::new(Term::RealLiteral(<>)),
     "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Box::new(Term::Array(<>)),
     "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Box::new(Term::Struct(<>)),
     <target: Term> "." <member_name: Identifier> => Box::new(Term::MemberAccess { <> }),
@@ -182,7 +182,7 @@ ArrayArgument: ArrayArgument = {
 }
 
 StringPart: StringPart = {
-    StringConstant => StringPart::Literal(<>.to_string()),
+    StringLiteral => StringPart::Literal(<>.to_string()),
     "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => StringPart::Object(<>),
 }
 
