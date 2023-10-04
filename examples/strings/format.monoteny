@@ -1,4 +1,4 @@
-def format(value '$Float32, rounded: Bool) -> String :: match rounded [
+def format(value '$Real, rounded: Bool) -> String :: match rounded [
     true: round(value).to_string(),
     false: value.to_string(),
 ];

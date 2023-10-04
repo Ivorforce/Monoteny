@@ -1,4 +1,4 @@
-def test(a: $Float) -> $Float :: {
+def test(a: $Real) -> $Real :: {
     match a [
         0: 5,
         1: 2,

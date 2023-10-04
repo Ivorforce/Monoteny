@@ -1,7 +1,7 @@
-def pi -> $Float :: 3.141592653589793;
-def tau -> $Float :: 6.283185307179586;
+def pi -> $Real :: 3.141592653589793;
+def tau -> $Real :: 6.283185307179586;
 
-def e -> $Float :: 2.718281828459045;
+def e -> $Real :: 2.718281828459045;
 
 def +{$Number} -> $Number :: arg;
 
@@ -9,24 +9,24 @@ def +{$Number} -> $Number :: arg;
 -- Those that have no implementation will receive one eventually.
 -- For primitives, transpilers will usually insert a hardware implementation instead.
 
-def {$Float}.factorial() -> $Float;
+def {$Real}.factorial() -> $Real;
 
 -- TODO Use CORDIC for sin and cos
-def sin(x '$Float) -> $Float;
-def cos(x '$Float) -> $Float;
-def tan(x '$Float) -> $Float;
-def sinh(x '$Float) -> $Float;
-def cosh(x '$Float) -> $Float;
-def tanh(x '$Float) -> $Float;
-def arcsin(x '$Float) -> $Float;
-def arccos(x '$Float) -> $Float;
-def arctan(x '$Float) -> $Float;
-def arcsinh(x '$Float) -> $Float;
-def arccosh(x '$Float) -> $Float;
-def arctanh(x '$Float) -> $Float;
+def sin(x '$Real) -> $Real;
+def cos(x '$Real) -> $Real;
+def tan(x '$Real) -> $Real;
+def sinh(x '$Real) -> $Real;
+def cosh(x '$Real) -> $Real;
+def tanh(x '$Real) -> $Real;
+def arcsin(x '$Real) -> $Real;
+def arccos(x '$Real) -> $Real;
+def arctan(x '$Real) -> $Real;
+def arcsinh(x '$Real) -> $Real;
+def arccosh(x '$Real) -> $Real;
+def arctanh(x '$Real) -> $Real;
 
-def ceil(x '$Float) -> $Float;
-def floor(x '$Float) -> $Float;
-def round(x '$Float) -> $Float;
+def ceil(x '$Real) -> $Real;
+def floor(x '$Real) -> $Real;
+def round(x '$Real) -> $Real;
 
-def abs(x '$Float) -> $Float;
+def abs(x '$Real) -> $Real;

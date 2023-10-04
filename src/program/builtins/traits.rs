@@ -236,17 +236,17 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.add_trait(&ConstructableByFloatLiteral);
 
 
-    let mut Float = Trait::new_with_self("Float".to_string());
-    let float_functions = make_float_functions(&Float.create_generic_type("Self"));
-    Float.insert_functions([
+    let mut Real = Trait::new_with_self("Real".to_string());
+    let float_functions = make_float_functions(&Real.create_generic_type("Self"));
+    Real.insert_functions([
         &float_functions.exponent,
         &float_functions.logarithm
     ].into_iter());
-    Float.add_simple_parent_requirement(&Number);
-    Float.add_simple_parent_requirement(&ConstructableByFloatLiteral);
-    Float.add_simple_parent_requirement(&ConstructableByIntLiteral);
-    let Float = Rc::new(Float);
-    module.add_trait(&Float);
+    Real.add_simple_parent_requirement(&Number);
+    Real.add_simple_parent_requirement(&ConstructableByFloatLiteral);
+    Real.add_simple_parent_requirement(&ConstructableByIntLiteral);
+    let Real = Rc::new(Real);
+    module.add_trait(&Real);
 
     let mut Int = Trait::new_with_self("Int".to_string());
     Int.add_simple_parent_requirement(&Number);
@@ -273,7 +273,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         Number,
         Number_functions: number_functions,
 
-        Real: Float,
+        Real,
         Real_functions: float_functions,
 
         Int,

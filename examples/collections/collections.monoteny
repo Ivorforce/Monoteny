@@ -1,19 +1,19 @@
 def main() :: {
-    let array 'Float[0 ..< 3] = 0  -- = [0.0, 0.0, 0.0]
-    let array_user_input 'Float[0...];  -- array of floats with unknown size
-    let array_matlab_indexed 'Float[1...];  -- array of floats with unknown size, starting indexing at 1 (thank me later, math nerds)
+    let array 'Float32[0 ..< 3] = 0  -- = [0.0, 0.0, 0.0]
+    let array_user_input 'Float32[0...];  -- array of floats with unknown size
+    let array_matlab_indexed 'Float32[1...];  -- array of floats with unknown size, starting indexing at 1 (thank me later, math nerds)
 
-    let dictionary 'Float[["A", "B", "C"]];  -- float dictionary, indexable with strings A B or C
-    let dictionary_user_input 'Float[String];  -- float dictionary, indexable with any string
+    let dictionary 'Float32[["A", "B", "C"]];  -- float dictionary, indexable with strings A B or C
+    let dictionary_user_input 'Float32[String];  -- float dictionary, indexable with any string
 
     let set 'Set[["A", "B", "C"]];  -- string-indexed set, capable of including A B or C
     let set_user_input 'Set[String];  -- string-indexed set, capable of including any string
 
     tuple Point3D(x, y, z);
-    let point 'Float[Point3D] = 0;  -- 3D point, initialized to origin
+    let point 'Float32[Point3D] = 0;  -- 3D point, initialized to origin
 
     -- Let's combine concepts
-    let user, index, coordinates;  -- Define dimensions
-    let points 'Float[index: 0 ..< 5, coordinates: Point3D] = 0;  -- List of 3D points, initialized to origin
-    let user_points 'Float[user: String, index: 0..., coordinates: Point3D];  -- For string-indexed users, an arbitrary number of 3D points
+    let (user, index, coordinates);  -- Define dimensions
+    let points 'Float32[index: 0 ..< 5, coordinates: Point3D] = 0;  -- List of 3D points, initialized to origin
+    let user_points 'Float32[user: String, index: 0..., coordinates: Point3D];  -- For string-indexed users, an arbitrary number of 3D points
 }

@@ -3,8 +3,8 @@
 -- Make a pattern: `a /_ b` calls `floor_div(lhs: <>, rhs: <>)`
 pattern floor_div(MultiplicationPrecedence) :: {lhs} /_ {rhs};
 
--- Define a function floor_div(lhs '$Float, rhs: $Float) using the pattern we set before.
-def {$Float} /_ {$Float} -> $Float :: floor(lhs / rhs);
+-- Define a function floor_div(lhs '$Real, rhs: $Real) using the pattern we set before.
+def {$Real} /_ {$Real} -> $Real :: floor(lhs / rhs);
 
 -- Define a function on numbers.
 def {$Number}.square() -> $Number :: self * self;
@@ -14,14 +14,14 @@ def square(value: '$Number) -> $Number :: value.square();
 
 -- Define pi_ish as an overloaded constant. For floats, it's 3.14. For ints, it's 3.
 -- Depending on the caller, using this 'constant' is going to yield different values.
-def pi_ish -> $Float :: 3.14;
+def pi_ish -> $Real :: 3.14;
 def pi_ish -> $Int :: 3;
 
 def @main :: {
     -- Print string
     write_line("Test: \"Success\"");
 
-    -- 'value' is not bound yet. It could be any $Float!
+    -- 'value' is not bound yet. It could be any $Real!
     let value = 2.2.square() * sin(e);
     write_line("Value: \(value)");
 

@@ -27,14 +27,14 @@ tuple Cartesian(x, y, z);
 tuple Spherical(l, e, a);
 
 -- Define a function with a monadic input and a monadic output.
-def {'Float[Cartesian]}.to_spherical() -> Float[Spherical] :: {
-  -- Destructure to x, y, z arrays, each 'Float
+def {'$Real[Cartesian]}.to_spherical() -> $Real[Spherical] :: {
+  -- Destructure to x, y, z arrays, each '$Real
   let #(x, y, z) = self;
 
   -- Pre-compute xz_sq
   let xz_sq = x ** 2 + z ** 2;
 
-  -- Construct a monad Float[Spherical] using a generic constructor.
+  -- Construct a monad $Real[Spherical] using a generic constructor.
   return #(
     l: (xz_sq + y ** 2).sqrt(),
     e: xz_sq.sqrt().atan2(y),
@@ -108,7 +108,7 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
   - [x] Abstract Functions, Conformance Declarations
   - [ ] Stored Properties (for traits with associated Self)
     - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract traits
-    - [ ] Anonymous Structs: `... -> (a: Int, b: Float) ... return (a: a, b: b)`
+    - [ ] Anonymous Structs: `... -> (a: Int32, b: Float32) ... return (a: a, b: b)`
     - [ ] Delegation (`@delegate(Eq) var ...`) (implement all / selected trait offered by the property by calling it on the property)
     - [ ] Deconstruction assignment (`let (x, y, z) = vec`)
       - [x] `let`: Assign new variables
@@ -133,7 +133,7 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
   - [ ] Enums / Enum type inheritance (achieved through type alias)
 - [ ] Monads
   - [ ] Tuple Dimension Index
-  - [ ] Defaults (`a: $Float[Default]` for parameters to be omittable)
+  - [ ] Defaults (`a: $Real[Default]` for parameters to be omittable)
   - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
   - [ ] Open Int Range Dimension Index, array start / end handle syntax (|>, <|)
   - [ ] Auto Broadcast
@@ -164,7 +164,7 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
     - [ ] `if let Some(a) = a :: { }`
     - [ ] `guard let Some(a) = a else { }`
 - [ ] Meta Traits (traits whose instantiations can act as traits)
-  - [ ] IntX, FloatX (types implementing int and float math depending on a bit count) 
+  - [ ] IntX, FloatX (types implementing int and float with a specific bit count) 
     - [ ] Demote existing fixed-width ints and floats (e.g. Int32) to optimizations of IntX
 - [ ] BigInt ($Int of auto-adjusting width)
 - [ ] Generic Export: Allow the export of unspecialized functions through a trait conformance parameter.
