@@ -166,7 +166,8 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
 - [ ] Meta Traits (traits whose instantiations can act as traits)
   - [ ] IntX, FloatX (types implementing int and float with a specific bit count) 
     - [ ] Demote existing fixed-width ints and floats (e.g. Int32) to optimizations of IntX
-- [ ] BigInt ($Int of auto-adjusting width)
+- [ ] IntF ($Int of auto-adjusting width)
+  - [ ] RationalF ($Real using `numerator 'IntF` and `denominator 'IntF`)
 - [ ] Generic Export: Allow the export of unspecialized functions through a trait conformance parameter.
 - [ ] `match x with [0: { ... }]`
 - [ ] Local functions and declarations
