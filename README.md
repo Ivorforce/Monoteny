@@ -164,7 +164,9 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
     - [ ] `if let Some(a) = a :: { }`
     - [ ] `guard let Some(a) = a else { }`
 - [ ] Meta Traits (traits whose instantiations can act as traits)
-  - [ ] IntX, FloatX (types implementing int and float with a specific bit count) 
+  - [ ] IntX (ints with specified bit count) 
+    - [ ] FloatX (float with specified bit count) 
+    - [ ] PositX (posit with specified bit count) 
     - [ ] Demote existing fixed-width ints and floats (e.g. Int32) to optimizations of IntX
 - [ ] IntF ($Int of auto-adjusting width)
   - [ ] RationalF ($Real using `numerator 'IntF` and `denominator 'IntF`)
