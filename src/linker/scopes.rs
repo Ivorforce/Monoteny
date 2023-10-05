@@ -226,7 +226,7 @@ impl <'a> Scope<'a> {
         }
 
         // take that rust, i steal ur phrasings
-        Err(RuntimeError::new(format!("Cannot find value '{}' in this scope", name)))
+        Err(RuntimeError::new(format!("Cannot find '{}' in this scope", name)))
     }
 
     pub fn resolve_precedence_group(&self, name: &str) -> Rc<PrecedenceGroup> {
