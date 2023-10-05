@@ -2,8 +2,9 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
+use crate::interpreter::InterpreterError;
 use crate::monomorphize::map_interface_types;
-use crate::linker::{LinkError, scopes};
+use crate::linker::scopes;
 use crate::linker::interface::link_function_pointer;
 use crate::parser::ast;
 use crate::program::functions::{FunctionHead, FunctionPointer};
@@ -20,7 +21,7 @@ pub struct ConformanceLinker<'a> {
 }
 
 impl <'a> ConformanceLinker<'a> {
-    pub fn link_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> Result<(), LinkError> {
+    pub fn link_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> Result<(), InterpreterError> {
         match statement {
             ast::GlobalStatement::FunctionDeclaration(syntax) => {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
@@ -35,14 +36,14 @@ impl <'a> ConformanceLinker<'a> {
                 });
             }
             _ => {
-                return Err(LinkError::LinkError { msg: format!("Statement {} not valid in a conformance context.", statement) });
+                return Err(InterpreterError::LinkerError { msg: format!("Statement {} not valid in a conformance context.", statement) });
             }
         }
 
         Ok(())
     }
 
-    pub fn finalize_conformance(&self, binding: Rc<TraitBinding>, conformance_requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<TraitConformance>, LinkError> {
+    pub fn finalize_conformance(&self, binding: Rc<TraitBinding>, conformance_requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<TraitConformance>, InterpreterError> {
         let mut function_bindings = HashMap::new();
         let mut unmatched_implementations = self.functions.iter().map(|x| Rc::clone(&x.pointer)).collect_vec();
 
@@ -65,10 +66,10 @@ impl <'a> ConformanceLinker<'a> {
                 .collect_vec();
 
             if matching_implementations.len() == 0 {
-                return Err(LinkError::LinkError { msg: format!("Function {:?} missing for conformance.", expected_pointer) });
+                return Err(InterpreterError::LinkerError { msg: format!("Function {:?} missing for conformance.", expected_pointer) });
             }
             else if matching_implementations.len() > 1 {
-                return Err(LinkError::LinkError { msg: format!("Function {:?} is implemented multiple times.", expected_pointer) });
+                return Err(InterpreterError::LinkerError { msg: format!("Function {:?} is implemented multiple times.", expected_pointer) });
             }
             else {
                 function_bindings.insert(
@@ -79,7 +80,7 @@ impl <'a> ConformanceLinker<'a> {
         }
 
         if unmatched_implementations.len() > 0 {
-            return Err(LinkError::LinkError { msg: format!("Unrecognized functions for declaration {:?}: {:?}.", binding, unmatched_implementations) });
+            return Err(InterpreterError::LinkerError { msg: format!("Unrecognized functions for declaration {:?}: {:?}.", binding, unmatched_implementations) });
         }
 
         Ok(TraitConformance::new(Rc::clone(&binding), function_bindings.clone()))

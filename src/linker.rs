@@ -9,10 +9,3 @@ pub mod r#type;
 pub mod interface;
 
 pub use crate::linker::global::link_file;
-
-use custom_error::custom_error;
-
-custom_error!{pub LinkError
-    LinkError{msg: String} = "{msg}",
-    Ambiguous = "Ambiguous",
-}

@@ -19,9 +19,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use clap::{arg, Command};
-use log::error;
 use crate::interpreter::{Runtime, InterpreterError, common};
-use crate::linker::LinkError;
 use crate::transpiler::Context;
 
 

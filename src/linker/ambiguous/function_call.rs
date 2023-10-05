@@ -3,14 +3,14 @@ use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
-use crate::linker::ambiguous::LinkerAmbiguity;
+use crate::interpreter::InterpreterError;
+use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
-use crate::linker::LinkError;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
 use crate::program::generics::TypeForest;
-use crate::program::traits::{RequirementsFulfillment, TraitBinding, TraitGraph};
+use crate::program::traits::{RequirementsFulfillment, TraitBinding, TraitConformanceWithTail, TraitGraph};
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub struct AmbiguousFunctionCandidate {
@@ -29,11 +29,11 @@ pub struct AmbiguousFunctionCall {
     pub traits: TraitGraph,
 
     pub candidates: Vec<Box<AmbiguousFunctionCandidate>>,
-    pub failed_candidates: Vec<(Box<AmbiguousFunctionCandidate>, LinkError)>,
+    pub failed_candidates: Vec<(Box<AmbiguousFunctionCandidate>, InterpreterError)>,
 }
 
 impl AmbiguousFunctionCall {
-    fn attempt_with_candidate(&mut self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<Rc<RequirementsFulfillment>, LinkError> {
+    fn attempt_with_candidate(&mut self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<AmbiguityResult<Rc<RequirementsFulfillment>>, InterpreterError> {
         let param_types = &candidate.param_types;
 
         for (arg, param) in zip_eq(
@@ -49,16 +49,19 @@ impl AmbiguousFunctionCall {
         // TODO We should only use deep requirements once we actually use this candidate.
         //  The deep ones are guaranteed to exist if the original requirements can be satisfied.
         for requirement in self.traits.gather_deep_requirements(candidate.requirements.iter().cloned()) {
-            let trait_conformance = self.traits
-                .satisfy_requirement(&requirement, &types)?;
-            conformance.insert(requirement.mapping_types(&|x| x.seeding_generics(&self.seed)), trait_conformance);
+            match self.traits.satisfy_requirement(&requirement, &types)? {
+                AmbiguityResult::Ok(trait_conformance) => {
+                    conformance.insert(requirement.mapping_types(&|x| x.seeding_generics(&self.seed)), trait_conformance);
+                }
+                AmbiguityResult::Ambiguous => return Ok(AmbiguityResult::Ambiguous),
+            }
         }
 
         let generic_mapping: HashMap<_, _> = candidate.function.interface.collect_generics().iter().map(|id| {
             (*id, TypeProto::unit(TypeUnit::Generic(TypeProto::bitxor(id, &self.seed))))
         }).collect();
 
-        Ok(Rc::new(RequirementsFulfillment { generic_mapping, conformance }))
+        Ok(AmbiguityResult::Ok(Rc::new(RequirementsFulfillment { generic_mapping, conformance })))
     }
 }
 
@@ -69,15 +72,15 @@ impl Display for AmbiguousFunctionCall {
 }
 
 impl LinkerAmbiguity for AmbiguousFunctionCall {
-    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<bool, LinkError> {
+    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<AmbiguityResult<()>, InterpreterError> {
         let mut is_ambiguous = false;
         for candidate in self.candidates.drain(..).collect_vec() {
             let mut types_copy = linker.types.clone();
             let result = self.attempt_with_candidate(&mut types_copy, &candidate);
 
             match result {
-                Ok(_) => self.candidates.push(candidate),
-                Err(LinkError::Ambiguous) => {
+                Ok(AmbiguityResult::Ok(_)) => self.candidates.push(candidate),
+                Ok(AmbiguityResult::Ambiguous) => {
                     self.candidates.push(candidate);
                     is_ambiguous = true;
                 }
@@ -89,21 +92,26 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
 
         // Still ambiguous!
         if is_ambiguous || self.candidates.len() > 1 {
-            return Ok(false)
+            return Ok(AmbiguityResult::Ambiguous)
         }
 
         if self.candidates.len() == 1 {
             let candidate = self.candidates.drain(..).next().unwrap();
             // TODO We can just assign linker.types to the candidate's result; it was literally just copied.
-            let resolution = self.attempt_with_candidate(&mut linker.types, &candidate)?;
+            match self.attempt_with_candidate(&mut linker.types, &candidate)? {
+                AmbiguityResult::Ok(resolution) => {
+                    linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
+                        function: Rc::clone(&candidate.function),
+                        requirements_fulfillment: resolution
+                    })));
 
-            linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
-                function: Rc::clone(&candidate.function),
-                requirements_fulfillment: resolution
-            })));
-
-            // We're done!
-            return Ok(true)
+                    // We're done!
+                    return Ok(AmbiguityResult::Ok(()))
+                }
+                AmbiguityResult::Ambiguous => {
+                    return Ok(AmbiguityResult::Ambiguous)
+                }
+            }
         }
 
         // TODO We should probably output the locations of candidates.
@@ -116,10 +124,10 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             // TODO How so?
             let (candidate, err) = self.failed_candidates.iter().next().unwrap();
 
-            Err(LinkError::LinkError { msg: format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function, err) })
+            Err(InterpreterError::LinkerError { msg: format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function, err) })
         } else {
             // TODO Print types of arguments too, for context.
-            Err(LinkError::LinkError { msg: format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, self.failed_candidates.len(), &argument_types) })
+            Err(InterpreterError::LinkerError { msg: format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, self.failed_candidates.len(), &argument_types) })
         }
     }
 }

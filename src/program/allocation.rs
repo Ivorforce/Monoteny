@@ -3,8 +3,8 @@ use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 use std::rc::Rc;
 use guard::guard;
+use crate::interpreter::InterpreterError;
 use crate::linker::precedence::PrecedenceGroup;
-use crate::LinkError;
 use crate::program::functions::{FunctionHead, FunctionOverload};
 use crate::program::traits::Trait;
 use crate::program::types::{TypeProto, TypeUnit};
@@ -39,40 +39,40 @@ pub struct ObjectReference {
 }
 
 impl Reference {
-    pub fn as_object_ref(&self, require_mutable: bool) -> Result<&Rc<ObjectReference>, LinkError> {
+    pub fn as_object_ref(&self, require_mutable: bool) -> Result<&Rc<ObjectReference>, InterpreterError> {
         guard!(let Reference::Object(obj_ref) = self else {
-            return Err(LinkError::LinkError { msg: format!("Reference is not to an object: {:?}", self) });
+            return Err(InterpreterError::LinkerError { msg: format!("Reference is not to an object: {:?}", self) });
         });
 
         Ok(&obj_ref)
     }
 
-    pub fn as_metatype(&self) -> Result<&TypeUnit, LinkError> {
+    pub fn as_metatype(&self) -> Result<&TypeUnit, InterpreterError> {
         let type_ = &self.as_object_ref(false)?.type_;
 
         guard!(let TypeUnit::MetaType = &type_.unit else {
-           return Err(LinkError::LinkError { msg: format!("Reference is not a type.") });
+           return Err(InterpreterError::LinkerError { msg: format!("Reference is not a type.") });
         });
 
         Ok(&type_.arguments.get(0).unwrap().unit)
     }
 
-    pub fn as_trait(&self) -> Result<Rc<Trait>, LinkError> {
+    pub fn as_trait(&self) -> Result<Rc<Trait>, InterpreterError> {
         let type_ = &self.as_object_ref(false)?.type_;
 
         match type_.unit {
             TypeUnit::MetaType => match &type_.arguments[0].unit {
                 TypeUnit::Struct(t) => Ok(Rc::clone(t)),
-                _ => Err(LinkError::LinkError { msg: format!("Reference is not a struct metatype.") })
+                _ => Err(InterpreterError::LinkerError { msg: format!("Reference is not a struct metatype.") })
             },
-            _ => Err(LinkError::LinkError { msg: format!("Reference is not a metatype.") })
+            _ => Err(InterpreterError::LinkerError { msg: format!("Reference is not a metatype.") })
         }
     }
 
-    pub fn as_function_overload(&self) -> Result<Rc<FunctionOverload>, LinkError> {
+    pub fn as_function_overload(&self) -> Result<Rc<FunctionOverload>, InterpreterError> {
         match self {
             Reference::FunctionOverload(overload) => Ok(Rc::clone(overload)),
-            _ => Err(LinkError::LinkError { msg: format!("Reference is not a function in this context.") })
+            _ => Err(InterpreterError::LinkerError { msg: format!("Reference is not a function in this context.") })
         }
     }
 }
@@ -86,10 +86,10 @@ impl ObjectReference {
         })
     }
 
-    pub fn as_function_head(&self) -> Result<&Rc<FunctionHead>, LinkError> {
+    pub fn as_function_head(&self) -> Result<&Rc<FunctionHead>, InterpreterError> {
         match &self.type_.unit {
             TypeUnit::Function(f) => Ok(f),
-            _ => Err(LinkError::LinkError { msg: format!("Object is not a function in this context.") })
+            _ => Err(InterpreterError::LinkerError { msg: format!("Object is not a function in this context.") })
         }
     }
 }

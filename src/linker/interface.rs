@@ -2,8 +2,9 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
+use crate::interpreter::InterpreterError;
 use crate::linker::r#type::TypeFactory;
-use crate::linker::{LinkError, scopes};
+use crate::linker::scopes;
 use crate::parser::ast;
 use crate::parser::ast::{Expression, OperatorArgument};
 use crate::program::functions::{FunctionForm, FunctionPointer, FunctionType, FunctionInterface, ParameterKey, Parameter, FunctionHead};
@@ -11,7 +12,7 @@ use crate::program::traits::TraitBinding;
 use crate::program::types::{PatternPart, TypeProto};
 
 
-pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<FunctionPointer>, LinkError> {
+pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<FunctionPointer>, InterpreterError> {
     let mut type_factory = TypeFactory::new(scope);
 
     let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x)).unwrap_or_else(|| Ok(TypeProto::void()))?;
@@ -48,7 +49,7 @@ pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, re
     }))
 }
 
-pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<FunctionPointer>, LinkError> {
+pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> Result<Rc<FunctionPointer>, InterpreterError> {
     let mut type_factory = TypeFactory::new(scope);
 
     let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x)).unwrap_or_else(|| Ok(TypeProto::void()))?;
@@ -102,7 +103,7 @@ pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::S
         }))
     }
 
-    return Err(LinkError::LinkError { msg: format!("Unknown pattern in function definition: {}", function.parts.iter().map(|x| x.to_string()).join(" ")) });
+    return Err(InterpreterError::LinkerError { msg: format!("Unknown pattern in function definition: {}", function.parts.iter().map(|x| x.to_string()).join(" ")) });
 }
 
 pub fn match_patterns<'a>(pattern_parts: &'a Vec<Box<PatternPart>>, function_parts: &'a Vec<Box<OperatorArgument>>) -> Option<Vec<(&'a ParameterKey, &'a str, &'a Expression)>> {

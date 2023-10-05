@@ -1,15 +1,13 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
-use guard::guard;
-use crate::linker::ambiguous::LinkerAmbiguity;
+use crate::interpreter::InterpreterError;
+use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
-use crate::linker::LinkError;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
-use crate::program::traits::{RequirementsFulfillment, Trait, TraitConformanceWithTail, TraitGraph};
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::traits::{RequirementsFulfillment, Trait, TraitGraph};
 
 pub struct AmbiguousAbstractCall {
     pub expression_id: ExpressionID,
@@ -27,17 +25,16 @@ impl Display for AmbiguousAbstractCall {
 }
 
 impl LinkerAmbiguity for AmbiguousAbstractCall {
-    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<bool, LinkError> {
+    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<AmbiguityResult<()>, InterpreterError> {
         let type_ = linker.types.resolve_binding_alias(&self.expression_id)?;
 
         let requirement = self.interface.create_generic_binding(vec![("Self", type_.clone())]);
-        let trait_conformance = self.traits.satisfy_requirement(&requirement, &linker.types);
-        match trait_conformance {
-            Err(LinkError::Ambiguous) => {
-                Ok(false)
+        let trait_conformance = self.traits.satisfy_requirement(&requirement, &linker.types)?;
+        Ok(match trait_conformance {
+            AmbiguityResult::Ambiguous => {
+                AmbiguityResult::Ambiguous
             }
-            Err(err) => Err(err),
-            Ok(trait_conformance) => {
+            AmbiguityResult::Ok(trait_conformance) => {
                 let used_function = &trait_conformance.conformance.function_mapping[&self.abstract_function];
 
                 linker.expressions.operations.insert(
@@ -52,8 +49,8 @@ impl LinkerAmbiguity for AmbiguousAbstractCall {
                 );
                 linker.types.bind(self.expression_id.clone(), type_.as_ref())?;
 
-                Ok(true)
+                AmbiguityResult::Ok(())
             }
-        }
+        })
     }
 }
