@@ -3,7 +3,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::program::allocation::ObjectReference;
 use crate::program::traits::{TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
@@ -260,7 +260,7 @@ impl FunctionOverload {
         })
     }
 
-    pub fn adding_function(&self, function: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Result<Rc<FunctionOverload>, RuntimeError> {
+    pub fn adding_function(&self, function: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> RResult<Rc<FunctionOverload>> {
         if self.form != function.form {
             return Err(RuntimeError::new(format!("Cannot overload functions and constants.")))
         }

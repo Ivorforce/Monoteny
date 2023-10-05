@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::rc::Rc;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::linker::scopes;
 use crate::linker::interface::link_function_pointer;
 use crate::parser::ast;
@@ -11,7 +11,7 @@ pub struct TraitLinker<'a> {
 }
 
 impl <'a> TraitLinker<'a> {
-    pub fn link_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> Result<(), RuntimeError> {
+    pub fn link_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::GlobalStatement::FunctionDeclaration(syntax) => {
                 let fun = link_function_pointer(&syntax, &scope, requirements)?;

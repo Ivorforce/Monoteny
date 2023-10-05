@@ -3,7 +3,7 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::error::{ErrInRange, RuntimeError};
+use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::scopes;
 use crate::linker::scopes::Environment;
@@ -66,7 +66,7 @@ pub enum Token {
     FunctionReference { overload: Rc<FunctionOverload>, target: Option<ExpressionID> },
 }
 
-pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, linker: &mut ImperativeLinker) -> Result<ExpressionID, RuntimeError> {
+pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, linker: &mut ImperativeLinker) -> RResult<ExpressionID> {
     // Resolve structs and array literals
     let mut i = 0;
     for _ in 0 .. tokens.len() {
@@ -214,7 +214,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
 
     // Resolve binary operators. At this point, we have only expressions interspersed with operators.
 
-    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<Positioned<ExpressionID>>, alias: &str, i: usize| -> Result<(), RuntimeError> {
+    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<Positioned<ExpressionID>>, alias: &str, i: usize| -> RResult<()> {
         let lhs = arguments.remove(i);
         let rhs = arguments.remove(i);
         let operator = scope.resolve(Environment::Global, &alias)?;

@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 use std::rc::Rc;
 use guard::guard;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::linker::precedence::PrecedenceGroup;
 use crate::program::functions::{FunctionHead, FunctionOverload};
 use crate::program::traits::Trait;
@@ -39,7 +39,7 @@ pub struct ObjectReference {
 }
 
 impl Reference {
-    pub fn as_object_ref(&self, require_mutable: bool) -> Result<&Rc<ObjectReference>, RuntimeError> {
+    pub fn as_object_ref(&self, require_mutable: bool) -> RResult<&Rc<ObjectReference>> {
         guard!(let Reference::Object(obj_ref) = self else {
             return Err(RuntimeError::new(format!("Reference is not to an object: {:?}", self)));
         });
@@ -47,7 +47,7 @@ impl Reference {
         Ok(&obj_ref)
     }
 
-    pub fn as_metatype(&self) -> Result<&TypeUnit, RuntimeError> {
+    pub fn as_metatype(&self) -> RResult<&TypeUnit> {
         let type_ = &self.as_object_ref(false)?.type_;
 
         guard!(let TypeUnit::MetaType = &type_.unit else {
@@ -57,7 +57,7 @@ impl Reference {
         Ok(&type_.arguments.get(0).unwrap().unit)
     }
 
-    pub fn as_trait(&self) -> Result<Rc<Trait>, RuntimeError> {
+    pub fn as_trait(&self) -> RResult<Rc<Trait>> {
         let type_ = &self.as_object_ref(false)?.type_;
 
         match type_.unit {
@@ -69,7 +69,7 @@ impl Reference {
         }
     }
 
-    pub fn as_function_overload(&self) -> Result<Rc<FunctionOverload>, RuntimeError> {
+    pub fn as_function_overload(&self) -> RResult<Rc<FunctionOverload>> {
         match self {
             Reference::FunctionOverload(overload) => Ok(Rc::clone(overload)),
             _ => Err(RuntimeError::new(format!("Reference is not a function in this context.")))
@@ -86,7 +86,7 @@ impl ObjectReference {
         })
     }
 
-    pub fn as_function_head(&self) -> Result<&Rc<FunctionHead>, RuntimeError> {
+    pub fn as_function_head(&self) -> RResult<&Rc<FunctionHead>> {
         match &self.type_.unit {
             TypeUnit::Function(f) => Ok(f),
             _ => Err(RuntimeError::new(format!("Object is not a function in this context.")))

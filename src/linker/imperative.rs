@@ -5,7 +5,7 @@ use uuid::Uuid;
 use guard::guard;
 use itertools::Itertools;
 use try_map::FallibleMapExt;
-use crate::error::{ErrInRange, RuntimeError};
+use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::program::computation_tree::{ExpressionTree, ExpressionID, ExpressionOperation};
 use crate::linker::{precedence, scopes};
@@ -44,7 +44,7 @@ impl <'a> ImperativeLinker<'a> {
         id
     }
 
-    pub fn link_function_body(mut self, body: &ast::Expression, scope: &scopes::Scope) -> Result<Box<FunctionImplementation>, RuntimeError> {
+    pub fn link_function_body(mut self, body: &ast::Expression, scope: &scopes::Scope) -> RResult<Box<FunctionImplementation>> {
         let mut scope = scope.subscope();
 
         let granted_requirements = scope.traits.assume_granted(
@@ -127,7 +127,7 @@ impl <'a> ImperativeLinker<'a> {
         }))
     }
 
-    pub fn link_unambiguous_expression(&mut self, arguments: Vec<ExpressionID>, return_type: &TypeProto, operation: ExpressionOperation) -> Result<ExpressionID, RuntimeError> {
+    pub fn link_unambiguous_expression(&mut self, arguments: Vec<ExpressionID>, return_type: &TypeProto, operation: ExpressionOperation) -> RResult<ExpressionID> {
         let id = self.register_new_expression(arguments);
 
         self.expressions.operations.insert(id.clone(), operation);
@@ -136,7 +136,7 @@ impl <'a> ImperativeLinker<'a> {
             .map(|_| id)
     }
 
-    pub fn register_ambiguity(&mut self, mut ambiguity: Box<dyn LinkerAmbiguity>) -> Result<(), RuntimeError> {
+    pub fn register_ambiguity(&mut self, mut ambiguity: Box<dyn LinkerAmbiguity>) -> RResult<()> {
         match ambiguity.attempt_to_resolve(self)? {
             AmbiguityResult::Ok(_) => {},
             AmbiguityResult::Ambiguous => self.ambiguities.push(ambiguity),
@@ -145,7 +145,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(())
     }
 
-    pub fn link_abstract_function_call(&mut self, arguments: Vec<ExpressionID>, interface: Rc<Trait>, abstract_function: Rc<FunctionHead>, traits: TraitGraph, range: Range<usize>) -> Result<ExpressionID, RuntimeError> {
+    pub fn link_abstract_function_call(&mut self, arguments: Vec<ExpressionID>, interface: Rc<Trait>, abstract_function: Rc<FunctionHead>, traits: TraitGraph, range: Range<usize>) -> RResult<ExpressionID> {
         let expression_id = self.register_new_expression(arguments.clone());
 
         self.register_ambiguity(Box::new(AmbiguousAbstractCall {
@@ -160,7 +160,7 @@ impl <'a> ImperativeLinker<'a> {
         return Ok(expression_id);
     }
 
-    pub fn link_string_literal(&mut self, value: &str) -> Result<ExpressionID, RuntimeError> {
+    pub fn link_string_literal(&mut self, value: &str) -> RResult<ExpressionID> {
         self.link_unambiguous_expression(
             vec![],
             &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.core.traits.String))),
@@ -168,7 +168,7 @@ impl <'a> ImperativeLinker<'a> {
         )
     }
 
-    pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &ast::Expression, scope: &scopes::Scope) -> Result<(), RuntimeError> {
+    pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &ast::Expression, scope: &scopes::Scope) -> RResult<()> {
         let mut type_factory = TypeFactory::new(&scope);
 
         let type_declaration = type_factory.link_type(&type_declaration)?;
@@ -190,7 +190,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(())
     }
 
-    pub fn link_block(&mut self, body: &Vec<Box<Positioned<ast::Statement>>>, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
+    pub fn link_block(&mut self, body: &Vec<Box<Positioned<ast::Statement>>>, scope: &scopes::Scope) -> RResult<ExpressionID> {
         let mut scope = scope.subscope();
         let statements: Vec<ExpressionID> = body.iter().map(|pstatement| {
             self.link_statement(&mut scope, &pstatement.value)
@@ -203,7 +203,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(expression_id)
     }
 
-    fn link_statement(&mut self, scope: &mut scopes::Scope, statement: &ast::Statement) -> Result<ExpressionID, RuntimeError> {
+    fn link_statement(&mut self, scope: &mut scopes::Scope, statement: &ast::Statement) -> RResult<ExpressionID> {
         let expression_id = match statement {
             ast::Statement::Error(err) => {
                 return Err(err.clone())
@@ -272,7 +272,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(expression_id)
     }
 
-    fn link_expression_with_type(&mut self, syntax: &ast::Expression, type_declaration: &Option<ast::Expression>, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
+    fn link_expression_with_type(&mut self, syntax: &ast::Expression, type_declaration: &Option<ast::Expression>, scope: &scopes::Scope) -> RResult<ExpressionID> {
         let value = self.link_expression(syntax, scope)?;
         if let Some(type_declaration) = type_declaration {
             self.hint_type(value, type_declaration, scope)?
@@ -280,7 +280,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(value)
     }
 
-    pub fn link_expression(&mut self, syntax: &ast::Expression, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
+    pub fn link_expression(&mut self, syntax: &ast::Expression, scope: &scopes::Scope) -> RResult<ExpressionID> {
         let arguments: Vec<Positioned<precedence::Token>> = syntax.iter().map(|a| {
             self.link_term(a, scope)
         }).try_collect()?;
@@ -288,7 +288,7 @@ impl <'a> ImperativeLinker<'a> {
         link_patterns(arguments, scope, self)
     }
 
-    pub fn link_term(&mut self, syntax: &Positioned<ast::Term>, scope: &scopes::Scope) -> Result<Positioned<precedence::Token>, RuntimeError> {
+    pub fn link_term(&mut self, syntax: &Positioned<ast::Term>, scope: &scopes::Scope) -> RResult<Positioned<precedence::Token>> {
         let token = match &syntax.value {
             ast::Term::Identifier(s) => {
                 let variable = scope.resolve(scopes::Environment::Global, s)
@@ -406,7 +406,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(syntax.with_value(token))
     }
 
-    fn link_struct(&mut self, scope: &scopes::Scope, args: &Vec<ast::StructArgument>) -> Result<Struct, RuntimeError> {
+    fn link_struct(&mut self, scope: &scopes::Scope, args: &Vec<ast::StructArgument>) -> RResult<Struct> {
         let values = args.iter().map(|x| {
             self.link_expression_with_type(&x.value, &x.type_declaration, scope)
         }).try_collect()?;
@@ -419,7 +419,7 @@ impl <'a> ImperativeLinker<'a> {
         })
     }
 
-    pub fn link_string_part(&mut self, part: &Positioned<ast::StringPart>, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
+    pub fn link_string_part(&mut self, part: &Positioned<ast::StringPart>, scope: &scopes::Scope) -> RResult<ExpressionID> {
         match &part.value {
             ast::StringPart::Literal(literal) => {
                 self.link_string_literal(literal)
@@ -432,7 +432,7 @@ impl <'a> ImperativeLinker<'a> {
         }
     }
 
-    fn link_simple_function_call(&mut self, name: &str, keys: Vec<ParameterKey>, args: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> Result<ExpressionID, RuntimeError> {
+    fn link_simple_function_call(&mut self, name: &str, keys: Vec<ParameterKey>, args: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> RResult<ExpressionID> {
         let variable = scope.resolve(scopes::Environment::Global, name)?;
 
         match variable {
@@ -453,11 +453,11 @@ impl <'a> ImperativeLinker<'a> {
         }
     }
 
-    pub fn link_conjunctive_pairs(&mut self, arguments: Vec<Positioned<ExpressionID>>, operations: Vec<Rc<FunctionOverload>>) -> Result<Positioned<ExpressionID>, RuntimeError> {
+    pub fn link_conjunctive_pairs(&mut self, arguments: Vec<Positioned<ExpressionID>>, operations: Vec<Rc<FunctionOverload>>) -> RResult<Positioned<ExpressionID>> {
         todo!()
     }
 
-    pub fn link_function_call(&mut self, functions: &Vec<Rc<FunctionHead>>, fn_name: &str, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> Result<ExpressionID, RuntimeError> {
+    pub fn link_function_call(&mut self, functions: &Vec<Rc<FunctionHead>>, fn_name: &str, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> RResult<ExpressionID> {
         // TODO Check if any arguments are void before anything else
         let seed = Uuid::new_v4();
 

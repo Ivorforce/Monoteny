@@ -4,7 +4,7 @@ use std::ops::Range;
 use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
 use crate::program::calls::FunctionBinding;
@@ -36,7 +36,7 @@ pub struct AmbiguousFunctionCall {
 }
 
 impl AmbiguousFunctionCall {
-    fn attempt_with_candidate(&mut self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<AmbiguityResult<Rc<RequirementsFulfillment>>, RuntimeError> {
+    fn attempt_with_candidate(&mut self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> RResult<AmbiguityResult<Rc<RequirementsFulfillment>>> {
         let param_types = &candidate.param_types;
 
         for (arg, param) in zip_eq(
@@ -75,7 +75,7 @@ impl Display for AmbiguousFunctionCall {
 }
 
 impl LinkerAmbiguity for AmbiguousFunctionCall {
-    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<AmbiguityResult<()>, RuntimeError> {
+    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> RResult<AmbiguityResult<()>> {
         let mut is_ambiguous = false;
         for candidate in self.candidates.drain(..).collect_vec() {
             let mut types_copy = linker.types.clone();

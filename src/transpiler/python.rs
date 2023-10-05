@@ -11,7 +11,7 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::transpiler;
 use crate::interpreter::Runtime;
 
@@ -53,7 +53,7 @@ pub fn create_context(runtime: &Runtime) -> Context {
     }
 }
 
-pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime) -> Result<Box<ast::Module>, RuntimeError> {
+pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime) -> RResult<Box<ast::Module>> {
     let mut representations = context.representations.clone();
     let builtin_structs: HashSet<_> = representations.type_ids.keys().cloned().collect();
 

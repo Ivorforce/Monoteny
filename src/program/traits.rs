@@ -6,7 +6,7 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::linker::ambiguous::AmbiguityResult;
 use crate::program::functions::{FunctionHead, FunctionPointer, FunctionType, FunctionInterface};
 use crate::program::generics::{GenericAlias, TypeForest};
@@ -140,7 +140,7 @@ impl TraitGraph {
 
     // TODO This should not return an ambiguity result. The caller should make sure to resolve types, and we should just do our jobs.
     //  Any layers deeper cannot yield ::Ambiguous anyway, if all bindings are properly filled.
-    pub fn satisfy_requirement(&mut self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<AmbiguityResult<Rc<TraitConformanceWithTail>>, RuntimeError> {
+    pub fn satisfy_requirement(&mut self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> RResult<AmbiguityResult<Rc<TraitConformanceWithTail>>> {
         // TODO What if requirement is e.g. Float<Float>? Is Float declared on itself?
 
         // We resolve this binding because it might contain generics.
@@ -220,7 +220,7 @@ impl TraitGraph {
         }
     }
 
-    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, mapping: &TypeForest) -> Result<AmbiguityResult<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>>, RuntimeError> {
+    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, mapping: &TypeForest) -> RResult<AmbiguityResult<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>>> {
         let mut conformance = HashMap::new();
 
         for requirement in self.gather_deep_requirements(requirements.iter().cloned()) {

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use itertools::Itertools;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::linker::precedence::PrecedenceGroup;
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer};
@@ -80,7 +80,7 @@ impl <'a> Scope<'a> {
         }
     }
 
-    pub fn import(&mut self, module: &Module) -> Result<(), RuntimeError> {
+    pub fn import(&mut self, module: &Module) -> RResult<()> {
         for pattern in module.patterns.iter() {
             self.add_pattern(Rc::clone(pattern))?;
         }
@@ -102,7 +102,7 @@ impl <'a> Scope<'a> {
         Ok(())
     }
 
-    pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Result<(), RuntimeError> {
+    pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> RResult<()> {
         let name = &fun.name;
         let environment = Environment::from_form(&fun.form);
 
@@ -169,7 +169,7 @@ impl <'a> Scope<'a> {
         self.references(environment).contains_key(name)
     }
 
-    pub fn add_pattern(&mut self, pattern: Rc<Pattern>) -> Result<(), RuntimeError> {
+    pub fn add_pattern(&mut self, pattern: Rc<Pattern>) -> RResult<()> {
         for (precedence_group, keyword_map) in self.precedence_groups.iter_mut() {
             if precedence_group != &pattern.precedence_group {
                 continue;
@@ -216,7 +216,7 @@ impl <'a> Scope<'a> {
 }
 
 impl <'a> Scope<'a> {
-    pub fn resolve(&'a self, environment: Environment, name: &str) -> Result<&'a Reference, RuntimeError> {
+    pub fn resolve(&'a self, environment: Environment, name: &str) -> RResult<&'a Reference> {
         if let Some(matches) = self.references(environment).get(name) {
             return Ok(matches)
         }

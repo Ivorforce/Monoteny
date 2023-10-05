@@ -5,7 +5,7 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use crate::constant_folding::ConstantFold;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::interpreter;
 use crate::interpreter::Runtime;
 use crate::monomorphize::Monomorphizer;
@@ -32,7 +32,7 @@ pub trait Context {
     fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, Vec<RuntimeError>>;
 }
 
-pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -> Result<Transpiler, RuntimeError> {
+pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -> RResult<Transpiler> {
     let builtin_functions = context.builtin_functions();
 
     let transpiler = Transpiler {

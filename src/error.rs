@@ -16,6 +16,8 @@ pub struct RuntimeError {
     pub msg: String,
 }
 
+pub type RResult<V> = Result<V, RuntimeError>;
+
 impl RuntimeError {
     pub fn new(msg: String) -> RuntimeError {
         RuntimeError {
@@ -88,8 +90,8 @@ pub trait ErrInRange<R> {
     fn err_in_range(self, range: &Range<usize>) -> R;
 }
 
-impl<V> ErrInRange<Result<V, RuntimeError>> for Result<V, RuntimeError> {
-    fn err_in_range(self, range: &Range<usize>) -> Result<V, RuntimeError> {
+impl<V> ErrInRange<RResult<V>> for RResult<V> {
+    fn err_in_range(self, range: &Range<usize>) -> RResult<V> {
         self.map_err(|e| e.in_range(range.clone()))
     }
 }

@@ -6,7 +6,7 @@ pub mod abstract_call;
 
 pub use function_call::{AmbiguousFunctionCall, AmbiguousFunctionCandidate};
 pub use abstract_call::AmbiguousAbstractCall;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 
 pub enum AmbiguityResult<V> {
     Ok(V),
@@ -14,5 +14,5 @@ pub enum AmbiguityResult<V> {
 }
 
 pub trait LinkerAmbiguity: Display {
-    fn attempt_to_resolve(&mut self, expressions: &mut ImperativeLinker) -> Result<AmbiguityResult<()>, RuntimeError>;
+    fn attempt_to_resolve(&mut self, expressions: &mut ImperativeLinker) -> RResult<AmbiguityResult<()>>;
 }

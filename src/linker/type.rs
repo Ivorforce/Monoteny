@@ -3,7 +3,7 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::linker::scopes;
 use crate::linker::scopes::Environment;
 use crate::parser::ast;
@@ -27,7 +27,7 @@ impl <'a> TypeFactory<'a> {
         }
     }
 
-    fn resolve_reference(&mut self, name: &str) -> Result<&TypeUnit, RuntimeError> {
+    fn resolve_reference(&mut self, name: &str) -> RResult<&TypeUnit> {
         if let Some(generic) = self.generics.get(name) {
             return Ok(generic)
         }
@@ -48,7 +48,7 @@ impl <'a> TypeFactory<'a> {
         self.requirements.insert(requirement);
     }
 
-    pub fn link_type(&mut self, syntax: &ast::Expression) -> Result<Box<TypeProto>, RuntimeError> {
+    pub fn link_type(&mut self, syntax: &ast::Expression) -> RResult<Box<TypeProto>> {
         guard!(let Ok(pterm) = syntax.iter().exactly_one() else {
             panic!("Monads etc. are not implemented yet: '{}'", syntax)
         });

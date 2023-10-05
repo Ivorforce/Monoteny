@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::error::{ErrInRange, RuntimeError};
+use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::parser::ast;
 use crate::program::computation_tree::*;
@@ -79,7 +79,7 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime)
 }
 
 impl <'a> GlobalLinker<'a> {
-    pub fn link_global_statement(&mut self, pstatement: &'a Positioned<ast::GlobalStatement>, requirements: &HashSet<Rc<TraitBinding>>) -> Result<(), RuntimeError> {
+    pub fn link_global_statement(&mut self, pstatement: &'a Positioned<ast::GlobalStatement>, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<()> {
         match &pstatement.value {
             ast::GlobalStatement::Error(err) => {
                 return Err(err.clone())
@@ -241,7 +241,7 @@ impl <'a> GlobalLinker<'a> {
         Ok(())
     }
 
-    pub fn link_pattern(&mut self, syntax: &ast::PatternDeclaration) -> Result<Rc<Pattern>, RuntimeError> {
+    pub fn link_pattern(&mut self, syntax: &ast::PatternDeclaration) -> RResult<Rc<Pattern>> {
         let precedence_group = self.global_variables.resolve_precedence_group(&syntax.precedence);
 
         Ok(Rc::new(Pattern {
@@ -252,7 +252,7 @@ impl <'a> GlobalLinker<'a> {
         }))
     }
 
-    pub fn add_function(&mut self, pointer: Rc<FunctionPointer>, body: &'a Option<ast::Expression>, decorators: &Vec<String>, range: Range<usize>) -> Result<(), RuntimeError> {
+    pub fn add_function(&mut self, pointer: Rc<FunctionPointer>, body: &'a Option<ast::Expression>, decorators: &Vec<String>, range: Range<usize>) -> RResult<()> {
         // Create a variable for the function
         self.module.add_function(&pointer);
         self.global_variables.overload_function(&pointer, &self.module.fn_references[&pointer.target])?;

@@ -2,12 +2,13 @@ use std::alloc::{alloc, Layout};
 use std::collections::HashMap;
 use std::rc::Rc;
 use guard::guard;
+use crate::error::RResult;
 use crate::interpreter::{FunctionInterpreter, Runtime, RuntimeError, Value};
 use crate::program::functions::FunctionHead;
 use crate::program::module::Module;
 use crate::program::traits::RequirementsFulfillment;
 
-pub fn main(module: &Module, runtime: &mut Runtime) -> Result<(), RuntimeError> {
+pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
     let entry_function = match &module.main_functions[..] {
         [] => return Err(RuntimeError::new(format!("No @main function declared."))),
         [f] => f,
@@ -39,7 +40,7 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> Result<(), RuntimeError> 
 }
 
 // The function is written like this
-pub fn transpile(module: &Module, runtime: &mut Runtime, callback: &dyn Fn(Rc<FunctionHead>, &Runtime)) -> Result<(), RuntimeError> {
+pub fn transpile(module: &Module, runtime: &mut Runtime, callback: &dyn Fn(Rc<FunctionHead>, &Runtime)) -> RResult<()> {
     let entry_function = match &module.transpile_functions[..] {
         [] => return Err(RuntimeError::new(format!("No @transpile function declared."))),
         [f] => f,
