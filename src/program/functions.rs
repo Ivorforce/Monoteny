@@ -262,7 +262,7 @@ impl FunctionOverload {
 
     pub fn adding_function(&self, function: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Result<Rc<FunctionOverload>, RuntimeError> {
         if self.form != function.form {
-            return Err(RuntimeError { msg: format!("Cannot overload functions and constants.") })
+            return Err(RuntimeError::new(format!("Cannot overload functions and constants.")))
         }
 
         Ok(Rc::new(FunctionOverload {

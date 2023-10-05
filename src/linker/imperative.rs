@@ -97,9 +97,9 @@ impl <'a> ImperativeLinker<'a> {
         while !self.ambiguities.is_empty() {
             if !has_changed {
                 // TODO Output which parts are ambiguous, and how, by asking the objects
-                return Err(RuntimeError {msg:
+                return Err(RuntimeError::new(
                     format!("Ambiguous ({} times): \n{}\n\n", self.ambiguities.len(), self.ambiguities.iter().map(|x| x.to_string()).join("\n"))
-                })
+                ))
             }
 
             has_changed = false;
@@ -194,7 +194,7 @@ impl <'a> ImperativeLinker<'a> {
         for statement in body.iter() {
             match statement.as_ref() {
                 ast::Statement::Error(err) => {
-                    return Err(RuntimeError { msg: err.clone() })
+                    return Err(err.clone())
                 }
                 ast::Statement::VariableDeclaration {
                     mutability, identifier, type_declaration, expression
@@ -231,7 +231,7 @@ impl <'a> ImperativeLinker<'a> {
                 ast::Statement::Return(expression) => {
                     if let Some(expression) = expression {
                         if self.function.interface.return_type.unit.is_void() {
-                            return Err(RuntimeError { msg: format!("Return statement offers a value when the function declares void.") })
+                            return Err(RuntimeError::new(format!("Return statement offers a value when the function declares void.")))
                         }
 
                         let result: ExpressionID = self.link_expression(expression, &scope)?;
@@ -244,7 +244,7 @@ impl <'a> ImperativeLinker<'a> {
                     }
                     else {
                         if !self.function.interface.return_type.unit.is_void() {
-                            return Err(RuntimeError { msg: format!("Return statement offers no value when the function declares an object.") })
+                            return Err(RuntimeError::new(format!("Return statement offers no value when the function declares an object.")))
                         }
 
                         let expression_id = self.register_new_expression(vec![]);
@@ -313,7 +313,7 @@ impl <'a> ImperativeLinker<'a> {
                         }
                     }
                     Reference::PrecedenceGroup(_) => {
-                        return Err(RuntimeError { msg: format!("Precedence group references are not supported in expressions yet.") })
+                        return Err(RuntimeError::new(format!("Precedence group references are not supported in expressions yet.")))
                     }
                 }
             }
@@ -341,7 +341,7 @@ impl <'a> ImperativeLinker<'a> {
                 let target = self.link_term(target, scope)?;
 
                 guard!(let precedence::Token::Expression(target) = target else {
-                    return Err(RuntimeError { msg: format!("Dot notation is not supported in this context.") })
+                    return Err(RuntimeError::new(format!("Dot notation is not supported in this context.")))
                 });
 
                 let variable = scope.resolve(scopes::Environment::Member, member_name)?;

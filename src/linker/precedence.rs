@@ -97,7 +97,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                             tokens[i] = Token::Expression(*struct_.values.iter().next().unwrap());
                         }
                         else {
-                            return Err(RuntimeError { msg: String ::from("Anonymous struct literals are not yet supported.") })
+                            return Err(RuntimeError::new(String ::from("Anonymous struct literals are not yet supported.")))
                         }
                     }
                 }
@@ -105,13 +105,13 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
             Token::AnonymousArray { keys, values } => {
                 match if i > 0 { tokens.get(i - 1) } else { None } {
                     Some(Token::FunctionReference { overload, target }) => {
-                        return Err(RuntimeError { msg: String::from("Functions with subscript form are not yet supported.") })
+                        return Err(RuntimeError::new(String::from("Functions with subscript form are not yet supported.")))
                     }
                     Some(Token::Expression(expression)) => {
-                        return Err(RuntimeError { msg: String::from("Object subscript is not yet supported.") })
+                        return Err(RuntimeError::new(String::from("Object subscript is not yet supported.")))
                     }
                     _ => {
-                        return Err(RuntimeError { msg: String::from("Array literals are not yet supported.") })
+                        return Err(RuntimeError::new(String::from("Array literals are not yet supported.")))
 
                         // let supertype = linker.expressions.type_forest.merge_all(values)?.clone();
                         //
@@ -143,9 +143,9 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                         ExpressionOperation::VariableLookup(ref_.clone())
                     )?);
                 }
-                _ => Err(RuntimeError {
-                    msg: String::from("References to overloaded functions are not yet supported (need syntax to distinguish which to choose).")
-                })?,
+                _ => Err(RuntimeError::new(
+                    String::from("References to overloaded functions are not yet supported (need syntax to distinguish which to choose).")
+                ))?,
             }
         }
     }
@@ -157,14 +157,14 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
         arguments.push(expression);
     }
     else {
-        return Err(RuntimeError { msg: String::from("Expression missing the final argument.") })
+        return Err(RuntimeError::new(String::from("Expression missing the final argument.")))
     }
 
     // Reduce all unary operators, and build interspersed arguments / operators list.
     let left_unary_operators = &scope.precedence_groups[0].1;
     while !tokens.is_empty() {
         guard!(let Token::Keyword(keyword) = tokens.remove(tokens.len() - 1) else {
-            return Err(RuntimeError { msg: String::from("Expecting an operator but got an expression.") })
+            return Err(RuntimeError::new(String::from("Expecting an operator but got an expression.")))
         });
 
         if !tokens.is_empty() {

@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
+use crate::parser::error::Error;
 
 /// Token returned by the lexers
 #[derive(Debug, Clone, PartialEq)]
@@ -33,10 +34,6 @@ impl<'i> Lexer<'i> {
         }
     }
 }
-
-/// Concrete lexer error
-#[derive(Debug, PartialEq, Clone)]
-pub struct Error(pub String);
 
 impl<'i> Iterator for Lexer<'i> {
     type Item = Result<(usize, Token<'i>, usize), Error>;

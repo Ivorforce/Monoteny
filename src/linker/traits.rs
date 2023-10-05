@@ -16,13 +16,13 @@ impl <'a> TraitLinker<'a> {
             ast::GlobalStatement::FunctionDeclaration(syntax) => {
                 let fun = link_function_pointer(&syntax, &scope, requirements)?;
                 if !syntax.body.is_none() {
-                    return Err(RuntimeError { msg: format!("Abstract function {} cannot have a body.", fun.name) });
+                    return Err(RuntimeError::new(format!("Abstract function {} cannot have a body.", fun.name)));
                 };
 
                 self.trait_.insert_function(fun);
             }
             _ => {
-                return Err(RuntimeError { msg: format!("Statement {} not valid in a trait context.", statement) });
+                return Err(RuntimeError::new(format!("Statement {} not valid in a trait context.", statement)));
             }
         }
 

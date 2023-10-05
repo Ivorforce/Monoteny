@@ -1,5 +1,6 @@
 use std::fmt::{Display, Error, Formatter};
 use std::ops::{Deref, DerefMut};
+use crate::error::RuntimeError;
 use crate::program::functions::ParameterKey;
 use crate::program::allocation::Mutability;
 use crate::program::types::PatternPart;
@@ -20,7 +21,7 @@ pub enum GlobalStatement {
     Trait(Box<TraitDefinition>),
     Conformance(Box<TraitConformanceDeclaration>),
     Macro(Box<GlobalMacro>),
-    Error(String),
+    Error(RuntimeError),
 }
 
 #[derive(Eq, PartialEq)]
@@ -106,7 +107,7 @@ pub enum Statement {
     VariableAssignment { variable_name: String, new_value: Expression },
     Expression(Expression),
     Return(Option<Expression>),
-    Error(String),
+    Error(RuntimeError),
 }
 
 #[derive(Eq, PartialEq)]

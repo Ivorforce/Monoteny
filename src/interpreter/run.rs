@@ -9,19 +9,19 @@ use crate::program::traits::RequirementsFulfillment;
 
 pub fn main(module: &Module, runtime: &mut Runtime) -> Result<(), RuntimeError> {
     let entry_function = match &module.main_functions[..] {
-        [] => return Err(RuntimeError { msg: format!("No @main function declared.") }),
+        [] => return Err(RuntimeError::new(format!("No @main function declared."))),
         [f] => f,
-        functions => return Err(RuntimeError { msg: format!("Too many @main functions declared: {:?}", functions) }),
+        functions => return Err(RuntimeError::new(format!("Too many @main functions declared: {:?}", functions))),
     };
     if !entry_function.interface.parameters.is_empty() {
-        return Err(RuntimeError { msg: format!("@main function has parameters.") });
+        return Err(RuntimeError::new(format!("@main function has parameters.")));
     }
     if !entry_function.interface.return_type.unit.is_void() {
-        return Err(RuntimeError { msg: format!("@main function has a return value.") });
+        return Err(RuntimeError::new(format!("@main function has a return value.")));
     }
 
     guard!(let Some(implementation) = module.fn_implementations.get(entry_function) else {
-        return Err(RuntimeError { msg: format!("Cannot run @main function because it does not have a body.") });
+        return Err(RuntimeError::new(format!("Cannot run @main function because it does not have a body.")));
     });
 
     let mut interpreter = FunctionInterpreter {
@@ -41,14 +41,14 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> Result<(), RuntimeError> 
 // The function is written like this
 pub fn transpile(module: &Module, runtime: &mut Runtime, callback: &dyn Fn(Rc<FunctionHead>, &Runtime)) -> Result<(), RuntimeError> {
     let entry_function = match &module.transpile_functions[..] {
-        [] => return Err(RuntimeError { msg: format!("No @transpile function declared.") }),
+        [] => return Err(RuntimeError::new(format!("No @transpile function declared."))),
         [f] => f,
-        functions => return Err(RuntimeError { msg: format!("Too many @main functions declared: {:?}", functions) }),
+        functions => return Err(RuntimeError::new(format!("Too many @main functions declared: {:?}", functions))),
     };
     assert!(entry_function.interface.return_type.unit.is_void(), "@transpile function has a return value.");
 
     guard!(let Some(implementation) = module.fn_implementations.get(entry_function) else {
-        return Err(RuntimeError { msg: format!("Cannot run @transpile function because it does not have a body.") });
+        return Err(RuntimeError::new(format!("Cannot run @transpile function because it does not have a body.")));
     });
 
     let mut assignments = HashMap::new();

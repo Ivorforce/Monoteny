@@ -23,7 +23,7 @@ def @main :: {
 
     -- 'value' is not bound yet. It could be any $Real!
     let value = 2.2.square() * sin(e);
-    write_line("Value: \(value)");
+    write_line("Value: \(value)");s
 
     -- Bind 'value' implicitly by binding b to Float32.
     var b 'Float32 = square(value:) + pi_ish;

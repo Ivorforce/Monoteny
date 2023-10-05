@@ -103,7 +103,7 @@ pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::S
         }))
     }
 
-    return Err(RuntimeError { msg: format!("Unknown pattern in function definition: {}", function.parts.iter().map(|x| x.to_string()).join(" ")) });
+    return Err(RuntimeError::new(format!("Unknown pattern in function definition: {}", function.parts.iter().map(|x| x.to_string()).join(" "))));
 }
 
 pub fn match_patterns<'a>(pattern_parts: &'a Vec<Box<PatternPart>>, function_parts: &'a Vec<Box<OperatorArgument>>) -> Option<Vec<(&'a ParameterKey, &'a str, &'a Expression)>> {

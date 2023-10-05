@@ -78,7 +78,7 @@ impl <'a> GlobalLinker<'a> {
     pub fn link_global_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>) -> Result<(), RuntimeError> {
         match statement {
             ast::GlobalStatement::Error(err) => {
-                return Err(RuntimeError { msg: err.clone() })
+                return Err(err.clone())
             }
             ast::GlobalStatement::Pattern(pattern) => {
                 let pattern = self.link_pattern(pattern)?;
@@ -223,7 +223,7 @@ impl <'a> GlobalLinker<'a> {
                         self.module.transpile_functions.push(Rc::clone(&fun.target));
                         fun
                     },
-                    _ => return Err(RuntimeError { msg: format!("Function macro could not be resolved: {}", syntax.macro_name) }),
+                    _ => return Err(RuntimeError::new(format!("Function macro could not be resolved: {}", syntax.macro_name))),
                 };
 
                 self.add_function(fun, &syntax.body, &syntax.decorators)?;
@@ -257,7 +257,7 @@ impl <'a> GlobalLinker<'a> {
         }
 
         for decorator in decorators.iter() {
-            return Err(RuntimeError { msg: format!("Decorator could not be resolved: {}", decorator) })
+            return Err(RuntimeError::new(format!("Decorator could not be resolved: {}", decorator)))
         }
 
         Ok(())

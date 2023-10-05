@@ -41,7 +41,7 @@ pub struct ObjectReference {
 impl Reference {
     pub fn as_object_ref(&self, require_mutable: bool) -> Result<&Rc<ObjectReference>, RuntimeError> {
         guard!(let Reference::Object(obj_ref) = self else {
-            return Err(RuntimeError { msg: format!("Reference is not to an object: {:?}", self) });
+            return Err(RuntimeError::new(format!("Reference is not to an object: {:?}", self)));
         });
 
         Ok(&obj_ref)
@@ -51,7 +51,7 @@ impl Reference {
         let type_ = &self.as_object_ref(false)?.type_;
 
         guard!(let TypeUnit::MetaType = &type_.unit else {
-           return Err(RuntimeError { msg: format!("Reference is not a type.") });
+           return Err(RuntimeError::new(format!("Reference is not a type.")));
         });
 
         Ok(&type_.arguments.get(0).unwrap().unit)
@@ -63,16 +63,16 @@ impl Reference {
         match type_.unit {
             TypeUnit::MetaType => match &type_.arguments[0].unit {
                 TypeUnit::Struct(t) => Ok(Rc::clone(t)),
-                _ => Err(RuntimeError { msg: format!("Reference is not a struct metatype.") })
+                _ => Err(RuntimeError::new(format!("Reference is not a struct metatype.")))
             },
-            _ => Err(RuntimeError { msg: format!("Reference is not a metatype.") })
+            _ => Err(RuntimeError::new(format!("Reference is not a metatype.")))
         }
     }
 
     pub fn as_function_overload(&self) -> Result<Rc<FunctionOverload>, RuntimeError> {
         match self {
             Reference::FunctionOverload(overload) => Ok(Rc::clone(overload)),
-            _ => Err(RuntimeError { msg: format!("Reference is not a function in this context.") })
+            _ => Err(RuntimeError::new(format!("Reference is not a function in this context.")))
         }
     }
 }
@@ -89,7 +89,7 @@ impl ObjectReference {
     pub fn as_function_head(&self) -> Result<&Rc<FunctionHead>, RuntimeError> {
         match &self.type_.unit {
             TypeUnit::Function(f) => Ok(f),
-            _ => Err(RuntimeError { msg: format!("Object is not a function in this context.") })
+            _ => Err(RuntimeError::new(format!("Object is not a function in this context.")))
         }
     }
 }

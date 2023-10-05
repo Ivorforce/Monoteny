@@ -2,6 +2,7 @@ use lalrpop_util::ErrorRecovery;
 use std::str::FromStr;
 use crate::parser::ast::*;
 use crate::parser::lexer::*;
+use crate::parser::error::*;
 use crate::program::types::*;
 use crate::program::allocation::*;
 use crate::program::functions::ParameterKey;
@@ -77,7 +78,7 @@ pub GlobalStatement: Box<GlobalStatement> = {
     Trait => Box::new(GlobalStatement::Trait(<>)),
     Conformance => Box::new(GlobalStatement::Conformance(<>)),
     GlobalMacro => Box::new(GlobalStatement::Macro(<>)),
-    ! => { errors.push(<>.clone()); Box::new(GlobalStatement::Error(format!("{:?}", <>.error))) },
+    <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Box::new(GlobalStatement::Error(derive_error(&e, start, end))) },
 };
 
 Pattern: Box<PatternDeclaration> = {
@@ -148,7 +149,7 @@ pub Statement: Box<Statement> = {
     "upd" <variable_name: Identifier> "=" <new_value: Expression> => Box::new(Statement::VariableAssignment { variable_name, new_value }),
     "return" <Expression?> => Box::new(Statement::Return(<>)),
     Expression => Box::new(Statement::Expression(<>)),
-    ! => { errors.push(<>.clone()); Box::new(Statement::Error(format!("{:?}", <>.error))) },
+    <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Box::new(Statement::Error(derive_error(&e, start, end))) },
 };
 
 VariableDeclarationMutability: Mutability = {

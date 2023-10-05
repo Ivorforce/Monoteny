@@ -96,13 +96,11 @@ impl Runtime {
 
     pub fn load_file(&mut self, path: &PathBuf) -> Result<Box<Module>, Vec<RuntimeError>> {
         let content = std::fs::read_to_string(&path)
-            .map_err(|e| vec![RuntimeError { msg: e.to_string() }])?;
+            .map_err(|e| vec![RuntimeError::new(e.to_string())])?;
         self.load_source(&content)
             .map_err(|errs| {
-                let file_str = path.as_os_str().to_string_lossy();
-
                 errs.into_iter().map(|e| {
-                    e.with_cause(format!("in file: {}", file_str).as_str())
+                    e.in_file(path.clone())
                 }).collect_vec()
             })
     }
@@ -112,7 +110,7 @@ impl Runtime {
         // TODO When JIT loading is implemented, we should still try to link all non-loaded
         //  functions / modules and warn if they fail. We can also then warn they're unused too.
         let (ast, _) = parser::parse_program(source)
-            .map_err(|e| vec![RuntimeError { msg: e.to_string() }])?;
+            .map_err(|e| vec![RuntimeError::new(e.to_string())])?;
         self.load_ast(&ast)
     }
 
@@ -122,7 +120,7 @@ impl Runtime {
         // TODO This needs to be ordered.
         for module in self.source.module_by_name.values() {
             scope.import(module)
-                .map_err(|e| RuntimeError { msg: e.to_string() }).map_err(|e| vec![e])?;
+                .map_err(|e| RuntimeError::new(e.to_string())).map_err(|e| vec![e])?;
         }
 
         let module = linker::link_file(syntax, &scope, self)?;

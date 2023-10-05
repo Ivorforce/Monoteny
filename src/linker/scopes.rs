@@ -176,7 +176,7 @@ impl <'a> Scope<'a> {
             }
 
             match &pattern.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
-                [_] => return Err(RuntimeError { msg: format!("Pattern is too short: {}.", pattern.alias) }),
+                [_] => return Err(RuntimeError::new(format!("Pattern is too short: {}.", pattern.alias))),
                 [
                     PatternPart::Keyword(keyword),
                     PatternPart::Parameter { .. },
@@ -203,7 +203,7 @@ impl <'a> Scope<'a> {
                     keyword_map.insert(keyword.clone(), pattern.alias.clone());
                     self.insert_keyword(keyword);
                 }
-                _ => return Err(RuntimeError { msg: String::from("This pattern form is not supported; try using unary or binary patterns.") }),
+                _ => return Err(RuntimeError::new(String::from("This pattern form is not supported; try using unary or binary patterns."))),
             };
 
             self.patterns.insert(pattern);
@@ -225,7 +225,7 @@ impl <'a> Scope<'a> {
             return parent.resolve(environment, name);
         }
 
-        Err(RuntimeError { msg: format!("Reference '{}' could not be resolved", name) })
+        Err(RuntimeError::new(format!("Reference '{}' could not be resolved", name)))
     }
 
     pub fn resolve_precedence_group(&self, name: &str) -> Rc<PrecedenceGroup> {

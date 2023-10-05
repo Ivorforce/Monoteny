@@ -36,7 +36,7 @@ impl <'a> ConformanceLinker<'a> {
                 });
             }
             _ => {
-                return Err(RuntimeError { msg: format!("Statement {} not valid in a conformance context.", statement) });
+                return Err(RuntimeError::new(format!("Statement {} not valid in a conformance context.", statement)));
             }
         }
 
@@ -66,10 +66,10 @@ impl <'a> ConformanceLinker<'a> {
                 .collect_vec();
 
             if matching_implementations.len() == 0 {
-                return Err(RuntimeError { msg: format!("Function {:?} missing for conformance.", expected_pointer) });
+                return Err(RuntimeError::new(format!("Function {:?} missing for conformance.", expected_pointer)));
             }
             else if matching_implementations.len() > 1 {
-                return Err(RuntimeError { msg: format!("Function {:?} is implemented multiple times.", expected_pointer) });
+                return Err(RuntimeError::new(format!("Function {:?} is implemented multiple times.", expected_pointer)));
             }
             else {
                 function_bindings.insert(
@@ -80,7 +80,7 @@ impl <'a> ConformanceLinker<'a> {
         }
 
         if unmatched_implementations.len() > 0 {
-            return Err(RuntimeError { msg: format!("Unrecognized functions for declaration {:?}: {:?}.", binding, unmatched_implementations) });
+            return Err(RuntimeError::new(format!("Unrecognized functions for declaration {:?}: {:?}.", binding, unmatched_implementations)));
         }
 
         Ok(TraitConformance::new(Rc::clone(&binding), function_bindings.clone()))

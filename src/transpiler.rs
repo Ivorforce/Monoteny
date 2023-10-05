@@ -38,7 +38,7 @@ pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -
     let transpiler = Transpiler {
         monomorphizer: Box::new(Monomorphizer::new()),
         main_function: module.main_functions.iter().at_most_one()
-            .map_err(|_| RuntimeError { msg: format!("Too many @main functions declared: {:?}", module.main_functions) })?
+            .map_err(|_| RuntimeError::new(format!("Too many @main functions declared: {:?}", module.main_functions)))?
             .cloned(),
         exported_functions: vec![],
         internal_functions: vec![],

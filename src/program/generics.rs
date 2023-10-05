@@ -62,7 +62,7 @@ impl TypeForest {
 
     pub fn resolve_binding_alias(&self, alias: &GenericAlias) -> Result<Box<TypeProto>, RuntimeError> {
         guard!(let Some(identity) = self.alias_to_identity.get(alias) else {
-            return Err(RuntimeError { msg: format!("Unknown generic: {}", alias) })
+            return Err(RuntimeError::new(format!("Unknown generic: {}", alias)))
         });
 
         guard!(let Some(binding) = self.identity_to_type.get(identity) else {
@@ -218,7 +218,7 @@ impl TypeForest {
         match (self.identity_to_type.remove(&lhs), self.identity_to_type.remove(&rhs)) {
             (Some(lhs_type), Some(rhs_type)) => {
                 if lhs_type != rhs_type {
-                    return Err(RuntimeError { msg: format!("Cannot merge types: {:?} and {:?}", lhs_type, rhs_type) })
+                    return Err(RuntimeError::new(format!("Cannot merge types: {:?} and {:?}", lhs_type, rhs_type)))
                 }
                 self.identity_to_type.insert(lhs.clone(), lhs_type);
 
