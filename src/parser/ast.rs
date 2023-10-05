@@ -1,10 +1,12 @@
 use std::fmt::{Display, Error, Formatter};
 use std::ops::{Deref, DerefMut};
+use itertools::Itertools;
 use crate::error::RuntimeError;
 use crate::program::functions::ParameterKey;
 use crate::program::allocation::Mutability;
 use crate::program::types::PatternPart;
 use crate::util::fmt::{write_comma_separated_list, write_space_separated_list};
+use crate::util::position::Positioned;
 
 // =============================== Global =====================================
 
@@ -111,10 +113,10 @@ pub enum Statement {
 }
 
 #[derive(Eq, PartialEq)]
-pub struct Expression(Vec<Box<Term>>);
+pub struct Expression(Vec<Box<Positioned<Term>>>);
 
 impl Deref for Expression {
-    type Target = Vec<Box<Term>>;
+    type Target = Vec<Box<Positioned<Term>>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -127,8 +129,8 @@ impl DerefMut for Expression {
     }
 }
 
-impl From<Vec<Box<Term>>> for Expression {
-    fn from(value: Vec<Box<Term>>) -> Self {
+impl From<Vec<Box<Positioned<Term>>>> for Expression {
+    fn from(value: Vec<Box<Positioned<Term>>>) -> Self {
         Expression(value)
     }
 }
@@ -316,7 +318,7 @@ impl Display for Statement {
 
 impl Display for Expression {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write_space_separated_list(f, self)
+        write_space_separated_list(f, &self.iter().map(|b| &b.value).collect_vec())
     }
 }
 

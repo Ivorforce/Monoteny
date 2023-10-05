@@ -208,14 +208,14 @@ impl TraitGraph {
         match compatible_conformances.as_slice() {
             [] => {
                 self.conformance_cache.insert(Rc::clone(&resolved_binding), None);
-                Err(RuntimeError::new(String::from(format!("No compatible declaration for trait conformance requirement: {:?}. {} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations))))
+                Err(RuntimeError::new(String::from(format!("No compatible declaration for trait conformance requirement: {:?}\n{} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations))))
             }
             [declaration] => {
                 self.conformance_cache.insert(resolved_binding, Some(Rc::clone(declaration)));
                 Ok(AmbiguityResult::Ok(Rc::clone(declaration)))
             }
             _ => {
-                Err(RuntimeError::new(String::from(format!("Conflicting declarations for trait conformance requirement: {:?}. {} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations))))
+                Err(RuntimeError::new(String::from(format!("Conflicting declarations for trait conformance requirement: {:?}\n{} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations))))
             }
         }
     }

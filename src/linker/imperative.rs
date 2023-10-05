@@ -275,7 +275,7 @@ impl <'a> ImperativeLinker<'a> {
 
     pub fn link_expression(&mut self, syntax: &ast::Expression, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
         let arguments: Vec<precedence::Token> = syntax.iter().map(|a| {
-            self.link_term(a, scope)
+            self.link_term(&a.value, scope)
         }).try_collect()?;
 
         link_patterns(arguments, scope, self)

@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use guard::guard;
+use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::RuntimeError;
 use crate::linker::scopes;
@@ -47,13 +49,13 @@ impl <'a> TypeFactory<'a> {
     }
 
     pub fn link_type(&mut self, syntax: &ast::Expression) -> Result<Box<TypeProto>, RuntimeError> {
-        if syntax.len() > 1 {
+        guard!(let Ok(pterm) = syntax.iter().exactly_one() else {
             panic!("Monads etc. are not implemented yet: '{}'", syntax)
-        }
-
+        });
+        let term: &ast::Term = &pterm.value;
         let arguments = vec![];
 
-        match syntax.iter().next().unwrap().as_ref() {
+        match term {
             ast::Term::Identifier(type_name) => {
                 match self.resolve_reference(type_name) {
                     Ok(unit) => {

@@ -1,5 +1,7 @@
 use lalrpop_util::ErrorRecovery;
 use std::str::FromStr;
+use itertools::Itertools;
+use crate::util::position::*;
 use crate::parser::ast::*;
 use crate::parser::lexer::*;
 use crate::parser::error::*;
@@ -160,24 +162,24 @@ VariableDeclarationMutability: Mutability = {
 // =============================== Expression =====================================
 
 Expression: Expression = {
-    Term+ => Expression::from(<>)
+    (<@L> <Term> <@R>)+ => Expression::from(<>.into_iter().map(|t| Box::new(positioned(t.1, t.0, t.2))).collect_vec()),
 };
 
-Term: Box<Term> = {
-    AnyIdentifier => Box::new(Term::Identifier(<>)),
-    IntLiteral => Box::new(Term::IntLiteral(<>)),
-    RealLiteral => Box::new(Term::RealLiteral(<>)),
-    "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Box::new(Term::Array(<>)),
-    "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Box::new(Term::Struct(<>)),
-    <target: Term> "." <member_name: Identifier> => Box::new(Term::MemberAccess { <> }),
-    "\"" <StringPart*> "\"" => Box::new(Term::StringLiteral(<>)),
-    "{" <(<Statement> ";")*> "}" => Box::new(Term::Block(<>)),
+Term: Term = {
+    AnyIdentifier => Term::Identifier(<>),
+    IntLiteral => Term::IntLiteral(<>),
+    RealLiteral => Term::RealLiteral(<>),
+    "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Term::Array(<>),
+    "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Term::Struct(<>),
+    <target: Term> "." <member_name: Identifier> => Term::MemberAccess { target: Box::new(target), member_name },
+    "\"" <StringPart*> "\"" => Term::StringLiteral(<>),
+    "{" <(<Statement> ";")*> "}" => Term::Block(<>),
 };
 
 StructArgument: StructArgument = {
-    <key: Identifier> ":" <value: Expression> <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Name(key), value, type_declaration },
-    <value: Expression> <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Positional, value, type_declaration },
-    <key: Identifier> ":" => StructArgument { key: ParameterKey::Name(key.clone()), value: Expression::from(vec![Box::new(Term::Identifier(key))]), type_declaration: None },  // TODO Maybe better handled post-syntax?
+    <key: Identifier> ":" <value: Expression> <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Name(key), value: value, type_declaration },
+    <value: Expression> <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Positional, value: value, type_declaration },
+    <start:@L> <key: Identifier> <end:@R> ":" => StructArgument { key: ParameterKey::Name(key.clone()), value: Expression::from(vec![Box::new(positioned(Term::Identifier(key.clone()), start, end))]), type_declaration: None },
 }
 
 ArrayArgument: ArrayArgument = {

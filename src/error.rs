@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Range;
 use std::path::PathBuf;
@@ -54,19 +55,19 @@ impl Display for FilePosition {
                 if let Ok(contents) = std::fs::read_to_string(&file) {
                     let mut line_idxs = contents.match_indices("\n").collect_vec();
                     let line_start = line_idxs[..].binary_search_by(|x| x.0.cmp(&range.start)).unwrap_or_else(|e| e);
-                    let line_end = line_idxs[..].binary_search_by(|x| x.0.cmp(&range.end)).unwrap_or_else(|e| e);
-                    write!(f, "in file (l {}..{}, p {}..{}): {}\n", line_start + 1, line_end + 1, range.start, range.end, file.as_os_str().to_string_lossy())?;
+                    let path_str = file.as_os_str().to_string_lossy();
+                    write!(f, "--> {}:{}:{}\n", path_str, line_start + 1, range.start - line_idxs[max(0, line_start - 1)].0)?;
                 }
                 else {
-                    write!(f, "in file (p {}..{}): {}\n", range.start, range.end, file.as_os_str().to_string_lossy())?;
+                    write!(f, "in file ({}..{}) -> {}\n", range.start, range.end, file.as_os_str().to_string_lossy())?;
                 }
             }
             else {
-                write!(f, "in file: {}\n", file.as_os_str().to_string_lossy())?;
+                write!(f, "--> {}\n", file.as_os_str().to_string_lossy())?;
             }
         }
         else if let Some(range) = &self.range {
-            write!(f, "in unknown file (p {}..{})", range.start, range.end)?;
+            write!(f, "in unknown file ({}..{})", range.start, range.end)?;
         }
 
         Ok(())
