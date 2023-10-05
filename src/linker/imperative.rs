@@ -283,6 +283,7 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_expression(&mut self, syntax: &ast::Expression, scope: &scopes::Scope) -> RResult<ExpressionID> {
         let arguments: Vec<Positioned<precedence::Token>> = syntax.iter().map(|a| {
             self.link_term(a, scope)
+                .err_in_range(&a.position)
         }).try_collect()?;
 
         link_patterns(arguments, scope, self)
@@ -291,8 +292,7 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_term(&mut self, syntax: &Positioned<ast::Term>, scope: &scopes::Scope) -> RResult<Positioned<precedence::Token>> {
         let token = match &syntax.value {
             ast::Term::Identifier(s) => {
-                let variable = scope.resolve(scopes::Environment::Global, s)
-                    .err_in_range(&syntax.position)?;
+                let variable = scope.resolve(scopes::Environment::Global, s)?;
 
                 match variable {
                     Reference::Object(ref_) => {
@@ -348,14 +348,14 @@ impl <'a> ImperativeLinker<'a> {
                 )?)
             }
             ast::Term::MemberAccess { target, member_name } => {
-                let target = self.link_term(target, scope)?;
+                let target = self.link_term(target, scope)
+                    .err_in_range(&syntax.position)?;
 
                 guard!(let precedence::Token::Expression(target) = &target.value else {
                     return Err(RuntimeError::new(format!("Dot notation is not supported in this context.")))
                 });
 
-                let variable = scope.resolve(scopes::Environment::Member, member_name)
-                    .err_in_range(&syntax.position)?;
+                let variable = scope.resolve(scopes::Environment::Member, member_name)?;
 
                 if let Reference::FunctionOverload(overload) = variable {
                     precedence::Token::FunctionReference { overload: Rc::clone(overload), target: Some(*target) }
