@@ -35,8 +35,8 @@ impl <'a> TypeFactory<'a> {
         self.scope.resolve(Environment::Global, &name)?.as_metatype()
     }
 
-    fn resolve_trait(&mut self, name: &str) -> Rc<Trait> {
-        self.scope.resolve(Environment::Global, &name).unwrap().as_trait().unwrap()
+    fn resolve_trait(&mut self, name: &str) -> RResult<Rc<Trait>> {
+        self.scope.resolve(Environment::Global, &name)?.as_trait()
     }
 
     fn register_generic(&mut self, name: &str, id: Uuid) -> &TypeUnit {
@@ -78,7 +78,7 @@ impl <'a> TypeFactory<'a> {
                                     Some(hash_start_index) => { String::from(&type_name[1..hash_start_index]) }
                                 };
 
-                                let requirement_trait = self.resolve_trait(&type_name);
+                                let requirement_trait = self.resolve_trait(&type_name)?;
                                 self.register_requirement(Rc::new(TraitBinding {
                                     generic_to_type: HashMap::from([(requirement_trait.generics["Self"], type_.clone())]),
                                     trait_: requirement_trait,

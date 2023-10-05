@@ -24,7 +24,7 @@ use std::time::Instant;
 use clap::{arg, Command};
 use itertools::Itertools;
 use colored::Colorize;
-use crate::error::{dump_failure, dump_result, dump_start, dump_success, dump_unexpected_failure, format_errors, RuntimeError};
+use crate::error::{dump_failure, dump_result, dump_start, dump_success, dump_named_failure, format_errors, RuntimeError};
 use crate::interpreter::{Runtime, common};
 use crate::program::module::Module;
 use crate::transpiler::Context;
@@ -76,7 +76,7 @@ fn main() -> ExitCode {
 
             let module = match runtime.load_file(input_path) {
                 Ok(m) => m,
-                Err(e) => return dump_unexpected_failure(format!("import({})", input_path.as_os_str().to_string_lossy()).as_str(), e),
+                Err(e) => return dump_named_failure(format!("import({})", input_path.as_os_str().to_string_lossy()).as_str(), e),
             };
 
             dump_result(
@@ -105,7 +105,7 @@ fn main() -> ExitCode {
                 match runtime.load_file(path) {
                     Ok(_) => {},
                     Err(e) => {
-                        dump_unexpected_failure(format!("import({})", path.as_os_str().to_string_lossy()).as_str(), e);
+                        dump_named_failure(format!("import({})", path.as_os_str().to_string_lossy()).as_str(), e);
                         error_count += 1;
                     },
                 };
@@ -137,13 +137,13 @@ fn main() -> ExitCode {
             let builtins = program::builtins::create_builtins();
             let mut runtime = Runtime::new(&builtins);
             match common::load(&mut runtime) {
-                Err(e) => return dump_unexpected_failure("import(monoteny.common)", e),
+                Err(e) => return dump_named_failure("import(monoteny.common)", e),
                 _ => {}
             }
 
             let module = match runtime.load_file(input_path) {
                 Ok(m) => m,
-                Err(e) => return dump_unexpected_failure(format!("import({})", input_path.as_os_str().to_string_lossy()).as_str(), e),
+                Err(e) => return dump_named_failure(format!("import({})", input_path.as_os_str().to_string_lossy()).as_str(), e),
             };
 
             let mut error_count = 0;

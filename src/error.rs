@@ -67,18 +67,18 @@ impl Display for FilePosition {
                     let path_str = file.as_os_str().to_string_lossy();
                     // For some reason, in line idx is always one too much.
                     // Lines are correct but the unwritten rule is lines start at idx 1.
-                    write!(f, "--> {}:{}:{}\n", path_str, line_start + 1, range.start - line_idxs[max(0, line_start - 1)].0 - 1)?;
+                    write!(f, "\n  --> {}:{}:{}", path_str, line_start + 1, range.start - line_idxs[max(0, line_start - 1)].0 - 1)?;
                 }
                 else {
-                    write!(f, "in file ({}..{}) -> {}\n", range.start, range.end, file.as_os_str().to_string_lossy())?;
+                    write!(f, "\n  --> in {} (range {}..{})", file.as_os_str().to_string_lossy(), range.start, range.end)?;
                 }
             }
             else {
-                write!(f, "--> {}\n", file.as_os_str().to_string_lossy())?;
+                write!(f, "\n  --> {}", file.as_os_str().to_string_lossy())?;
             }
         }
         else if let Some(range) = &self.range {
-            write!(f, "in unknown file ({}..{})", range.start, range.end)?;
+            write!(f, "  --> in unknown file (range {}..{})", range.start, range.end)?;
         }
 
         Ok(())
@@ -87,7 +87,7 @@ impl Display for FilePosition {
 
 impl Display for RuntimeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", self.position, self.msg)
+        write!(f, "{}: {}{}", "Error".red().bold(), self.msg, self.position)
     }
 }
 
@@ -113,13 +113,15 @@ pub fn dump_result<V>(start: Instant, result: Result<V, Vec<RuntimeError>>) -> E
     }
 }
 
-pub fn dump_unexpected_failure(name: &str, err: Vec<RuntimeError>) -> ExitCode {
-    println!("{} on {} ({} error(s)):\n\n{}", "Failure".red().bold(), name, err.len(), format_errors(&err));
+pub fn dump_named_failure(name: &str, err: Vec<RuntimeError>) -> ExitCode {
+    println!("{}", format_errors(&err));
+    println!("\n{} on {} ({} error(s))", "Failure".red().bold(), name, err.len());
     ExitCode::FAILURE
 }
 
 pub fn dump_failure(err: Vec<RuntimeError>) -> ExitCode {
-    println!("{} ({} error(s)):\n\n{}", "Failure".red().bold(), err.len(), format_errors(&err));
+    println!("{}", format_errors(&err));
+    println!("\n{} ({} error(s))", "Failure".red().bold(), err.len());
     ExitCode::FAILURE
 }
 

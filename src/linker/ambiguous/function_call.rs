@@ -125,15 +125,13 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
 
         match &self.failed_candidates[..] {
             [] => panic!(),
-            [c] => {
+            [(candidate, err)] => {
                 // TODO How so?
-                let (candidate, err) = self.failed_candidates.iter().next().unwrap();
-
                 Err(RuntimeError::new(format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function, err)))
             }
             cs => {
                 // TODO Print types of arguments too, for context.
-                Err(RuntimeError::new(format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, self.failed_candidates.len(), &argument_types)))
+                Err(RuntimeError::new(format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, cs.len(), &argument_types)))
             }
         }
     }

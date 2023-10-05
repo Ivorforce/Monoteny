@@ -502,16 +502,17 @@ impl <'a> ImperativeLinker<'a> {
 
         // TODO We should probably output the locations of candidates.
 
-        if candidates_with_failed_signature.len() > 1 {
-            panic!("function {}({:?}) could not be resolved. {} candidates have mismatching signatures.", fn_name, argument_keys.iter().join(", "), candidates_with_failed_signature.len())
+        match &candidates_with_failed_signature[..] {
+            [candidate] => {
+                // TODO Print passed arguments like a signature, not array
+                panic!("function {}({:?}) could not be resolved. Candidate has mismatching signature: {:?}", fn_name, argument_keys.iter().join(", "), candidate)
+            }
+            [] => {
+                panic!("function {} could not be resolved.", fn_name)
+            }
+            candidates => {
+                panic!("function {}({:?}) could not be resolved. {} candidates have mismatching signatures.", fn_name, argument_keys.iter().join(", "), candidates.len())
+            }
         }
-
-        if candidates_with_failed_signature.len() == 1 {
-            // TODO Print passed arguments like a signature, not array
-            let candidate = candidates_with_failed_signature.iter().next().unwrap();
-            panic!("function {}({:?}) could not be resolved. Candidate has mismatching signature: {:?}", fn_name, argument_keys.iter().join(", "), candidate)
-        }
-
-        panic!("function {} could not be resolved.", fn_name)
     }
 }
