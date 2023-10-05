@@ -91,6 +91,8 @@ fn main() -> ExitCode {
                 .flatten()
                 .collect::<Vec<_>>();
 
+            let start = dump_start(format!("check for {} file(s)", paths.len()).as_str());
+
             let builtins = program::builtins::create_builtins();
             let mut runtime = Runtime::new(&builtins);
             if let Err(e) = common::load(&mut runtime) {
@@ -107,6 +109,10 @@ fn main() -> ExitCode {
                         error_count += 1;
                     },
                 };
+            }
+
+            if error_count == 0 {
+                dump_success(start);
             }
 
             ExitCode::from(error_count)
