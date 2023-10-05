@@ -143,7 +143,7 @@ fn internal_main() -> Result<(), Vec<RuntimeError>> {
                     output_extension => panic!("File type not supported: {}", output_extension)
                 };
 
-                println!("{} transpile({:?}) using {}:@transpile", "Running".green().bold(), output_extension, input_path.as_os_str().to_string_lossy());
+                println!("{} {}:@transpile using target {:?}", "Running".green().bold(), input_path.as_os_str().to_string_lossy(), output_extension);
                 let mut transpiler = transpiler::run(&module, &mut runtime, &mut context).map_err(|e| vec![e])?;
 
                 if should_constant_fold {
