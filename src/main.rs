@@ -48,7 +48,7 @@ fn cli() -> Command<'static> {
                 .arg_required_else_help(true)
                 .arg(arg!(<INPUT> "file to transpile").value_parser(clap::value_parser!(PathBuf)).long("input").short('i'))
                 .arg(arg!(<OUTPUT> "output file path").required(false).value_parser(clap::value_parser!(PathBuf)).long("output").short('o'))
-                .arg(arg!(<ALL> "output using all available transpilers").required(false).takes_value(false).long("all"))
+                .arg(arg!(<ALL> "use all available transpilers").required(false).takes_value(false).long("all"))
                 .arg(arg!(<NOFOLD> "don't use constant folding to shorten the code at compile time").required(false).takes_value(false).long("nofold"))
         )
 }
