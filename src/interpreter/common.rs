@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use crate::interpreter::{InterpreterError, Runtime};
 
-pub fn load(runtime: &mut Runtime) -> Result<(), InterpreterError> {
+pub fn load(runtime: &mut Runtime) -> Result<(), Vec<InterpreterError>> {
     for name in [
         "patterns", "math", "strings", "debug",
     ] {

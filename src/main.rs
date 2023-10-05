@@ -19,6 +19,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use clap::{arg, Command};
+use itertools::Itertools;
 use crate::interpreter::{Runtime, InterpreterError, common};
 use crate::transpiler::Context;
 
@@ -58,13 +59,21 @@ fn main() -> ExitCode {
             ExitCode::from(0)
         },
         Err(err) => {
-            println!("{}", err);
+            match &err[..] {
+                [] => unreachable!(),
+                [err] => {
+                    println!("Failed to run command:\n\n{}", err);
+                }
+                errs => {
+                    println!("Failed to run command ({} errors):\n\n{}", err.len(), err.into_iter().map(|e| e.to_string()).join("\n\n"));
+                }
+            }
             ExitCode::from(1)
         }
     }
 }
 
-fn internal_main() -> Result<(), InterpreterError> {
+fn internal_main() -> Result<(), Vec<InterpreterError>> {
     let matches = cli().get_matches();
     match matches.subcommand() {
         Some(("run", sub_matches)) => {
@@ -76,7 +85,7 @@ fn internal_main() -> Result<(), InterpreterError> {
 
             let module = runtime.load_file(path)?;
 
-            interpreter::run::main(&module, &mut runtime)?;
+            interpreter::run::main(&module, &mut runtime).map_err(|e| vec![e])?;
         },
         Some(("check", sub_matches)) => {
             let paths = sub_matches
@@ -125,7 +134,7 @@ fn internal_main() -> Result<(), InterpreterError> {
                     output_extension => panic!("File type not supported: {}", output_extension)
                 };
 
-                let mut transpiler = transpiler::run(&module, &mut runtime, &mut context)?;
+                let mut transpiler = transpiler::run(&module, &mut runtime, &mut context).map_err(|e| vec![e])?;
 
                 if should_constant_fold {
                     transpiler::constant_fold(&mut transpiler);

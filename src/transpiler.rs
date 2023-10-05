@@ -28,7 +28,7 @@ pub struct Transpiler {
 pub trait Context {
     fn builtin_functions(&self) -> HashSet<Rc<FunctionHead>>;
 
-    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, InterpreterError>;
+    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, Vec<InterpreterError>>;
 }
 
 pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -> Result<Transpiler, InterpreterError> {

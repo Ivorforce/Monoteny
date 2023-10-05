@@ -16,7 +16,7 @@ use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::functions::{FunctionHead, FunctionType, FunctionForm, FunctionInterface, FunctionPointer, Parameter, ParameterKey};
 use crate::program::generics::TypeForest;
-use crate::program::global::BuiltinFunctionHint;
+use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::module::Module;
 use crate::program::types::*;
 
@@ -27,7 +27,7 @@ pub struct GlobalLinker<'a> {
     pub module: Module,
 }
 
-pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime) -> Result<Box<Module>, InterpreterError> {
+pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime) -> Result<Box<Module>, Vec<InterpreterError>> {
     let mut global_linker = GlobalLinker {
         runtime,
         module: Module::new("main".to_string()),  // TODO Give it a name!
@@ -37,12 +37,13 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime)
 
     // Resolve global types / interfaces
     for statement in &syntax.global_statements {
-        global_linker.link_global_statement(statement.as_ref(), &HashSet::new())?;
+        global_linker.link_global_statement(statement.as_ref(), &HashSet::new()).map_err(|e| vec![e])?;
     }
 
     let global_variable_scope = &global_linker.global_variables;
 
     // Resolve function bodies
+    let mut errors = vec![];
     for (head, body) in global_linker.function_bodies.drain() {
         let mut variable_names = HashMap::new();
 
@@ -56,11 +57,20 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime)
             ambiguities: vec![]
         });
 
-        let implementation = resolver.link_function_body(body, &global_variable_scope)?;
-        global_linker.module.fn_implementations.insert(Rc::clone(&head), implementation);
+        match resolver.link_function_body(body, &global_variable_scope) {
+            Ok(implementation) => {
+                global_linker.module.fn_implementations.insert(Rc::clone(&head), implementation);
+            }
+            Err(e) => {
+                errors.push(e);
+            }
+        }
     }
 
-    Ok(Box::new(global_linker.module))
+    match errors.is_empty() {
+        true => Ok(Box::new(global_linker.module)),
+        false => Err(errors)
+    }
 }
 
 impl <'a> GlobalLinker<'a> {

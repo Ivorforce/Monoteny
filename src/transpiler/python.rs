@@ -35,8 +35,8 @@ impl transpiler::Context for Context {
         self.representations.builtin_functions.clone()
     }
 
-    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, InterpreterError> {
-        let ast = create_ast(transpiler, self, runtime)?;
+    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, Vec<InterpreterError>> {
+        let ast = create_ast(transpiler, self, runtime).map_err(|e| vec![e])?;
 
         Ok(HashMap::from([
             (format!("{}.py", filename), ast.to_string())

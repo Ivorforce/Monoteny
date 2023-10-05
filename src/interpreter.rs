@@ -101,31 +101,31 @@ impl Runtime {
         runtime
     }
 
-    pub fn load_file(&mut self, path: &PathBuf) -> Result<Box<Module>, InterpreterError> {
+    pub fn load_file(&mut self, path: &PathBuf) -> Result<Box<Module>, Vec<InterpreterError>> {
         let content = std::fs::read_to_string(&path)
-            .map_err(|e| InterpreterError::OSError { msg: e.to_string() })?;
+            .map_err(|e| vec![InterpreterError::OSError { msg: e.to_string() }])?;
         self.load_source(&content)
     }
 
-    pub fn load_source(&mut self, source: &str) -> Result<Box<Module>, InterpreterError> {
+    pub fn load_source(&mut self, source: &str) -> Result<Box<Module>, Vec<InterpreterError>> {
         // We can ignore the errors. All errors are stored inside the AST too and will fail there.
         // TODO When JIT loading is implemented, we should still try to link all non-loaded
         //  functions / modules and warn if they fail. We can also then warn they're unused too.
         let (ast, _) = parser::parse_program(source)
-            .map_err(|e| InterpreterError::ParserError { msg: e.to_string() })?;
+            .map_err(|e| vec![InterpreterError::ParserError { msg: e.to_string() }])?;
         self.load_ast(&ast)
     }
 
-    pub fn load_ast(&mut self, syntax: &ast::Module) -> Result<Box<Module>, InterpreterError> {
+    pub fn load_ast(&mut self, syntax: &ast::Module) -> Result<Box<Module>, Vec<InterpreterError>> {
         let mut scope = self.builtins.create_scope();
 
+        // TODO This needs to be ordered.
         for module in self.source.module_by_name.values() {
             scope.import(module)
-                .map_err(|e| InterpreterError::LinkerError { msg: e.to_string() })?;
+                .map_err(|e| InterpreterError::LinkerError { msg: e.to_string() }).map_err(|e| vec![e])?;
         }
 
-        let module = linker::link_file(syntax, &scope, self)
-            .map_err(|e| InterpreterError::LinkerError { msg: e.to_string() })?;
+        let module = linker::link_file(syntax, &scope, self)?;
 
         self.load_module(&module);
 
