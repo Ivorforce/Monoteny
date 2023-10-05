@@ -62,7 +62,9 @@ impl Display for FilePosition {
                     let mut line_idxs = contents.match_indices("\n").collect_vec();
                     let line_start = line_idxs[..].binary_search_by(|x| x.0.cmp(&range.start)).unwrap_or_else(|e| e);
                     let path_str = file.as_os_str().to_string_lossy();
-                    write!(f, "--> {}:{}:{}\n", path_str, line_start + 1, range.start - line_idxs[max(0, line_start - 1)].0)?;
+                    // For some reason, in line idx is always one too much.
+                    // Lines are correct but the unwritten rule is lines start at idx 1.
+                    write!(f, "--> {}:{}:{}\n", path_str, line_start + 1, range.start - line_idxs[max(0, line_start - 1)].0 - 1)?;
                 }
                 else {
                     write!(f, "in file ({}..{}) -> {}\n", range.start, range.end, file.as_os_str().to_string_lossy())?;
