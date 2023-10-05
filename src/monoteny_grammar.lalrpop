@@ -151,7 +151,6 @@ pub Statement: Statement = {
     "upd" <variable_name: Identifier> "=" <new_value: Expression> => Statement::VariableAssignment { variable_name, new_value },
     "return" <Expression?> => Statement::Return(<>),
     Expression => Statement::Expression(<>),
-    <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Statement::Error(derive_error(&e, start, end)) },
 };
 
 VariableDeclarationMutability: Mutability = {
@@ -174,6 +173,7 @@ Term: Term = {
     <target: Box<Positioned<Term>>> "." <member_name: Identifier> => Term::MemberAccess { <> },
     "\"" <Box<Positioned<StringPart>>*> "\"" => Term::StringLiteral(<>),
     "{" <(<Box<Positioned<Statement>>> ";")*> "}" => Term::Block(<>),
+    <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Term::Error(derive_error(&e, start, end)) },
 };
 
 StructArgument: StructArgument = {

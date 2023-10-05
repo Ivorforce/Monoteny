@@ -17,13 +17,13 @@ pub struct Module {
 
 #[derive(Eq, PartialEq)]
 pub enum GlobalStatement {
+    Error(RuntimeError),
     FunctionDeclaration(Box<Function>),
     Operator(Box<OperatorFunction>),
     Pattern(Box<PatternDeclaration>),
     Trait(Box<TraitDefinition>),
     Conformance(Box<TraitConformanceDeclaration>),
     Macro(Box<GlobalMacro>),
-    Error(RuntimeError),
 }
 
 #[derive(Eq, PartialEq)]
@@ -109,7 +109,6 @@ pub enum Statement {
     VariableAssignment { variable_name: String, new_value: Expression },
     Expression(Expression),
     Return(Option<Expression>),
-    Error(RuntimeError),
 }
 
 #[derive(Eq, PartialEq)]
@@ -137,6 +136,7 @@ impl From<Vec<Box<Positioned<Term>>>> for Expression {
 
 #[derive(Eq, PartialEq)]
 pub enum Term {
+    Error(RuntimeError),
     Identifier(String),
     IntLiteral(String),
     RealLiteral(String),
@@ -196,13 +196,13 @@ impl Display for Module {
 impl Display for GlobalStatement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
+            GlobalStatement::Error(_) => write!(fmt, "ERR"),
             GlobalStatement::FunctionDeclaration(function) => write!(fmt, "{}", function),
             GlobalStatement::Pattern(pattern) => write!(fmt, "{}", pattern),
             GlobalStatement::Operator(operator) => write!(fmt, "{}", operator),
             GlobalStatement::Trait(trait_) => write!(fmt, "{}", trait_),
             GlobalStatement::Conformance(conformance) => write!(fmt, "{}", conformance),
             GlobalStatement::Macro(macro_) => write!(fmt, "{}", macro_),
-            GlobalStatement::Error(string) => write!(fmt, "{}", string),
         }?;
 
         write!(fmt, ";")
@@ -311,7 +311,6 @@ impl Display for Statement {
             Statement::Return(Some(expression)) => write!(fmt, "return {}", expression),
             Statement::Return(None) => write!(fmt, "return"),
             Statement::Expression(ref expression) => write!(fmt, "{}", expression),
-            Statement::Error(string) => write!(fmt, "{}", string),
         }
     }
 }
@@ -325,6 +324,7 @@ impl Display for Expression {
 impl Display for Term {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
+            Term::Error(_) => write!(fmt, "ERR"),
             Term::Identifier(s) => write!(fmt, "{}", s),
             Term::IntLiteral(s) => write!(fmt, "{}", s),
             Term::RealLiteral(s) => write!(fmt, "{}", s),

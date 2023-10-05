@@ -205,9 +205,6 @@ impl <'a> ImperativeLinker<'a> {
 
     fn link_statement(&mut self, scope: &mut scopes::Scope, statement: &ast::Statement) -> RResult<ExpressionID> {
         let expression_id = match statement {
-            ast::Statement::Error(err) => {
-                return Err(err.clone())
-            }
             ast::Statement::VariableDeclaration {
                 mutability, identifier, type_declaration, expression
             } => {
@@ -291,6 +288,9 @@ impl <'a> ImperativeLinker<'a> {
 
     pub fn link_term(&mut self, syntax: &Positioned<ast::Term>, scope: &scopes::Scope) -> RResult<Positioned<precedence::Token>> {
         let token = match &syntax.value {
+            ast::Term::Error(err) => {
+                return Err(err.clone())
+            }
             ast::Term::Identifier(s) => {
                 let variable = scope.resolve(scopes::Environment::Global, s)?;
 
