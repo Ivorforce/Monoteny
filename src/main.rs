@@ -19,8 +19,10 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::time::Instant;
 use clap::{arg, Command};
 use itertools::Itertools;
+use colored::Colorize;
 use crate::error::RuntimeError;
 use crate::interpreter::{Runtime, common};
 use crate::transpiler::Context;
@@ -87,7 +89,10 @@ fn internal_main() -> Result<(), Vec<RuntimeError>> {
 
             let module = runtime.load_file(path)?;
 
+            println!("{} {}:@main", "Running".green().bold(), path.as_os_str().to_string_lossy());
+            let start = Instant::now();
             interpreter::run::main(&module, &mut runtime).map_err(|e| vec![e])?;
+            println!("{} running in {:.2}s", "Finished".green().bold(), start.elapsed().as_secs_f32());
         },
         Some(("check", sub_matches)) => {
             let paths = sub_matches
@@ -101,7 +106,7 @@ fn internal_main() -> Result<(), Vec<RuntimeError>> {
             common::load(&mut runtime)?;
 
             for path in paths {
-                println!("Checking {:?}...", path);
+                println!("{} {}:@check", "Running".green().bold(), path.as_os_str().to_string_lossy());
                 runtime.load_file(path)?;
             }
 
@@ -130,12 +135,15 @@ fn internal_main() -> Result<(), Vec<RuntimeError>> {
 
             let module = runtime.load_file(input_path)?;
 
+            let target_count = output_extensions.len();
+            let start = Instant::now();
             for output_extension in output_extensions {
                 let mut context = match output_extension {
                     "py" => transpiler::python::create_context(&runtime),
                     output_extension => panic!("File type not supported: {}", output_extension)
                 };
 
+                println!("{} transpile({:?}) using {}:@transpile", "Running".green().bold(), output_extension, input_path.as_os_str().to_string_lossy());
                 let mut transpiler = transpiler::run(&module, &mut runtime, &mut context).map_err(|e| vec![e])?;
 
                 if should_constant_fold {
@@ -151,7 +159,9 @@ fn internal_main() -> Result<(), Vec<RuntimeError>> {
 
                     println!("{}", file_path.to_str().unwrap());
                 }
+                println!();
             }
+            println!("{} transpiling {} target{} in {:.2}s", "Finished".green().bold(), target_count, if target_count == 1 { "" } else { "s" }, start.elapsed().as_secs_f32());
         },
         _ => {
             panic!("Unsupported action.")
