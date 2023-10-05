@@ -222,7 +222,7 @@ impl TypeForest {
                 }
                 self.identity_to_type.insert(lhs.clone(), lhs_type);
 
-                let lhs_args: Vec<GenericIdentity> = self.identity_to_arguments.get(&lhs).unwrap().iter().map(Clone::clone).collect();
+                let lhs_args: Vec<GenericIdentity> = self.identity_to_arguments.get(&lhs).unwrap().iter().cloned().collect();
 
                 // TODO This might fall into a trap of recursion circles
                 // Merge arguments

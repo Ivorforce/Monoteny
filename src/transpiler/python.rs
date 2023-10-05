@@ -55,7 +55,7 @@ pub fn create_context(runtime: &Runtime) -> Context {
 
 pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime) -> Result<Box<ast::Module>, RuntimeError> {
     let mut representations = context.representations.clone();
-    let builtin_structs: HashSet<_> = representations.type_ids.keys().map(Clone::clone).collect();
+    let builtin_structs: HashSet<_> = representations.type_ids.keys().cloned().collect();
 
     let mut global_namespace = context.builtin_namespace.clone();
     let mut file_namespace = global_namespace.add_sublevel();

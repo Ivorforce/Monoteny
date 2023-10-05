@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::ops::Range;
 use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
@@ -27,6 +28,8 @@ pub struct AmbiguousFunctionCall {
     pub function_name: String,
     pub arguments: Vec<ExpressionID>,
     pub traits: TraitGraph,
+
+    pub range: Range<usize>,
 
     pub candidates: Vec<Box<AmbiguousFunctionCandidate>>,
     pub failed_candidates: Vec<(Box<AmbiguousFunctionCandidate>, RuntimeError)>,
@@ -120,14 +123,18 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             linker.types.prototype_binding_alias(t)
         ).collect_vec();
 
-        if self.failed_candidates.len() == 1 {
-            // TODO How so?
-            let (candidate, err) = self.failed_candidates.iter().next().unwrap();
+        match &self.failed_candidates[..] {
+            [] => panic!(),
+            [c] => {
+                // TODO How so?
+                let (candidate, err) = self.failed_candidates.iter().next().unwrap();
 
-            Err(RuntimeError::new(format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function, err)))
-        } else {
-            // TODO Print types of arguments too, for context.
-            Err(RuntimeError::new(format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, self.failed_candidates.len(), &argument_types)))
+                Err(RuntimeError::new(format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function, err)))
+            }
+            cs => {
+                // TODO Print types of arguments too, for context.
+                Err(RuntimeError::new(format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, self.failed_candidates.len(), &argument_types)))
+            }
         }
     }
 }

@@ -1,16 +1,18 @@
 use std::collections::HashMap;
+use std::ops::Range;
 use std::rc::Rc;
 use uuid::Uuid;
 use guard::guard;
 use itertools::Itertools;
 use try_map::FallibleMapExt;
-use crate::error::RuntimeError;
+use crate::error::{ErrInRange, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::program::computation_tree::{ExpressionTree, ExpressionID, ExpressionOperation};
 use crate::linker::{precedence, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousAbstractCall, LinkerAmbiguity, AmbiguityResult};
 use crate::linker::precedence::link_patterns;
 use crate::linker::r#type::TypeFactory;
+use crate::linker::scopes::Scope;
 use crate::parser::ast;
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
@@ -19,6 +21,7 @@ use crate::program::global::FunctionImplementation;
 use crate::program::r#struct::Struct;
 use crate::program::traits::{RequirementsAssumption, Trait, TraitConformanceRule, TraitGraph};
 use crate::program::types::*;
+use crate::util::position::Positioned;
 
 pub struct ImperativeLinker<'a> {
     pub function: Rc<FunctionHead>,
@@ -143,13 +146,14 @@ impl <'a> ImperativeLinker<'a> {
         Ok(())
     }
 
-    pub fn link_abstract_function_call(&mut self, arguments: Vec<ExpressionID>, interface: Rc<Trait>, abstract_function: Rc<FunctionHead>, traits: TraitGraph) -> Result<ExpressionID, RuntimeError> {
+    pub fn link_abstract_function_call(&mut self, arguments: Vec<ExpressionID>, interface: Rc<Trait>, abstract_function: Rc<FunctionHead>, traits: TraitGraph, range: Range<usize>) -> Result<ExpressionID, RuntimeError> {
         let expression_id = self.register_new_expression(arguments.clone());
 
         self.register_ambiguity(Box::new(AmbiguousAbstractCall {
             expression_id,
             arguments,
             interface,
+            range,
             abstract_function,
             traits,
         }))?;
@@ -187,81 +191,85 @@ impl <'a> ImperativeLinker<'a> {
         Ok(())
     }
 
-    pub fn link_block(&mut self, body: &Vec<Box<ast::Statement>>, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
+    pub fn link_block(&mut self, body: &Vec<Box<Positioned<ast::Statement>>>, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
         let mut scope = scope.subscope();
-        let mut statements: Vec<ExpressionID> = Vec::new();
-
-        for statement in body.iter() {
-            match statement.as_ref() {
-                ast::Statement::Error(err) => {
-                    return Err(err.clone())
-                }
-                ast::Statement::VariableDeclaration {
-                    mutability, identifier, type_declaration, expression
-                } => {
-                    let new_value: ExpressionID = self.link_expression(&expression, &scope)?;
-
-                    if let Some(type_declaration) = type_declaration {
-                        self.hint_type(new_value, type_declaration, &scope)?;
-                    }
-
-                    let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(new_value)), mutability: mutability.clone() });
-                    let variable = Reference::Object(Rc::clone(&object_ref));
-
-                    self.variable_names.insert(Rc::clone(&object_ref), identifier.clone());
-                    scope.override_reference(scopes::Environment::Global, variable, identifier);
-
-                    let expression_id = self.register_new_expression(vec![new_value]);
-                    self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(object_ref));
-                    self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
-                    statements.push(expression_id);
-                },
-                ast::Statement::VariableAssignment { variable_name, new_value } => {
-                    let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
-
-                    let object_ref = scope.resolve(scopes::Environment::Global, variable_name)?
-                        .as_object_ref(true)?;
-                    self.types.bind(new_value, &object_ref.type_)?;
-
-                    let expression_id = self.register_new_expression(vec![new_value]);
-                    self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(Rc::clone(&object_ref)));
-                    self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
-                    statements.push(expression_id);
-                }
-                ast::Statement::Return(expression) => {
-                    if let Some(expression) = expression {
-                        if self.function.interface.return_type.unit.is_void() {
-                            return Err(RuntimeError::new(format!("Return statement offers a value when the function declares void.")))
-                        }
-
-                        let result: ExpressionID = self.link_expression(expression, &scope)?;
-                        self.types.bind(result, &self.function.interface.return_type.freezing_generics_to_any().as_ref())?;
-
-                        let expression_id = self.register_new_expression(vec![result]);
-                        self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
-                        self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
-                        statements.push(expression_id);
-                    }
-                    else {
-                        if !self.function.interface.return_type.unit.is_void() {
-                            return Err(RuntimeError::new(format!("Return statement offers no value when the function declares an object.")))
-                        }
-
-                        let expression_id = self.register_new_expression(vec![]);
-                        self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
-                        self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
-                        statements.push(expression_id);
-                    }
-                },
-                ast::Statement::Expression(expression) => {
-                    statements.push(self.link_expression(&expression, &scope)?);
-                }
-            }
-        }
+        let statements: Vec<ExpressionID> = body.iter().map(|pstatement| {
+            self.link_statement(&mut scope, &pstatement.value)
+                .err_in_range(&pstatement.position)
+        }).try_collect()?;
 
         let expression_id = self.register_new_expression(statements);
         self.expressions.operations.insert(expression_id, ExpressionOperation::Block);
 
+        Ok(expression_id)
+    }
+
+    fn link_statement(&mut self, scope: &mut Scope, statement: &ast::Statement) -> Result<ExpressionID, RuntimeError> {
+        let expression_id = match statement {
+            ast::Statement::Error(err) => {
+                return Err(err.clone())
+            }
+            ast::Statement::VariableDeclaration {
+                mutability, identifier, type_declaration, expression
+            } => {
+                let new_value: ExpressionID = self.link_expression(&expression, &scope)?;
+
+                if let Some(type_declaration) = type_declaration {
+                    self.hint_type(new_value, type_declaration, &scope)?;
+                }
+
+                let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(new_value)), mutability: mutability.clone() });
+                let variable = Reference::Object(Rc::clone(&object_ref));
+
+                self.variable_names.insert(Rc::clone(&object_ref), identifier.clone());
+                scope.override_reference(scopes::Environment::Global, variable, identifier);
+
+                let expression_id = self.register_new_expression(vec![new_value]);
+                self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(object_ref));
+                self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
+                expression_id
+            },
+            ast::Statement::VariableAssignment { variable_name, new_value } => {
+                let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
+
+                let object_ref = scope
+                    .resolve(scopes::Environment::Global, variable_name)?
+                    .as_object_ref(true)?;
+                self.types.bind(new_value, &object_ref.type_)?;
+
+                let expression_id = self.register_new_expression(vec![new_value]);
+                self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(Rc::clone(&object_ref)));
+                self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
+                expression_id
+            }
+            ast::Statement::Return(expression) => {
+                if let Some(expression) = expression {
+                    if self.function.interface.return_type.unit.is_void() {
+                        return Err(RuntimeError::new(format!("Return statement offers a value when the function declares void.")))
+                    }
+
+                    let result: ExpressionID = self.link_expression(expression, &scope)?;
+                    self.types.bind(result, &self.function.interface.return_type.freezing_generics_to_any().as_ref())?;
+
+                    let expression_id = self.register_new_expression(vec![result]);
+                    self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
+                    self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
+                    expression_id
+                } else {
+                    if !self.function.interface.return_type.unit.is_void() {
+                        return Err(RuntimeError::new(format!("Return statement offers no value when the function declares an object.")))
+                    }
+
+                    let expression_id = self.register_new_expression(vec![]);
+                    self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
+                    self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
+                    expression_id
+                }
+            },
+            ast::Statement::Expression(expression) => {
+                self.link_expression(&expression, &scope)?
+            }
+        };
         Ok(expression_id)
     }
 
@@ -274,15 +282,15 @@ impl <'a> ImperativeLinker<'a> {
     }
 
     pub fn link_expression(&mut self, syntax: &ast::Expression, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
-        let arguments: Vec<precedence::Token> = syntax.iter().map(|a| {
-            self.link_term(&a.value, scope)
+        let arguments: Vec<Positioned<precedence::Token>> = syntax.iter().map(|a| {
+            self.link_term(a, scope)
         }).try_collect()?;
 
         link_patterns(arguments, scope, self)
     }
 
-    pub fn link_term(&mut self, syntax: &ast::Term, scope: &scopes::Scope) -> Result<precedence::Token, RuntimeError> {
-        Ok(match syntax {
+    pub fn link_term(&mut self, syntax: &Positioned<ast::Term>, scope: &scopes::Scope) -> Result<Positioned<precedence::Token>, RuntimeError> {
+        let token = match &syntax.value {
             ast::Term::Identifier(s) => {
                 let variable = scope.resolve(scopes::Environment::Global, s)?;
 
@@ -307,7 +315,7 @@ impl <'a> ImperativeLinker<'a> {
                             FunctionForm::Member => panic!(),
                             FunctionForm::Constant => {
                                 precedence::Token::Expression(
-                                    self.link_function_call(&overload.functions(), &overload.name, vec![], vec![], scope)?
+                                    self.link_function_call(&overload.functions(), &overload.name, vec![], vec![], scope, syntax.position.clone())?
                                 )
                             }
                         }
@@ -325,6 +333,7 @@ impl <'a> ImperativeLinker<'a> {
                     Rc::clone(&self.runtime.builtins.core.traits.ConstructableByIntLiteral),
                     Rc::clone(&self.runtime.builtins.core.traits.parse_int_literal_function.target),
                     scope.traits.clone(),
+                    syntax.position.clone(),
                 )?)
             }
             ast::Term::RealLiteral(string) => {
@@ -335,19 +344,21 @@ impl <'a> ImperativeLinker<'a> {
                     Rc::clone(&self.runtime.builtins.core.traits.ConstructableByRealLiteral),
                     Rc::clone(&self.runtime.builtins.core.traits.parse_real_literal_function.target),
                     scope.traits.clone(),
+                    syntax.position.clone(),
                 )?)
             }
             ast::Term::MemberAccess { target, member_name } => {
                 let target = self.link_term(target, scope)?;
 
-                guard!(let precedence::Token::Expression(target) = target else {
+                guard!(let precedence::Token::Expression(target) = &target.value else {
                     return Err(RuntimeError::new(format!("Dot notation is not supported in this context.")))
                 });
 
-                let variable = scope.resolve(scopes::Environment::Member, member_name)?;
+                let variable = scope.resolve(scopes::Environment::Member, member_name)
+                    .err_in_range(&syntax.position)?;
 
                 if let Reference::FunctionOverload(overload) = variable {
-                    precedence::Token::FunctionReference { overload: Rc::clone(overload), target: Some(target) }
+                    precedence::Token::FunctionReference { overload: Rc::clone(overload), target: Some(*target) }
                 }
                 else {
                     todo!("Member access is not supported yet!")
@@ -371,7 +382,10 @@ impl <'a> ImperativeLinker<'a> {
             ast::Term::StringLiteral(parts) => {
                 precedence::Token::Expression(match &parts[..] {
                     // Simple case: Just one part means we can use it directly.
-                    [] => self.link_string_part(&ast::StringPart::Literal("".to_string()), scope)?,
+                    [] => self.link_string_part(
+                        &syntax.with_value(ast::StringPart::Literal("".to_string())),
+                        scope
+                    )?,
                     [part] => self.link_string_part(part, scope)?,
                     _ => {
                         let mut parts: Vec<_> = parts.iter().map(|part| self.link_string_part(part, scope)).try_collect()?;
@@ -379,7 +393,7 @@ impl <'a> ImperativeLinker<'a> {
                         let last = parts.pop().unwrap();
                         parts.into_iter().try_rfold(last, |rstring, lstring| {
                             // Call format(<args>)
-                            self.link_simple_function_call("add", vec![ParameterKey::Positional, ParameterKey::Positional], vec![lstring, rstring], scope)
+                            self.link_simple_function_call("add", vec![ParameterKey::Positional, ParameterKey::Positional], vec![lstring, rstring], scope, syntax.position.clone())
                         })?
                     }
                 })
@@ -387,7 +401,9 @@ impl <'a> ImperativeLinker<'a> {
             ast::Term::Block(statements) => {
                 precedence::Token::Expression(self.link_block(statements, &scope)?)
             }
-        })
+        };
+
+        Ok(syntax.with_value(token))
     }
 
     fn link_struct(&mut self, scope: &scopes::Scope, args: &Vec<ast::StructArgument>) -> Result<Struct, RuntimeError> {
@@ -403,27 +419,27 @@ impl <'a> ImperativeLinker<'a> {
         })
     }
 
-    pub fn link_string_part(&mut self, part: &ast::StringPart, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
-        match part {
+    pub fn link_string_part(&mut self, part: &Positioned<ast::StringPart>, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
+        match &part.value {
             ast::StringPart::Literal(literal) => {
                 self.link_string_literal(literal)
             },
             ast::StringPart::Object(o) => {
                 let struct_ = self.link_struct(scope, o)?;
                 // Call format(<args>)
-                self.link_simple_function_call("format", struct_.keys, struct_.values, scope)
+                self.link_simple_function_call("format", struct_.keys, struct_.values, scope, part.position.clone())
             }
         }
     }
 
-    fn link_simple_function_call(&mut self, name: &str, keys: Vec<ParameterKey>, args: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
+    fn link_simple_function_call(&mut self, name: &str, keys: Vec<ParameterKey>, args: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> Result<ExpressionID, RuntimeError> {
         let variable = scope.resolve(scopes::Environment::Global, name)?;
 
         match variable {
             Reference::FunctionOverload(overload) => {
                 match overload.form {
                     FunctionForm::Global => {
-                        let expression_id = self.link_function_call(&overload.functions(), &overload.name, keys, args, scope)?;
+                        let expression_id = self.link_function_call(&overload.functions(), &overload.name, keys, args, scope, range)?;
                         // Make sure the return type is actually String.
                         self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.core.traits.String))))?;
                         Ok(expression_id)
@@ -437,11 +453,11 @@ impl <'a> ImperativeLinker<'a> {
         }
     }
 
-    pub fn link_conjunctive_pairs(&mut self, arguments: Vec<ExpressionID>, operations: Vec<Rc<FunctionOverload>>) -> Result<ExpressionID, RuntimeError> {
+    pub fn link_conjunctive_pairs(&mut self, arguments: Vec<Positioned<ExpressionID>>, operations: Vec<Rc<FunctionOverload>>) -> Result<Positioned<ExpressionID>, RuntimeError> {
         todo!()
     }
 
-    pub fn link_function_call(&mut self, functions: &Vec<Rc<FunctionHead>>, fn_name: &str, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope) -> Result<ExpressionID, RuntimeError> {
+    pub fn link_function_call(&mut self, functions: &Vec<Rc<FunctionHead>>, fn_name: &str, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> Result<ExpressionID, RuntimeError> {
         // TODO Check if any arguments are void before anything else
         let seed = Uuid::new_v4();
 
@@ -476,6 +492,7 @@ impl <'a> ImperativeLinker<'a> {
                 function_name: fn_name.to_string(),
                 arguments: argument_expressions,
                 traits: scope.traits.clone(),
+                range,
                 candidates,
                 failed_candidates: vec![]
             }))?;

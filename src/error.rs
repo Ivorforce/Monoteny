@@ -28,6 +28,10 @@ impl RuntimeError {
     }
 
     pub fn in_range(&self, range: Range<usize>) -> RuntimeError {
+        if self.position.range.is_some() {
+            return self.clone();
+        }
+
         RuntimeError {
             position: FilePosition {
                 file: self.position.file.clone(),
@@ -77,5 +81,15 @@ impl Display for FilePosition {
 impl Display for RuntimeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{}", self.position, self.msg)
+    }
+}
+
+pub trait ErrInRange<R> {
+    fn err_in_range(self, range: &Range<usize>) -> R;
+}
+
+impl<V> ErrInRange<Result<V, RuntimeError>> for Result<V, RuntimeError> {
+    fn err_in_range(self, range: &Range<usize>) -> Result<V, RuntimeError> {
+        self.map_err(|e| e.in_range(range.clone()))
     }
 }

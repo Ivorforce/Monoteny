@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::ops::Range;
 use std::rc::Rc;
-use crate::error::RuntimeError;
+use crate::error::{ErrInRange, FilePosition, RuntimeError};
 use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
 use crate::program::calls::FunctionBinding;
@@ -13,6 +14,8 @@ pub struct AmbiguousAbstractCall {
     pub expression_id: ExpressionID,
     pub arguments: Vec<ExpressionID>,
     pub traits: TraitGraph,
+
+    pub range: Range<usize>,
 
     pub interface: Rc<Trait>,
     pub abstract_function: Rc<FunctionHead>,
@@ -29,7 +32,8 @@ impl LinkerAmbiguity for AmbiguousAbstractCall {
         let type_ = linker.types.resolve_binding_alias(&self.expression_id)?;
 
         let requirement = self.interface.create_generic_binding(vec![("Self", type_.clone())]);
-        let trait_conformance = self.traits.satisfy_requirement(&requirement, &linker.types)?;
+        let trait_conformance = self.traits.satisfy_requirement(&requirement, &linker.types)
+            .err_in_range(&self.range)?;
         Ok(match trait_conformance {
             AmbiguityResult::Ambiguous => {
                 AmbiguityResult::Ambiguous
@@ -47,7 +51,8 @@ impl LinkerAmbiguity for AmbiguousAbstractCall {
                         }),
                     }))
                 );
-                linker.types.bind(self.expression_id.clone(), type_.as_ref())?;
+                linker.types.bind(self.expression_id.clone(), type_.as_ref())
+                    .err_in_range(&self.range)?;
 
                 AmbiguityResult::Ok(())
             }

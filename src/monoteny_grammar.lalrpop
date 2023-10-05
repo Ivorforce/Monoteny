@@ -70,17 +70,17 @@ AnyIdentifier: String = {
 
 
 pub Program: Module = {
-    <stmts: (<GlobalStatement> ";")*> => Module { global_statements: stmts }
+    <global_statements: Box<Positioned<(<GlobalStatement> ";")>>*> => Module { <> }
 };
 
-pub GlobalStatement: Box<GlobalStatement> = {
-    Function => Box::new(GlobalStatement::FunctionDeclaration(<>)),
-    Pattern => Box::new(GlobalStatement::Pattern(<>)),
-    OperatorFunction => Box::new(GlobalStatement::Operator(<>)),
-    Trait => Box::new(GlobalStatement::Trait(<>)),
-    Conformance => Box::new(GlobalStatement::Conformance(<>)),
-    GlobalMacro => Box::new(GlobalStatement::Macro(<>)),
-    <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Box::new(GlobalStatement::Error(derive_error(&e, start, end))) },
+pub GlobalStatement: GlobalStatement = {
+    Function => GlobalStatement::FunctionDeclaration(<>),
+    Pattern => GlobalStatement::Pattern(<>),
+    OperatorFunction => GlobalStatement::Operator(<>),
+    Trait => GlobalStatement::Trait(<>),
+    Conformance => GlobalStatement::Conformance(<>),
+    GlobalMacro => GlobalStatement::Macro(<>),
+    <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); GlobalStatement::Error(derive_error(&e, start, end)) },
 };
 
 Pattern: Box<PatternDeclaration> = {
@@ -136,22 +136,22 @@ NameValuePair: (ParameterKey, String) = {
 // =============================== Trait =====================================
 
 Trait: Box<TraitDefinition> = {
-    <decorators: Decorator*> "trait" <name: Identifier> "{" <statements: (<GlobalStatement> ";")*> "}" => Box::new(TraitDefinition { <> }),
+    <decorators: Decorator*> "trait" <name: Identifier> "{" <statements: (<Box<Positioned<GlobalStatement>>> ";")*> "}" => Box::new(TraitDefinition { <> }),
 }
 
 Conformance: Box<TraitConformanceDeclaration> = {
-    "declare" <declared_for: Expression> "is" <declared: Identifier> "{" <statements: (<GlobalStatement> ";")*> "}" => Box::new(TraitConformanceDeclaration { <> }),
+    "declare" <declared_for: Expression> "is" <declared: Identifier> "{" <statements: (<Box<Positioned<GlobalStatement>>> ";")*> "}" => Box::new(TraitConformanceDeclaration { <> }),
 }
 
 // =============================== Statement =====================================
 
 
-pub Statement: Box<Statement> = {
-    <mutability: VariableDeclarationMutability> <identifier: Identifier> <type_declaration: ("'" <Expression>)?> "=" <expression: Expression> => Box::new(Statement::VariableDeclaration { mutability, identifier, type_declaration, expression }),
-    "upd" <variable_name: Identifier> "=" <new_value: Expression> => Box::new(Statement::VariableAssignment { variable_name, new_value }),
-    "return" <Expression?> => Box::new(Statement::Return(<>)),
-    Expression => Box::new(Statement::Expression(<>)),
-    <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Box::new(Statement::Error(derive_error(&e, start, end))) },
+pub Statement: Statement = {
+    <mutability: VariableDeclarationMutability> <identifier: Identifier> <type_declaration: ("'" <Expression>)?> "=" <expression: Expression> => Statement::VariableDeclaration { mutability, identifier, type_declaration, expression },
+    "upd" <variable_name: Identifier> "=" <new_value: Expression> => Statement::VariableAssignment { variable_name, new_value },
+    "return" <Expression?> => Statement::Return(<>),
+    Expression => Statement::Expression(<>),
+    <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Statement::Error(derive_error(&e, start, end)) },
 };
 
 VariableDeclarationMutability: Mutability = {
@@ -162,7 +162,7 @@ VariableDeclarationMutability: Mutability = {
 // =============================== Expression =====================================
 
 Expression: Expression = {
-    (<@L> <Term> <@R>)+ => Expression::from(<>.into_iter().map(|t| Box::new(positioned(t.1, t.0, t.2))).collect_vec()),
+    Box<Positioned<Term>>+ => Expression::from(<>),
 };
 
 Term: Term = {
@@ -171,9 +171,9 @@ Term: Term = {
     RealLiteral => Term::RealLiteral(<>),
     "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Term::Array(<>),
     "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Term::Struct(<>),
-    <target: Term> "." <member_name: Identifier> => Term::MemberAccess { target: Box::new(target), member_name },
-    "\"" <StringPart*> "\"" => Term::StringLiteral(<>),
-    "{" <(<Statement> ";")*> "}" => Term::Block(<>),
+    <target: Box<Positioned<Term>>> "." <member_name: Identifier> => Term::MemberAccess { <> },
+    "\"" <Box<Positioned<StringPart>>*> "\"" => Term::StringLiteral(<>),
+    "{" <(<Box<Positioned<Statement>>> ";")*> "}" => Term::Block(<>),
 };
 
 StructArgument: StructArgument = {
@@ -193,6 +193,14 @@ StringPart: StringPart = {
 }
 
 // =============================== Util =====================================
+
+Box<Element>: Box<Element> = {
+    Element => Box::new(<>),
+}
+
+Positioned<Element>: Positioned<Element> = {
+    <start: @L> <v: Element> <end: @R> => positioned(v, start, end),
+}
 
 OptionalFinalSeparatorList<Element, Separator>: Vec<Element> = {
     <v0: (<Element> Separator)*> <e1: Element?> => v0.into_iter().chain(e1).collect()

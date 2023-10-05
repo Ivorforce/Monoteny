@@ -12,7 +12,7 @@ use crate::util::position::Positioned;
 
 #[derive(Eq, PartialEq)]
 pub struct Module {
-    pub global_statements: Vec<Box<GlobalStatement>>
+    pub global_statements: Vec<Box<Positioned<GlobalStatement>>>
 }
 
 #[derive(Eq, PartialEq)]
@@ -85,14 +85,14 @@ pub struct TraitDefinition {
     pub decorators: Vec<String>,
 
     pub name: String,
-    pub statements: Vec<Box<GlobalStatement>>,
+    pub statements: Vec<Box<Positioned<GlobalStatement>>>,
 }
 
 #[derive(Eq, PartialEq)]
 pub struct TraitConformanceDeclaration {
     pub declared_for: Expression,
     pub declared: String,
-    pub statements: Vec<Box<GlobalStatement>>,
+    pub statements: Vec<Box<Positioned<GlobalStatement>>>,
 }
 
 
@@ -140,11 +140,11 @@ pub enum Term {
     Identifier(String),
     IntLiteral(String),
     RealLiteral(String),
-    MemberAccess { target: Box<Term>, member_name: String },
+    MemberAccess { target: Box<Positioned<Term>>, member_name: String },
     Struct(Vec<StructArgument>),
     Array(Vec<ArrayArgument>),
-    StringLiteral(Vec<StringPart>),
-    Block(Vec<Box<Statement>>),
+    StringLiteral(Vec<Box<Positioned<StringPart>>>),
+    Block(Vec<Box<Positioned<Statement>>>),
 }
 
 #[derive(Eq, PartialEq)]
@@ -335,7 +335,7 @@ impl Display for Term {
                 }
                 write!(fmt, "\"")
             },
-            Term::MemberAccess { target, member_name } =>  write!(fmt, "{}.{}", target, member_name),
+            Term::MemberAccess { target, member_name } =>  write!(fmt, "{}.{}", target.value, member_name),
             Term::Struct(arguments) => {
                 write!(fmt, "(")?;
                 write_comma_separated_list(fmt, arguments)?;
