@@ -225,7 +225,8 @@ impl <'a> Scope<'a> {
             return parent.resolve(environment, name);
         }
 
-        Err(RuntimeError::new(format!("Reference '{}' could not be resolved", name)))
+        // take that rust, i steal ur phrasings
+        Err(RuntimeError::new(format!("Cannot find value '{}' in this scope", name)))
     }
 
     pub fn resolve_precedence_group(&self, name: &str) -> Rc<PrecedenceGroup> {
