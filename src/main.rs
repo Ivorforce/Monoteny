@@ -14,6 +14,7 @@ pub mod integration_tests;
 pub mod constant_folding;
 pub mod error;
 
+use std::env;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
@@ -59,6 +60,7 @@ fn cli() -> Command<'static> {
 }
 
 fn main() -> ExitCode {
+    println!("{}", env::args().join(" "));
     let matches = cli().get_matches();
 
     match matches.subcommand() {
