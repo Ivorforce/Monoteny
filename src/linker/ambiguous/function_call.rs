@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
-use crate::interpreter::InterpreterError;
+use crate::error::RuntimeError;
 use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
 use crate::program::calls::FunctionBinding;
@@ -29,11 +29,11 @@ pub struct AmbiguousFunctionCall {
     pub traits: TraitGraph,
 
     pub candidates: Vec<Box<AmbiguousFunctionCandidate>>,
-    pub failed_candidates: Vec<(Box<AmbiguousFunctionCandidate>, InterpreterError)>,
+    pub failed_candidates: Vec<(Box<AmbiguousFunctionCandidate>, RuntimeError)>,
 }
 
 impl AmbiguousFunctionCall {
-    fn attempt_with_candidate(&mut self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<AmbiguityResult<Rc<RequirementsFulfillment>>, InterpreterError> {
+    fn attempt_with_candidate(&mut self, types: &mut TypeForest, candidate: &AmbiguousFunctionCandidate) -> Result<AmbiguityResult<Rc<RequirementsFulfillment>>, RuntimeError> {
         let param_types = &candidate.param_types;
 
         for (arg, param) in zip_eq(
@@ -72,7 +72,7 @@ impl Display for AmbiguousFunctionCall {
 }
 
 impl LinkerAmbiguity for AmbiguousFunctionCall {
-    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<AmbiguityResult<()>, InterpreterError> {
+    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<AmbiguityResult<()>, RuntimeError> {
         let mut is_ambiguous = false;
         for candidate in self.candidates.drain(..).collect_vec() {
             let mut types_copy = linker.types.clone();
@@ -124,10 +124,10 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             // TODO How so?
             let (candidate, err) = self.failed_candidates.iter().next().unwrap();
 
-            Err(InterpreterError::LinkerError { msg: format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function, err) })
+            Err(RuntimeError { msg: format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function, err) })
         } else {
             // TODO Print types of arguments too, for context.
-            Err(InterpreterError::LinkerError { msg: format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, self.failed_candidates.len(), &argument_types) })
+            Err(RuntimeError { msg: format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, self.failed_candidates.len(), &argument_types) })
         }
     }
 }

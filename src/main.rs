@@ -12,6 +12,7 @@ pub mod util;
 pub mod monomorphize;
 pub mod integration_tests;
 pub mod constant_folding;
+pub mod error;
 
 use std::ffi::OsStr;
 use std::fs::File;
@@ -20,7 +21,8 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use clap::{arg, Command};
 use itertools::Itertools;
-use crate::interpreter::{Runtime, InterpreterError, common};
+use crate::error::RuntimeError;
+use crate::interpreter::{Runtime, common};
 use crate::transpiler::Context;
 
 
@@ -73,7 +75,7 @@ fn main() -> ExitCode {
     }
 }
 
-fn internal_main() -> Result<(), Vec<InterpreterError>> {
+fn internal_main() -> Result<(), Vec<RuntimeError>> {
     let matches = cli().get_matches();
     match matches.subcommand() {
         Some(("run", sub_matches)) => {

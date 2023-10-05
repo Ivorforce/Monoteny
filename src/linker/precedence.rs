@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use guard::guard;
 use uuid::Uuid;
-use crate::interpreter::InterpreterError;
+use crate::error::RuntimeError;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::scopes;
 use crate::linker::scopes::Environment;
@@ -64,7 +64,7 @@ pub enum Token {
     FunctionReference { overload: Rc<FunctionOverload>, target: Option<ExpressionID> },
 }
 
-pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut ImperativeLinker) -> Result<ExpressionID, InterpreterError> {
+pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut ImperativeLinker) -> Result<ExpressionID, RuntimeError> {
     // Resolve structs and array literals
     let mut i = 0;
     for _ in 0 .. tokens.len() {
@@ -97,7 +97,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                             tokens[i] = Token::Expression(*struct_.values.iter().next().unwrap());
                         }
                         else {
-                            return Err(InterpreterError::ParserError { msg: String ::from("Anonymous struct literals are not yet supported.") })
+                            return Err(RuntimeError { msg: String ::from("Anonymous struct literals are not yet supported.") })
                         }
                     }
                 }
@@ -105,13 +105,13 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
             Token::AnonymousArray { keys, values } => {
                 match if i > 0 { tokens.get(i - 1) } else { None } {
                     Some(Token::FunctionReference { overload, target }) => {
-                        return Err(InterpreterError::ParserError { msg: String::from("Functions with subscript form are not yet supported.") })
+                        return Err(RuntimeError { msg: String::from("Functions with subscript form are not yet supported.") })
                     }
                     Some(Token::Expression(expression)) => {
-                        return Err(InterpreterError::ParserError { msg: String::from("Object subscript is not yet supported.") })
+                        return Err(RuntimeError { msg: String::from("Object subscript is not yet supported.") })
                     }
                     _ => {
-                        return Err(InterpreterError::ParserError { msg: String::from("Array literals are not yet supported.") })
+                        return Err(RuntimeError { msg: String::from("Array literals are not yet supported.") })
 
                         // let supertype = linker.expressions.type_forest.merge_all(values)?.clone();
                         //
@@ -143,7 +143,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
                         ExpressionOperation::VariableLookup(ref_.clone())
                     )?);
                 }
-                _ => Err(InterpreterError::ParserError {
+                _ => Err(RuntimeError {
                     msg: String::from("References to overloaded functions are not yet supported (need syntax to distinguish which to choose).")
                 })?,
             }
@@ -157,14 +157,14 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
         arguments.push(expression);
     }
     else {
-        return Err(InterpreterError::ParserError { msg: String::from("Expression missing the final argument.") })
+        return Err(RuntimeError { msg: String::from("Expression missing the final argument.") })
     }
 
     // Reduce all unary operators, and build interspersed arguments / operators list.
     let left_unary_operators = &scope.precedence_groups[0].1;
     while !tokens.is_empty() {
         guard!(let Token::Keyword(keyword) = tokens.remove(tokens.len() - 1) else {
-            return Err(InterpreterError::LinkerError { msg: String::from("Expecting an operator but got an expression.") })
+            return Err(RuntimeError { msg: String::from("Expecting an operator but got an expression.") })
         });
 
         if !tokens.is_empty() {
@@ -192,7 +192,7 @@ pub fn link_patterns(mut tokens: Vec<Token>, scope: &scopes::Scope, linker: &mut
 
     // Resolve binary operators. At this point, we have only expressions interspersed with operators.
 
-    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<ExpressionID>, alias: &str, i: usize| -> Result<(), InterpreterError> {
+    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<ExpressionID>, alias: &str, i: usize| -> Result<(), RuntimeError> {
         let lhs = arguments.remove(i);
         let rhs = arguments.remove(i);
         let operator = scope.resolve(Environment::Global, &alias)?;

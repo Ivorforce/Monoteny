@@ -11,8 +11,9 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
+use crate::error::RuntimeError;
 use crate::transpiler;
-use crate::interpreter::{Runtime, InterpreterError};
+use crate::interpreter::Runtime;
 
 use crate::program::computation_tree::*;
 use crate::program::functions::FunctionHead;
@@ -35,7 +36,7 @@ impl transpiler::Context for Context {
         self.representations.builtin_functions.clone()
     }
 
-    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, Vec<InterpreterError>> {
+    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, Vec<RuntimeError>> {
         let ast = create_ast(transpiler, self, runtime).map_err(|e| vec![e])?;
 
         Ok(HashMap::from([
@@ -52,7 +53,7 @@ pub fn create_context(runtime: &Runtime) -> Context {
     }
 }
 
-pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime) -> Result<Box<ast::Module>, InterpreterError> {
+pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime) -> Result<Box<ast::Module>, RuntimeError> {
     let mut representations = context.representations.clone();
     let builtin_structs: HashSet<_> = representations.type_ids.keys().map(Clone::clone).collect();
 

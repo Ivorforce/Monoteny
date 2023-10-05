@@ -6,7 +6,7 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::interpreter::InterpreterError;
+use crate::error::RuntimeError;
 use crate::linker::ambiguous::AmbiguityResult;
 use crate::program::functions::{FunctionHead, FunctionPointer, FunctionType, FunctionInterface};
 use crate::program::generics::{GenericAlias, TypeForest};
@@ -140,7 +140,7 @@ impl TraitGraph {
 
     // TODO This should not return an ambiguity result. The caller should make sure to resolve types, and we should just do our jobs.
     //  Any layers deeper cannot yield ::Ambiguous anyway, if all bindings are properly filled.
-    pub fn satisfy_requirement(&mut self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<AmbiguityResult<Rc<TraitConformanceWithTail>>, InterpreterError> {
+    pub fn satisfy_requirement(&mut self, requirement: &Rc<TraitBinding>, mapping: &TypeForest) -> Result<AmbiguityResult<Rc<TraitConformanceWithTail>>, RuntimeError> {
         // TODO What if requirement is e.g. Float<Float>? Is Float declared on itself?
 
         // We resolve this binding because it might contain generics.
@@ -152,13 +152,13 @@ impl TraitGraph {
         if let Some(state) = self.conformance_cache.get(&resolved_binding) {
             // In cache
             return match state {
-                None => Err(InterpreterError::LinkerError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding)) }),
+                None => Err(RuntimeError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding)) }),
                 Some(declaration) => Ok(AmbiguityResult::Ok(declaration.clone())),
             };
         }
 
         guard!(let Some(relevant_declarations) = self.conformance_rules.get(&resolved_binding.trait_) else {
-            return Err(InterpreterError::LinkerError { msg: String::from(format!("No declarations found for trait: {:?}", resolved_binding.trait_)) });
+            return Err(RuntimeError { msg: String::from(format!("No declarations found for trait: {:?}", resolved_binding.trait_)) });
         });
 
         let mut compatible_conformances = vec![];
@@ -208,19 +208,19 @@ impl TraitGraph {
         match compatible_conformances.as_slice() {
             [] => {
                 self.conformance_cache.insert(Rc::clone(&resolved_binding), None);
-                Err(InterpreterError::LinkerError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}. {} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations)) })
+                Err(RuntimeError { msg: String::from(format!("No compatible declaration for trait conformance requirement: {:?}. {} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations)) })
             }
             [declaration] => {
                 self.conformance_cache.insert(resolved_binding, Some(Rc::clone(declaration)));
                 Ok(AmbiguityResult::Ok(Rc::clone(declaration)))
             }
             _ => {
-                Err(InterpreterError::LinkerError { msg: String::from(format!("Conflicting declarations for trait conformance requirement: {:?}. {} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations)) })
+                Err(RuntimeError { msg: String::from(format!("Conflicting declarations for trait conformance requirement: {:?}. {} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations)) })
             }
         }
     }
 
-    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, mapping: &TypeForest) -> Result<AmbiguityResult<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>>, InterpreterError> {
+    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, mapping: &TypeForest) -> Result<AmbiguityResult<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>>, RuntimeError> {
         let mut conformance = HashMap::new();
 
         for requirement in self.gather_deep_requirements(requirements.iter().cloned()) {

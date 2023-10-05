@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
-use crate::interpreter::InterpreterError;
+use crate::error::RuntimeError;
 use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
 use crate::program::calls::FunctionBinding;
@@ -25,7 +25,7 @@ impl Display for AmbiguousAbstractCall {
 }
 
 impl LinkerAmbiguity for AmbiguousAbstractCall {
-    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<AmbiguityResult<()>, InterpreterError> {
+    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> Result<AmbiguityResult<()>, RuntimeError> {
         let type_ = linker.types.resolve_binding_alias(&self.expression_id)?;
 
         let requirement = self.interface.create_generic_binding(vec![("Self", type_.clone())]);

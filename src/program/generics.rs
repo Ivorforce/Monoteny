@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
-use crate::interpreter::InterpreterError;
+use crate::error::RuntimeError;
 use crate::program::types::{TypeUnit, TypeProto};
 
 pub type GenericIdentity = Uuid;
@@ -36,7 +36,7 @@ impl TypeForest {
         self._register(alias);
     }
 
-    pub fn bind(&mut self, generic: GenericAlias, t: &TypeProto) -> Result<(), InterpreterError> {
+    pub fn bind(&mut self, generic: GenericAlias, t: &TypeProto) -> Result<(), RuntimeError> {
         let identity = self._register(generic);
         self.bind_identity(identity, t)
     }
@@ -50,7 +50,7 @@ impl TypeForest {
         self.identity_to_type.get(identity)
     }
 
-    pub fn resolve_type(&self, type_: &TypeProto) -> Result<Box<TypeProto>, InterpreterError> {
+    pub fn resolve_type(&self, type_: &TypeProto) -> Result<Box<TypeProto>, RuntimeError> {
         match &type_.unit {
             TypeUnit::Generic(alias) => self.resolve_binding_alias(alias).map(|x| x.clone()),
             _ => Ok(Box::new(TypeProto {
@@ -60,9 +60,9 @@ impl TypeForest {
         }
     }
 
-    pub fn resolve_binding_alias(&self, alias: &GenericAlias) -> Result<Box<TypeProto>, InterpreterError> {
+    pub fn resolve_binding_alias(&self, alias: &GenericAlias) -> Result<Box<TypeProto>, RuntimeError> {
         guard!(let Some(identity) = self.alias_to_identity.get(alias) else {
-            return Err(InterpreterError::LinkerError { msg: format!("Unknown generic: {}", alias) })
+            return Err(RuntimeError { msg: format!("Unknown generic: {}", alias) })
         });
 
         guard!(let Some(binding) = self.identity_to_type.get(identity) else {
@@ -94,7 +94,7 @@ impl TypeForest {
         })
     }
 
-    pub fn merge_all(&mut self, types: &Vec<GenericAlias>) -> Result<GenericAlias, InterpreterError> {
+    pub fn merge_all(&mut self, types: &Vec<GenericAlias>) -> Result<GenericAlias, RuntimeError> {
         if types.is_empty() {
             // No elements, so we can be whatever we want to be!
             let id = Uuid::new_v4();
@@ -110,7 +110,7 @@ impl TypeForest {
         return Ok(reference)
     }
 
-    pub fn rebind(&mut self, generic: GenericAlias, t: &TypeProto) -> Result<(), InterpreterError> {
+    pub fn rebind(&mut self, generic: GenericAlias, t: &TypeProto) -> Result<(), RuntimeError> {
         guard!(let Some(identity) = self.alias_to_identity.get(&generic) else {
             panic!("Internal Error: Cannot rebind non existing generic ({}), aborting.", generic);
         });
@@ -119,7 +119,7 @@ impl TypeForest {
         self.bind_identity(*identity, t)
     }
 
-    pub fn bind_any_as_generic(&mut self, anys: &HashMap<GenericAlias, Box<TypeProto>>) -> Result<(), InterpreterError>{
+    pub fn bind_any_as_generic(&mut self, anys: &HashMap<GenericAlias, Box<TypeProto>>) -> Result<(), RuntimeError>{
         let map: HashMap<_, _> = anys.into_iter().map(|(any, type_)| {
             let identity = self._register(*any);
             self.bind_identity(identity, type_)?;
@@ -154,7 +154,7 @@ impl TypeForest {
         return new
     }
 
-    fn bind_identity(&mut self, identity: GenericIdentity, t: &TypeProto) -> Result<(), InterpreterError> {
+    fn bind_identity(&mut self, identity: GenericIdentity, t: &TypeProto) -> Result<(), RuntimeError> {
         // TODO This could be done faster by not creating a new ID, but for now this approach saves us boilerplate / duplicate code
         let new_id = self.insert_new_identity(t);
         self.merge_identities(identity, new_id)?;
@@ -209,7 +209,7 @@ impl TypeForest {
         return true;
     }
 
-    fn merge_identities(&mut self, lhs: GenericIdentity, rhs: GenericIdentity) -> Result<GenericIdentity, InterpreterError> {
+    fn merge_identities(&mut self, lhs: GenericIdentity, rhs: GenericIdentity) -> Result<GenericIdentity, RuntimeError> {
         // Merge rhs aliases / arguments into lhs
         self.relink_identity(rhs, lhs);
 
@@ -218,7 +218,7 @@ impl TypeForest {
         match (self.identity_to_type.remove(&lhs), self.identity_to_type.remove(&rhs)) {
             (Some(lhs_type), Some(rhs_type)) => {
                 if lhs_type != rhs_type {
-                    return Err(InterpreterError::LinkerError { msg: format!("Cannot merge types: {:?} and {:?}", lhs_type, rhs_type) })
+                    return Err(RuntimeError { msg: format!("Cannot merge types: {:?} and {:?}", lhs_type, rhs_type) })
                 }
                 self.identity_to_type.insert(lhs.clone(), lhs_type);
 

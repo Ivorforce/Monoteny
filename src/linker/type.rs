@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::interpreter::InterpreterError;
+use crate::error::RuntimeError;
 use crate::linker::scopes;
 use crate::linker::scopes::Environment;
 use crate::parser::ast;
@@ -25,7 +25,7 @@ impl <'a> TypeFactory<'a> {
         }
     }
 
-    fn resolve_reference(&mut self, name: &str) -> Result<&TypeUnit, InterpreterError> {
+    fn resolve_reference(&mut self, name: &str) -> Result<&TypeUnit, RuntimeError> {
         if let Some(generic) = self.generics.get(name) {
             return Ok(generic)
         }
@@ -46,7 +46,7 @@ impl <'a> TypeFactory<'a> {
         self.requirements.insert(requirement);
     }
 
-    pub fn link_type(&mut self, syntax: &ast::Expression) -> Result<Box<TypeProto>, InterpreterError> {
+    pub fn link_type(&mut self, syntax: &ast::Expression) -> Result<Box<TypeProto>, RuntimeError> {
         if syntax.len() > 1 {
             panic!("Monads etc. are not implemented yet: '{}'", syntax)
         }

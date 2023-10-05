@@ -5,8 +5,9 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use crate::constant_folding::ConstantFold;
+use crate::error::RuntimeError;
 use crate::interpreter;
-use crate::interpreter::{InterpreterError, Runtime};
+use crate::interpreter::Runtime;
 use crate::monomorphize::Monomorphizer;
 use crate::program::calls::FunctionBinding;
 use crate::program::functions::FunctionHead;
@@ -28,16 +29,16 @@ pub struct Transpiler {
 pub trait Context {
     fn builtin_functions(&self) -> HashSet<Rc<FunctionHead>>;
 
-    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, Vec<InterpreterError>>;
+    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> Result<HashMap<String, String>, Vec<RuntimeError>>;
 }
 
-pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -> Result<Transpiler, InterpreterError> {
+pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -> Result<Transpiler, RuntimeError> {
     let builtin_functions = context.builtin_functions();
 
     let transpiler = Transpiler {
         monomorphizer: Box::new(Monomorphizer::new()),
         main_function: module.main_functions.iter().at_most_one()
-            .map_err(|_| InterpreterError::RuntimeError { msg: format!("Too many @main functions declared: {:?}", module.main_functions) })?
+            .map_err(|_| RuntimeError { msg: format!("Too many @main functions declared: {:?}", module.main_functions) })?
             .cloned(),
         exported_functions: vec![],
         internal_functions: vec![],

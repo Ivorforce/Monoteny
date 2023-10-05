@@ -2,7 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::interpreter::{InterpreterError, Runtime};
+use crate::error::RuntimeError;
+use crate::interpreter::Runtime;
 use crate::parser::ast;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
@@ -27,7 +28,7 @@ pub struct GlobalLinker<'a> {
     pub module: Module,
 }
 
-pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime) -> Result<Box<Module>, Vec<InterpreterError>> {
+pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime) -> Result<Box<Module>, Vec<RuntimeError>> {
     let mut global_linker = GlobalLinker {
         runtime,
         module: Module::new("main".to_string()),  // TODO Give it a name!
@@ -74,10 +75,10 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime)
 }
 
 impl <'a> GlobalLinker<'a> {
-    pub fn link_global_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>) -> Result<(), InterpreterError> {
+    pub fn link_global_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>) -> Result<(), RuntimeError> {
         match statement {
             ast::GlobalStatement::Error(err) => {
-                return Err(InterpreterError::LinkerError { msg: err.clone() })
+                return Err(RuntimeError { msg: err.clone() })
             }
             ast::GlobalStatement::Pattern(pattern) => {
                 let pattern = self.link_pattern(pattern)?;
@@ -222,7 +223,7 @@ impl <'a> GlobalLinker<'a> {
                         self.module.transpile_functions.push(Rc::clone(&fun.target));
                         fun
                     },
-                    _ => return Err(InterpreterError::LinkerError { msg: format!("Function macro could not be resolved: {}", syntax.macro_name) }),
+                    _ => return Err(RuntimeError { msg: format!("Function macro could not be resolved: {}", syntax.macro_name) }),
                 };
 
                 self.add_function(fun, &syntax.body, &syntax.decorators)?;
@@ -232,7 +233,7 @@ impl <'a> GlobalLinker<'a> {
         Ok(())
     }
 
-    pub fn link_pattern(&mut self, syntax: &ast::PatternDeclaration) -> Result<Rc<Pattern>, InterpreterError> {
+    pub fn link_pattern(&mut self, syntax: &ast::PatternDeclaration) -> Result<Rc<Pattern>, RuntimeError> {
         let precedence_group = self.global_variables.resolve_precedence_group(&syntax.precedence);
 
         Ok(Rc::new(Pattern {
@@ -243,7 +244,7 @@ impl <'a> GlobalLinker<'a> {
         }))
     }
 
-    pub fn add_function(&mut self, pointer: Rc<FunctionPointer>, body: &'a Option<ast::Expression>, decorators: &Vec<String>) -> Result<(), InterpreterError> {
+    pub fn add_function(&mut self, pointer: Rc<FunctionPointer>, body: &'a Option<ast::Expression>, decorators: &Vec<String>) -> Result<(), RuntimeError> {
         // Create a variable for the function
         self.module.add_function(&pointer);
         self.global_variables.overload_function(&pointer, &self.module.fn_references[&pointer.target])?;
@@ -256,7 +257,7 @@ impl <'a> GlobalLinker<'a> {
         }
 
         for decorator in decorators.iter() {
-            return Err(InterpreterError::LinkerError { msg: format!("Decorator could not be resolved: {}", decorator) })
+            return Err(RuntimeError { msg: format!("Decorator could not be resolved: {}", decorator) })
         }
 
         Ok(())

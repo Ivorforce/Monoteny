@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use itertools::Itertools;
-use crate::interpreter::InterpreterError;
+use crate::error::RuntimeError;
 use crate::linker::precedence::PrecedenceGroup;
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer};
@@ -80,7 +80,7 @@ impl <'a> Scope<'a> {
         }
     }
 
-    pub fn import(&mut self, module: &Module) -> Result<(), InterpreterError> {
+    pub fn import(&mut self, module: &Module) -> Result<(), RuntimeError> {
         for pattern in module.patterns.iter() {
             self.add_pattern(Rc::clone(pattern))?;
         }
@@ -102,7 +102,7 @@ impl <'a> Scope<'a> {
         Ok(())
     }
 
-    pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Result<(), InterpreterError> {
+    pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Result<(), RuntimeError> {
         let name = &fun.name;
         let environment = Environment::from_form(&fun.form);
 
@@ -169,14 +169,14 @@ impl <'a> Scope<'a> {
         self.references(environment).contains_key(name)
     }
 
-    pub fn add_pattern(&mut self, pattern: Rc<Pattern>) -> Result<(), InterpreterError> {
+    pub fn add_pattern(&mut self, pattern: Rc<Pattern>) -> Result<(), RuntimeError> {
         for (precedence_group, keyword_map) in self.precedence_groups.iter_mut() {
             if precedence_group != &pattern.precedence_group {
                 continue;
             }
 
             match &pattern.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
-                [_] => return Err(InterpreterError::LinkerError { msg: format!("Pattern is too short: {}.", pattern.alias) }),
+                [_] => return Err(RuntimeError { msg: format!("Pattern is too short: {}.", pattern.alias) }),
                 [
                     PatternPart::Keyword(keyword),
                     PatternPart::Parameter { .. },
@@ -203,7 +203,7 @@ impl <'a> Scope<'a> {
                     keyword_map.insert(keyword.clone(), pattern.alias.clone());
                     self.insert_keyword(keyword);
                 }
-                _ => return Err(InterpreterError::LinkerError { msg: String::from("This pattern form is not supported; try using unary or binary patterns.") }),
+                _ => return Err(RuntimeError { msg: String::from("This pattern form is not supported; try using unary or binary patterns.") }),
             };
 
             self.patterns.insert(pattern);
@@ -216,7 +216,7 @@ impl <'a> Scope<'a> {
 }
 
 impl <'a> Scope<'a> {
-    pub fn resolve(&'a self, environment: Environment, name: &str) -> Result<&'a Reference, InterpreterError> {
+    pub fn resolve(&'a self, environment: Environment, name: &str) -> Result<&'a Reference, RuntimeError> {
         if let Some(matches) = self.references(environment).get(name) {
             return Ok(matches)
         }
@@ -225,7 +225,7 @@ impl <'a> Scope<'a> {
             return parent.resolve(environment, name);
         }
 
-        Err(InterpreterError::LinkerError { msg: format!("Reference '{}' could not be resolved", name) })
+        Err(RuntimeError { msg: format!("Reference '{}' could not be resolved", name) })
     }
 
     pub fn resolve_precedence_group(&self, name: &str) -> Rc<PrecedenceGroup> {
