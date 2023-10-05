@@ -17,14 +17,15 @@ pub mod error;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Instant;
 use clap::{arg, Command};
 use itertools::Itertools;
 use colored::Colorize;
-use crate::error::RuntimeError;
+use crate::error::{dump_failure, dump_result, dump_start, dump_success, dump_unexpected_failure, format_errors, RuntimeError};
 use crate::interpreter::{Runtime, common};
+use crate::program::module::Module;
 use crate::transpiler::Context;
 
 
@@ -58,41 +59,28 @@ fn cli() -> Command<'static> {
 }
 
 fn main() -> ExitCode {
-    match internal_main() {
-        Ok(_) => {
-            ExitCode::from(0)
-        },
-        Err(err) => {
-            match &err[..] {
-                [] => unreachable!(),
-                [err] => {
-                    println!("Failed to run command:\n\n{}", err);
-                }
-                errs => {
-                    println!("Failed to run command ({} errors):\n\n{}", err.len(), err.into_iter().map(|e| e.to_string()).join("\n\n"));
-                }
-            }
-            ExitCode::from(1)
-        }
-    }
-}
-
-fn internal_main() -> Result<(), Vec<RuntimeError>> {
     let matches = cli().get_matches();
+
     match matches.subcommand() {
         Some(("run", sub_matches)) => {
-            let path = sub_matches.get_one::<PathBuf>("PATH").unwrap();
+            let input_path = sub_matches.get_one::<PathBuf>("PATH").unwrap();
 
             let builtins = program::builtins::create_builtins();
             let mut runtime = Runtime::new(&builtins);
-            common::load(&mut runtime)?;
+            if let Err(e) = common::load(&mut runtime) {
+                _ = dump_start("import(monoteny.common)");
+                return dump_failure( e);
+            }
 
-            let module = runtime.load_file(path)?;
+            let module = match runtime.load_file(input_path) {
+                Ok(m) => m,
+                Err(e) => return dump_unexpected_failure(format!("import({})", input_path.as_os_str().to_string_lossy()).as_str(), e),
+            };
 
-            println!("{} {}:@main", "Running".green().bold(), path.as_os_str().to_string_lossy());
-            let start = Instant::now();
-            interpreter::run::main(&module, &mut runtime).map_err(|e| vec![e])?;
-            println!("{} running in {:.2}s", "Finished".green().bold(), start.elapsed().as_secs_f32());
+            dump_result(
+                dump_start(format!("{}:@main", input_path.as_os_str().to_string_lossy()).as_str()),
+                interpreter::run::main(&module, &mut runtime).map_err(|e| vec![e])
+            )
         },
         Some(("check", sub_matches)) => {
             let paths = sub_matches
@@ -103,14 +91,23 @@ fn internal_main() -> Result<(), Vec<RuntimeError>> {
 
             let builtins = program::builtins::create_builtins();
             let mut runtime = Runtime::new(&builtins);
-            common::load(&mut runtime)?;
-
-            for path in paths {
-                println!("{} {}:@check", "Running".green().bold(), path.as_os_str().to_string_lossy());
-                runtime.load_file(path)?;
+            if let Err(e) = common::load(&mut runtime) {
+                _ = dump_start("import(monoteny.common)");
+                return dump_failure( e);
             }
 
-            println!("All files are valid .monoteny!");
+            let mut error_count = 0;
+            for path in paths {
+                match runtime.load_file(path) {
+                    Ok(_) => {},
+                    Err(e) => {
+                        dump_unexpected_failure(format!("import({})", path.as_os_str().to_string_lossy()).as_str(), e);
+                        error_count += 1;
+                    },
+                };
+            }
+
+            ExitCode::from(error_count)
         },
         Some(("transpile", sub_matches)) => {
             let input_path = sub_matches.get_one::<PathBuf>("INPUT").unwrap();
@@ -131,42 +128,62 @@ fn internal_main() -> Result<(), Vec<RuntimeError>> {
 
             let builtins = program::builtins::create_builtins();
             let mut runtime = Runtime::new(&builtins);
-            common::load(&mut runtime)?;
+            match common::load(&mut runtime) {
+                Err(e) => return dump_unexpected_failure("import(monoteny.common)", e),
+                _ => {}
+            }
 
-            let module = runtime.load_file(input_path)?;
+            let module = match runtime.load_file(input_path) {
+                Ok(m) => m,
+                Err(e) => return dump_unexpected_failure(format!("import({})", input_path.as_os_str().to_string_lossy()).as_str(), e),
+            };
 
-            let target_count = output_extensions.len();
-            let start = Instant::now();
+            let mut error_count = 0;
+
             for output_extension in output_extensions {
-                let mut context = match output_extension {
-                    "py" => transpiler::python::create_context(&runtime),
-                    output_extension => panic!("File type not supported: {}", output_extension)
-                };
-
-                println!("{} {}:@transpile using target {:?}", "Running".green().bold(), input_path.as_os_str().to_string_lossy(), output_extension);
-                let mut transpiler = transpiler::run(&module, &mut runtime, &mut context).map_err(|e| vec![e])?;
-
-                if should_constant_fold {
-                    transpiler::constant_fold(&mut transpiler);
-                }
-
-                let file_map = context.make_files(base_filename, &runtime, &transpiler)?;
-                for (filename, content) in file_map {
-                    let file_path = base_output_path.join(filename);
-                    let mut f = File::create(file_path.clone()).expect("Unable to create file");
-                    let f: &mut (dyn Write) = &mut f;
-                    write!(f, "{}", content).expect("Error writing file");
-
-                    println!("{}", file_path.to_str().unwrap());
+                let start = dump_start(format!("{}:@transpile using {}", input_path.as_os_str().to_string_lossy(), output_extension).as_str());
+                match transpile_target(base_filename, base_output_path, should_constant_fold, &mut runtime, &module, output_extension) {
+                    Ok(paths) => {
+                        for path in paths {
+                            println!("{}", path.to_str().unwrap());
+                        }
+                        dump_success(start);
+                    }
+                    Err(e) => {
+                        dump_failure(e);
+                        error_count += 1;
+                    },
                 }
                 println!();
             }
-            println!("{} transpiling {} target{} in {:.2}s", "Finished".green().bold(), target_count, if target_count == 1 { "" } else { "s" }, start.elapsed().as_secs_f32());
+
+            ExitCode::from(error_count)
         },
         _ => {
             panic!("Unsupported action.")
         },
     }
+}
 
-    Ok(())
+fn transpile_target(base_filename: &str, base_output_path: &Path, should_constant_fold: bool, mut runtime: &mut Box<Runtime>, module: &Box<Module>, output_extension: &str) -> Result<Vec<PathBuf>, Vec<RuntimeError>> {
+    let mut context = match output_extension {
+        "py" => transpiler::python::create_context(&runtime),
+        output_extension => panic!("File type not supported: {}", output_extension)
+    };
+
+    let mut transpiler = transpiler::run(&module, &mut runtime, &mut context).map_err(|e| vec![e])?;
+
+    if should_constant_fold {
+        transpiler::constant_fold(&mut transpiler);
+    }
+
+    let file_map = context.make_files(base_filename, &runtime, &transpiler)?;
+    let output_files = file_map.into_iter().map(|(filename, content)| {
+        let file_path = base_output_path.join(filename);
+        let mut f = File::create(file_path.clone()).expect("Unable to create file");
+        let f: &mut (dyn Write) = &mut f;
+        write!(f, "{}", content).expect("Error writing file");
+        file_path
+    }).collect_vec();
+    Ok(output_files)
 }

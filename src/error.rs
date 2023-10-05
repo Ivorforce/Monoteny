@@ -2,6 +2,9 @@ use std::cmp::max;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Range;
 use std::path::PathBuf;
+use std::process::ExitCode;
+use std::time::Instant;
+use colored::Colorize;
 use itertools::Itertools;
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -96,4 +99,35 @@ impl<V> ErrInRange<RResult<V>> for RResult<V> {
     fn err_in_range(self, range: &Range<usize>) -> RResult<V> {
         self.map_err(|e| e.in_range(range.clone()))
     }
+}
+
+pub fn dump_start(name: &str) -> Instant {
+    println!("{} {}", "Running".green().bold(), name);
+    Instant::now()
+}
+
+pub fn dump_result<V>(start: Instant, result: Result<V, Vec<RuntimeError>>) -> ExitCode {
+    match result {
+        Ok(_) => dump_success(start,),
+        Err(e) => dump_failure(e),
+    }
+}
+
+pub fn dump_unexpected_failure(name: &str, err: Vec<RuntimeError>) -> ExitCode {
+    println!("{} on {} ({} error(s)):\n\n{}", "Failure".red().bold(), name, err.len(), format_errors(&err));
+    ExitCode::FAILURE
+}
+
+pub fn dump_failure(err: Vec<RuntimeError>) -> ExitCode {
+    println!("{} ({} error(s)):\n\n{}", "Failure".red().bold(), err.len(), format_errors(&err));
+    ExitCode::FAILURE
+}
+
+pub fn dump_success(start: Instant) -> ExitCode {
+    println!("{} in {:.2}s", "Finished".green().bold(), start.elapsed().as_secs_f32());
+    ExitCode::SUCCESS
+}
+
+pub fn format_errors(errors: &Vec<RuntimeError>) -> String {
+    errors.into_iter().map(|e| e.to_string()).join("\n\n")
 }
