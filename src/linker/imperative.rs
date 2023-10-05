@@ -12,7 +12,6 @@ use crate::linker::{precedence, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousAbstractCall, LinkerAmbiguity, AmbiguityResult};
 use crate::linker::precedence::link_patterns;
 use crate::linker::r#type::TypeFactory;
-use crate::linker::scopes::Scope;
 use crate::parser::ast;
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
@@ -204,7 +203,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(expression_id)
     }
 
-    fn link_statement(&mut self, scope: &mut Scope, statement: &ast::Statement) -> Result<ExpressionID, RuntimeError> {
+    fn link_statement(&mut self, scope: &mut scopes::Scope, statement: &ast::Statement) -> Result<ExpressionID, RuntimeError> {
         let expression_id = match statement {
             ast::Statement::Error(err) => {
                 return Err(err.clone())
@@ -292,7 +291,8 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_term(&mut self, syntax: &Positioned<ast::Term>, scope: &scopes::Scope) -> Result<Positioned<precedence::Token>, RuntimeError> {
         let token = match &syntax.value {
             ast::Term::Identifier(s) => {
-                let variable = scope.resolve(scopes::Environment::Global, s)?;
+                let variable = scope.resolve(scopes::Environment::Global, s)
+                    .err_in_range(&syntax.position)?;
 
                 match variable {
                     Reference::Object(ref_) => {
