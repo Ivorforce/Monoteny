@@ -66,6 +66,9 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime)
 impl <'a> GlobalLinker<'a> {
     pub fn link_global_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>) -> Result<(), LinkError> {
         match statement {
+            ast::GlobalStatement::Error(err) => {
+                return Err(LinkError::LinkError { msg: err.clone() })
+            }
             ast::GlobalStatement::Pattern(pattern) => {
                 let pattern = self.link_pattern(pattern)?;
                 self.module.patterns.insert(Rc::clone(&pattern));

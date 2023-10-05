@@ -108,7 +108,10 @@ impl Runtime {
     }
 
     pub fn load_source(&mut self, source: &str) -> Result<Box<Module>, InterpreterError> {
-        let ast = parser::parse_program(source)
+        // We can ignore the errors. All errors are stored inside the AST too and will fail there.
+        // TODO When JIT loading is implemented, we should still try to link all non-loaded
+        //  functions / modules and warn if they fail. We can also then warn they're unused too.
+        let (ast, _) = parser::parse_program(source)
             .map_err(|e| InterpreterError::ParserError { msg: e.to_string() })?;
         self.load_ast(&ast)
     }

@@ -195,6 +195,9 @@ impl <'a> ImperativeLinker<'a> {
 
         for statement in body.iter() {
             match statement.as_ref() {
+                ast::Statement::Error(err) => {
+                    return Err(LinkError::LinkError { msg: err.clone() })
+                }
                 ast::Statement::VariableDeclaration {
                     mutability, identifier, type_declaration, expression
                 } => {

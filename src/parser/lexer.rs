@@ -35,8 +35,8 @@ impl<'i> Lexer<'i> {
 }
 
 /// Concrete lexer error
-#[derive(Debug, PartialEq)]
-pub struct Error(String);
+#[derive(Debug, PartialEq, Clone)]
+pub struct Error(pub String);
 
 impl<'i> Iterator for Lexer<'i> {
     type Item = Result<(usize, Token<'i>, usize), Error>;

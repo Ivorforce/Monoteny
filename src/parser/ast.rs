@@ -20,6 +20,7 @@ pub enum GlobalStatement {
     Trait(Box<TraitDefinition>),
     Conformance(Box<TraitConformanceDeclaration>),
     Macro(Box<GlobalMacro>),
+    Error(String),
 }
 
 #[derive(Eq, PartialEq)]
@@ -105,6 +106,7 @@ pub enum Statement {
     VariableAssignment { variable_name: String, new_value: Expression },
     Expression(Expression),
     Return(Option<Expression>),
+    Error(String),
 }
 
 #[derive(Eq, PartialEq)]
@@ -197,6 +199,7 @@ impl Display for GlobalStatement {
             GlobalStatement::Trait(trait_) => write!(fmt, "{}", trait_),
             GlobalStatement::Conformance(conformance) => write!(fmt, "{}", conformance),
             GlobalStatement::Macro(macro_) => write!(fmt, "{}", macro_),
+            GlobalStatement::Error(string) => write!(fmt, "{}", string),
         }?;
 
         write!(fmt, ";")
@@ -305,6 +308,7 @@ impl Display for Statement {
             Statement::Return(Some(expression)) => write!(fmt, "return {}", expression),
             Statement::Return(None) => write!(fmt, "return"),
             Statement::Expression(ref expression) => write!(fmt, "{}", expression),
+            Statement::Error(string) => write!(fmt, "{}", string),
         }
     }
 }

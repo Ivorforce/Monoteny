@@ -17,7 +17,9 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use std::process::ExitCode;
 use clap::{arg, Command};
+use log::error;
 use crate::interpreter::{Runtime, InterpreterError, common};
 use crate::linker::LinkError;
 use crate::transpiler::Context;
@@ -52,7 +54,19 @@ fn cli() -> Command<'static> {
         )
 }
 
-fn main() -> Result<(), InterpreterError> {
+fn main() -> ExitCode {
+    match internal_main() {
+        Ok(_) => {
+            ExitCode::from(0)
+        },
+        Err(err) => {
+            println!("{}", err);
+            ExitCode::from(1)
+        }
+    }
+}
+
+fn internal_main() -> Result<(), InterpreterError> {
     let matches = cli().get_matches();
     match matches.subcommand() {
         Some(("run", sub_matches)) => {
