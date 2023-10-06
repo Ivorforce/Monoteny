@@ -13,6 +13,9 @@ pub struct TraitLinker<'a> {
 impl <'a> TraitLinker<'a> {
     pub fn link_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
+            ast::GlobalStatement::Error(err) => {
+                return Err(err.clone())
+            }
             ast::GlobalStatement::FunctionDeclaration(syntax) => {
                 let fun = link_function_pointer(&syntax, &scope, requirements)?;
                 if !syntax.body.is_none() {
