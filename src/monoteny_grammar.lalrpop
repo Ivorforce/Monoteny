@@ -70,17 +70,7 @@ AnyIdentifier: String = {
 
 
 pub Program: Module = {
-    <global_statements: Box<Positioned<(<GlobalStatement> ";")>>*> => Module { <> }
-};
-
-pub GlobalStatement: GlobalStatement = {
-    Function => GlobalStatement::FunctionDeclaration(<>),
-    Pattern => GlobalStatement::Pattern(<>),
-    OperatorFunction => GlobalStatement::Operator(<>),
-    Trait => GlobalStatement::Trait(<>),
-    Conformance => GlobalStatement::Conformance(<>),
-    GlobalMacro => GlobalStatement::Macro(<>),
-    <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); GlobalStatement::Error(derive_error(&e, start, end)) },
+    <global_statements: Box<Positioned<(<Statement> ";")>>*> => Module { <> }
 };
 
 Pattern: Box<PatternDeclaration> = {
@@ -136,11 +126,11 @@ NameValuePair: (ParameterKey, String) = {
 // =============================== Trait =====================================
 
 Trait: Box<TraitDefinition> = {
-    <decorators: Decorator*> "trait" <name: Identifier> "{" <statements: (<Box<Positioned<GlobalStatement>>> ";")*> "}" => Box::new(TraitDefinition { <> }),
+    <decorators: Decorator*> "trait" <name: Identifier> "{" <statements: (<Box<Positioned<Statement>>> ";")*> "}" => Box::new(TraitDefinition { <> }),
 }
 
 Conformance: Box<TraitConformanceDeclaration> = {
-    "declare" <declared_for: Expression> "is" <declared: Identifier> "{" <statements: (<Box<Positioned<GlobalStatement>>> ";")*> "}" => Box::new(TraitConformanceDeclaration { <> }),
+    "declare" <declared_for: Expression> "is" <declared: Identifier> "{" <statements: (<Box<Positioned<Statement>>> ";")*> "}" => Box::new(TraitConformanceDeclaration { <> }),
 }
 
 // =============================== Statement =====================================
@@ -151,6 +141,12 @@ pub Statement: Statement = {
     "upd" <variable_name: Identifier> "=" <new_value: Expression> => Statement::VariableAssignment { variable_name, new_value },
     "return" <Expression?> => Statement::Return(<>),
     Expression => Statement::Expression(<>),
+    Function => Statement::FunctionDeclaration(<>),
+    Pattern => Statement::Pattern(<>),
+    OperatorFunction => Statement::Operator(<>),
+    Trait => Statement::Trait(<>),
+    Conformance => Statement::Conformance(<>),
+    GlobalMacro => Statement::Macro(<>),
 };
 
 VariableDeclarationMutability: Mutability = {

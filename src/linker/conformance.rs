@@ -21,12 +21,9 @@ pub struct ConformanceLinker<'a> {
 }
 
 impl <'a> ConformanceLinker<'a> {
-    pub fn link_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> RResult<()> {
+    pub fn link_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
-            ast::GlobalStatement::Error(err) => {
-                return Err(err.clone())
-            }
-            ast::GlobalStatement::FunctionDeclaration(syntax) => {
+            ast::Statement::FunctionDeclaration(syntax) => {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
                 //  to the ID of the parent abstract function. That way, we can avoid another
                 //  generic to generic mapping later.

@@ -79,29 +79,26 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &Runtime)
 }
 
 impl <'a> GlobalLinker<'a> {
-    pub fn link_global_statement(&mut self, pstatement: &'a Positioned<ast::GlobalStatement>, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<()> {
+    pub fn link_global_statement(&mut self, pstatement: &'a Positioned<ast::Statement>, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<()> {
         match &pstatement.value {
-            ast::GlobalStatement::Error(err) => {
-                return Err(err.clone())
-            }
-            ast::GlobalStatement::Pattern(pattern) => {
+            ast::Statement::Pattern(pattern) => {
                 let pattern = self.link_pattern(pattern)?;
                 self.module.patterns.insert(Rc::clone(&pattern));
                 self.global_variables.add_pattern(pattern)?;
             }
-            ast::GlobalStatement::FunctionDeclaration(syntax) => {
+            ast::Statement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
                 let fun = link_function_pointer(&syntax, &scope, requirements)?;
 
                 self.add_function(fun, &syntax.body, &syntax.decorators, pstatement.position.clone())?;
             }
-            ast::GlobalStatement::Operator(syntax) => {
+            ast::Statement::Operator(syntax) => {
                 let scope = &self.global_variables;
                 let fun = link_operator_pointer(&syntax, &scope, requirements)?;
 
                 self.add_function(fun, &syntax.body, &syntax.decorators, pstatement.position.clone())?;
             }
-            ast::GlobalStatement::Trait(syntax) => {
+            ast::Statement::Trait(syntax) => {
                 let mut trait_ = Trait::new_with_self(syntax.name.clone());
 
                 let generic_self_type = trait_.create_generic_type("Self");
@@ -151,7 +148,7 @@ impl <'a> GlobalLinker<'a> {
                     &trait_.name.clone()
                 );
             }
-            ast::GlobalStatement::Conformance(syntax) => {
+            ast::Statement::Conformance(syntax) => {
                 let mut type_factory = TypeFactory::new(&self.global_variables);
                 let self_type = type_factory.link_type(&syntax.declared_for)?;
                 let declared = self.global_variables
@@ -191,7 +188,7 @@ impl <'a> GlobalLinker<'a> {
                     self.add_function(fun.pointer, fun.body, fun.decorators, pstatement.position.clone())?;
                 }
             }
-            ast::GlobalStatement::Macro(syntax) => {
+            ast::Statement::Macro(syntax) => {
                 let fun = match syntax.macro_name.as_str() {
                     "main" => {
                         let fun = Rc::new(FunctionPointer {
@@ -235,6 +232,9 @@ impl <'a> GlobalLinker<'a> {
                 };
 
                 self.add_function(fun, &syntax.body, &syntax.decorators, pstatement.position.clone())?;
+            }
+            statement => {
+                return Err(RuntimeError::new(format!("Statement {} is not supported in a global context.", statement)))
             }
         }
 

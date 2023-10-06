@@ -12,23 +12,7 @@ use crate::util::position::Positioned;
 
 #[derive(Eq, PartialEq)]
 pub struct Module {
-    pub global_statements: Vec<Box<Positioned<GlobalStatement>>>
-}
-
-#[derive(Eq, PartialEq)]
-pub enum GlobalStatement {
-    Error(RuntimeError),
-    FunctionDeclaration(Box<Function>),
-    Operator(Box<OperatorFunction>),
-    Pattern(Box<PatternDeclaration>),
-    Trait(Box<TraitDefinition>),
-    Conformance(Box<TraitConformanceDeclaration>),
-    Macro(Box<GlobalMacro>),
-}
-
-#[derive(Eq, PartialEq)]
-pub enum MemberStatement {
-    FunctionDeclaration(Box<Function>),
+    pub global_statements: Vec<Box<Positioned<Statement>>>
 }
 
 #[derive(Eq, PartialEq)]
@@ -85,14 +69,14 @@ pub struct TraitDefinition {
     pub decorators: Vec<String>,
 
     pub name: String,
-    pub statements: Vec<Box<Positioned<GlobalStatement>>>,
+    pub statements: Vec<Box<Positioned<Statement>>>,
 }
 
 #[derive(Eq, PartialEq)]
 pub struct TraitConformanceDeclaration {
     pub declared_for: Expression,
     pub declared: String,
-    pub statements: Vec<Box<Positioned<GlobalStatement>>>,
+    pub statements: Vec<Box<Positioned<Statement>>>,
 }
 
 
@@ -109,6 +93,12 @@ pub enum Statement {
     VariableAssignment { variable_name: String, new_value: Expression },
     Expression(Expression),
     Return(Option<Expression>),
+    FunctionDeclaration(Box<Function>),
+    Operator(Box<OperatorFunction>),
+    Pattern(Box<PatternDeclaration>),
+    Trait(Box<TraitDefinition>),
+    Conformance(Box<TraitConformanceDeclaration>),
+    Macro(Box<GlobalMacro>),
 }
 
 #[derive(Eq, PartialEq)]
@@ -190,30 +180,6 @@ impl Display for Module {
             write!(fmt, "{}\n\n", item)?
         };
         return Ok(())
-    }
-}
-
-impl Display for GlobalStatement {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match self {
-            GlobalStatement::Error(_) => write!(fmt, "ERR"),
-            GlobalStatement::FunctionDeclaration(function) => write!(fmt, "{}", function),
-            GlobalStatement::Pattern(pattern) => write!(fmt, "{}", pattern),
-            GlobalStatement::Operator(operator) => write!(fmt, "{}", operator),
-            GlobalStatement::Trait(trait_) => write!(fmt, "{}", trait_),
-            GlobalStatement::Conformance(conformance) => write!(fmt, "{}", conformance),
-            GlobalStatement::Macro(macro_) => write!(fmt, "{}", macro_),
-        }?;
-
-        write!(fmt, ";")
-    }
-}
-
-impl Display for MemberStatement {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match self {
-            MemberStatement::FunctionDeclaration(function) => write!(fmt, "{}", function),
-        }
     }
 }
 
@@ -311,6 +277,13 @@ impl Display for Statement {
             Statement::Return(Some(expression)) => write!(fmt, "return {}", expression),
             Statement::Return(None) => write!(fmt, "return"),
             Statement::Expression(ref expression) => write!(fmt, "{}", expression),
+
+            Statement::FunctionDeclaration(function) => write!(fmt, "{}", function),
+            Statement::Pattern(pattern) => write!(fmt, "{}", pattern),
+            Statement::Operator(operator) => write!(fmt, "{}", operator),
+            Statement::Trait(trait_) => write!(fmt, "{}", trait_),
+            Statement::Conformance(conformance) => write!(fmt, "{}", conformance),
+            Statement::Macro(macro_) => write!(fmt, "{}", macro_),
         }
     }
 }

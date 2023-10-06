@@ -265,6 +265,9 @@ impl <'a> ImperativeLinker<'a> {
             ast::Statement::Expression(expression) => {
                 self.link_expression(&expression, &scope)?
             }
+            statement => {
+                return Err(RuntimeError::new(format!("Statement {} is not supported in an imperative context.", statement)))
+            }
         };
         Ok(expression_id)
     }

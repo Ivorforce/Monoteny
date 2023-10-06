@@ -11,12 +11,9 @@ pub struct TraitLinker<'a> {
 }
 
 impl <'a> TraitLinker<'a> {
-    pub fn link_statement(&mut self, statement: &'a ast::GlobalStatement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> RResult<()> {
+    pub fn link_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
-            ast::GlobalStatement::Error(err) => {
-                return Err(err.clone())
-            }
-            ast::GlobalStatement::FunctionDeclaration(syntax) => {
+            ast::Statement::FunctionDeclaration(syntax) => {
                 let fun = link_function_pointer(&syntax, &scope, requirements)?;
                 if !syntax.body.is_none() {
                     return Err(RuntimeError::new(format!("Abstract function {} cannot have a body.", fun.name)));
