@@ -206,21 +206,24 @@ impl <'a> ImperativeLinker<'a> {
     fn link_statement(&mut self, scope: &mut scopes::Scope, statement: &ast::Statement) -> RResult<ExpressionID> {
         let expression_id = match statement {
             ast::Statement::VariableDeclaration {
-                mutability, identifier, type_declaration, expression
+                mutability, identifier, type_declaration, assignment
             } => {
-                let new_value: ExpressionID = self.link_expression(&expression, &scope)?;
+                guard!(let Some(assignment) = assignment else {
+                    return Err(RuntimeError::new(format!("Value {} must be assigned on declaration.", identifier)))
+                });
+                let assignment: ExpressionID = self.link_expression(&assignment, &scope)?;
 
                 if let Some(type_declaration) = type_declaration {
-                    self.hint_type(new_value, type_declaration, &scope)?;
+                    self.hint_type(assignment, type_declaration, &scope)?;
                 }
 
-                let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(new_value)), mutability: mutability.clone() });
+                let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(assignment)), mutability: mutability.clone() });
                 let variable = Reference::Object(Rc::clone(&object_ref));
 
                 self.variable_names.insert(Rc::clone(&object_ref), identifier.clone());
                 scope.override_reference(scopes::Environment::Global, variable, identifier);
 
-                let expression_id = self.register_new_expression(vec![new_value]);
+                let expression_id = self.register_new_expression(vec![assignment]);
                 self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(object_ref));
                 self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
                 expression_id

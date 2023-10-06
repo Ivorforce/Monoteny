@@ -88,7 +88,7 @@ pub enum Statement {
         mutability: Mutability,
         identifier: String,
         type_declaration: Option<Expression>,
-        expression: Expression
+        assignment: Option<Expression>
     },
     VariableAssignment { variable_name: String, new_value: Expression },
     Expression(Expression),
@@ -263,13 +263,16 @@ impl Display for TraitConformanceDeclaration {
 impl Display for Statement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
-            Statement::VariableDeclaration { mutability, identifier, type_declaration, expression} => {
+            Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment} => {
                 let mutability_string = mutability.variable_declaration_keyword();
                 write!(fmt, "{} {}", mutability_string, identifier)?;
                 if let Some(type_declaration) = type_declaration {
                     write!(fmt, " '{}", type_declaration)?;
                 }
-                write!(fmt, " = {}", expression)
+                if let Some(assignment) = assignment {
+                    write!(fmt, " = {}", assignment)?;
+                }
+                Ok(())
             },
             Statement::VariableAssignment { variable_name, new_value } => {
                 write!(fmt, "upd {} = {}", variable_name, new_value)
