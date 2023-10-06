@@ -18,6 +18,8 @@ pub struct TypeFactory<'a> {
     pub requirements: HashSet<Rc<TraitBinding>>,
 }
 
+// TODO Essentially this is a form of mini interpreter.
+//  In the future it might be easier to rewrite it as such.
 impl <'a> TypeFactory<'a> {
     pub fn new(hierarchy: &'a scopes::Scope<'a>) -> TypeFactory<'a> {
         TypeFactory {
@@ -27,12 +29,12 @@ impl <'a> TypeFactory<'a> {
         }
     }
 
-    fn resolve_reference(&mut self, name: &str) -> RResult<&TypeUnit> {
+    fn resolve_reference(&mut self, name: &str) -> RResult<Box<TypeProto>> {
         if let Some(generic) = self.generics.get(name) {
-            return Ok(generic)
+            return Ok(TypeProto::unit(generic.clone()))
         }
 
-        self.scope.resolve(Environment::Global, &name)?.as_metatype()
+        Ok(self.scope.resolve(Environment::Global, &name)?.as_metatype()?.clone())
     }
 
     fn resolve_trait(&mut self, name: &str) -> RResult<Rc<Trait>> {
@@ -58,11 +60,8 @@ impl <'a> TypeFactory<'a> {
         match term {
             ast::Term::Identifier(type_name) => {
                 match self.resolve_reference(type_name) {
-                    Ok(unit) => {
-                        Ok(Box::new(TypeProto {
-                            unit: unit.clone(),
-                            arguments
-                        }))
+                    Ok(type_) => {
+                        Ok(type_)
                     }
                     Err(error) => {
                         if type_name.starts_with("#") || type_name.starts_with("$") {

@@ -47,14 +47,14 @@ impl Reference {
         Ok(&obj_ref)
     }
 
-    pub fn as_metatype(&self) -> RResult<&TypeUnit> {
+    pub fn as_metatype(&self) -> RResult<&Box<TypeProto>> {
         let type_ = &self.as_object_ref(false)?.type_;
 
         guard!(let TypeUnit::MetaType = &type_.unit else {
            return Err(RuntimeError::new(format!("Reference is not a type.")));
         });
 
-        Ok(&type_.arguments.get(0).unwrap().unit)
+        Ok(&type_.arguments.get(0).unwrap())
     }
 
     pub fn as_trait(&self) -> RResult<Rc<Trait>> {

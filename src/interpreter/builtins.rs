@@ -27,6 +27,8 @@ pub fn load(runtime: &mut Runtime) {
             BuiltinFunctionHint::Constructor => todo!(),
             BuiltinFunctionHint::True => load_constant!(bool true),
             BuiltinFunctionHint::False => load_constant!(bool false),
+            BuiltinFunctionHint::Getter => todo!(),
+            BuiltinFunctionHint::Setter => todo!(),
         });
     }
 

@@ -9,7 +9,8 @@ use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
-use crate::program::functions::FunctionHead;
+use crate::program::debug::MockFunctionInterface;
+use crate::program::functions::{FunctionForm, FunctionHead, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::traits::{RequirementsFulfillment, TraitBinding, TraitConformanceWithTail, TraitGraph};
 use crate::program::types::{TypeProto, TypeUnit};
@@ -119,19 +120,21 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
 
         // TODO We should probably output the locations of candidates.
 
-        let argument_types = self.arguments.iter().map(|t|
-            linker.types.prototype_binding_alias(t)
-        ).collect_vec();
-
         match &self.failed_candidates[..] {
             [] => panic!(),
             [(candidate, err)] => {
                 // TODO How so?
-                Err(RuntimeError::new(format!("function {:?} could not be resolved. Candidate failed type / requirements test: {}", &candidate.function, err)))
+                Err(RuntimeError::new(format!("function {:?} could not be resolved. Candidate failed type / requirements test with error:\n{}", &candidate.function, err)))
             }
             cs => {
-                // TODO Print types of arguments too, for context.
-                Err(RuntimeError::new(format!("function {} could not be resolved. {} candidates failed type / requirements test: {:?}", self.function_name, cs.len(), &argument_types)))
+                let signature = MockFunctionInterface {
+                    function_name: self.function_name.to_string(),
+                    form: FunctionForm::Global,
+                    argument_keys: self.arguments.iter().map(|a| ParameterKey::Positional).collect_vec(),
+                    arguments: self.arguments.clone(),
+                    types: &linker.types,
+                };
+                Err(RuntimeError::new(format!("function {} could not be resolved. {} candidates failed type / requirements test.", signature, cs.len())))
             }
         }
     }

@@ -13,7 +13,7 @@ use crate::linker::conformance::ConformanceLinker;
 use crate::linker::interface::{link_function_pointer, link_operator_pointer};
 use crate::linker::r#type::TypeFactory;
 use crate::linker::scopes::Environment;
-use crate::linker::traits::TraitLinker;
+use crate::linker::traits::{TraitLinker, try_make_struct};
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::functions::{FunctionHead, FunctionType, FunctionForm, FunctionInterface, FunctionPointer, Parameter, ParameterKey};
@@ -119,28 +119,7 @@ impl <'a> GlobalLinker<'a> {
                 let trait_ = Rc::new(trait_);
                 let meta_type_reference = self.module.add_trait(&trait_);
 
-                if trait_.abstract_functions.is_empty() {
-                    // Can be instantiated as a struct!
-
-                    let struct_type = TypeProto::unit(TypeUnit::Struct(Rc::clone(&trait_)));
-                    let conformance_binding = trait_.create_generic_binding(vec![("Self", struct_type.clone())]);
-
-                    let conformance = TraitConformance::pure(conformance_binding.clone());
-                    self.module.trait_conformance.add_conformance_rule(TraitConformanceRule::direct(Rc::clone(&conformance)));
-                    self.global_variables.traits.add_conformance_rule(TraitConformanceRule::direct(conformance));
-
-                    let new_function = Rc::new(FunctionPointer {
-                        target: FunctionHead::new(
-                            FunctionInterface::new_simple([TypeProto::meta(struct_type.clone())].into_iter(), struct_type),
-                            FunctionType::Static
-                        ),
-                        name: "call_as_function".to_string(),
-                        form: FunctionForm::Member,
-                    });
-                    self.module.add_function(&new_function);
-                    self.module.fn_builtin_hints.insert(Rc::clone(&new_function.target), BuiltinFunctionHint::Constructor);
-                    self.global_variables.overload_function(&new_function, &self.module.fn_references[&new_function.target])?;
-                }
+                try_make_struct(&trait_, &mut self.module, &mut self.global_variables)?;
 
                 self.global_variables.insert_singleton(
                     Environment::Global,

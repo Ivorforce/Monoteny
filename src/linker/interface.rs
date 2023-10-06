@@ -45,7 +45,7 @@ pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, re
             FunctionType::Static
         ),
         name: function.identifier.clone(),
-        form: if function.target_type.is_none() { FunctionForm::Global } else { FunctionForm::Member },
+        form: if function.target_type.is_none() { FunctionForm::Global } else { FunctionForm::MemberFunction },
     }))
 }
 
@@ -67,7 +67,7 @@ pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::S
                 FunctionType::Static
             ),
             name: name.clone(),
-            form: FunctionForm::Constant,
+            form: FunctionForm::GlobalConstant,
         });
 
         return Ok(fun)

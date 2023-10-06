@@ -142,9 +142,9 @@ pub fn register(runtime: &Runtime, representations: &mut Representations) -> nam
                 ("False", FunctionRepresentation::Constant("False".to_string()))
             }
 
-            BuiltinFunctionHint::Constructor => {
-                continue
-            }
+            BuiltinFunctionHint::Constructor => continue,
+            BuiltinFunctionHint::Getter => continue,
+            BuiltinFunctionHint::Setter => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(head));

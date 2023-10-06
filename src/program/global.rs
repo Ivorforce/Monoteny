@@ -28,6 +28,8 @@ pub struct FunctionImplementation {
 pub enum BuiltinFunctionHint {
     PrimitiveOperation { operation: PrimitiveOperation, type_: primitives::Type },
     Constructor,
+    Getter,
+    Setter,
     True,
     False,
 }

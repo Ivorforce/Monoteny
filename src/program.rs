@@ -10,3 +10,4 @@ pub mod types;
 pub mod module;
 pub mod calls;
 pub mod r#struct;
+pub mod debug;

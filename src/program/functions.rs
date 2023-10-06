@@ -8,11 +8,12 @@ use crate::program::allocation::ObjectReference;
 use crate::program::traits::{TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FunctionForm {
     Global,
-    Member,
-    Constant,
+    GlobalConstant,
+    MemberFunction,
+    MemberField,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -147,32 +148,47 @@ impl FunctionInterface {
         TypeProto::collect_generics(self.parameters.iter().map(|x| &x.type_).chain([&self.return_type]))
     }
 
-    pub fn fmt_with_form(&self, fmt: &mut Formatter<'_>, name: &str, form: &FunctionForm) -> std::fmt::Result {
+    pub fn fmt_with_form(&self, fmt: &mut Formatter<'_>, name: &str, form: FunctionForm) -> std::fmt::Result {
         let mut head = 0;
 
-        match form {
-            FunctionForm::Global => {}
-            FunctionForm::Constant => {}
-            FunctionForm::Member => {
+        let has_args = match form {
+            FunctionForm::Global => true,
+            FunctionForm::GlobalConstant => false,
+            FunctionForm::MemberFunction => {
                 write!(fmt, "{{'{:?}}}.", self.parameters.get(head).unwrap().type_)?;
                 head += 1;
+                true
             },
-        }
+            FunctionForm::MemberField => {
+                write!(fmt, "{{'{:?}}}.", self.parameters.get(head).unwrap().type_)?;
+                head += 1;
+                false
+            }
+        };
 
-        write!(fmt, "{}(", name)?;
+        write!(fmt, "{}", name)?;
 
-        for parameter in self.parameters.iter().skip(head) {
-            match &parameter.external_key {
-                ParameterKey::Positional => {
-                    write!(fmt, "{} '{:?},", parameter.internal_name, parameter.type_)?;
-                }
-                ParameterKey::Name(n) => {
-                    write!(fmt, "{}: {} '{:?},", n, parameter.internal_name, parameter.type_)?;
+        if has_args {
+            write!(fmt, "(")?;
+
+            for parameter in self.parameters.iter().skip(head) {
+                match &parameter.external_key {
+                    ParameterKey::Positional => {
+                        write!(fmt, "{} '{:?},", parameter.internal_name, parameter.type_)?;
+                    }
+                    ParameterKey::Name(n) => {
+                        if n != &parameter.internal_name {
+                            write!(fmt, "{}: {} '{:?},", n, parameter.internal_name, parameter.type_)?;
+                        }
+                        else {
+                            write!(fmt, "{}: '{:?},", n, parameter.type_)?;
+                        }
+                    }
                 }
             }
-        }
 
-        write!(fmt, ")")?;
+            write!(fmt, ")")?;
+        }
 
         if !self.return_type.unit.is_void() {
             write!(fmt, " -> {:?}", self.return_type)?;
@@ -196,7 +212,7 @@ impl FunctionPointer {
         Rc::new(FunctionPointer {
             target: FunctionHead::new(interface, FunctionType::Static),
             name: name.into(),
-            form: FunctionForm::Member,
+            form: FunctionForm::MemberFunction,
         })
     }
 
@@ -204,7 +220,7 @@ impl FunctionPointer {
         Rc::new(FunctionPointer {
             target: FunctionHead::new(interface, FunctionType::Static),
             name: name.into(),
-            form: FunctionForm::Constant,
+            form: FunctionForm::GlobalConstant,
         })
     }
 
@@ -225,7 +241,7 @@ impl FunctionHead {
         })
     }
 
-    pub fn fmt_with_form(&self, fmt: &mut Formatter<'_>, name: &str, form: &FunctionForm) -> std::fmt::Result {
+    pub fn fmt_with_form(&self, fmt: &mut Formatter<'_>, name: &str, form: FunctionForm) -> std::fmt::Result {
         let call_type_symbol = match self.function_type {
             FunctionType::Static => "|",
             FunctionType::Polymorphic { .. } => "?"
@@ -309,13 +325,13 @@ impl Hash for FunctionHead {
 
 impl Debug for FunctionPointer {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        self.target.fmt_with_form(fmt, &self.name, &self.form)
+        self.target.fmt_with_form(fmt, &self.name, self.form)
     }
 }
 
 impl Debug for FunctionHead {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        self.fmt_with_form(fmt, &"fn".to_string(), &FunctionForm::Global)
+        self.fmt_with_form(fmt, &"fn".to_string(), FunctionForm::Global)
     }
 }
 

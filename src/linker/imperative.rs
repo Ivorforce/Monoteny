@@ -14,7 +14,8 @@ use crate::linker::precedence::link_patterns;
 use crate::linker::r#type::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::{ObjectReference, Reference};
-use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
+use crate::program::debug::MockFunctionInterface;
+use crate::program::functions::{FunctionForm, FunctionHead, FunctionInterface, FunctionOverload, FunctionPointer, Parameter, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
 use crate::program::r#struct::Struct;
@@ -318,12 +319,13 @@ impl <'a> ImperativeLinker<'a> {
                             FunctionForm::Global => {
                                 precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
                             }
-                            FunctionForm::Member => panic!(),
-                            FunctionForm::Constant => {
+                            FunctionForm::GlobalConstant => {
                                 precedence::Token::Expression(
                                     self.link_function_call(&overload.functions(), &overload.name, vec![], vec![], scope, syntax.position.clone())?
                                 )
                             }
+                            FunctionForm::MemberFunction => panic!(),
+                            FunctionForm::MemberField => panic!(),
                         }
                     }
                     Reference::PrecedenceGroup(_) => {
@@ -361,13 +363,19 @@ impl <'a> ImperativeLinker<'a> {
                     return Err(RuntimeError::new(format!("Dot notation is not supported in this context.")))
                 });
 
-                let variable = scope.resolve(scopes::Environment::Member, member_name)?;
+                let overload = scope.resolve(scopes::Environment::Member, member_name)?
+                    .as_function_overload()?;
 
-                if let Reference::FunctionOverload(overload) = variable {
-                    precedence::Token::FunctionReference { overload: Rc::clone(overload), target: Some(*target) }
-                }
-                else {
-                    todo!("Member access is not supported yet!")
+                match overload.form {
+                    FunctionForm::MemberField => {
+                        precedence::Token::Expression(
+                            self.link_function_call(&overload.functions(), &overload.name, vec![ParameterKey::Positional], vec![*target], scope, syntax.position.clone())?
+                        )
+                    }
+                    FunctionForm::MemberFunction => {
+                        precedence::Token::FunctionReference { overload, target: Some(*target) }
+                    }
+                    _ => unreachable!()
                 }
             }
             ast::Term::Struct(s) => {
@@ -508,16 +516,23 @@ impl <'a> ImperativeLinker<'a> {
 
         // TODO We should probably output the locations of candidates.
 
+        let signature = MockFunctionInterface {
+            function_name: fn_name.to_string(),
+            form: FunctionForm::Global,
+            argument_keys: argument_keys.clone().into_iter().cloned().collect_vec(),
+            arguments: argument_expressions.clone(),
+            types: &self.types,
+        };
         match &candidates_with_failed_signature[..] {
             [candidate] => {
                 // TODO Print passed arguments like a signature, not array
-                panic!("function {}({:?}) could not be resolved. Candidate has mismatching signature: {:?}", fn_name, argument_keys.iter().join(", "), candidate)
+                panic!("function {} could not be resolved. Candidate has mismatching signature: {:?}", signature, candidate)
             }
             [] => {
-                panic!("function {} could not be resolved.", fn_name)
+                panic!("function {} could not be resolved.", signature)
             }
             candidates => {
-                panic!("function {}({:?}) could not be resolved. {} candidates have mismatching signatures.", fn_name, argument_keys.iter().join(", "), candidates.len())
+                panic!("function {} could not be resolved. {} candidates have mismatching signatures.", signature, candidates.len())
             }
         }
     }

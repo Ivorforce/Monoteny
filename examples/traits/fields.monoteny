@@ -7,26 +7,16 @@ trait Animal {
     var height_cm 'Float32;
 };
 
-trait Cat {
-    -- Inherit name and height_cm, but define 'species' as a constant.
-    -- This also declares "Cat is Animal".
-    @inherit(Animal) {
-        def {Self}.species -> String :: "Cat";
-    };
-};
+def @main :: {
+    -- Create a cat with pre-defined name and height.
+    var animal = Animal(species: "Cat", name: "Noir", height_cm: 180);
 
-def update_height(animal '$Animal) :: {
+    -- Write current status
     write_line("\(animal.name) (\(animal.species)) was: \(animal.height_cm)cm");
 
     -- We can set height_cm, but not species or name.
-    animal.height_cm = 25;
-    write_line("And is now: \(animal.height_cm)");
-};
-
-def @main :: {
-    -- Create a cat with pre-defined name and height.
-    var cat = Cat(name: "Noir", height_cm: 180);
-    update_height(cat);
+    -- upd animal.height_cm = 25;
+    -- write_line("And is now: \(animal.height_cm)");
 };
 
 def @transpile :: {

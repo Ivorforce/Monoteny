@@ -243,9 +243,10 @@ impl <'a> Scope<'a> {
 impl Environment {
     pub fn from_form(form: &FunctionForm) -> Environment {
         match form {
-            FunctionForm::Member => Environment::Member,
+            FunctionForm::MemberFunction => Environment::Member,
+            FunctionForm::MemberField => Environment::Member,
             FunctionForm::Global => Environment::Global,
-            FunctionForm::Constant => Environment::Global,
+            FunctionForm::GlobalConstant => Environment::Global,
         }
     }
 }
