@@ -24,11 +24,11 @@ pub fn load(runtime: &mut Runtime) {
             BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
                 create_primitive_op(type_.clone(), operation.clone())
             }
-            BuiltinFunctionHint::Constructor => todo!(),
+            BuiltinFunctionHint::Constructor(_) => todo!(),
             BuiltinFunctionHint::True => load_constant!(bool true),
             BuiltinFunctionHint::False => load_constant!(bool false),
-            BuiltinFunctionHint::Getter => todo!(),
-            BuiltinFunctionHint::Setter => todo!(),
+            BuiltinFunctionHint::Getter(_) => todo!(),
+            BuiltinFunctionHint::Setter(_) => todo!(),
         });
     }
 

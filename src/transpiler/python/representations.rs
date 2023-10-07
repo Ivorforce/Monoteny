@@ -1,15 +1,17 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
+use crate::program::allocation::ObjectReference;
 use crate::program::computation_tree::ExpressionOperation;
-use crate::program::functions::FunctionHead;
+use crate::program::functions::{FunctionHead, FunctionPointer};
 use crate::program::global::FunctionImplementation;
 use crate::program::types::TypeProto;
+use crate::transpiler::namespaces;
 
 #[derive(Clone)]
 pub struct Representations {
     pub builtin_functions: HashSet<Rc<FunctionHead>>,
-    pub function_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
+    pub function_representations: HashMap<Rc<FunctionHead>, FunctionForm>,
     pub type_ids: HashMap<Box<TypeProto>, Uuid>,
 }
 
@@ -23,36 +25,30 @@ impl Representations {
     }
 }
 
+// The IDs are attached per object because theoretically it's possible for a representation to use
+//  0 names (direct keyword use) or 2 (using multiple keywords). They just 'happen' to all use one.
 #[derive(PartialEq, Eq, Clone)]
-pub enum FunctionRepresentation {
-    Constant(String),
-    FunctionCall(String),
-    Unary(String),
-    Binary(String),
+pub enum FunctionForm {
+    CallAsFunction,
+    Constant(Uuid),
+    FunctionCall(Uuid),
+    MemberField(Uuid),
+    MemberCall(Uuid),
+    Unary(Uuid),
+    Binary(Uuid),
 }
 
-impl FunctionRepresentation {
-    pub fn name(&self) -> &String {
-        match self {
-            FunctionRepresentation::Constant(n) => n,
-            FunctionRepresentation::FunctionCall(n) => n,
-            FunctionRepresentation::Unary(n) => n,
-            FunctionRepresentation::Binary(n) => n,
+pub fn find_for_function(function_representations: &mut HashMap<Rc<FunctionHead>, FunctionForm>, global_namespace: &mut namespaces::Level, implementation: &Box<FunctionImplementation>, pointer: &Rc<FunctionPointer>) {
+    if implementation.parameter_variables.is_empty() {
+        // TODO We could make a helper function and still use a constant even if we use blocks.
+        let has_blocks = implementation.expression_forest.operations.values().any(|op| matches!(op, ExpressionOperation::Block));
+        if !has_blocks {
+            global_namespace.insert_name(implementation.head.function_id, pointer.name.as_str());
+            function_representations.insert(Rc::clone(&implementation.head), FunctionForm::Constant(implementation.head.function_id));
+            return
         }
     }
-}
 
-pub fn find_for_functions<'a>(function_representations: &mut HashMap<Rc<FunctionHead>, FunctionRepresentation>, names: &HashMap<Uuid, String>, functions: impl Iterator<Item=&'a Box<FunctionImplementation>>) {
-    for function in functions {
-        if function.parameter_variables.is_empty() {
-            // TODO We could make a helper function and still use a constant even if we use blocks.
-            let has_blocks = function.expression_forest.operations.values().any(|op| matches!(op, ExpressionOperation::Block));
-            if !has_blocks {
-                function_representations.insert(Rc::clone(&function.head), FunctionRepresentation::Constant(names[&function.head.function_id].clone()));
-                continue
-            }
-        }
-
-        function_representations.insert(Rc::clone(&function.head), FunctionRepresentation::FunctionCall(names[&function.head.function_id].clone()));
-    }
+    global_namespace.insert_name(implementation.head.function_id, pointer.name.as_str());
+    function_representations.insert(Rc::clone(&implementation.head), FunctionForm::FunctionCall(implementation.head.function_id));
 }

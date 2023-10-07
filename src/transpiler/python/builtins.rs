@@ -1,16 +1,23 @@
 use std::collections::HashMap;
 use std::rc::Rc;
+use strum::IntoEnumIterator;
 use uuid::Uuid;
 use crate::interpreter::Runtime;
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
 use crate::program::primitives;
 use crate::program::types::{TypeProto, TypeUnit};
-use crate::transpiler::namespaces;
-use crate::transpiler::python::representations::{FunctionRepresentation, Representations};
+use crate::transpiler::python::{Context, keywords};
+use crate::transpiler::python::keywords::KEYWORD_IDS;
+use crate::transpiler::python::representations::FunctionForm;
 
 
-pub fn register(runtime: &Runtime, representations: &mut Representations) -> namespaces::Level {
-    let mut namespace = namespaces::Level::new();
+pub fn register_global(runtime: &Runtime, context: &mut Context) {
+    let representations = &mut context.representations;
+    let global = &mut context.builtin_global_namespace;
+    let member = &mut context.builtin_member_namespace;
+
+    keywords::register(global);
+    keywords::register(member);
 
     let primitive_map = HashMap::from([
         (primitives::Type::Bool, "Bool"),
@@ -26,29 +33,13 @@ pub fn register(runtime: &Runtime, representations: &mut Representations) -> nam
         (primitives::Type::Float64, "float64"),
     ]);
 
-    // Keywords
-    for keyword in [
-        "False", "class", "from",
-        "None", "continue", "global", "pass",
-        "True", "def", "if", "raise",
-        "del", "import", "return", "as",
-        "elif", "in", "try", "assert",
-        "else", "is", "while", "async",
-        "except", "lambda", "with", "await",
-        "finally", "nonlocal", "yield", "break",
-        "for"
-    ] {
-        // Don't really need an ID but it's easy to just do it like this here.
-        namespace.insert_fixed_name(Uuid::new_v4(), keyword);
-    }
-
     // TODO Imports; we should resolve names deeply in the future
     for type_name in [
         "bool",
         "np", "op",
         "math",
     ] {
-        namespace.insert_fixed_name(Uuid::new_v4(), type_name);
+        global.insert_fixed_name(Uuid::new_v4(), type_name);
     }
 
     // The operators can normally be referenced as operators (which the transpiler does do).
@@ -56,79 +47,75 @@ pub fn register(runtime: &Runtime, representations: &mut Representations) -> nam
     for (head, hint) in runtime.builtins.core.module.fn_builtin_hints.iter() {
         let (higher_order_ref_name, representation) = match hint {
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::EqualTo, type_ } => {
-                ("op.eq", FunctionRepresentation::Binary("==".to_string()))
+                ("op.eq", FunctionForm::Binary(KEYWORD_IDS["=="]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::NotEqualTo, type_ } => {
-                ("op.ne", FunctionRepresentation::Binary("!=".to_string()))
+                ("op.ne", FunctionForm::Binary(KEYWORD_IDS["!="]))
             }
 
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::GreaterThan, type_ } => {
-                ("op.gt", FunctionRepresentation::Binary(">".to_string()))
+                ("op.gt", FunctionForm::Binary(KEYWORD_IDS[">"]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::LesserThan, type_ } => {
-                ("op.lt", FunctionRepresentation::Binary("<".to_string()))
+                ("op.lt", FunctionForm::Binary(KEYWORD_IDS["<"]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::GreaterThanOrEqual, type_ } => {
-                ("op.ge", FunctionRepresentation::Binary(">=".to_string()))
+                ("op.ge", FunctionForm::Binary(KEYWORD_IDS[">="]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::LesserThanOrEqual, type_ } => {
-                ("op.le", FunctionRepresentation::Binary("<=".to_string()))
+                ("op.le", FunctionForm::Binary(KEYWORD_IDS["<="]))
             }
 
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::And, type_ } => {
-                ("op.and_", FunctionRepresentation::Binary("and".to_string()))
+                ("op.and_", FunctionForm::Binary(KEYWORD_IDS["and"]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Or, type_ } => {
-                ("op.or_", FunctionRepresentation::Binary("or".to_string()))
+                ("op.or_", FunctionForm::Binary(KEYWORD_IDS["or"]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Not, type_ } => {
-                ("op.not_", FunctionRepresentation::Unary("not".to_string()))
+                ("op.not_", FunctionForm::Unary(KEYWORD_IDS["not"]))
             }
 
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Negative, type_ } => {
-                ("op.neg", FunctionRepresentation::Unary("-".to_string()))
+                ("op.neg", FunctionForm::Unary(KEYWORD_IDS["-"]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Add, type_ } => {
-                ("op.add", FunctionRepresentation::Binary("+".to_string()))
+                ("op.add", FunctionForm::Binary(KEYWORD_IDS["+"]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Subtract, type_ } => {
-                ("op.sub", FunctionRepresentation::Binary("-".to_string()))
+                ("op.sub", FunctionForm::Binary(KEYWORD_IDS["-"]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Multiply, type_ } => {
-                ("op.mul", FunctionRepresentation::Binary("*".to_string()))
+                ("op.mul", FunctionForm::Binary(KEYWORD_IDS["*"]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Divide, type_ } => {
                 match type_.is_int() {
-                    true => ("op.truediv", FunctionRepresentation::Binary("//".to_string())),
-                    false => ("op.div", FunctionRepresentation::Binary("/".to_string())),
+                    true => ("op.truediv", FunctionForm::Binary(KEYWORD_IDS["//"])),
+                    false => ("op.div", FunctionForm::Binary(KEYWORD_IDS["//"])),
                 }
             }
 
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Modulo, type_ } => {
-                ("op.mod", FunctionRepresentation::Binary("%".to_string()))
+                ("op.mod", FunctionForm::Binary(KEYWORD_IDS["%"]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Exp, type_ } => {
-                ("op.pow", FunctionRepresentation::Binary("**".to_string()))
+                ("op.pow", FunctionForm::Binary(KEYWORD_IDS["**"]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Log, type_ } => {
-                ("math.log", FunctionRepresentation::FunctionCall("math.log".to_string()))
+                global.insert_fixed_name(head.function_id, "math.log");
+                ("math.log", FunctionForm::FunctionCall(head.function_id))
             }
 
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ToString, type_ } => {
-                ("str", FunctionRepresentation::FunctionCall("str".to_string()))
+                global.insert_fixed_name(head.function_id, "str");
+                ("str", FunctionForm::FunctionCall(head.function_id))
             }
 
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ParseIntString, type_ } => {
+            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ParseIntString, type_ }
+            | BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ParseRealString, type_ } => {
                 if let Some(builtin_name) = primitive_map.get(type_) {
-                    (builtin_name.clone(), FunctionRepresentation::FunctionCall(builtin_name.to_string()))
-                }
-                else {
-                    continue
-                }
-            }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ParseRealString, type_ } => {
-                if let Some(builtin_name) = primitive_map.get(type_) {
-                    (builtin_name.clone(), FunctionRepresentation::FunctionCall(builtin_name.to_string()))
+                    global.insert_fixed_name(head.function_id, builtin_name);
+                    (builtin_name.clone(), FunctionForm::FunctionCall(head.function_id))
                 }
                 else {
                     continue
@@ -136,20 +123,20 @@ pub fn register(runtime: &Runtime, representations: &mut Representations) -> nam
             }
 
             BuiltinFunctionHint::True => {
-                ("True", FunctionRepresentation::Constant("True".to_string()))
+                ("True", FunctionForm::Constant(KEYWORD_IDS["True"]))
             }
             BuiltinFunctionHint::False => {
-                ("False", FunctionRepresentation::Constant("False".to_string()))
+                ("False", FunctionForm::Constant(KEYWORD_IDS["False"]))
             }
 
-            BuiltinFunctionHint::Constructor => continue,
-            BuiltinFunctionHint::Getter => continue,
-            BuiltinFunctionHint::Setter => continue,
+            BuiltinFunctionHint::Constructor(_) => continue,
+            BuiltinFunctionHint::Getter(_) => continue,
+            BuiltinFunctionHint::Setter(_) => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(head));
         representations.function_representations.insert(Rc::clone(head), representation);
-        namespace.insert_fixed_name(head.function_id, higher_order_ref_name);
+        global.insert_fixed_name(head.function_id, higher_order_ref_name);
     }
 
     for (struct_, name) in [
@@ -157,69 +144,67 @@ pub fn register(runtime: &Runtime, representations: &mut Representations) -> nam
     ].into_iter() {
         let id = Uuid::new_v4();
         representations.type_ids.insert(TypeProto::unit(TypeUnit::Struct(Rc::clone(struct_))), id);
-        namespace.insert_fixed_name(id, &name.to_string());
+        global.insert_fixed_name(id, &name.to_string());
     }
 
     for (primitive, name) in primitive_map.iter() {
         let id = Uuid::new_v4();
         let struct_ = &runtime.builtins.core.primitives[primitive];
         representations.type_ids.insert(TypeProto::unit(TypeUnit::Struct(Rc::clone(struct_))), id);
-        namespace.insert_fixed_name(id, &name.to_string());
+        global.insert_fixed_name(id, &name.to_string());
     }
 
     // TODO Some of these sneakily convert the type - especially float to int and vice versa.
     for ptr in runtime.source.module_by_name["math"].fn_pointers.values() {
         let representation = match ptr.name.as_str() {
-            "factorial" => FunctionRepresentation::FunctionCall("math.factorial".to_string()),
+            "factorial" => "math.factorial",
+            "sin" => "math.sin",
+            "cos" => "math.cos",
+            "tan" => "math.tan",
+            "sinh" => "math.sinh",
+            "cosh" => "math.cosh",
+            "tanh" => "math.tanh",
+            "arcsin" => "math.asin",
+            "arccos" => "math.acos",
+            "arctan" => "math.atan",
+            "arcsinh" => "math.asinh",
+            "arccosh" => "math.acosh",
+            "arctanh" => "math.atanh",
 
-            "sin" => FunctionRepresentation::FunctionCall("math.sin".to_string()),
-            "cos" => FunctionRepresentation::FunctionCall("math.cos".to_string()),
-            "tan" => FunctionRepresentation::FunctionCall("math.tan".to_string()),
-            "sinh" => FunctionRepresentation::FunctionCall("math.sinh".to_string()),
-            "cosh" => FunctionRepresentation::FunctionCall("math.cosh".to_string()),
-            "tanh" => FunctionRepresentation::FunctionCall("math.tanh".to_string()),
-            "arcsin" => FunctionRepresentation::FunctionCall("math.asin".to_string()),
-            "arccos" => FunctionRepresentation::FunctionCall("math.acos".to_string()),
-            "arctan" => FunctionRepresentation::FunctionCall("math.atan".to_string()),
-            "arcsinh" => FunctionRepresentation::FunctionCall("math.asinh".to_string()),
-            "arccosh" => FunctionRepresentation::FunctionCall("math.acosh".to_string()),
-            "arctanh" => FunctionRepresentation::FunctionCall("math.atanh".to_string()),
+            "ceil" => "math.ceil",
+            "floor" => "math.floor",
+            "round" => "round",
 
-            "ceil" => FunctionRepresentation::FunctionCall("math.ceil".to_string()),
-            "floor" => FunctionRepresentation::FunctionCall("math.floor".to_string()),
-            "round" => FunctionRepresentation::FunctionCall("round".to_string()),
-
-            "abs" => FunctionRepresentation::FunctionCall("abs".to_string()),
+            "abs" => "abs",
             _ => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(&ptr.target));
-        namespace.insert_fixed_name(ptr.target.function_id, representation.name());
-        representations.function_representations.insert(Rc::clone(&ptr.target), representation);
+        global.insert_fixed_name(ptr.target.function_id, representation);
+        // By the time we need other representations hopefully we can use object namespaces
+        representations.function_representations.insert(Rc::clone(&ptr.target), FunctionForm::FunctionCall(ptr.target.function_id));
     }
 
     for ptr in runtime.source.module_by_name["debug"].fn_pointers.values() {
         let representation = match ptr.name.as_str() {
-            "_write_line" => FunctionRepresentation::FunctionCall("print".to_string()),
-            "_exit_with_error" => FunctionRepresentation::FunctionCall("exit".to_string()),
+            "_write_line" => "print",
+            "_exit_with_error" => "exit",
             _ => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(&ptr.target));
-        namespace.insert_fixed_name(ptr.target.function_id, representation.name());
-        representations.function_representations.insert(Rc::clone(&ptr.target), representation);
+        global.insert_fixed_name(ptr.target.function_id, representation);
+        representations.function_representations.insert(Rc::clone(&ptr.target), FunctionForm::FunctionCall(ptr.target.function_id));
     }
 
     for ptr in runtime.source.module_by_name["strings"].fn_pointers.values() {
-        let representation = match ptr.name.as_str() {
-            "add" => FunctionRepresentation::Binary("+".to_string()),
+        let (higher_order_name, representation) = match ptr.name.as_str() {
+            "add" => ("op.add", FunctionForm::Binary(KEYWORD_IDS["+"])),
             _ => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(&ptr.target));
-        namespace.insert_fixed_name(ptr.target.function_id, representation.name());
+        global.insert_fixed_name(ptr.target.function_id, higher_order_name);
         representations.function_representations.insert(Rc::clone(&ptr.target), representation);
     }
-
-    namespace
 }

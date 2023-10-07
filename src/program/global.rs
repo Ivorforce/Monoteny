@@ -27,9 +27,9 @@ pub struct FunctionImplementation {
 #[derive(Clone, PartialEq, Eq)]
 pub enum BuiltinFunctionHint {
     PrimitiveOperation { operation: PrimitiveOperation, type_: primitives::Type },
-    Constructor,
-    Getter,
-    Setter,
+    Constructor(Vec<Rc<ObjectReference>>),
+    Getter(Rc<ObjectReference>),
+    Setter(Rc<ObjectReference>),
     True,
     False,
 }

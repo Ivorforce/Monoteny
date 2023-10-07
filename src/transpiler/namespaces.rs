@@ -19,7 +19,7 @@ impl Level {
         }
     }
 
-    pub fn insert_name(&mut self, uuid: Uuid, name: &str) {
+    pub fn insert_name(&mut self, uuid: Uuid, name: &str) -> Uuid {
         if let Some(existing) = self.claims.get_mut(name) {
             existing.push(uuid);
         }
@@ -29,11 +29,13 @@ impl Level {
                 vec![uuid.clone()]
             );
         }
+
+        uuid
     }
 
-    pub fn insert_fixed_name(&mut self, uuid: Uuid, name: &str) {
-        self.insert_name(uuid, name);
+    pub fn insert_fixed_name(&mut self, uuid: Uuid, name: &str) -> Uuid {
         self.fixed_names.insert(uuid);
+        self.insert_name(uuid, name)
     }
 
     pub fn add_sublevel(&mut self) -> &mut Level {

@@ -10,9 +10,8 @@ use crate::program::functions::{FunctionHead, FunctionType, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation, PrimitiveOperation};
 use crate::program::traits::TraitBinding;
-use crate::program::types::TypeUnit;
 use crate::transpiler::python::{ast, types};
-use crate::transpiler::python::representations::{FunctionRepresentation, Representations};
+use crate::transpiler::python::representations::{FunctionForm, Representations};
 
 pub struct FunctionContext<'a> {
     pub names: &'a HashMap<Uuid, String>,
@@ -26,22 +25,25 @@ pub struct FunctionContext<'a> {
 
 pub fn transpile_function(implementation: &FunctionImplementation, context: &FunctionContext) -> Box<ast::Statement> {
     match &context.representations.function_representations[&implementation.head] {
-        FunctionRepresentation::Constant(name) => {
+        FunctionForm::Constant(id) => {
             Box::new(ast::Statement::VariableAssignment {
-                variable_name: context.names[&implementation.head.function_id].clone(),
-                value: transpile_expression(implementation.root_expression_id, context),
+                variable_name: context.names[id].clone(),
+                value: Some(transpile_expression(implementation.root_expression_id, context)),
                 type_annotation: Some(types::transpile(&implementation.head.interface.return_type, context)),
             })
         }
-        FunctionRepresentation::FunctionCall(_) => Box::new(ast::Statement::Function(transpile_plain_function(implementation, context))),
-        FunctionRepresentation::Unary(op) => panic!("Internal Error: Custom static unary functions are not supported in python: {}", op),
-        FunctionRepresentation::Binary(op) => panic!("Internal Error: Custom static binary functions are not supported in python: {}", op),
+        FunctionForm::FunctionCall(id) => Box::new(ast::Statement::Function(transpile_plain_function(implementation, context.names[id].clone(), context))),
+        FunctionForm::CallAsFunction => panic!(),
+        FunctionForm::MemberField(id) => panic!(),
+        FunctionForm::MemberCall(id) => panic!(),
+        FunctionForm::Unary(id) => panic!("Internal Error: Custom static unary functions are not supported in python"),
+        FunctionForm::Binary(id) => panic!("Internal Error: Custom static binary functions are not supported in python"),
     }
 }
 
-pub fn transpile_plain_function(implementation: &FunctionImplementation, context: &FunctionContext) -> Box<ast::Function> {
+pub fn transpile_plain_function(implementation: &FunctionImplementation, name: String, context: &FunctionContext) -> Box<ast::Function> {
     let mut syntax = Box::new(ast::Function {
-        name: context.names[&implementation.head.function_id].clone(),
+        name,
         parameters: implementation.parameter_variables.iter().map(|parameter| {
             Box::new(ast::Parameter {
                 name: context.names[&parameter.id].clone(),
@@ -109,7 +111,7 @@ fn transpile_block(implementation: &&FunctionImplementation, context: &FunctionC
             ExpressionOperation::VariableAssignment(variable) => {
                 ast::Statement::VariableAssignment {
                     variable_name: context.names[&variable.id].clone(),
-                    value: transpile_expression(implementation.expression_forest.arguments[&statement][0], context),
+                    value: Some(transpile_expression(implementation.expression_forest.arguments[&statement][0], context)),
                     // TODO We can omit the type annotation if we assign the variable a second time
                     type_annotation: Some(types::transpile(&variable.type_, context)),
                 }
@@ -141,12 +143,7 @@ pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext)
                 s
             }
             else {
-                match &context.representations.function_representations[function] {
-                    FunctionRepresentation::Constant(_) => Box::new(ast::Expression::VariableLookup(context.names[&function.function_id].clone())),
-                    FunctionRepresentation::FunctionCall(_) => transpile_function_call(context, &function, arguments),
-                    FunctionRepresentation::Unary(op) => transpile_unary_operator(op, arguments, context),
-                    FunctionRepresentation::Binary(op) => transpile_binary_operator(op, arguments, context),
-                }
+                transpile_function_call(context, &function, &context.representations.function_representations[function], arguments)
             }
         },
         ExpressionOperation::ArrayLiteral => {
@@ -185,45 +182,40 @@ pub fn transpile_expression(expression: ExpressionID, context: &FunctionContext)
     }
 }
 
-fn transpile_function_call(context: &FunctionContext, function: &&Rc<FunctionHead>, arguments: &Vec<ExpressionID>) -> Box<ast::Expression> {
-    let function_name = match &function.function_type {
-        // Can reference the static function
-        FunctionType::Static => {
-            guard!(let Some(name) = context.names.get(&function.function_id) else {
-                            panic!("Couldn't find name for function: {:?}", function)
-                        });
-            name.clone()
+fn transpile_function_call(context: &FunctionContext, function: &&Rc<FunctionHead>, form: &FunctionForm, arguments: &Vec<ExpressionID>) -> Box<ast::Expression> {
+    let mut py_arguments = vec![];
+    let mut arguments = arguments.clone();
+    let mut parameters = function.interface.parameters.clone();
+
+    let target = match form {
+        FunctionForm::Constant(id) => {
+            assert!(arguments.is_empty());
+            return Box::new(ast::Expression::VariableLookup(context.names[id].clone()))
         },
-        // Have to reference the function by trait
-        FunctionType::Polymorphic { provided_by_assumption, abstract_function } => {
-            todo!("Polymorphic calls (from generic transpilations) are not supported yet: {:?}", function)
-        }
+        FunctionForm::Unary(id) => return transpile_unary_operator(&context.names[&id], &arguments, context),
+        FunctionForm::Binary(id) => return transpile_binary_operator(&context.names[&id], &arguments, context),
+        FunctionForm::FunctionCall(id) => Box::new(ast::Expression::VariableLookup(context.names[id].clone())),
+        FunctionForm::CallAsFunction => {
+            parameters.remove(0);
+            transpile_expression(arguments.remove(0), context)
+        },
+        FunctionForm::MemberField(id) => {
+            assert_eq!(arguments.len(), 1);
+            let object = transpile_expression(arguments.remove(0), context);
+            return Box::new(ast::Expression::MemberAccess(object, context.names[id].clone()))
+        },
+        FunctionForm::MemberCall(id) => {
+            parameters.remove(0);
+            let object = transpile_expression(arguments.remove(0), context);
+            Box::new(ast::Expression::MemberAccess(object, context.names[id].clone()))
+        },
     };
 
-    let mut py_arguments = vec![];
-
-    for (parameter, argument) in zip_eq(function.interface.parameters.iter(), arguments.iter()) {
+    for (parameter, argument) in zip_eq(parameters.iter(), arguments.iter()) {
         py_arguments.push((parameter.external_key.clone(), transpile_expression(argument.clone(), context)));
     }
 
-    // TODO Only required when we're forward-passing unresolved requirements
-    let requirements: [&Rc<TraitBinding>; 0] = [];  // function.target.interface.requirements
-    for requirement in requirements {
-        todo!()
-        // let implementation = &context.functions_by_id[&pointer.pointer_id];
-        // let declaration = &implementation.conformance_delegations[requirement];
-        //
-        // let param_name = context.names.get(&declaration.id).unwrap();
-        // let arg_name = context.names.get(todo!()).unwrap();
-        // write!(stream, "{}={}", param_name, arg_name)?;
-        //
-        // arguments_left -= 1;
-        // if arguments_left > 0 {
-        //     write!(stream, ", ")?;
-        // }
-    }
-
-    Box::new(ast::Expression::FunctionCall(function_name, py_arguments))
+    Box::new(ast::Expression::FunctionCall(target, py_arguments))
 }
 
 pub fn try_transpile_optimization(function: &Rc<FunctionHead>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Option<Box<ast::Expression>> {

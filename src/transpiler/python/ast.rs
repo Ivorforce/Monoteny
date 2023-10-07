@@ -20,6 +20,7 @@ impl Display for Module {
         writeln!(f, "import numpy as np")?;
         writeln!(f, "import math")?;
         writeln!(f, "import operator as op")?;
+        writeln!(f, "from dataclasses import dataclass")?;
         writeln!(f, "from numpy import int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64")?;
         writeln!(f, "from typing import Any, Callable")?;
         write!(f, "\n\n")?;
@@ -53,11 +54,21 @@ impl Display for Module {
 
 pub struct Class {
     pub name: String,
+    pub statements: Vec<Box<Statement>>,
 }
 
 impl Display for Class {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "class {}:\n    pass\n", self.name)
+        write!(f, "@dataclass\nclass {}:\n", self.name)?;
+        if self.statements.is_empty() {
+            write!(f, "    pass")?;
+        }
+        else {
+            for statement in self.statements.iter() {
+                write!(f, "    {}", statement)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -65,7 +76,7 @@ pub struct Function {
     pub name: String,
 
     pub parameters: Vec<Box<Parameter>>,
-    pub return_type: Option<String>,
+    pub return_type: Option<Box<Expression>>,
     pub statements: Vec<Box<Statement>>,
 }
 
@@ -118,7 +129,7 @@ impl Display for Function {
 }
 
 pub enum Statement {
-    VariableAssignment { variable_name: String, value: Box<Expression>, type_annotation: Option<String> },
+    VariableAssignment { variable_name: String, value: Option<Box<Expression>>, type_annotation: Option<Box<Expression>> },
     Expression(Box<Expression>),
     Return(Option<Box<Expression>>),
     Class(Box<Class>),
@@ -129,12 +140,18 @@ impl Display for Statement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Statement::VariableAssignment { variable_name, value, type_annotation } => {
+                write!(f, "{}", variable_name)?;
+
                 if let Some(type_annotation) = type_annotation {
-                    writeln!(f, "{}: {} = {}", variable_name, type_annotation, value)
+                    write!(f, ": {}", type_annotation)?;
                 }
-                else {
-                    writeln!(f, "{} = {}", variable_name, value)
+                if let Some(value) = value {
+                    write!(f, " = {}", value)?;
                 }
+
+                writeln!(f)?;
+
+                Ok(())
             }
             Statement::Expression(e) => writeln!(f, "{}", e),
             Statement::Return(Some(expression)) => {
@@ -150,9 +167,10 @@ impl Display for Statement {
 }
 
 pub enum Expression {
+    MemberAccess(Box<Expression>, String),
     UnaryOperation(String, Box<Expression>),
     BinaryOperation(Box<Expression>, String, Box<Expression>),
-    FunctionCall(String, Vec<(ParameterKey, Box<Expression>)>),
+    FunctionCall(Box<Expression>, Vec<(ParameterKey, Box<Expression>)>),
     VariableLookup(String),
     StringLiteral(String),
     ValueLiteral(String),
@@ -167,6 +185,7 @@ impl Expression {
             Expression::VariableLookup(_) => true,
             Expression::StringLiteral(_) => true,
             Expression::ValueLiteral(_) => true,
+            Expression::MemberAccess(_, _) => true,
         }
     }
 }
@@ -213,13 +232,16 @@ impl Display for Expression {
             Expression::ValueLiteral(v) => {
                 write!(f, "{}", v)
             }
+            Expression::MemberAccess(e, m) => {
+                write!(f, "{}.{}", e, m)
+            }
         }
     }
 }
 
 pub struct Parameter {
     pub name: String,
-    pub type_: String,
+    pub type_: Box<Expression>,
 }
 
 impl Display for Parameter {

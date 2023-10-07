@@ -4,18 +4,20 @@ pub mod class;
 pub mod ast;
 pub mod imperative;
 pub mod representations;
+pub mod keywords;
 
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::ops::DerefMut;
 use std::rc::Rc;
+use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::transpiler;
 use crate::interpreter::Runtime;
+use crate::program::computation_tree::ExpressionOperation;
 
-use crate::program::computation_tree::*;
 use crate::program::functions::FunctionHead;
 use crate::program::global::BuiltinFunctionHint;
 use crate::program::types::TypeUnit;
@@ -23,12 +25,13 @@ use crate::transpiler::{namespaces, Transpiler};
 use crate::transpiler::python::ast::Statement;
 use crate::transpiler::python::class::{ClassContext, transpile_class};
 use crate::transpiler::python::imperative::{FunctionContext, transpile_function};
-use crate::transpiler::python::representations::Representations;
+use crate::transpiler::python::representations::{FunctionForm, Representations};
 
 
 pub struct Context {
     pub representations: Representations,
-    pub builtin_namespace: namespaces::Level,
+    pub builtin_global_namespace: namespaces::Level,
+    pub builtin_member_namespace: namespaces::Level,
 }
 
 impl transpiler::Context for Context {
@@ -46,75 +49,123 @@ impl transpiler::Context for Context {
 }
 
 pub fn create_context(runtime: &Runtime) -> Context {
-    let mut representations = Representations::new();
-    Context {
-        builtin_namespace: builtins::register(runtime, &mut representations),
-        representations,
-    }
+    let mut context = Context {
+        representations: Representations::new(),
+        builtin_global_namespace: namespaces::Level::new(),
+        builtin_member_namespace: namespaces::Level::new(),
+    };
+    builtins::register_global(runtime, &mut context);
+    context
 }
 
 pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime) -> RResult<Box<ast::Module>> {
     let mut representations = context.representations.clone();
     let builtin_structs: HashSet<_> = representations.type_ids.keys().cloned().collect();
 
-    let mut global_namespace = context.builtin_namespace.clone();
+    let mut global_namespace = context.builtin_global_namespace.clone();
+    // TODO We COULD have one namespace per object.
+    //  But then we'll also need to register names on an object per object basis,
+    //  and currently we have no way of identifying object namespaces easily.
+    //  Maybe it will naturally arise later.
+    let mut member_namespace = context.builtin_global_namespace.clone();
     let mut file_namespace = global_namespace.add_sublevel();
 
     let reverse_mapped_calls = transpiler.monomorphizer.get_mono_call_to_original_call();
 
     // ================= Names ==================
 
-    for implementation in transpiler.exported_functions.iter() {
-        // TODO Register with priority over internal symbols
-        let ptr = &runtime.source.fn_pointers[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
-        file_namespace.insert_name(implementation.head.function_id, &ptr.name);
+    for (trait_, reference) in runtime.source.trait_references.iter() {
+        // TODO This should not be fixed - but it currently clashes otherwise with Constructor's name choosing.
+        //  Technically the trait references should be monomorphized, because an access to Vec<String> is not the same
+        //  after monomorphization as Vec<Int32>. They should be two different constants.
+        file_namespace.insert_fixed_name(reference.id, trait_.name.as_str());
     }
 
-    for implementation in transpiler.internal_functions.iter() {
-        let ptr = &runtime.source.fn_pointers[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
-        // TODO Use underscore names?
-        file_namespace.insert_name(implementation.head.function_id, &ptr.name);
-    }
-
+    // We only really know from encountered calls which structs are left after monomorphization.
+    // So let's just search the encountered calls.
     for implementation in transpiler.exported_functions.iter().chain(transpiler.internal_functions.iter()) {
         let function_namespace = file_namespace.add_sublevel();
+        // Map internal variable names
         for (variable, name) in implementation.variable_names.iter() {
             function_namespace.insert_name(variable.id.clone(), name);
         }
+
         for (expression_id, operation) in implementation.expression_forest.operations.iter() {
-            if let ExpressionOperation::FunctionCall(fun) = operation {
-                if let Some(BuiltinFunctionHint::Constructor) = runtime.source.fn_builtin_hints.get(&fun.function) {
-                    let type_ = implementation.type_forest.resolve_binding_alias(expression_id).unwrap();
-                    if let Entry::Vacant(entry) = representations.type_ids.entry(type_.clone()) {
-                        // TODO If we have generics, we should include their bindings in the name somehow.
-                        //  Eg. ArrayFloat. Probably only if it's exactly one. Otherwise, we need to be ok with
-                        //  just the auto-renames.
-                        let name = match &type_.unit {
-                            TypeUnit::Struct(struct_) => &struct_.name,
-                            // Technically only the name is unsupported here, but later we'd need to actually construct it too.
-                            _ => panic!("Unsupported Constructor Type")
-                        };
-                        let id = Uuid::new_v4();
-                        entry.insert(id);
-                        // TODO Find proper names
-                        file_namespace.insert_name(id, name);
+            if let ExpressionOperation::FunctionCall(binding) = operation {
+                guard!(let Some(hint) = runtime.source.fn_builtin_hints.get(&binding.function) else {
+                    continue;
+                });
+                let hint: &BuiltinFunctionHint = hint;
+
+                match hint {
+                    BuiltinFunctionHint::Constructor(object_refs) => {
+                        let type_ = &binding.function.interface.return_type;  // Fulfillment for Self
+                        if let Entry::Vacant(entry) = representations.type_ids.entry(type_.clone()) {
+                            // TODO If we have generics, we should include their bindings in the name somehow.
+                            //  Eg. ArrayFloat. Probably only if it's exactly one. Otherwise, we need to be ok with
+                            //  just the auto-renames.
+                            let name = match &type_.unit {
+                                TypeUnit::Struct(struct_) => &struct_.name,
+                                // Technically only the name is unsupported here, but later we'd need to actually construct it too.
+                                _ => panic!("Unsupported Constructor Type")
+                            };
+                            let id = Uuid::new_v4();
+                            entry.insert(id);
+                            file_namespace.insert_fixed_name(id, name);
+                            representations.function_representations.insert(
+                                Rc::clone(&binding.function),
+                                FunctionForm::CallAsFunction
+                            );
+                        }
                     }
+                    BuiltinFunctionHint::Getter(ref_) => {
+                        let ptr = &runtime.source.fn_pointers[&binding.function];
+                        member_namespace.insert_name(ref_.id, &ptr.name);
+                        representations.function_representations.insert(
+                            Rc::clone(&binding.function),
+                            FunctionForm::MemberField(ref_.id)
+                        );
+                    }
+                    BuiltinFunctionHint::Setter(ref_) => {
+                        let ptr = &runtime.source.fn_pointers[&binding.function];
+                        member_namespace.insert_name(ref_.id, &ptr.name);
+                        representations.function_representations.insert(
+                            Rc::clone(&binding.function),
+                            FunctionForm::MemberField(ref_.id)
+                        );
+                    }
+                    _ => {},
                 }
             }
         }
     }
 
-    let mut names = global_namespace.map_names();
-
     // ================= Representations ==================
 
-    representations::find_for_functions(
-        &mut representations.function_representations,
-        &names,
-        transpiler.exported_functions.iter().chain(transpiler.internal_functions.iter())
-    );
+    for implementation in transpiler.exported_functions.iter() {
+        // TODO Register with priority over internal symbols. Internal functions can use understore prefix if need be.
+        let ptr = &runtime.source.fn_pointers[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
+        representations::find_for_function(
+            &mut representations.function_representations,
+            &mut file_namespace,
+            implementation, ptr
+        );
+    }
+
+    for implementation in transpiler.internal_functions.iter() {
+        let ptr = &runtime.source.fn_pointers[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
+        representations::find_for_function(
+            &mut representations.function_representations,
+            &mut file_namespace,
+            implementation, ptr
+        );
+    }
 
     // ================= Build AST ==================
+
+    // Finally, the names can be locked in.
+    let mut names = global_namespace.map_names();
+    names.extend(member_namespace.map_names());
 
     let mut module = Box::new(ast::Module {
         exported_statements: vec![],

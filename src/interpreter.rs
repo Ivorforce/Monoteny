@@ -20,7 +20,7 @@ use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionHead, FunctionPointer, FunctionType};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::module::Module;
-use crate::program::traits::RequirementsFulfillment;
+use crate::program::traits::{RequirementsFulfillment, Trait};
 
 
 
@@ -48,6 +48,9 @@ pub struct Source {
     pub module_by_name: HashMap<String, Box<Module>>,
 
     // Cache of aggregated module_by_name fields for quick reference.
+
+    /// For each function_id, its head.
+    pub trait_references: HashMap<Rc<Trait>, Rc<ObjectReference>>,
 
     /// For each function_id, its head.
     pub fn_heads: HashMap<Uuid, Rc<FunctionHead>>,
@@ -78,6 +81,7 @@ impl Runtime {
             global_assignments: Default::default(),
             source: Source {
                 module_by_name: Default::default(),
+                trait_references: Default::default(),
                 fn_heads: Default::default(),
                 fn_references: Default::default(),
                 fn_pointers: Default::default(),
@@ -131,6 +135,7 @@ impl Runtime {
     }
 
     pub fn load_module(&mut self, module: &Module) {
+        self.source.trait_references.extend(module.traits.clone());
         self.source.fn_heads.extend(module.fn_pointers.keys().map(|f| (f.function_id, Rc::clone(f))).collect_vec());
         self.source.fn_references.extend(module.fn_references.clone());
         self.source.fn_pointers.extend(module.fn_pointers.clone());
