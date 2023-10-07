@@ -19,6 +19,8 @@ def main():
     """
     animal: Animal = Animal(species="Cat", name="Noir", height_cm=float32(180))
     print(animal.name + (" (" + (animal.species + (") was: " + (str(animal.height_cm) + "cm")))))
+    animal.height_cm = float32(25)
+    print("And is now: " + str(animal.height_cm))
 
 
 # ========================== ======== ============================

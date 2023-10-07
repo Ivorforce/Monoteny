@@ -22,13 +22,15 @@ pub enum ExpressionOperation {
     //  This syntax, while stupid, is at least supported in pretty much every language.
     Block,
 
+    // TODO We can remove these operations if we just add a getter and setter for every global.
     VariableAssignment(Rc<ObjectReference>),
+    VariableLookup(Rc<ObjectReference>),
+
     // 0 arguments if no return type is set, otherwise 1
     Return,
 
     FunctionCall(Rc<FunctionBinding>),
     PairwiseOperations { calls: Vec<Rc<FunctionBinding>> },
-    VariableLookup(Rc<ObjectReference>),
     ArrayLiteral,
     StringLiteral(String),
 }

@@ -22,9 +22,9 @@ pub fn transpile_class(type_def: &TypeProto, context: &ClassContext) -> Box<ast:
         TypeUnit::Struct(struct_) => {
             for hint in &struct_.variable_hints {
                 statements.push(Box::new(ast::Statement::VariableAssignment {
-                    variable_name: hint.name.clone(),
+                    target: Box::new(ast::Expression::NamedReference(hint.name.clone())),
                     value: None,
-                    type_annotation: Some(Box::new(ast::Expression::VariableLookup(context.names[&context.representations.type_ids[&hint.type_]].clone()))),
+                    type_annotation: Some(Box::new(ast::Expression::NamedReference(context.names[&context.representations.type_ids[&hint.type_]].clone()))),
                 }))
             }
         }

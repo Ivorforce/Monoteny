@@ -120,18 +120,18 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
                     }
                     BuiltinFunctionHint::Getter(ref_) => {
                         let ptr = &runtime.source.fn_pointers[&binding.function];
-                        member_namespace.insert_name(ref_.id, &ptr.name);
+                        member_namespace.insert_fixed_name(ref_.id, &ptr.name);  // TODO This should not be fixed.
                         representations.function_representations.insert(
                             Rc::clone(&binding.function),
-                            FunctionForm::MemberField(ref_.id)
+                            FunctionForm::GetMemberField(ref_.id)
                         );
                     }
                     BuiltinFunctionHint::Setter(ref_) => {
                         let ptr = &runtime.source.fn_pointers[&binding.function];
-                        member_namespace.insert_name(ref_.id, &ptr.name);
+                        member_namespace.insert_fixed_name(ref_.id, &ptr.name);  // TODO This should not be fixed.
                         representations.function_representations.insert(
                             Rc::clone(&binding.function),
-                            FunctionForm::MemberField(ref_.id)
+                            FunctionForm::SetMemberField(ref_.id)
                         );
                     }
                     _ => {},

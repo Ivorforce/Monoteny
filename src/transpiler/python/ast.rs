@@ -129,7 +129,7 @@ impl Display for Function {
 }
 
 pub enum Statement {
-    VariableAssignment { variable_name: String, value: Option<Box<Expression>>, type_annotation: Option<Box<Expression>> },
+    VariableAssignment { target: Box<Expression>, value: Option<Box<Expression>>, type_annotation: Option<Box<Expression>> },
     Expression(Box<Expression>),
     Return(Option<Box<Expression>>),
     Class(Box<Class>),
@@ -139,7 +139,7 @@ pub enum Statement {
 impl Display for Statement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Statement::VariableAssignment { variable_name, value, type_annotation } => {
+            Statement::VariableAssignment { target: variable_name, value, type_annotation } => {
                 write!(f, "{}", variable_name)?;
 
                 if let Some(type_annotation) = type_annotation {
@@ -171,7 +171,7 @@ pub enum Expression {
     UnaryOperation(String, Box<Expression>),
     BinaryOperation(Box<Expression>, String, Box<Expression>),
     FunctionCall(Box<Expression>, Vec<(ParameterKey, Box<Expression>)>),
-    VariableLookup(String),
+    NamedReference(String),
     StringLiteral(String),
     ValueLiteral(String),
 }
@@ -182,7 +182,7 @@ impl Expression {
             Expression::UnaryOperation(_, _) => false,
             Expression::BinaryOperation(_, _, _) => false,
             Expression::FunctionCall(_, _) => true,
-            Expression::VariableLookup(_) => true,
+            Expression::NamedReference(_) => true,
             Expression::StringLiteral(_) => true,
             Expression::ValueLiteral(_) => true,
             Expression::MemberAccess(_, _) => true,
@@ -223,7 +223,7 @@ impl Display for Expression {
 
                 write!(f, ")")
             }
-            Expression::VariableLookup(v) => {
+            Expression::NamedReference(v) => {
                 write!(f, "{}", v)
             }
             Expression::StringLiteral(v) => {

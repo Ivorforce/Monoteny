@@ -194,7 +194,7 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_block(&mut self, body: &Vec<Box<Positioned<ast::Statement>>>, scope: &scopes::Scope) -> RResult<ExpressionID> {
         let mut scope = scope.subscope();
         let statements: Vec<ExpressionID> = body.iter().map(|pstatement| {
-            self.link_statement(&mut scope, &pstatement.value)
+            self.link_statement(&mut scope, pstatement)
                 .err_in_range(&pstatement.position)
         }).try_collect()?;
 
@@ -204,8 +204,8 @@ impl <'a> ImperativeLinker<'a> {
         Ok(expression_id)
     }
 
-    fn link_statement(&mut self, scope: &mut scopes::Scope, statement: &ast::Statement) -> RResult<ExpressionID> {
-        let expression_id = match statement {
+    fn link_statement(&mut self, scope: &mut scopes::Scope, pstatement: &Positioned<ast::Statement>) -> RResult<ExpressionID> {
+        let expression_id = match &pstatement.value {
             ast::Statement::VariableDeclaration {
                 mutability, identifier, type_declaration, assignment
             } => {
@@ -229,18 +229,29 @@ impl <'a> ImperativeLinker<'a> {
                 self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
                 expression_id
             },
-            ast::Statement::VariableAssignment { variable_name, new_value } => {
+            ast::Statement::VariableAssignment { target, identifier, new_value } => {
                 let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
 
-                let object_ref = scope
-                    .resolve(scopes::Environment::Global, variable_name)?
-                    .as_object_ref(true)?;
-                self.types.bind(new_value, &object_ref.type_)?;
-
-                let expression_id = self.register_new_expression(vec![new_value]);
-                self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(Rc::clone(&object_ref)));
-                self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
-                expression_id
+                if let Some(target) = target {
+                    // Assign to object member
+                    let target = self.link_term(&target.with_value(ast::Term::Identifier(target.value.clone())), scope)?;
+                    let target = link_patterns(vec![target], scope, self)?;
+                    let overload = scope
+                        .resolve(scopes::Environment::Member, identifier)?
+                        .as_function_overload()?;
+                    self.link_function_call(&overload.functions(), &overload.name, vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
+                }
+                else {
+                    // Assign to local variable
+                    let object_ref = scope
+                        .resolve(scopes::Environment::Global, identifier)?
+                        .as_object_ref(true)?;
+                    self.types.bind(new_value, &object_ref.type_)?;
+                    let expression_id = self.register_new_expression(vec![new_value]);
+                    self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(Rc::clone(&object_ref)));
+                    self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
+                    expression_id
+                }
             }
             ast::Statement::Return(expression) => {
                 if let Some(expression) = expression {
