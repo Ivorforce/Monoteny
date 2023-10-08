@@ -51,7 +51,7 @@ pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -
         let transpiler_context = transpiler.deref_mut();
         let implementation = &runtime.source.fn_implementations[&implementation_id];
 
-        if implementation.head.interface.collect_generics().len() > 0 {
+        if !implementation.head.interface.generics.is_empty() {
             // We'll need to somehow transpile requirements as protocols and generics as generics.
             // That's for later!
             panic!("Transpiling generic functions is not supported yet: {:?}", implementation.head);

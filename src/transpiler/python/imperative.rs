@@ -45,7 +45,7 @@ pub fn transpile_function(implementation: &FunctionImplementation, context: &Fun
 pub fn transpile_plain_function(implementation: &FunctionImplementation, name: String, context: &FunctionContext) -> Box<ast::Function> {
     let mut syntax = Box::new(ast::Function {
         name,
-        parameters: implementation.parameter_variables.iter().map(|parameter| {
+        parameters: implementation.parameter_locals.iter().map(|parameter| {
             Box::new(ast::Parameter {
                 name: context.names[&parameter.id].clone(),
                 type_: types::transpile(&parameter.type_, context),
@@ -109,7 +109,7 @@ fn transpile_block(implementation: &&FunctionImplementation, context: &FunctionC
         let operation = &implementation.expression_forest.operations[&statement];
         statements_.push(match operation {
             ExpressionOperation::Block => todo!(),
-            ExpressionOperation::VariableAssignment(variable) => {
+            ExpressionOperation::SetLocal(variable) => {
                 Box::new(ast::Statement::VariableAssignment {
                     target: Box::new(ast::Expression::NamedReference(context.names[&variable.id].clone())),
                     value: Some(transpile_expression(implementation.expression_forest.arguments[&statement][0], context)),
@@ -139,7 +139,7 @@ pub fn transpile_expression(expression_id: ExpressionID, context: &FunctionConte
         ExpressionOperation::StringLiteral(string) => {
             Box::new(ast::Expression::StringLiteral(string.clone()))
         }
-        ExpressionOperation::VariableLookup(variable) => {
+        ExpressionOperation::GetLocal(variable) => {
             Box::new(ast::Expression::NamedReference(context.names[&variable.id].clone()))
         }
         ExpressionOperation::FunctionCall(call) => {
@@ -179,7 +179,7 @@ pub fn transpile_expression(expression_id: ExpressionID, context: &FunctionConte
             // }
         }
         ExpressionOperation::Block => todo!(),
-        ExpressionOperation::VariableAssignment(_) => panic!("Variable assignment not allowed as expression."),
+        ExpressionOperation::SetLocal(_) => panic!("Variable assignment not allowed as expression."),
         ExpressionOperation::Return => panic!("Return not allowed as expression."),
     }
 }

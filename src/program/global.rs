@@ -20,8 +20,8 @@ pub struct FunctionImplementation {
     pub expression_forest: Box<ExpressionTree>,
     pub type_forest: Box<TypeForest>,
 
-    pub parameter_variables: Vec<Rc<ObjectReference>>,
-    pub variable_names: HashMap<Rc<ObjectReference>, String>,
+    pub parameter_locals: Vec<Rc<ObjectReference>>,
+    pub locals_names: HashMap<Rc<ObjectReference>, String>,
 }
 
 #[derive(Clone, PartialEq, Eq)]

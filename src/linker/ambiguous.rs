@@ -6,7 +6,7 @@ pub mod abstract_call;
 
 pub use function_call::{AmbiguousFunctionCall, AmbiguousFunctionCandidate};
 pub use abstract_call::AmbiguousAbstractCall;
-use crate::error::{RResult, RuntimeError};
+use crate::error::RResult;
 
 pub enum AmbiguityResult<V> {
     Ok(V),

@@ -26,7 +26,7 @@ pub fn create(core: &Core) -> Transpilation {
     let Transpiler = Rc::new(Transpiler);
     module.add_trait(&Transpiler);
 
-    let add = FunctionPointer::new_member(
+    let add = FunctionPointer::new_member_function(
         "add",
         FunctionInterface::new_simple(
             [
@@ -38,7 +38,7 @@ pub fn create(core: &Core) -> Transpilation {
             TypeProto::unit(TypeUnit::Void),
         )
     );
-    module.add_function(&add);
+    module.add_function(Rc::clone(&add));
 
     Transpilation {
         module: Rc::new(module),

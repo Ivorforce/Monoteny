@@ -3,6 +3,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
+use crate::interpreter::Runtime;
 use crate::monomorphize::map_interface_types;
 use crate::linker::scopes;
 use crate::linker::interface::link_function_pointer;
@@ -16,18 +17,19 @@ pub struct UnlinkedFunctionImplementation<'a> {
     pub body: &'a Option<ast::Expression>,
 }
 
-pub struct ConformanceLinker<'a> {
+pub struct ConformanceLinker<'a, 'b> {
+    pub runtime: &'b Runtime,
     pub functions: Vec<UnlinkedFunctionImplementation<'a>>,
 }
 
-impl <'a> ConformanceLinker<'a> {
+impl <'a, 'b> ConformanceLinker<'a, 'b> {
     pub fn link_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
                 //  to the ID of the parent abstract function. That way, we can avoid another
                 //  generic to generic mapping later.
-                let fun = link_function_pointer(&syntax, &scope, requirements)?;
+                let fun = link_function_pointer(&syntax, &scope, self.runtime, requirements)?;
 
                 self.functions.push(UnlinkedFunctionImplementation {
                     pointer: fun,
@@ -48,7 +50,7 @@ impl <'a> ConformanceLinker<'a> {
         let mut unmatched_implementations = self.functions.iter().map(|x| Rc::clone(&x.pointer)).collect_vec();
 
         for abstract_function in binding.trait_.abstract_functions.values() {
-            let mut expected_interface = map_interface_types(&abstract_function.target.interface, &|type_| type_.replacing_generics(&binding.generic_to_type));
+            let mut expected_interface = map_interface_types(&abstract_function.target.interface, &binding.generic_to_type);
             expected_interface.requirements.extend(conformance_requirements.clone());
             let expected_pointer = Rc::new(FunctionPointer {
                 target: Rc::new(FunctionHead {

@@ -54,7 +54,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime, callback: &dyn Fn(Rc<Fu
 
     let mut assignments = HashMap::new();
 
-    let transpiler_obj = &implementation.parameter_variables[0];
+    let transpiler_obj = &implementation.parameter_locals[0];
 
     // Set the transpiler object.
     unsafe {

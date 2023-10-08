@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
-use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionTree, ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
@@ -23,7 +22,6 @@ pub struct ConstantFold {
 pub enum InlineHint {
     ReplaceCall(Rc<FunctionHead>, Vec<usize>),
     YieldParameter(usize),
-    GlobalLookup(Rc<ObjectReference>),
     NoOp,
 }
 
@@ -204,12 +202,6 @@ impl ConstantFold {
                             // FIXME This is kind of lazy (recursive), but we may need to inline the expression again. Maybe we can unroll this into the loop somehow?
                             self.inline_expression(implementation, expression_id);
                         },
-                        InlineHint::GlobalLookup(v) => {
-                            implementation.expression_forest.operations.insert(expression_id, ExpressionOperation::VariableLookup(Rc::clone(v)));
-                            // No matter what was passed before, we need no further arguments.
-                            truncate_tree(arguments.clone(), HashSet::new(), &mut implementation.expression_forest);
-                            implementation.expression_forest.arguments.insert(expression_id, vec![]);
-                        },
                         InlineHint::NoOp => {
                             implementation.expression_forest.operations.remove(&expression_id);
                             truncate_tree(arguments.clone(), HashSet::new(), &mut implementation.expression_forest);
@@ -261,8 +253,8 @@ pub fn get_trivial_expression_call_target(expression_id: &ExpressionID, implemen
 
             let replace_args: Vec<_> = implementation.expression_forest.arguments[expression_id].iter().map(|arg| {
                 match &implementation.expression_forest.operations[arg] {
-                    ExpressionOperation::VariableLookup(v) => {
-                        if let Some(idx) = implementation.parameter_variables.iter().position(|ref_| ref_ == v) {
+                    ExpressionOperation::GetLocal(v) => {
+                        if let Some(idx) = implementation.parameter_locals.iter().position(|ref_| ref_ == v) {
                             return Some(idx)
                         }
                     }
@@ -280,12 +272,9 @@ pub fn get_trivial_expression_call_target(expression_id: &ExpressionID, implemen
 
             return Some(InlineHint::ReplaceCall(Rc::clone(&f.function), replace_args))
         },
-        ExpressionOperation::VariableLookup(v) => {
-            if let Some(idx) = implementation.parameter_variables.iter().position(|ref_| ref_ == v) {
+        ExpressionOperation::GetLocal(v) => {
+            if let Some(idx) = implementation.parameter_locals.iter().position(|ref_| ref_ == v) {
                 return Some(InlineHint::YieldParameter(idx))
-            }
-            else {
-                return Some(InlineHint::GlobalLookup(Rc::clone(v)))
             }
         }
         _ => {},

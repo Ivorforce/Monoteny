@@ -36,7 +36,7 @@ impl Builtins {
         ]
     }
 
-    pub fn create_scope(&self) -> scopes::Scope {
+    pub fn create_scope<'a>(&self) -> scopes::Scope<'a> {
         let mut scope = scopes::Scope::new();
 
         for precedence_group in self.precedence_groups.list.iter() {

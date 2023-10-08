@@ -13,8 +13,8 @@ use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use crate::{linker, parser};
 use crate::error::RuntimeError;
+use crate::interpreter::compiler::make_function_getter;
 use crate::parser::ast;
-use crate::program::allocation::ObjectReference;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionHead, FunctionPointer, FunctionType};
@@ -38,7 +38,8 @@ pub struct Runtime {
     // These are optimized for running and may not reflect the source code itself.
     // They are also only loaded on demand.
     pub function_evaluators: HashMap<Uuid, FunctionInterpreterImpl>,
-    pub global_assignments: HashMap<Uuid, Value>,
+    // TODO We'll need these only in the future when we compile functions to constants.
+    // pub global_assignments: HashMap<Uuid, Value>,
 
     // These remain unchanged after linking.
     pub source: Source,
@@ -50,14 +51,13 @@ pub struct Source {
     // Cache of aggregated module_by_name fields for quick reference.
 
     /// For each function_id, its head.
-    pub trait_references: HashMap<Rc<Trait>, Rc<ObjectReference>>,
+    pub trait_references: HashMap<Rc<FunctionHead>, Rc<Trait>>,
 
     /// For each function_id, its head.
     pub fn_heads: HashMap<Uuid, Rc<FunctionHead>>,
-
-    /// For each function, a usable reference to it as an object.
-    pub fn_references: HashMap<Rc<FunctionHead>, Rc<ObjectReference>>,
-    /// For each function, its 'default' representation for syntax.
+    /// For referencible functions, a way to load it. The getter itself does not get a getter.
+    pub fn_getters: HashMap<Rc<FunctionHead>, Rc<FunctionHead>>,
+    /// For referencible functions, its 'default' representation for syntax.
     pub fn_pointers: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
     /// For relevant functions, their implementation.
     pub fn_implementations: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
@@ -78,12 +78,11 @@ impl Runtime {
         let mut runtime = Box::new(Runtime {
             builtins: Rc::clone(builtins),
             function_evaluators: Default::default(),
-            global_assignments: Default::default(),
             source: Source {
                 module_by_name: Default::default(),
                 trait_references: Default::default(),
                 fn_heads: Default::default(),
-                fn_references: Default::default(),
+                fn_getters: Default::default(),
                 fn_pointers: Default::default(),
                 fn_implementations: Default::default(),
                 fn_builtin_hints: Default::default(),
@@ -135,32 +134,28 @@ impl Runtime {
     }
 
     pub fn load_module(&mut self, module: &Module) {
-        self.source.trait_references.extend(module.traits.clone());
+        self.source.trait_references.extend(module.trait_by_getter.clone());
         self.source.fn_heads.extend(module.fn_pointers.keys().map(|f| (f.function_id, Rc::clone(f))).collect_vec());
-        self.source.fn_references.extend(module.fn_references.clone());
+        self.source.fn_getters.extend(module.fn_getters.clone());
         self.source.fn_pointers.extend(module.fn_pointers.clone());
         self.source.fn_implementations.extend(module.fn_implementations.clone());
         self.source.fn_builtin_hints.extend(module.fn_builtin_hints.clone());
 
         for (head, implementation) in module.fn_implementations.iter() {
-            self.function_evaluators.insert(implementation.head.function_id.clone(), compiler::compile_function(implementation));
+            self.function_evaluators.insert(implementation.head.function_id, compiler::compile_function(implementation));
 
-            unsafe {
-                let fn_layout = Layout::new::<Uuid>();
-                let ptr = alloc(fn_layout);
-                *(ptr as *mut Uuid) = implementation.implementation_id;
-                self.global_assignments.insert(
-                    module.fn_references[head].id,
-                    Value { data: ptr, layout: fn_layout }
-                );
-            }
+            // Function getter
+            self.function_evaluators.insert(
+                module.fn_getters[head].function_id,
+                make_function_getter(implementation.implementation_id),  // FIXME you sure you don't need the head id?
+            );
         }
     }
 }
 
 impl FunctionInterpreter<'_> {
     pub unsafe fn assign_arguments(&mut self, arguments: Vec<Value>) {
-        for (arg, parameter) in zip_eq(arguments, self.implementation.parameter_variables.iter()) {
+        for (arg, parameter) in zip_eq(arguments, self.implementation.parameter_locals.iter()) {
             self.locals.insert(parameter.id.clone(), arg);
         }
     }
@@ -207,7 +202,7 @@ impl FunctionInterpreter<'_> {
                 let function_id = self.resolve(&call.function);
 
                 guard!(let Some(implementation) = self.runtime.function_evaluators.get(&function_id) else {
-                    panic!("Cannot find function ({}) with interface: {:?}", function_id, &call.function);
+                    panic!("Interpreter cannot find function ({}) with interface: {:?}", function_id, &call.function);
                 });
 
                 // Copy it to release the borrow on self.
@@ -217,13 +212,19 @@ impl FunctionInterpreter<'_> {
             ExpressionOperation::PairwiseOperations { .. } => {
                 panic!()
             }
-            ExpressionOperation::VariableLookup(variable) => {
+            ExpressionOperation::GetLocal(variable) => {
                 Some(
                     self.locals.get(&variable.id)
-                        .or(self.runtime.global_assignments.get(&variable.id))
                         .expect(format!("Unknown Variable: {:?}", variable).as_str())
                         .clone()
                 )
+            }
+            ExpressionOperation::SetLocal(target) => {
+                let arguments = &self_implementation.expression_forest.arguments[&expression_id];
+                assert_eq!(arguments.len(), 1);
+                let new_value = self.evaluate(arguments[0]).unwrap();
+                self.locals.insert(target.id.clone(), new_value);
+                None
             }
             ExpressionOperation::ArrayLiteral => {
                 panic!()
@@ -240,13 +241,6 @@ impl FunctionInterpreter<'_> {
                     self.evaluate(*statement);
                 }
                 None  // Unusual, but a block might be just used inside a block, or a function that has no return value.
-            }
-            ExpressionOperation::VariableAssignment(target) => {
-                let arguments = &self_implementation.expression_forest.arguments[&expression_id];
-                assert_eq!(arguments.len(), 1);
-                let new_value = self.evaluate(arguments[0]).unwrap();
-                self.locals.insert(target.id.clone(), new_value);
-                None
             }
             ExpressionOperation::Return => {
                 let arguments = &self_implementation.expression_forest.arguments[&expression_id];

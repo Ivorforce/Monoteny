@@ -3,7 +3,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::linker::precedence::PrecedenceGroup;
-use crate::program::allocation::{ObjectReference, Reference};
+use crate::program::allocation::Reference;
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer};
 use crate::program::traits::TraitGraph;
 use crate::program::module::Module;
@@ -85,24 +85,16 @@ impl <'a> Scope<'a> {
             self.add_pattern(Rc::clone(pattern))?;
         }
 
-        for (trait_, object_ref) in module.traits.iter() {
-            self.insert_singleton(
-                Environment::Global,
-                Reference::Object(Rc::clone(object_ref)),
-                &trait_.name.clone()
-            );
+        for function in module.fn_pointers.values() {
+            self.overload_function(function)?;
         }
 
         self.traits.add_graph(&module.trait_conformance);
 
-        for (function, object_ref) in module.fn_references.iter() {
-            self.overload_function(module.fn_pointers.get(function).unwrap(), object_ref)?;
-        }
-
         Ok(())
     }
 
-    pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> RResult<()> {
+    pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>) -> RResult<()> {
         let name = &fun.name;
         let environment = Environment::from_form(&fun.form);
 
@@ -113,7 +105,7 @@ impl <'a> Scope<'a> {
         // and then the scope is modified, the previous caller still expects their reference to not change.
         if let Some(existing) = refs.remove(name) {
             if let Reference::FunctionOverload(overload) = existing {
-                let overload = Reference::FunctionOverload(overload.adding_function(fun, object_ref)?);
+                let overload = Reference::FunctionOverload(overload.adding_function(fun)?);
 
                 refs.insert(fun.name.clone(), overload);
             }
@@ -124,7 +116,7 @@ impl <'a> Scope<'a> {
         else {
             // Copy the parent's function overload into us and then add the function to the overload
             if let Some(Some(Reference::FunctionOverload(overload))) = self.parent.map(|x| x.resolve(environment, name).ok()) {
-                let overload = Reference::FunctionOverload(overload.adding_function(fun, object_ref)?);
+                let overload = Reference::FunctionOverload(overload.adding_function(fun)?);
 
                 let mut refs = self.references_mut(environment);
                 refs.insert(fun.name.clone(), overload);
@@ -132,7 +124,7 @@ impl <'a> Scope<'a> {
 
             let mut refs = self.references_mut(environment);
 
-            let overload = Reference::FunctionOverload(FunctionOverload::from(fun, object_ref));
+            let overload = Reference::FunctionOverload(FunctionOverload::from(fun));
 
             refs.insert(fun.name.clone(), overload);
         }
@@ -244,9 +236,9 @@ impl Environment {
     pub fn from_form(form: &FunctionForm) -> Environment {
         match form {
             FunctionForm::MemberFunction => Environment::Member,
-            FunctionForm::MemberField => Environment::Member,
-            FunctionForm::Global => Environment::Global,
-            FunctionForm::GlobalConstant => Environment::Global,
+            FunctionForm::MemberImplicit => Environment::Member,
+            FunctionForm::GlobalFunction => Environment::Global,
+            FunctionForm::GlobalImplicit => Environment::Global,
         }
     }
 }

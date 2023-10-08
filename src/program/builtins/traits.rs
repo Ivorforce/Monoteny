@@ -42,11 +42,11 @@ pub struct EqFunctions {
 
 pub fn make_eq_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>) -> EqFunctions {
     EqFunctions {
-        equal_to: FunctionPointer::new_global(
+        equal_to: FunctionPointer::new_global_function(
             "is_equal",
             FunctionInterface::new_operator(2, type_, bool_type)
         ),
-        not_equal_to: FunctionPointer::new_global(
+        not_equal_to: FunctionPointer::new_global_function(
             "is_not_equal",
             FunctionInterface::new_operator(2, type_, bool_type)
         ),
@@ -62,19 +62,19 @@ pub struct OrdFunctions {
 
 pub fn make_ord_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>) -> OrdFunctions {
     OrdFunctions {
-        greater_than: FunctionPointer::new_global(
+        greater_than: FunctionPointer::new_global_function(
             "is_greater",
             FunctionInterface::new_operator(2, type_, bool_type)
         ),
-        greater_than_or_equal_to: FunctionPointer::new_global(
+        greater_than_or_equal_to: FunctionPointer::new_global_function(
             "is_greater_or_equal",
             FunctionInterface::new_operator(2, type_, bool_type)
         ),
-        lesser_than: FunctionPointer::new_global(
+        lesser_than: FunctionPointer::new_global_function(
             "is_lesser",
             FunctionInterface::new_operator(2, type_, bool_type)
         ),
-        lesser_than_or_equal_to: FunctionPointer::new_global(
+        lesser_than_or_equal_to: FunctionPointer::new_global_function(
             "is_greater_or_equal",
             FunctionInterface::new_operator(2, type_, bool_type)
         ),
@@ -94,29 +94,29 @@ pub struct NumberFunctions {
 
 pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
     NumberFunctions {
-        add: FunctionPointer::new_global(
+        add: FunctionPointer::new_global_function(
             "add",
             FunctionInterface::new_operator(2, type_, type_)
         ),
-        subtract: FunctionPointer::new_global(
+        subtract: FunctionPointer::new_global_function(
             "subtract",
             FunctionInterface::new_operator(2, type_, type_)
         ),
-        multiply: FunctionPointer::new_global(
+        multiply: FunctionPointer::new_global_function(
             "multiply",
             FunctionInterface::new_operator(2, type_, type_)
         ),
-        divide: FunctionPointer::new_global(
+        divide: FunctionPointer::new_global_function(
             "divide",
             FunctionInterface::new_operator(2, type_, type_)
         ),
 
-        negative: FunctionPointer::new_global(
+        negative: FunctionPointer::new_global_function(
             "negative",
             FunctionInterface::new_operator(1, type_, type_)
         ),
 
-        modulo: FunctionPointer::new_global(
+        modulo: FunctionPointer::new_global_function(
             "modulo",
             FunctionInterface::new_operator(2, type_, type_)
         ),
@@ -130,11 +130,11 @@ pub struct RealFunctions {
 
 pub fn make_real_functions(type_: &Box<TypeProto>) -> RealFunctions {
     RealFunctions {
-        exponent: FunctionPointer::new_global(
+        exponent: FunctionPointer::new_global_function(
             "exponent",
             FunctionInterface::new_operator(2, type_, type_)
         ),
-        logarithm: FunctionPointer::new_global(
+        logarithm: FunctionPointer::new_global_function(
             "log",
             FunctionInterface::new_operator(1, type_, type_)
         ),
@@ -143,7 +143,7 @@ pub fn make_real_functions(type_: &Box<TypeProto>) -> RealFunctions {
 
 #[allow(non_snake_case)]
 pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<FunctionPointer> {
-    FunctionPointer::new_member(
+    FunctionPointer::new_member_function(
         "to_string",
         FunctionInterface::new_member(
             type_.create_generic_type("Self"),
@@ -207,7 +207,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     module.add_trait(&ToString);
 
     let mut ConstructableByIntLiteral = Trait::new_with_self("ConstructableByIntLiteral".to_string());
-    let parse_int_literal_function = FunctionPointer::new_global(
+    let parse_int_literal_function = FunctionPointer::new_global_function(
         "parse_int_literal",
         FunctionInterface::new_simple(
             [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
@@ -222,7 +222,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
 
 
     let mut ConstructableByRealLiteral = Trait::new_with_self("ConstructableByRealLiteral".to_string());
-    let parse_real_literal_function = FunctionPointer::new_global(
+    let parse_real_literal_function = FunctionPointer::new_global_function(
         "parse_real_literal",
         FunctionInterface::new_simple(
             [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),

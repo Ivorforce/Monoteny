@@ -12,11 +12,12 @@ use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::debug::MockFunctionInterface;
 use crate::program::functions::{FunctionForm, FunctionHead, ParameterKey};
 use crate::program::generics::TypeForest;
-use crate::program::traits::{RequirementsFulfillment, TraitBinding, TraitConformanceWithTail, TraitGraph};
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::traits::{RequirementsFulfillment, Trait, TraitBinding, TraitGraph};
+use crate::program::types::TypeProto;
 
 pub struct AmbiguousFunctionCandidate {
     pub function: Rc<FunctionHead>,
+    pub generic_map: HashMap<Rc<Trait>, Box<TypeProto>>,
     // All these are seeded already
     pub param_types: Vec<Box<TypeProto>>,
     pub return_type: Box<TypeProto>,
@@ -24,7 +25,6 @@ pub struct AmbiguousFunctionCandidate {
 }
 
 pub struct AmbiguousFunctionCall {
-    pub seed: Uuid,
     pub expression_id: ExpressionID,
     pub function_name: String,
     pub arguments: Vec<ExpressionID>,
@@ -53,19 +53,15 @@ impl AmbiguousFunctionCall {
         // TODO We should only use deep requirements once we actually use this candidate.
         //  The deep ones are guaranteed to exist if the original requirements can be satisfied.
         for requirement in self.traits.gather_deep_requirements(candidate.requirements.iter().cloned()) {
-            match self.traits.satisfy_requirement(&requirement, &types)? {
+            match self.traits.satisfy_requirement(&requirement.mapping_types(&|type_| type_.replacing_structs(&candidate.generic_map)), &types)? {
                 AmbiguityResult::Ok(trait_conformance) => {
-                    conformance.insert(requirement.mapping_types(&|x| x.seeding_generics(&self.seed)), trait_conformance);
+                    conformance.insert(requirement, trait_conformance);
                 }
                 AmbiguityResult::Ambiguous => return Ok(AmbiguityResult::Ambiguous),
             }
         }
 
-        let generic_mapping: HashMap<_, _> = candidate.function.interface.collect_generics().iter().map(|id| {
-            (*id, TypeProto::unit(TypeUnit::Generic(TypeProto::bitxor(id, &self.seed))))
-        }).collect();
-
-        Ok(AmbiguityResult::Ok(Rc::new(RequirementsFulfillment { generic_mapping, conformance })))
+        Ok(AmbiguityResult::Ok(Rc::new(RequirementsFulfillment { generic_mapping: candidate.generic_map.clone(), conformance })))
     }
 }
 
@@ -129,7 +125,7 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             cs => {
                 let signature = MockFunctionInterface {
                     function_name: self.function_name.to_string(),
-                    form: FunctionForm::Global,
+                    form: FunctionForm::GlobalFunction,
                     argument_keys: self.arguments.iter().map(|a| ParameterKey::Positional).collect_vec(),
                     arguments: self.arguments.clone(),
                     types: &linker.types,

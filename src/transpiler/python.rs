@@ -74,11 +74,12 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
 
     // ================= Names ==================
 
-    for (trait_, reference) in runtime.source.trait_references.iter() {
+    for (head, trait_) in runtime.source.trait_references.iter() {
         // TODO This should not be fixed - but it currently clashes otherwise with Constructor's name choosing.
         //  Technically the trait references should be monomorphized, because an access to Vec<String> is not the same
         //  after monomorphization as Vec<Int32>. They should be two different constants.
-        file_namespace.insert_fixed_name(reference.id, trait_.name.as_str());
+        file_namespace.insert_fixed_name(head.function_id, trait_.name.as_str());
+        representations.function_representations.insert(Rc::clone(head), FunctionForm::Constant(head.function_id));
     }
 
     // We only really know from encountered calls which structs are left after monomorphization.
@@ -86,7 +87,7 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
     for implementation in transpiler.exported_functions.iter().chain(transpiler.internal_functions.iter()) {
         let function_namespace = file_namespace.add_sublevel();
         // Map internal variable names
-        for (variable, name) in implementation.variable_names.iter() {
+        for (variable, name) in implementation.locals_names.iter() {
             function_namespace.insert_name(variable.id.clone(), name);
         }
 

@@ -6,7 +6,6 @@ use guard::guard;
 use crate::error::{RResult, RuntimeError};
 use crate::linker::precedence::PrecedenceGroup;
 use crate::program::functions::{FunctionHead, FunctionOverload};
-use crate::program::traits::Trait;
 use crate::program::types::{TypeProto, TypeUnit};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -17,10 +16,10 @@ pub enum Mutability {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Reference {
-    Object(Rc<ObjectReference>),
+    Local(Rc<ObjectReference>),
     // Keywords aren't really objects and can't be logically passed around.
     // They aren't technically language keywords, but instead were defined in patterns.
-    // This means they can be shadowed!
+    // Yes, this implementation means they can be shadowed!
     Keyword(String),
     // This COULD be an object, but only if it 'inherits' the callable interfaces
     //  from ALL included overloads. Overall, this is probably too confusing and thus not worth
@@ -39,34 +38,12 @@ pub struct ObjectReference {
 }
 
 impl Reference {
-    pub fn as_object_ref(&self, require_mutable: bool) -> RResult<&Rc<ObjectReference>> {
-        guard!(let Reference::Object(obj_ref) = self else {
-            return Err(RuntimeError::new(format!("Reference is not an object")));
+    pub fn as_local(&self, require_mutable: bool) -> RResult<&Rc<ObjectReference>> {
+        guard!(let Reference::Local(obj_ref) = self else {
+            return Err(RuntimeError::new(format!("Reference is not a local.")));
         });
 
         Ok(&obj_ref)
-    }
-
-    pub fn as_metatype(&self) -> RResult<&Box<TypeProto>> {
-        let type_ = &self.as_object_ref(false)?.type_;
-
-        guard!(let TypeUnit::MetaType = &type_.unit else {
-           return Err(RuntimeError::new(format!("Reference is not a type.")));
-        });
-
-        Ok(&type_.arguments.get(0).unwrap())
-    }
-
-    pub fn as_trait(&self) -> RResult<Rc<Trait>> {
-        let type_ = &self.as_object_ref(false)?.type_;
-
-        match type_.unit {
-            TypeUnit::MetaType => match &type_.arguments[0].unit {
-                TypeUnit::Struct(t) => Ok(Rc::clone(t)),
-                _ => Err(RuntimeError::new(format!("Reference is not a struct metatype.")))
-            },
-            _ => Err(RuntimeError::new(format!("Reference is not a metatype.")))
-        }
     }
 
     pub fn as_function_overload(&self) -> RResult<Rc<FunctionOverload>> {
@@ -119,7 +96,7 @@ impl Debug for ObjectReference {
 impl Debug for Reference {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Reference::Object(t) => write!(fmt, "{:?}", t.type_),
+            Reference::Local(t) => write!(fmt, "{:?}", t.type_),
             Reference::FunctionOverload(f) => write!(fmt, "{}", &f.name),
             Reference::PrecedenceGroup(p) => write!(fmt, "{}", &p.name),
             Reference::Keyword(s) => write!(fmt, "{}", s),

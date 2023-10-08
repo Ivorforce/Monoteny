@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
+use crate::program::traits::Trait;
 use crate::program::types::{TypeUnit, TypeProto};
 
 pub type GenericIdentity = Uuid;
@@ -119,17 +121,17 @@ impl TypeForest {
         self.bind_identity(*identity, t)
     }
 
-    pub fn bind_any_as_generic(&mut self, anys: &HashMap<GenericAlias, Box<TypeProto>>) -> RResult<()>{
-        let map: HashMap<_, _> = anys.into_iter().map(|(any, type_)| {
-            let identity = self._register(*any);
+    pub fn rebind_structs_as_generic(&mut self, structs: &HashMap<Rc<Trait>, Box<TypeProto>>) -> RResult<()>{
+        let map: HashMap<_, _> = structs.into_iter().map(|(struct_, type_)| {
+            let identity = self._register(struct_.id);
             self.bind_identity(identity, type_)?;
-            Ok((any, identity))
+            Ok((struct_, identity))
         }).try_collect()?;
 
         let mut replace_map = HashMap::new();
         for (other_identity, unit) in self.identity_to_type.iter() {
-            if let TypeUnit::Any(any) = unit {
-                if let Some(target_identity) = map.get(any) {
+            if let TypeUnit::Struct(struct_) = unit {
+                if let Some(target_identity) = map.get(struct_) {
                     replace_map.insert(*other_identity, *target_identity);
                 }
             }

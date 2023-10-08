@@ -62,12 +62,15 @@ impl Display for FilePosition {
         if let Some(file) = &self.file {
             if let Some(range) = &self.range {
                 if let Ok(contents) = std::fs::read_to_string(&file) {
-                    let mut line_idxs = contents.match_indices("\n").collect_vec();
-                    let line_start = line_idxs[..].binary_search_by(|x| x.0.cmp(&range.start)).unwrap_or_else(|e| e);
+                    let mut lines = contents.match_indices("\n").collect_vec();
+                    // FIXME Insert first line because it's not a \n match... but split doesn't return indices
+                    lines.insert(0, (0, lines.get(0).map(|e| e.1).unwrap_or("")));
+
+                    let line_start = lines[..].binary_search_by(|x| x.0.cmp(&range.start)).unwrap_or_else(|e| e);
                     let path_str = file.as_os_str().to_string_lossy();
                     // For some reason, in line idx is always one too much.
                     // Lines are correct but the unwritten rule is lines start at idx 1.
-                    write!(f, "\n  --> {}:{}:{}", path_str, line_start + 1, range.start - line_idxs[max(0, line_start - 1)].0 - 1)?;
+                    write!(f, "\n  --> {}:{}:{}", path_str, max(line_start, 1), range.start - lines[max(line_start, 1) - 1].0)?;
                 }
                 else {
                     write!(f, "\n  --> in {} (range {}..{})", file.as_os_str().to_string_lossy(), range.start, range.end)?;

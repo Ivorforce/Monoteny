@@ -11,23 +11,23 @@ use crate::program::types::TypeProto;
 pub fn create_functions(module: &mut Module, primitive_types: &HashMap<primitives::Type, Rc<Trait>>) {
     let bool_type = TypeProto::simple_struct(&primitive_types[&primitives::Type::Bool]);
 
-    let true_ = FunctionPointer::new_constant(
+    let true_ = FunctionPointer::new_global_implicit(
         "true",
-        FunctionInterface::new_constant(&bool_type, vec![])
+        FunctionInterface::new_provider(&bool_type, vec![])
     );
-    module.add_function(&true_);
     module.fn_builtin_hints.insert(
         Rc::clone(&true_.target),
         BuiltinFunctionHint::True,
     );
+    module.add_function(true_);
 
-    let false_ = FunctionPointer::new_constant(
+    let false_ = FunctionPointer::new_global_implicit(
         "false",
-        FunctionInterface::new_constant(&bool_type, vec![])
+        FunctionInterface::new_provider(&bool_type, vec![])
     );
-    module.add_function(&false_);
     module.fn_builtin_hints.insert(
         Rc::clone(&false_.target),
         BuiltinFunctionHint::False,
     );
+    module.add_function(false_);
 }

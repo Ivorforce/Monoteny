@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::program::allocation::ObjectReference;
 use crate::program::computation_tree::ExpressionOperation;
 use crate::program::functions::{FunctionHead, FunctionPointer};
 use crate::program::global::FunctionImplementation;
@@ -40,7 +39,7 @@ pub enum FunctionForm {
 }
 
 pub fn find_for_function(function_representations: &mut HashMap<Rc<FunctionHead>, FunctionForm>, global_namespace: &mut namespaces::Level, implementation: &Box<FunctionImplementation>, pointer: &Rc<FunctionPointer>) {
-    if implementation.parameter_variables.is_empty() {
+    if implementation.parameter_locals.is_empty() {
         // TODO We could make a helper function and still use a constant even if we use blocks.
         let has_blocks = implementation.expression_forest.operations.values().any(|op| matches!(op, ExpressionOperation::Block));
         if !has_blocks {

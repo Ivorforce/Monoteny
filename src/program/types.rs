@@ -26,9 +26,6 @@ pub enum TypeUnit {
     Void,
     /// Type of a type
     MetaType,
-    /// Some unknown type, identified fully by its name.
-    /// This type is unique only within the user-defined scope and should be generified when imported.
-    Any(Uuid),
     /// some type that isn't bound yet. This is fully unique and should not be created statically or imported.
     Generic(GenericAlias),
     /// Bound to an instance of a trait. The arguments are the generic bindings.
@@ -75,7 +72,6 @@ impl Debug for TypeUnit {
         match self {
             TypeUnit::Struct(s) => write!(fmt, "{}", s.name),
             TypeUnit::Generic(g) => write!(fmt, "#({})", g),
-            TypeUnit::Any(g) => write!(fmt, "Any({})", g),
             TypeUnit::MetaType => write!(fmt, "MetaType"),
             TypeUnit::Void => write!(fmt, "Void"),
             TypeUnit::Function(f) => write!(fmt, "{:?}", f),
@@ -103,41 +99,6 @@ impl TypeProto {
         TypeProto::unit(TypeUnit::Struct(Rc::clone(trait_)))
     }
 
-    pub fn bitxor(lhs: &Uuid, rhs: &Uuid) -> Uuid {
-        // TODO This is technically wrong because some bits of UUID are reserved. OH WELL
-        Uuid::from_u128(lhs.as_u128() ^ rhs.as_u128())
-    }
-
-    pub fn freezing_generics_to_any(&self) -> Box<TypeProto> {
-        Box::new(TypeProto {
-            unit: match &self.unit {
-                TypeUnit::Generic(id) => TypeUnit::Any(*id),
-                _ => self.unit.clone(),
-            },
-            arguments: self.arguments.iter().map(|x| x.freezing_generics_to_any()).collect()
-        })
-    }
-
-    pub fn unfreezing_any_to_generics(&self) -> Box<TypeProto> {
-        Box::new(TypeProto {
-            unit: match &self.unit {
-                TypeUnit::Any(id) => TypeUnit::Generic(*id),
-                _ => self.unit.clone(),
-            },
-            arguments: self.arguments.iter().map(|x| x.unfreezing_any_to_generics()).collect()
-        })
-    }
-
-    pub fn seeding_generics(&self, seed: &Uuid) -> Box<TypeProto> {
-        Box::new(TypeProto {
-            unit: match &self.unit {
-                TypeUnit::Generic(id) => TypeUnit::Generic(TypeProto::bitxor(seed, id)),
-                _ => self.unit.clone(),
-            },
-            arguments: self.arguments.iter().map(|x| x.seeding_generics(seed)).collect()
-        })
-    }
-
     pub fn replacing_generics(&self, map: &HashMap<Uuid, Box<TypeProto>>) -> Box<TypeProto> {
         match &self.unit {
             TypeUnit::Generic(id) => map.get(id)
@@ -150,14 +111,14 @@ impl TypeProto {
         }
     }
 
-    pub fn replacing_anys(&self, map: &HashMap<Uuid, Box<TypeProto>>) -> Box<TypeProto> {
+    pub fn replacing_structs(&self, map: &HashMap<Rc<Trait>, Box<TypeProto>>) -> Box<TypeProto> {
         match &self.unit {
-            TypeUnit::Any(id) => map.get(id)
+            TypeUnit::Struct(struct_) => map.get(struct_)
                 .map(|x| x.clone())
                 .unwrap_or_else(|| Box::new(self.clone())),
             _ => Box::new(TypeProto {
                 unit: self.unit.clone(),
-                arguments: self.arguments.iter().map(|x| x.replacing_generics(map)).collect()
+                arguments: self.arguments.iter().map(|x| x.replacing_structs(map)).collect()
             }),
         }
     }

@@ -22,7 +22,7 @@ pub struct Trait {
 
     // Generics declared for this trait, by name (via its declaration).
     // Used in abstract functions and requirements (collect_generics on those would yield the same GenericAliases).
-    pub generics: HashMap<String, GenericAlias>,
+    pub generics: HashMap<String, Rc<Trait>>,
 
     // To conform to this trait, these other conformances are required.
     pub requirements: HashSet<Rc<TraitBinding>>,
@@ -48,7 +48,7 @@ pub struct TraitBinding {
     pub trait_: Rc<Trait>,
 
     /// A mapping from each of the trait's generics to some type.
-    pub generic_to_type: HashMap<Uuid, Box<TypeProto>>,
+    pub generic_to_type: HashMap<Rc<Trait>, Box<TypeProto>>,
 }
 
 /// How a trait binding is fulfilled.
@@ -70,7 +70,7 @@ pub struct TraitConformanceWithTail {
 pub struct TraitConformanceRule {
     // Generics declared for this conformance, by name (via its declaration).
     // Used in requirements and the conformance itself (collect_generics on those would yield the same GenericAliases).
-    pub generics: HashMap<String, GenericAlias>,
+    pub generics: HashMap<String, Rc<Trait>>,
 
     // To use this conformance, these other conformances are required.
     pub requirements: HashSet<Rc<TraitBinding>>,
@@ -111,7 +111,7 @@ pub struct RequirementsAssumption {
 pub struct RequirementsFulfillment {
     // Requirement: (tail, conformance)
     pub conformance: HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>,
-    pub generic_mapping: HashMap<Uuid, Box<TypeProto>>,
+    pub generic_mapping: HashMap<Rc<Trait>, Box<TypeProto>>,
 }
 
 impl TraitGraph {
@@ -176,26 +176,44 @@ impl TraitGraph {
         // TODO clone is a bit much, but we need it to be memory safe
         let cloned_declarations: Vec<Rc<TraitConformanceRule>> = relevant_declarations.clone();
         'rule: for rule in cloned_declarations.iter() {
-            // TODO The type forest should be able to do this for us. Do we really have to do both?
-            guard!(let Some(generics_map) = TraitBinding::merge(&rule.conformance.binding, &resolved_binding) else {
-                continue;
-            });
-
-            // We have to make a new type forest so that the fulfillment returned by test_requirements uses generics.
+            // For a rule to be compatible, its binding must be compatible with the binding from the arguments.
+            //  So we create a new TypeForest where we can bind them together.
             let mut rule_mapping = mapping.clone();
-            for (generic, type_) in generics_map.iter() {
-                if rule_mapping.bind(*generic, type_).is_err() {
+
+            // A rule may also use generics. Those need to be rebindable, and we need to be able to figure out
+            //  how they've been bound in the end. To do that, we'll just map them to generics and query those
+            //  generics later on.
+            let rule_generics_map = rule.generics.values()
+                .map(|generic| (Rc::clone(generic), TypeProto::unit(TypeUnit::Generic(Uuid::new_v4()))))
+                .collect();
+
+            // Bind together the rule and argument.
+            for (key, type_) in rule.conformance.binding.generic_to_type.iter() {
+                let tmp_id = Uuid::new_v4();
+                rule_mapping.bind(tmp_id, &type_.replacing_structs(&rule_generics_map)).unwrap();
+
+                let resolved_type = &resolved_binding.generic_to_type[key];
+                if rule_mapping.bind(tmp_id, resolved_type).is_err() {
+                    // Binding failed; this rule is not compatible.
                     continue 'rule;
                 }
             }
 
             match self.test_requirements(&rule.requirements, &rule_mapping) {
-                // Can't use this candidate
+                // Can't use this candidate: While it is compatible, its requirements are not fulfilled.
                 Err(_) => {},
                 Ok(AmbiguityResult::Ambiguous) => {
+                    // This shouldn't happen because Ambiguous is only thrown when any requirements have
+                    //  unbound generics. We resolved those generics using the binding from earlier.
                     panic!("Got an ambiguity in deep trait resolving.")
                 }
                 Ok(AmbiguityResult::Ok(fulfilled_requirements)) => {
+                    //
+                    // Find out how the rule's generics were mapped. This will be our tail.
+                    let generic_mapping = rule_generics_map.into_iter().map(|(interface_generic, tmp_generic)| {
+                        (interface_generic, rule_mapping.resolve_type(&tmp_generic).unwrap())
+                    }).collect();
+
                     let resolved_conformance = TraitConformance::new(
                         resolved_binding.clone(),
                         // TODO Do we need to map the functions?
@@ -205,7 +223,7 @@ impl TraitGraph {
                         Rc::new(TraitConformanceWithTail {
                             tail: Rc::new(RequirementsFulfillment {
                                 conformance: fulfilled_requirements,
-                                generic_mapping: generics_map.clone(),
+                                generic_mapping,
                             }),
                             conformance: resolved_conformance,
                         })
@@ -255,14 +273,14 @@ impl TraitGraph {
                 ordered.push(Rc::clone(&binding));
                 rest.extend(
                     binding.trait_.requirements.iter()
-                        .map(|x| x.mapping_types(&|type_| type_.replacing_generics(&binding.generic_to_type))))
+                        .map(|x| x.mapping_types(&|type_| type_.replacing_structs(&binding.generic_to_type))))
             }
         }
         ordered.reverse();
         ordered
     }
 
-    pub fn assume_granted<C>(&self, bindings: C) -> Vec<Rc<TraitConformance>> where C: Iterator<Item=Rc<TraitBinding>> {
+    pub fn assume_granted(&self, bindings: impl Iterator<Item=Rc<TraitBinding>>) -> Vec<Rc<TraitConformance>> {
         let deep_requirements = self.gather_deep_requirements(bindings);
         let mut resolutions = vec![];
 
@@ -276,12 +294,14 @@ impl TraitGraph {
                     target: FunctionHead::new(
                         Rc::new(FunctionInterface {
                             parameters: abstract_fun.target.interface.parameters.iter().map(|x| {
-                                x.mapping_type(&|type_| type_.replacing_generics(&trait_binding.generic_to_type))
+                                x.mapping_type(&|type_| type_.replacing_structs(&trait_binding.generic_to_type))
                             }).collect(),
-                            return_type: abstract_fun.target.interface.return_type.replacing_generics(&trait_binding.generic_to_type),
+                            return_type: abstract_fun.target.interface.return_type.replacing_structs(&trait_binding.generic_to_type),
                             requirements: abstract_fun.target.interface.requirements.iter().map(|req| {
-                                req.mapping_types(&|type_| type_.replacing_generics(&trait_binding.generic_to_type))
+                                req.mapping_types(&|type_| type_.replacing_structs(&trait_binding.generic_to_type))
                             }).collect(),
+                            // the function's own generics aren't mapped; we're only binding those from the trait itself.
+                            generics: abstract_fun.target.interface.generics.clone(),
                         }),
                         FunctionType::Polymorphic {
                             provided_by_assumption: Rc::clone(&trait_binding),
@@ -305,11 +325,22 @@ impl TraitGraph {
 }
 
 impl Trait {
+    pub fn new_flat(name: String) -> Trait {
+        Trait {
+            id: Uuid::new_v4(),
+            name,
+            generics: Default::default(),
+            requirements: Default::default(),
+            abstract_functions: Default::default(),
+            variable_hints: Default::default(),
+        }
+    }
+
     pub fn new_with_self(name: String) -> Trait {
         Trait {
             id: Uuid::new_v4(),
             name,
-            generics: HashMap::from([("Self".to_string(), Uuid::new_v4())]),
+            generics: HashMap::from([("Self".to_string(), Rc::new(Trait::new_flat("Self".to_string())))]),
             requirements: Default::default(),
             abstract_functions: Default::default(),
             variable_hints: Default::default(),
@@ -317,7 +348,7 @@ impl Trait {
     }
 
     pub fn create_generic_type(self: &Trait, generic_name: &str) -> Box<TypeProto> {
-        TypeProto::unit(TypeUnit::Generic(self.generics[generic_name]))
+        TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.generics[generic_name])))
     }
 
     pub fn create_generic_binding(self: &Rc<Trait>, generic_to_type: Vec<(&str, Box<TypeProto>)>) -> Rc<TraitBinding> {
@@ -325,7 +356,7 @@ impl Trait {
             trait_: Rc::clone(self),
             generic_to_type: HashMap::from_iter(
                 generic_to_type.into_iter()
-                    .map(|(generic_name, type_)| (self.generics[generic_name], type_))
+                    .map(|(generic_name, type_)| (Rc::clone(&self.generics[generic_name]), type_))
             ),
         })
     }
@@ -351,39 +382,19 @@ impl TraitBinding {
     pub fn mapping_types(&self, map: &dyn Fn(&Box<TypeProto>) -> Box<TypeProto>) -> Rc<TraitBinding> {
         Rc::new(TraitBinding {
             trait_: Rc::clone(&self.trait_),
-            generic_to_type: self.generic_to_type.iter().map(|(generic_id, type_) | (*generic_id, map(type_))).collect()
+            generic_to_type: self.generic_to_type.iter().map(|(generic, type_) | (Rc::clone(generic), map(type_))).collect()
         })
     }
 
     pub fn try_mapping_types<B>(&self, map: &dyn Fn(&Box<TypeProto>) -> Result<Box<TypeProto>, B>) -> Result<Rc<TraitBinding>, B> {
         Ok(Rc::new(TraitBinding {
             trait_: Rc::clone(&self.trait_),
-            generic_to_type: self.generic_to_type.iter().map(|(generic_id, type_) | Ok((*generic_id, map(type_)?))).try_collect()?
+            generic_to_type: self.generic_to_type.iter().map(|(generic, type_) | Ok((Rc::clone(generic), map(type_)?))).try_collect()?
         }))
     }
 
     pub fn collect_generics(&self) -> HashSet<GenericAlias> {
         TypeProto::collect_generics(self.generic_to_type.values())
-    }
-
-    /// Merge the two bindings. This will return None if the merger fails.
-    /// If it succeeds, it returns a map of generic to type that was resolved during the merger.
-    pub fn merge(lhs: &TraitBinding, rhs: &TraitBinding) -> Option<HashMap<Uuid, Box<TypeProto>>> {
-        if lhs.trait_ != rhs.trait_ || lhs.generic_to_type.keys().collect::<HashSet<_>>() != rhs.generic_to_type.keys().collect() {
-            return None
-        }
-
-        let mut types = TypeForest::new();
-        for (key, type_) in lhs.generic_to_type.iter() {
-            types.bind(*key, type_).ok()?;
-        }
-        for (key, type_) in rhs.generic_to_type.iter() {
-            types.bind(*key, type_).ok()?;
-        }
-        Some(
-            lhs.collect_generics().union(&rhs.collect_generics()).into_iter()
-                .map(|g| (*g, types.resolve_binding_alias(g).unwrap())).collect()
-        )
     }
 }
 
@@ -466,7 +477,7 @@ impl Hash for TraitBinding {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.trait_.hash(state);
 
-        for keyval in self.generic_to_type.iter().sorted_by_key(|(id, type_)| *id) {
+        for keyval in self.generic_to_type.iter().sorted_by_key(|(trait_, type_)| trait_.id) {
             keyval.hash(state);
         }
     }
@@ -508,7 +519,7 @@ impl Hash for RequirementsFulfillment {
             conformance.hash(state);
         }
 
-        for (id, type_) in self.generic_mapping.iter().sorted_by_key(|(id, type_)| **id) {
+        for (id, type_) in self.generic_mapping.iter().sorted_by_key(|(trait_, type_)| trait_.id) {
             id.hash(state);
             type_.hash(state);
         }

@@ -11,11 +11,11 @@ use crate::program::computation_tree::{ExpressionTree, ExpressionID, ExpressionO
 use crate::linker::{precedence, scopes};
 use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousAbstractCall, LinkerAmbiguity, AmbiguityResult};
 use crate::linker::precedence::link_patterns;
-use crate::linker::r#type::TypeFactory;
+use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::debug::MockFunctionInterface;
-use crate::program::functions::{FunctionForm, FunctionHead, FunctionInterface, FunctionOverload, FunctionPointer, Parameter, ParameterKey};
+use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
 use crate::program::r#struct::Struct;
@@ -32,7 +32,7 @@ pub struct ImperativeLinker<'a> {
     pub expressions: Box<ExpressionTree>,
     pub ambiguities: Vec<Box<dyn LinkerAmbiguity>>,
 
-    pub variable_names: HashMap<Rc<ObjectReference>, String>,
+    pub locals_names: HashMap<Rc<ObjectReference>, String>,
 }
 
 impl <'a> ImperativeLinker<'a> {
@@ -49,8 +49,7 @@ impl <'a> ImperativeLinker<'a> {
         let mut scope = scope.subscope();
 
         let granted_requirements = scope.traits.assume_granted(
-            self.function.interface.requirements.iter()
-                .map(|req| req.mapping_types(&|x| x.freezing_generics_to_any()))
+            self.function.interface.requirements.iter().cloned()
         );
 
         // Let our scope know that our parameter types (all of type any!) conform to the requirements
@@ -73,7 +72,6 @@ impl <'a> ImperativeLinker<'a> {
                         name: ptr.name.clone(),
                         form: ptr.form.clone(),
                     }),
-                    &ObjectReference::new_immutable(TypeProto::unit(TypeUnit::Function(Rc::clone(&function))))
                 )?;
             }
         }
@@ -82,19 +80,14 @@ impl <'a> ImperativeLinker<'a> {
 
         // Register parameters as variables.
         let mut parameter_variables = vec![];
-        for parameter in self.function.interface.parameters.iter() {
-            let parameter_variable = ObjectReference::new_immutable(parameter.type_.freezing_generics_to_any().clone());
-            self.variable_names.insert(Rc::clone(&parameter_variable), parameter.internal_name.clone());
-            scope.insert_singleton(
-                scopes::Environment::Global,
-                Reference::Object(Rc::clone(&parameter_variable)),
-                &parameter.internal_name
-            );
+        for parameter in self.function.interface.parameters.clone() {
+            let parameter_variable = ObjectReference::new_immutable(parameter.type_.clone());
+            _ = self.register_local(&parameter.internal_name, Rc::clone(&parameter_variable), &mut scope);
             parameter_variables.push(parameter_variable);
         }
 
         let head_expression = self.link_expression(body, &scope)?;
-        self.types.bind(head_expression, &self.function.interface.return_type.freezing_generics_to_any().as_ref())?;
+        self.types.bind(head_expression, &self.function.interface.return_type)?;
 
         let mut has_changed = true;
         while !self.ambiguities.is_empty() {
@@ -123,8 +116,8 @@ impl <'a> ImperativeLinker<'a> {
             root_expression_id: head_expression,
             expression_forest: self.expressions,
             type_forest: self.types,
-            parameter_variables,
-            variable_names: self.variable_names.clone(),
+            parameter_locals: parameter_variables,
+            locals_names: self.locals_names,
         }))
     }
 
@@ -152,7 +145,7 @@ impl <'a> ImperativeLinker<'a> {
         self.register_ambiguity(Box::new(AmbiguousAbstractCall {
             expression_id,
             arguments,
-            interface,
+            trait_: interface,
             range,
             abstract_function,
             traits,
@@ -170,9 +163,9 @@ impl <'a> ImperativeLinker<'a> {
     }
 
     pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &ast::Expression, scope: &scopes::Scope) -> RResult<()> {
-        let mut type_factory = TypeFactory::new(&scope);
+        let mut type_factory = TypeFactory::new(&scope, &self.runtime);
 
-        let type_declaration = type_factory.link_type(&type_declaration)?;
+        let type_declaration = type_factory.link_type(&type_declaration, true)?;
 
         for requirement in type_factory.requirements {
             todo!("Implicit imperative requirements are not implemented yet")
@@ -219,13 +212,10 @@ impl <'a> ImperativeLinker<'a> {
                 }
 
                 let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(assignment)), mutability: mutability.clone() });
-                let variable = Reference::Object(Rc::clone(&object_ref));
-
-                self.variable_names.insert(Rc::clone(&object_ref), identifier.clone());
-                scope.override_reference(scopes::Environment::Global, variable, identifier);
+                self.register_local(identifier, Rc::clone(&object_ref), scope);
 
                 let expression_id = self.register_new_expression(vec![assignment]);
-                self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(object_ref));
+                self.expressions.operations.insert(expression_id, ExpressionOperation::SetLocal(object_ref));
                 self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
                 expression_id
             },
@@ -239,16 +229,16 @@ impl <'a> ImperativeLinker<'a> {
                     let overload = scope
                         .resolve(scopes::Environment::Member, identifier)?
                         .as_function_overload()?;
-                    self.link_function_call(&overload.functions(), &overload.name, vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
+                    self.link_function_call(overload.iter_heads(), &overload.name, vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
                 }
                 else {
                     // Assign to local variable
                     let object_ref = scope
                         .resolve(scopes::Environment::Global, identifier)?
-                        .as_object_ref(true)?;
+                        .as_local(true)?;
                     self.types.bind(new_value, &object_ref.type_)?;
                     let expression_id = self.register_new_expression(vec![new_value]);
-                    self.expressions.operations.insert(expression_id, ExpressionOperation::VariableAssignment(Rc::clone(&object_ref)));
+                    self.expressions.operations.insert(expression_id, ExpressionOperation::SetLocal(Rc::clone(&object_ref)));
                     self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
                     expression_id
                 }
@@ -260,7 +250,7 @@ impl <'a> ImperativeLinker<'a> {
                     }
 
                     let result: ExpressionID = self.link_expression(expression, &scope)?;
-                    self.types.bind(result, &self.function.interface.return_type.freezing_generics_to_any().as_ref())?;
+                    self.types.bind(result, &self.function.interface.return_type)?;
 
                     let expression_id = self.register_new_expression(vec![result]);
                     self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
@@ -285,6 +275,11 @@ impl <'a> ImperativeLinker<'a> {
             }
         };
         Ok(expression_id)
+    }
+
+    fn register_local(&mut self, identifier: &str, reference: Rc<ObjectReference>, scope: &mut scopes::Scope) {
+        self.locals_names.insert(Rc::clone(&reference), identifier.to_string());
+        scope.override_reference(scopes::Environment::Global, Reference::Local(reference), identifier);
     }
 
     fn link_expression_with_type(&mut self, syntax: &ast::Expression, type_declaration: &Option<ast::Expression>, scope: &scopes::Scope) -> RResult<ExpressionID> {
@@ -313,13 +308,13 @@ impl <'a> ImperativeLinker<'a> {
                 let variable = scope.resolve(scopes::Environment::Global, s)?;
 
                 match variable {
-                    Reference::Object(ref_) => {
+                    Reference::Local(ref_) => {
                         let ObjectReference { id, type_, mutability } = ref_.as_ref();
 
                         precedence::Token::Expression(self.link_unambiguous_expression(
                             vec![],
                             type_,
-                            ExpressionOperation::VariableLookup(ref_.clone())
+                            ExpressionOperation::GetLocal(ref_.clone())
                         )?)
                     }
                     Reference::Keyword(keyword) => {
@@ -327,16 +322,16 @@ impl <'a> ImperativeLinker<'a> {
                     }
                     Reference::FunctionOverload(overload) => {
                         match overload.form {
-                            FunctionForm::Global => {
+                            FunctionForm::GlobalFunction => {
                                 precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
                             }
-                            FunctionForm::GlobalConstant => {
+                            FunctionForm::GlobalImplicit => {
                                 precedence::Token::Expression(
-                                    self.link_function_call(&overload.functions(), &overload.name, vec![], vec![], scope, syntax.position.clone())?
+                                    self.link_function_call(overload.iter_heads(), &overload.name, vec![], vec![], scope, syntax.position.clone())?
                                 )
                             }
                             FunctionForm::MemberFunction => panic!(),
-                            FunctionForm::MemberField => panic!(),
+                            FunctionForm::MemberImplicit => panic!(),
                         }
                     }
                     Reference::PrecedenceGroup(_) => {
@@ -378,9 +373,9 @@ impl <'a> ImperativeLinker<'a> {
                     .as_function_overload()?;
 
                 match overload.form {
-                    FunctionForm::MemberField => {
+                    FunctionForm::MemberImplicit => {
                         precedence::Token::Expression(
-                            self.link_function_call(&overload.functions(), &overload.name, vec![ParameterKey::Positional], vec![*target], scope, syntax.position.clone())?
+                            self.link_function_call(overload.iter_heads(), &overload.name, vec![ParameterKey::Positional], vec![*target], scope, syntax.position.clone())?
                         )
                     }
                     FunctionForm::MemberFunction => {
@@ -463,8 +458,8 @@ impl <'a> ImperativeLinker<'a> {
         match variable {
             Reference::FunctionOverload(overload) => {
                 match overload.form {
-                    FunctionForm::Global => {
-                        let expression_id = self.link_function_call(&overload.functions(), &overload.name, keys, args, scope, range)?;
+                    FunctionForm::GlobalFunction => {
+                        let expression_id = self.link_function_call(overload.iter_heads(), &overload.name, keys, args, scope, range)?;
                         // Make sure the return type is actually String.
                         self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.core.traits.String))))?;
                         Ok(expression_id)
@@ -482,29 +477,32 @@ impl <'a> ImperativeLinker<'a> {
         todo!()
     }
 
-    pub fn link_function_call(&mut self, functions: &Vec<Rc<FunctionHead>>, fn_name: &str, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> RResult<ExpressionID> {
+    pub fn link_function_call<'b>(&mut self, functions: impl Iterator<Item=&'b Rc<FunctionHead>>, fn_name: &str, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> RResult<ExpressionID> {
         // TODO Check if any arguments are void before anything else
-        let seed = Uuid::new_v4();
-
         let argument_keys: Vec<&ParameterKey> = argument_keys.iter().collect();
 
         let mut candidates_with_failed_signature = vec![];
         let mut candidates: Vec<Box<AmbiguousFunctionCandidate>> = vec![];
 
-        for fun in functions.iter().map(Rc::clone) {
+        for fun in functions.map(Rc::clone) {
             let param_keys = fun.interface.parameters.iter().map(|x| &x.external_key).collect::<Vec<&ParameterKey>>();
             if param_keys != argument_keys {
                 candidates_with_failed_signature.push(fun);
                 continue;
             }
 
+            let generic_map = fun.interface.generics.values()
+                .map(|trait_| (Rc::clone(trait_), TypeProto::unit(TypeUnit::Generic(Uuid::new_v4()))))
+                .collect();
+
             candidates.push(Box::new(AmbiguousFunctionCandidate {
                 param_types: fun.interface.parameters.iter()
-                    .map(|x| x.type_.seeding_generics(&seed))
+                    .map(|x| x.type_.replacing_structs(&generic_map))
                     .collect(),
-                return_type: fun.interface.return_type.seeding_generics(&seed),
-                requirements: fun.interface.requirements.iter().map(|x| x.mapping_types(&|type_| type_.seeding_generics(&seed))).collect(),
+                return_type: fun.interface.return_type.replacing_structs(&generic_map),
+                requirements: fun.interface.requirements.iter().cloned().collect_vec(),
                 function: fun,
+                generic_map,
             }));
         }
 
@@ -512,7 +510,6 @@ impl <'a> ImperativeLinker<'a> {
             let expression_id = self.register_new_expression(argument_expressions.clone());
 
             self.register_ambiguity(Box::new(AmbiguousFunctionCall {
-                seed,
                 expression_id,
                 function_name: fn_name.to_string(),
                 arguments: argument_expressions,
@@ -529,7 +526,7 @@ impl <'a> ImperativeLinker<'a> {
 
         let signature = MockFunctionInterface {
             function_name: fn_name.to_string(),
-            form: FunctionForm::Global,
+            form: FunctionForm::GlobalFunction,
             argument_keys: argument_keys.clone().into_iter().cloned().collect_vec(),
             arguments: argument_expressions.clone(),
             types: &self.types,

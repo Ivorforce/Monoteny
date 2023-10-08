@@ -23,14 +23,18 @@ pub enum ExpressionOperation {
     Block,
 
     // TODO We can remove these operations if we just add a getter and setter for every global.
-    VariableAssignment(Rc<ObjectReference>),
-    VariableLookup(Rc<ObjectReference>),
+    GetLocal(Rc<ObjectReference>),
+    SetLocal(Rc<ObjectReference>),
 
     // 0 arguments if no return type is set, otherwise 1
     Return,
 
     FunctionCall(Rc<FunctionBinding>),
     PairwiseOperations { calls: Vec<Rc<FunctionBinding>> },
+
+    // TODO This is required because it has a variable number of arguments (its elements).
+    //  This is not supported in functions otherwise, and we'd have to make an exception.
+    //  Which might be fair in the future, but for now it's not a pressing concern.
     ArrayLiteral,
     StringLiteral(String),
 }

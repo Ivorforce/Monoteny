@@ -7,3 +7,12 @@ pub struct FunctionBinding {
     pub function: Rc<FunctionHead>,
     pub requirements_fulfillment: Rc<RequirementsFulfillment>,
 }
+
+impl FunctionBinding {
+    pub fn pure(function: Rc<FunctionHead>) -> Rc<FunctionBinding> {
+        Rc::new(FunctionBinding {
+            function,
+            requirements_fulfillment: RequirementsFulfillment::empty(),
+        })
+    }
+}

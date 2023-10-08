@@ -3,19 +3,20 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
+use crate::interpreter::Runtime;
+use crate::linker::global::GlobalLinker;
 use crate::linker::scopes;
 use crate::linker::interface::link_function_pointer;
-use crate::linker::r#type::TypeFactory;
-use crate::linker::scopes::Environment;
+use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::functions::{FunctionForm, FunctionHead, FunctionInterface, FunctionPointer, FunctionType, Parameter, ParameterKey};
 use crate::program::global::BuiltinFunctionHint;
-use crate::program::module::Module;
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule, VariableHint};
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub struct TraitLinker<'a> {
+    pub runtime: &'a Runtime,
     pub trait_: &'a mut Trait,
 }
 
@@ -23,7 +24,7 @@ impl <'a> TraitLinker<'a> {
     pub fn link_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
-                let fun = link_function_pointer(&syntax, &scope, requirements)?;
+                let fun = link_function_pointer(&syntax, &scope, self.runtime, requirements)?;
                 if !syntax.body.is_none() {
                     return Err(RuntimeError::new(format!("Abstract function {} cannot have a body.", fun.name)));
                 };
@@ -42,10 +43,10 @@ impl <'a> TraitLinker<'a> {
                     return Err(RuntimeError::new(format!("Trait variables must have explicit types.")));
                 });
 
-                let mut type_factory = TypeFactory::new(scope);
+                let mut type_factory = TypeFactory::new(scope, &self.runtime);
 
-                let variable_type = type_factory.link_type(type_declaration)?;
-                let trait_type = scope.resolve(Environment::Global, "Self")?.as_metatype()?;
+                let variable_type = type_factory.link_type(type_declaration, true)?;
+                let trait_type = TypeProto::unit(TypeUnit::Struct(type_factory.resolve_trait("Self")?));
 
                 if TypeProto::contains_generics([&variable_type].into_iter()) {
                     return Err(RuntimeError::new(format!("Variables cannot be generic: {}", identifier)));
@@ -94,11 +95,12 @@ fn make_setter(struct_type: Box<TypeProto>, identifier: &str, variable_type: Box
                 }],
                 return_type: TypeProto::void(),
                 requirements: Default::default(),
+                generics: Default::default(),
             }),
             FunctionType::Static
         ),
         name: identifier.to_string(),
-        form: FunctionForm::MemberField,
+        form: FunctionForm::MemberImplicit,
     })
 }
 
@@ -114,15 +116,16 @@ fn make_getter(struct_type: Box<TypeProto>, identifier: &str, variable_type: Box
                 }],
                 return_type: variable_type.clone(),
                 requirements: Default::default(),
+                generics: Default::default(),
             }),
             FunctionType::Static
         ),
         name: identifier.to_string(),
-        form: FunctionForm::MemberField,
+        form: FunctionForm::MemberImplicit,
     })
 }
 
-pub fn try_make_struct(trait_: &Rc<Trait>, module: &mut Module, scope: &mut scopes::Scope) -> RResult<()> {
+pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult<()> {
     let mut unaccounted_for_abstract_functions: HashSet<_> = trait_.abstract_functions.keys().collect();
     trait_.variable_hints.iter().for_each(|hint| {
         [&hint.getter, &hint.setter].into_iter().flatten().map(|g| unaccounted_for_abstract_functions.remove(g)).collect_vec();
@@ -151,17 +154,15 @@ pub fn try_make_struct(trait_: &Rc<Trait>, module: &mut Module, scope: &mut scop
         // TODO Once generic types are supported, the variable type should be mapped to actual types
         if let Some(abstract_getter) = &hint.getter {
             let struct_getter = make_getter(struct_type.clone(), hint.name.as_str(), hint.type_.clone());
-            module.fn_builtin_hints.insert(Rc::clone(&struct_getter.target), BuiltinFunctionHint::Getter(Rc::clone(&variable_as_object)));
-            module.add_function(&struct_getter);
-            scope.overload_function(&struct_getter, &module.fn_references[&struct_getter.target])?;
+            linker.module.fn_builtin_hints.insert(Rc::clone(&struct_getter.target), BuiltinFunctionHint::Getter(Rc::clone(&variable_as_object)));
             function_mapping.insert(Rc::clone(abstract_getter), Rc::clone(&struct_getter.target));
+            linker.add_function_interface(struct_getter, &vec![])?;
         }
         if let Some(abstract_setter) = &hint.setter {
             let struct_setter = make_setter(struct_type.clone(), hint.name.as_str(), hint.type_.clone());
-            module.fn_builtin_hints.insert(Rc::clone(&struct_setter.target), BuiltinFunctionHint::Setter(Rc::clone(&variable_as_object)));
-            module.add_function(&struct_setter);
-            scope.overload_function(&struct_setter, &module.fn_references[&struct_setter.target])?;
+            linker.module.fn_builtin_hints.insert(Rc::clone(&struct_setter.target), BuiltinFunctionHint::Setter(Rc::clone(&variable_as_object)));
             function_mapping.insert(Rc::clone(abstract_setter), Rc::clone(&struct_setter.target));
+            linker.add_function_interface(struct_setter, &vec![])?;
         }
 
         parameters.push(Parameter {
@@ -176,24 +177,24 @@ pub fn try_make_struct(trait_: &Rc<Trait>, module: &mut Module, scope: &mut scop
         trait_.create_generic_binding(vec![("Self", struct_type.clone())]),
         function_mapping,
     );
-    module.trait_conformance.add_conformance_rule(TraitConformanceRule::direct(Rc::clone(&conformance)));
-    scope.traits.add_conformance_rule(TraitConformanceRule::direct(conformance));
+    linker.module.trait_conformance.add_conformance_rule(TraitConformanceRule::direct(Rc::clone(&conformance)));
+    linker.global_variables.traits.add_conformance_rule(TraitConformanceRule::direct(conformance));
 
-    let new_function = Rc::new(FunctionPointer {
+    let constructor = Rc::new(FunctionPointer {
         target: FunctionHead::new(
             Rc::new(FunctionInterface {
                 parameters,
                 return_type: struct_type,
                 requirements: Default::default(),
+                generics: Default::default(),
             }),
             FunctionType::Static
         ),
         name: "call_as_function".to_string(),
         form: FunctionForm::MemberFunction,
     });
-    module.add_function(&new_function);
-    module.fn_builtin_hints.insert(Rc::clone(&new_function.target), BuiltinFunctionHint::Constructor(parameter_mapping));
-    scope.overload_function(&new_function, &module.fn_references[&new_function.target])?;
+    linker.module.fn_builtin_hints.insert(Rc::clone(&constructor.target), BuiltinFunctionHint::Constructor(parameter_mapping));
+    linker.add_function_interface(constructor,  &vec![])?;
 
     Ok(())
 }

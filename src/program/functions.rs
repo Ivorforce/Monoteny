@@ -1,19 +1,18 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
-use crate::program::allocation::ObjectReference;
-use crate::program::traits::{TraitBinding};
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::traits::{Trait, TraitBinding};
+use crate::program::types::TypeProto;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FunctionForm {
-    Global,
-    GlobalConstant,
+    GlobalFunction,
+    GlobalImplicit,
     MemberFunction,
-    MemberField,
+    MemberImplicit,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -54,7 +53,7 @@ pub struct FunctionPointer {
 /// Reference to a multiplicity of functions, usually resolved when attempting to call
 #[derive(Clone, PartialEq, Eq)]
 pub struct FunctionOverload {
-    pub pointers: HashSet<Rc<ObjectReference>>,
+    pub pointers: HashSet<Rc<FunctionPointer>>,
     pub name: String,
     pub form: FunctionForm,
 }
@@ -79,14 +78,31 @@ pub struct FunctionInterface {
 
     /// Requirements for parameters and the return type.
     pub requirements: HashSet<Rc<TraitBinding>>,
+    /// All internally used generics. These are not guaranteed to not exist elsewhere,
+    /// but for the purposes of this interface, they are to be regarded as generics.
+    pub generics: HashMap<String, Rc<Trait>>,
 }
 
 impl FunctionInterface {
-    pub fn new_constant<'a>(return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitBinding>>) -> Rc<FunctionInterface> {
+    pub fn new_provider<'a>(return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitBinding>>) -> Rc<FunctionInterface> {
         Rc::new(FunctionInterface {
             parameters: vec![],
             return_type: return_type.clone(),
             requirements: requirements.into_iter().map(Rc::clone).collect(),
+            generics: Default::default(),
+        })
+    }
+
+    pub fn new_consumer<'a>(parameter_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitBinding>>) -> Rc<FunctionInterface> {
+        Rc::new(FunctionInterface {
+            parameters: vec![Parameter {
+                external_key: ParameterKey::Positional,
+                internal_name: "arg".to_string(),
+                type_: parameter_type.clone(),
+            }],
+            return_type: TypeProto::void(),
+            requirements: requirements.into_iter().map(Rc::clone).collect(),
+            generics: Default::default(),
         })
     }
 
@@ -103,6 +119,7 @@ impl FunctionInterface {
             parameters,
             return_type: return_type.clone(),
             requirements: Default::default(),
+            generics: Default::default(),
         })
     }
 
@@ -120,6 +137,7 @@ impl FunctionInterface {
             parameters,
             return_type: return_type.clone(),
             requirements: Default::default(),
+            generics: Default::default(),
         })
     }
 
@@ -141,25 +159,22 @@ impl FunctionInterface {
             parameters,
             return_type: return_type.clone(),
             requirements: Default::default(),
+            generics: Default::default(),
         })
-    }
-
-    pub fn collect_generics(&self) -> HashSet<Uuid> {
-        TypeProto::collect_generics(self.parameters.iter().map(|x| &x.type_).chain([&self.return_type]))
     }
 
     pub fn fmt_with_form(&self, fmt: &mut Formatter<'_>, name: &str, form: FunctionForm) -> std::fmt::Result {
         let mut head = 0;
 
         let has_args = match form {
-            FunctionForm::Global => true,
-            FunctionForm::GlobalConstant => false,
+            FunctionForm::GlobalFunction => true,
+            FunctionForm::GlobalImplicit => false,
             FunctionForm::MemberFunction => {
                 write!(fmt, "{{'{:?}}}.", self.parameters.get(head).unwrap().type_)?;
                 head += 1;
                 true
             },
-            FunctionForm::MemberField => {
+            FunctionForm::MemberImplicit => {
                 write!(fmt, "{{'{:?}}}.", self.parameters.get(head).unwrap().type_)?;
                 head += 1;
                 false
@@ -200,15 +215,15 @@ impl FunctionInterface {
 }
 
 impl FunctionPointer {
-    pub fn new_global(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
+    pub fn new_global_function(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
         Rc::new(FunctionPointer {
             target: FunctionHead::new(interface, FunctionType::Static),
             name: name.into(),
-            form: FunctionForm::Global,
+            form: FunctionForm::GlobalFunction,
         })
     }
 
-    pub fn new_member(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
+    pub fn new_member_function(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
         Rc::new(FunctionPointer {
             target: FunctionHead::new(interface, FunctionType::Static),
             name: name.into(),
@@ -216,11 +231,11 @@ impl FunctionPointer {
         })
     }
 
-    pub fn new_constant(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
+    pub fn new_global_implicit(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
         Rc::new(FunctionPointer {
             target: FunctionHead::new(interface, FunctionType::Static),
             name: name.into(),
-            form: FunctionForm::GlobalConstant,
+            form: FunctionForm::GlobalImplicit,
         })
     }
 
@@ -268,22 +283,22 @@ impl FunctionHead {
 }
 
 impl FunctionOverload {
-    pub fn from(function: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> Rc<FunctionOverload> {
+    pub fn from(function: &Rc<FunctionPointer>) -> Rc<FunctionOverload> {
         Rc::new(FunctionOverload {
-            pointers: HashSet::from([Rc::clone(object_ref)]),
+            pointers: HashSet::from([Rc::clone(function)]),
             name: function.name.clone(),
             form: function.form.clone(),
         })
     }
 
-    pub fn adding_function(&self, function: &Rc<FunctionPointer>, object_ref: &Rc<ObjectReference>) -> RResult<Rc<FunctionOverload>> {
+    pub fn adding_function(&self, function: &Rc<FunctionPointer>) -> RResult<Rc<FunctionOverload>> {
         if self.form != function.form {
             return Err(RuntimeError::new(format!("Cannot overload functions and constants.")))
         }
 
         Ok(Rc::new(FunctionOverload {
             pointers: self.pointers.iter()
-                .chain([object_ref])
+                .chain([function])
                 .map(Rc::clone)
                 .collect(),
             name: self.name.clone(),
@@ -291,11 +306,8 @@ impl FunctionOverload {
         }))
     }
 
-    pub fn functions(&self) -> Vec<Rc<FunctionHead>> {
-        self.pointers.iter().map(|x| match &x.type_.unit {
-            TypeUnit::Function(f) => Rc::clone(f),
-            _ => panic!("Function overload has a non-function!")
-        }).collect()
+    pub fn iter_heads(&self) -> impl Iterator<Item=&Rc<FunctionHead>> {
+        self.pointers.iter().map(|p| &p.target)
     }
 }
 
@@ -331,7 +343,7 @@ impl Debug for FunctionPointer {
 
 impl Debug for FunctionHead {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        self.fmt_with_form(fmt, &"fn".to_string(), FunctionForm::Global)
+        self.fmt_with_form(fmt, &"fn".to_string(), FunctionForm::GlobalFunction)
     }
 }
 

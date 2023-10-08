@@ -27,6 +27,7 @@ impl<'a> Display for MockFunctionInterface<'a> {
             }).collect_vec(),
             return_type: TypeProto::unit(TypeUnit::Generic(Uuid::new_v4())),
             requirements: Default::default(),
+            generics: Default::default(),
         };
         signature.fmt_with_form(f, &self.function_name, self.form)
     }

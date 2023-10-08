@@ -27,7 +27,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
     let bool_type = TypeProto::simple_struct(&basis[&primitives::Type::Bool]);
 
     let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module| {
-        module.add_function(&function);
+        module.add_function(Rc::clone(function));
         module.fn_builtin_hints.insert(
             Rc::clone(&function.target),
             BuiltinFunctionHint::PrimitiveOperation { type_: primitive_type, operation }
@@ -90,7 +90,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         add_function(&number_functions.modulo, primitive_type, PrimitiveOperation::Modulo, module);
         add_function(&number_functions.negative, primitive_type, PrimitiveOperation::Negative, module);
 
-        let _parse_int_literal = FunctionPointer::new_global(
+        let _parse_int_literal = FunctionPointer::new_global_function(
             "parse_int_literal",
             FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_)
         );
@@ -130,7 +130,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         add_function(&real_functions.exponent, primitive_type, PrimitiveOperation::Exp, module);
         add_function(&real_functions.logarithm, primitive_type, PrimitiveOperation::Log, module);
 
-        let _parse_real_literal = FunctionPointer::new_global(
+        let _parse_real_literal = FunctionPointer::new_global_function(
             "parse_real_literal",
             FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_)
         );
@@ -151,33 +151,33 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         ));
     }
 
-    let and_op = FunctionPointer::new_global(
+    let and_op = FunctionPointer::new_global_function(
         "and_f",
         FunctionInterface::new_operator(2, &bool_type, &bool_type)
     );
-    module.add_function(&and_op);
     module.fn_builtin_hints.insert(
         Rc::clone(&and_op.target),
         BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::And }
     );
+    module.add_function(and_op);
 
-    let or__op = FunctionPointer::new_global(
+    let or__op = FunctionPointer::new_global_function(
         "or_f",
         FunctionInterface::new_operator(2, &bool_type, &bool_type)
     );
-    module.add_function(&or__op);
     module.fn_builtin_hints.insert(
         Rc::clone(&or__op.target),
         BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::Or }
     );
+    module.add_function(or__op);
 
-    let not_op = FunctionPointer::new_global(
+    let not_op = FunctionPointer::new_global_function(
         "not_f",
         FunctionInterface::new_operator(1, &bool_type, &bool_type)
     );
-    module.add_function(&not_op);
     module.fn_builtin_hints.insert(
         Rc::clone(&not_op.target),
         BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::Not }
     );
+    module.add_function(not_op);
 }

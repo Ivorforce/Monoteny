@@ -3,7 +3,8 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use crate::error::{RResult, RuntimeError};
-use crate::linker::r#type::TypeFactory;
+use crate::interpreter::Runtime;
+use crate::linker::type_factory::TypeFactory;
 use crate::linker::scopes;
 use crate::parser::ast;
 use crate::parser::ast::{Expression, OperatorArgument};
@@ -12,10 +13,10 @@ use crate::program::traits::TraitBinding;
 use crate::program::types::{PatternPart, TypeProto};
 
 
-pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<Rc<FunctionPointer>> {
-    let mut type_factory = TypeFactory::new(scope);
+pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<Rc<FunctionPointer>> {
+    let mut type_factory = TypeFactory::new(scope, runtime);
 
-    let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x)).unwrap_or_else(|| Ok(TypeProto::void()))?;
+    let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x, true)).unwrap_or_else(|| Ok(TypeProto::void()))?;
 
     let mut parameters: Vec<Parameter> = vec![];
 
@@ -23,7 +24,7 @@ pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, re
         parameters.push(Parameter {
             external_key: ParameterKey::Positional,
             internal_name: String::from("self"),
-            type_: type_factory.link_type(parameter)?,
+            type_: type_factory.link_type(parameter, true)?,
         });
     }
 
@@ -31,7 +32,7 @@ pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, re
         parameters.push(Parameter {
             external_key: parameter.key.clone(),
             internal_name: parameter.internal_name.clone(),
-            type_: type_factory.link_type(&parameter.param_type)?,
+            type_: type_factory.link_type(&parameter.param_type, true)?,
         });
     }
 
@@ -41,18 +42,19 @@ pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, re
                 parameters,
                 return_type,
                 requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
+                generics: type_factory.generics,
             }),
             FunctionType::Static
         ),
         name: function.identifier.clone(),
-        form: if function.target_type.is_none() { FunctionForm::Global } else { FunctionForm::MemberFunction },
+        form: if function.target_type.is_none() { FunctionForm::GlobalFunction } else { FunctionForm::MemberFunction },
     }))
 }
 
-pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::Scope, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<Rc<FunctionPointer>> {
-    let mut type_factory = TypeFactory::new(scope);
+pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::Scope, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<Rc<FunctionPointer>> {
+    let mut type_factory = TypeFactory::new(scope, runtime);
 
-    let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x)).unwrap_or_else(|| Ok(TypeProto::void()))?;
+    let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x, true)).unwrap_or_else(|| Ok(TypeProto::void()))?;
 
     if let [OperatorArgument::Keyword(name)] = &function.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
         // Constant
@@ -63,11 +65,12 @@ pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::S
                     parameters: vec![],
                     return_type,
                     requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
+                    generics: type_factory.generics,
                 }),
                 FunctionType::Static
             ),
             name: name.clone(),
-            form: FunctionForm::GlobalConstant,
+            form: FunctionForm::GlobalImplicit,
         });
 
         return Ok(fun)
@@ -85,7 +88,7 @@ pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::S
             parameters.push(Parameter {
                 external_key: key.clone(),
                 internal_name: internal_name.to_string(),
-                type_: type_factory.link_type(type_expression)?,
+                type_: type_factory.link_type(type_expression, true)?,
             });
         }
 
@@ -95,11 +98,12 @@ pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::S
                     parameters,
                     return_type,
                     requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
+                    generics: type_factory.generics,
                 }),
                 FunctionType::Static
             ),
             name: pattern.alias.clone(),
-            form: FunctionForm::Global,
+            form: FunctionForm::GlobalFunction,
         }))
     }
 

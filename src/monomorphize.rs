@@ -9,7 +9,7 @@ use crate::program::computation_tree::{ExpressionOperation};
 use crate::program::functions::{FunctionHead, FunctionType, FunctionInterface, Parameter};
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
-use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, TraitConformance, TraitConformanceWithTail};
+use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, Trait, TraitConformance, TraitConformanceWithTail};
 use crate::program::types::TypeProto;
 
 
@@ -36,35 +36,25 @@ impl Monomorphizer {
         let generic_replacement_map = &function_binding.requirements_fulfillment.generic_mapping;
 
         // Change Anys to Generics in the type forest.
-        implementation.type_forest.bind_any_as_generic(generic_replacement_map).unwrap();
+        implementation.type_forest.rebind_structs_as_generic(generic_replacement_map).unwrap();
 
         // Map variables.
         // TODO For fully internal variables, it would be enough to set the type to the Any's corresponding Generic,
         //  because those have been bound in the type forest. For variables featured in the interface, however, the
         //  type must be properly resolved. So we might as well map all variables to resolved types.
-        let variable_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = implementation.variable_names.keys()
+        let variable_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = implementation.locals_names.keys()
             .map(|v| {
                 (Rc::clone(v), map_variable(v, &implementation.type_forest, &generic_replacement_map))
             })
             .collect();
 
-        // Map statements. Expressions are mapped elsewhere, so this should be easy.
-        for (expression_id, operation) in implementation.expression_forest.operations.iter_mut() {
-            match &operation {
-                ExpressionOperation::VariableAssignment(v) => {
-                    *operation = ExpressionOperation::VariableAssignment(Rc::clone(&variable_map[v]))
-                }
-                _ => {}
-            }
-        }
-
         // The implementation self-injected assmumption functions based on requirements.
         // Now it's time we replace them depending on the actual requirements fulfillment.
         let mut function_replacement_map = HashMap::new();
         for assumption in implementation.requirements_assumption.conformance.values() {
-            // TODO Use tail
-            let mapped_binding = assumption.binding.mapping_types(&|type_| type_.unfreezing_any_to_generics());
-            let conformance = &function_binding.requirements_fulfillment.conformance[&mapped_binding];
+            // TODO Use tail..?
+            let mapped_assumption = &assumption.binding;
+            let conformance = &function_binding.requirements_fulfillment.conformance[mapped_assumption];
 
             for (abstract_fun, fun_assumption) in assumption.function_mapping.iter() {
                 let fun_fulfillment = &conformance.conformance.function_mapping[abstract_fun];
@@ -112,12 +102,12 @@ impl Monomorphizer {
                             }).collect_vec()
                     }
                 }
-                ExpressionOperation::VariableLookup(v) => {
+                ExpressionOperation::GetLocal(v) => {
                     // If we cannot find a replacement, it's a static variable. Unless we have a bug.
-                    *operation = ExpressionOperation::VariableLookup(Rc::clone(variable_map.get(v).unwrap_or(v)))
+                    *operation = ExpressionOperation::GetLocal(Rc::clone(variable_map.get(v).unwrap_or(v)))
                 }
-                ExpressionOperation::VariableAssignment(v) => {
-                    *operation = ExpressionOperation::VariableAssignment(Rc::clone(variable_map.get(v).unwrap_or(v)))
+                ExpressionOperation::SetLocal(v) => {
+                    *operation = ExpressionOperation::SetLocal(Rc::clone(variable_map.get(v).unwrap_or(v)))
                 }
                 ExpressionOperation::ArrayLiteral => {},
                 ExpressionOperation::StringLiteral(_) => {},
@@ -127,10 +117,10 @@ impl Monomorphizer {
         }
 
         // Update parameter variables
-        for param_variable in implementation.parameter_variables.iter_mut() {
+        for param_variable in implementation.parameter_locals.iter_mut() {
             *param_variable = Rc::clone(&variable_map[param_variable])
         }
-        implementation.variable_names = implementation.variable_names.drain().map(|(key, value)| {
+        implementation.locals_names = implementation.locals_names.drain().map(|(key, value)| {
             (Rc::clone(&variable_map[&key]), value)
         }).collect();
 
@@ -163,15 +153,15 @@ impl Monomorphizer {
     }
 }
 
-pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMap<Uuid, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, (Rc<RequirementsFulfillment>, Rc<FunctionHead>)>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
+pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMap<Rc<Trait>, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, (Rc<RequirementsFulfillment>, Rc<FunctionHead>)>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
     let default_pair = (RequirementsFulfillment::empty(), Rc::clone(&call.function));
     let (mapped_function_tail, mapped_function) = function_replacement_map.get(&call.function)
         .unwrap_or(&default_pair);
 
     let full_conformance = RequirementsFulfillment::merge(&call.requirements_fulfillment, mapped_function_tail);
 
-    let generic_replacement_map: HashMap<Uuid, Box<TypeProto>> = full_conformance.generic_mapping.iter().map(|(any_id, type_)| {
-        (*any_id, type_forest.resolve_type(type_).unwrap().replacing_anys(generic_replacement_map))
+    let generic_replacement_map: HashMap<Rc<Trait>, Box<TypeProto>> = full_conformance.generic_mapping.iter().map(|(trait_, type_)| {
+        (Rc::clone(trait_), type_forest.resolve_type(type_).unwrap().replacing_structs(generic_replacement_map))
     }).collect();
 
     Rc::new(FunctionBinding {
@@ -213,29 +203,33 @@ pub fn monomorphize_call(call: &Rc<FunctionBinding>) -> Rc<FunctionBinding> {
             function_id: Uuid::new_v4(),
             // We're now a static call!
             function_type: FunctionType::Static,
-            interface: Rc::new(map_interface_types(&call.function.interface, &|x| x.replacing_generics(&call.requirements_fulfillment.generic_mapping))),
+            interface: Rc::new(map_interface_types(&call.function.interface, &call.requirements_fulfillment.generic_mapping)),
         }),
         // We are finally empty now!
         requirements_fulfillment: RequirementsFulfillment::empty(),
     })
 }
 
-pub fn map_variable(variable: &ObjectReference, type_forest: &TypeForest, type_replacement_map: &HashMap<Uuid, Box<TypeProto>>) -> Rc<ObjectReference> {
+pub fn map_variable(variable: &ObjectReference, type_forest: &TypeForest, type_replacement_map: &HashMap<Rc<Trait>, Box<TypeProto>>) -> Rc<ObjectReference> {
     Rc::new(ObjectReference {
         id: variable.id.clone(),
-        type_: type_forest.resolve_type(&variable.type_).unwrap().replacing_anys(type_replacement_map),
+        type_: type_forest.resolve_type(&variable.type_).unwrap().replacing_structs(type_replacement_map),
         mutability: variable.mutability.clone(),
     })
 }
 
-pub fn map_interface_types(interface: &FunctionInterface, map: &dyn Fn(&Box<TypeProto>) -> Box<TypeProto>) -> FunctionInterface{
+pub fn map_interface_types(interface: &FunctionInterface, mapping: &HashMap<Rc<Trait>, Box<TypeProto>>) -> FunctionInterface {
     FunctionInterface {
         parameters: interface.parameters.iter().map(|x| Parameter {
             external_key: x.external_key.clone(),
             internal_name: x.internal_name.clone(),
-            type_: map(&x.type_),
+            type_: x.type_.replacing_structs(mapping),
         }).collect(),
-        return_type: map(&interface.return_type),
-        requirements: interface.requirements.iter().map(|x| x.mapping_types(map)).collect(),
+        return_type: interface.return_type.replacing_structs(mapping),
+        requirements: interface.requirements.iter().map(|x| x.mapping_types(&|type_| type_.replacing_structs(mapping))).collect(),
+        // TODO Not sure if this is correct - if the mapping introduces MORE generics again, the new
+        //  value is wrong. Luckily, this is not a use-case of ours for now - it will only be relevant
+        //  when generic transpilation is allowed.
+        generics: interface.generics.iter().filter(|(k, v)| !mapping.contains_key(*v)).map(|(a, b)| (a.clone(), b.clone())).collect(),
     }
 }
