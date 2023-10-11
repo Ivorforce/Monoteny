@@ -1,0 +1,4 @@
+trait Transpiler {
+};
+
+def {Transpiler}.add(object '#A);

@@ -157,7 +157,7 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_string_literal(&mut self, value: &str) -> RResult<ExpressionID> {
         self.link_unambiguous_expression(
             vec![],
-            &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.core.traits.String))),
+            &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.traits.String))),
             ExpressionOperation::StringLiteral(value.to_string())
         )
     }
@@ -341,8 +341,8 @@ impl <'a> ImperativeLinker<'a> {
 
                 precedence::Token::Expression(self.link_abstract_function_call(
                     vec![string_expression_id],
-                    Rc::clone(&self.runtime.builtins.core.traits.ConstructableByIntLiteral),
-                    Rc::clone(&self.runtime.builtins.core.traits.parse_int_literal_function.target),
+                    Rc::clone(&self.runtime.builtins.traits.ConstructableByIntLiteral),
+                    Rc::clone(&self.runtime.builtins.traits.parse_int_literal_function.target),
                     scope.traits.clone(),
                     syntax.position.clone(),
                 )?)
@@ -352,8 +352,8 @@ impl <'a> ImperativeLinker<'a> {
 
                 precedence::Token::Expression(self.link_abstract_function_call(
                     vec![string_expression_id],
-                    Rc::clone(&self.runtime.builtins.core.traits.ConstructableByRealLiteral),
-                    Rc::clone(&self.runtime.builtins.core.traits.parse_real_literal_function.target),
+                    Rc::clone(&self.runtime.builtins.traits.ConstructableByRealLiteral),
+                    Rc::clone(&self.runtime.builtins.traits.parse_real_literal_function.target),
                     scope.traits.clone(),
                     syntax.position.clone(),
                 )?)
@@ -458,7 +458,7 @@ impl <'a> ImperativeLinker<'a> {
                     FunctionForm::GlobalFunction => {
                         let expression_id = self.link_function_call(overload.iter_heads(), &overload.name, keys, args, scope, range)?;
                         // Make sure the return type is actually String.
-                        self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.core.traits.String))))?;
+                        self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.traits.String))))?;
                         Ok(expression_id)
                     }
                     // this could happen if somebody uses def format ... without parentheses.

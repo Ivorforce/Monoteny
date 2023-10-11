@@ -92,9 +92,7 @@ impl Runtime {
         });
 
         builtins::load(&mut runtime);
-        for module in builtins.all_modules() {
-            runtime.load_module(module);
-        }
+        runtime.load_module(&builtins.module);
 
         runtime
     }

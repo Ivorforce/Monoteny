@@ -44,7 +44,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
 
     // The operators can normally be referenced as operators (which the transpiler does do).
     // However, if a reference is required, we need to resort to another strategy.
-    for (head, hint) in runtime.builtins.core.module.fn_builtin_hints.iter() {
+    for (head, hint) in runtime.builtins.module.fn_builtin_hints.iter() {
         let (higher_order_ref_name, representation) = match hint {
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::EqualTo, type_ } => {
                 ("op.eq", FunctionForm::Binary(KEYWORD_IDS["=="]))
@@ -140,7 +140,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     }
 
     for (struct_, name) in [
-        (&runtime.builtins.core.traits.String, "str"),
+        (&runtime.builtins.traits.String, "str"),
     ].into_iter() {
         let id = Uuid::new_v4();
         representations.type_ids.insert(TypeProto::unit(TypeUnit::Struct(Rc::clone(struct_))), id);
@@ -149,7 +149,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
 
     for (primitive, name) in primitive_map.iter() {
         let id = Uuid::new_v4();
-        let struct_ = &runtime.builtins.core.primitives[primitive];
+        let struct_ = &runtime.builtins.primitives[primitive];
         representations.type_ids.insert(TypeProto::unit(TypeUnit::Struct(Rc::clone(struct_))), id);
         global.insert_fixed_name(id, &name.to_string());
     }

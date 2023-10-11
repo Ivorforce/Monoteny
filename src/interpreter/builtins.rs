@@ -12,14 +12,14 @@ use crate::program::types::TypeUnit;
 
 pub fn load(runtime: &mut Runtime) {
     let builtins = &runtime.builtins;
-    let f32_type = TypeUnit::Struct(Rc::clone(&builtins.core.primitives[&primitives::Type::Float32]));
-    let f64_type = TypeUnit::Struct(Rc::clone(&builtins.core.primitives[&primitives::Type::Float64]));
+    let f32_type = TypeUnit::Struct(Rc::clone(&builtins.primitives[&primitives::Type::Float32]));
+    let f64_type = TypeUnit::Struct(Rc::clone(&builtins.primitives[&primitives::Type::Float64]));
 
     // -------------------------------------- ------ --------------------------------------
     // -------------------------------------- Math --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    for (head, builtin_hint) in builtins.core.module.fn_builtin_hints.iter() {
+    for (head, builtin_hint) in builtins.module.fn_builtin_hints.iter() {
         runtime.function_evaluators.insert(head.unwrap_id(), match builtin_hint {
             BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
                 create_primitive_op(type_.clone(), operation.clone())
@@ -31,41 +31,6 @@ pub fn load(runtime: &mut Runtime) {
             BuiltinFunctionHint::Setter(_) => todo!(),
         });
     }
-
-    // -------------------------------------- ------ --------------------------------------
-    // -------------------------------------- Transpiler --------------------------------------
-    // -------------------------------------- ------ --------------------------------------
-
-    runtime.function_evaluators.insert(
-        builtins.transpilation.add.target.function_id.clone(),
-        Rc::new(move |interpreter, expression_id, binding| {
-            unsafe {
-                let arguments = interpreter.evaluate_arguments(expression_id);
-
-                // This may cause a SIGSEV if the callback pointer is invalidated. This should not happen as long as
-                //  nobody owns a Transpiler object outside of its lifetime.
-                let transpiler_callback = *(arguments[0].data as *const &dyn Fn(Rc<FunctionHead>, &Runtime));
-
-                let arg = &arguments[1];
-                let arg_id = &interpreter.implementation.expression_forest.arguments[&expression_id][1];
-                let arg_type = interpreter.implementation.type_forest.get_unit(arg_id).unwrap();
-
-                // TODO Once we have a Function supertype we can remove this check.
-                match arg_type {
-                    TypeUnit::Function(f) => {},
-                    _ => panic!("Argument to transpiler.add is not a function: {:?}", arg_type)
-                };
-
-                let implementation_id = *(arg.data as *const Uuid);
-                guard!(let implementation = &interpreter.runtime.source.fn_heads[&implementation_id] else {
-                    panic!("Couldn't find function head: {}", implementation_id)
-                });
-                transpiler_callback(Rc::clone(implementation), &interpreter.runtime);
-
-                return None;
-            }
-        })
-    );
 }
 
 pub fn create_primitive_op(type_: primitives::Type, operation: PrimitiveOperation) -> FunctionInterpreterImpl {

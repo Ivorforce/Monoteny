@@ -1,10 +1,14 @@
 use std::path::PathBuf;
 use std::rc::Rc;
+use guard::guard;
+use uuid::Uuid;
 use crate::interpreter::{RuntimeError, Runtime};
+use crate::program::functions::FunctionHead;
+use crate::program::types::TypeUnit;
 
 pub fn load(runtime: &mut Runtime) -> Result<(), Vec<RuntimeError>> {
     for name in [
-        "precedence", "patterns", "math", "strings", "debug",
+        "precedence", "patterns", "math", "strings", "debug", "transpilation",
     ] {
         let module = runtime.load_file(&PathBuf::from(format!("monoteny/common/{}.monoteny", name)))?;
         runtime.source.module_order.push(name.to_string());
@@ -32,6 +36,39 @@ pub fn load(runtime: &mut Runtime) -> Result<(), Vec<RuntimeError>> {
             }}),
             _ => continue,
         });
+    }
+
+    for ptr in runtime.source.module_by_name["transpilation"].fn_pointers.values() {
+        runtime.function_evaluators.insert(
+            ptr.target.function_id,
+            Rc::new(move |interpreter, expression_id, binding| {
+                unsafe {
+                    let arguments = interpreter.evaluate_arguments(expression_id);
+
+                    // This may cause a SIGSEV if the callback pointer is invalidated. This should not happen as long as
+                    //  nobody owns a Transpiler object outside of its lifetime.
+                    let transpiler_callback = *(arguments[0].data as *const &dyn Fn(Rc<FunctionHead>, &Runtime));
+
+                    let arg = &arguments[1];
+                    let arg_id = &interpreter.implementation.expression_forest.arguments[&expression_id][1];
+                    let arg_type = interpreter.implementation.type_forest.get_unit(arg_id).unwrap();
+
+                    // TODO Once we have a Function supertype we can remove this check.
+                    match arg_type {
+                        TypeUnit::Function(f) => {},
+                        _ => panic!("Argument to transpiler.add is not a function: {:?}", arg_type)
+                    };
+
+                    let implementation_id = *(arg.data as *const Uuid);
+                    guard!(let implementation = &interpreter.runtime.source.fn_heads[&implementation_id] else {
+                    panic!("Couldn't find function head: {}", implementation_id)
+                });
+                    transpiler_callback(Rc::clone(implementation), &interpreter.runtime);
+
+                    return None;
+                }
+            })
+        );
     }
 
     Ok(())

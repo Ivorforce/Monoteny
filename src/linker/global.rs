@@ -199,6 +199,10 @@ impl <'a> GlobalLinker<'a> {
                         fun
                     },
                     "transpile" => {
+                        let transpiler_trait = self.runtime.source.module_by_name["transpilation"].trait_by_getter.values()
+                            .filter(|x| x.name == "Transpiler")
+                            .exactly_one().unwrap();
+
                         // TODO This should use a generic transpiler, not a struct.
                         let fun = Rc::new(FunctionPointer {
                             target: FunctionHead::new(
@@ -207,7 +211,7 @@ impl <'a> GlobalLinker<'a> {
                                         Parameter {
                                             external_key: ParameterKey::Positional,
                                             internal_name: String::from("transpiler"),
-                                            type_: TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.transpilation.Transpiler))),
+                                            type_: TypeProto::unit(TypeUnit::Struct(Rc::clone(transpiler_trait))),
                                         }
                                     ],
                                     return_type: TypeProto::unit(TypeUnit::Void),
@@ -262,8 +266,9 @@ impl <'a> GlobalLinker<'a> {
     fn add_trait(&mut self, trait_: &Rc<Trait>) -> Result<(), RuntimeError> {
         let getter = self.module.add_trait(&trait_);
         self.global_variables.overload_function(&getter)?;
+        self.runtime.source.trait_references.insert(Rc::clone(&getter.target), Rc::clone(trait_));
 
-        try_make_struct(&trait_, self)?;
+        try_make_struct(trait_, self)?;
         Ok(())
     }
 
