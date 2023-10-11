@@ -118,6 +118,7 @@ impl <'a> GlobalLinker<'a> {
                 let mut linker = TraitLinker {
                     runtime: &self.runtime,
                     trait_: &mut trait_,
+                    generic_self_type,
                 };
                 for statement in syntax.statements.iter() {
                     linker.link_statement(&statement.value, requirements, &scope)

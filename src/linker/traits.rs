@@ -18,6 +18,7 @@ use crate::program::types::{TypeProto, TypeUnit};
 pub struct TraitLinker<'a> {
     pub runtime: &'a Runtime,
     pub trait_: &'a mut Trait,
+    pub generic_self_type: Box<TypeProto>,
 }
 
 impl <'a> TraitLinker<'a> {
@@ -46,19 +47,18 @@ impl <'a> TraitLinker<'a> {
                 let mut type_factory = TypeFactory::new(scope, &self.runtime);
 
                 let variable_type = type_factory.link_type(type_declaration, true)?;
-                let trait_type = TypeProto::unit(TypeUnit::Struct(type_factory.resolve_trait("Self")?));
 
                 if TypeProto::contains_generics([&variable_type].into_iter()) {
                     return Err(RuntimeError::new(format!("Variables cannot be generic: {}", identifier)));
                 }
 
-                let getter = make_getter(trait_type.clone(), identifier, variable_type.clone());
+                let getter = make_getter(self.generic_self_type.clone(), identifier, variable_type.clone());
                 self.trait_.insert_function(Rc::clone(&getter));
 
                 let setter = match mutability {
                     Mutability::Immutable => None,
                     Mutability::Mutable => {
-                        let setter = make_setter(trait_type.clone(), identifier, variable_type.clone());
+                        let setter = make_setter(self.generic_self_type.clone(), identifier, variable_type.clone());
                         self.trait_.insert_function(Rc::clone(&setter));
                         Some(Rc::clone(&setter.target))
                     }
