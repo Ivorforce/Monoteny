@@ -334,9 +334,6 @@ impl <'a> ImperativeLinker<'a> {
                             FunctionForm::MemberImplicit => panic!(),
                         }
                     }
-                    Reference::PrecedenceGroup(_) => {
-                        return Err(RuntimeError::new(format!("Precedence group references are not supported in expressions yet.")))
-                    }
                 }
             }
             ast::Term::IntLiteral(string) => {

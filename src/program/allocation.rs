@@ -26,8 +26,6 @@ pub enum Reference {
     //  the effort. Rather, as in other languages, we should expect the user to resolve the overload
     //  - either immediately, or by context (e.g. `(should_add ? add : sub)(1, 2)`).
     FunctionOverload(Rc<FunctionOverload>),
-    // Maybe this could be an object or even trait in the future.
-    PrecedenceGroup(Rc<PrecedenceGroup>),
 }
 
 #[derive(Clone, Eq)]
@@ -98,7 +96,6 @@ impl Debug for Reference {
         match self {
             Reference::Local(t) => write!(fmt, "{:?}", t.type_),
             Reference::FunctionOverload(f) => write!(fmt, "{}", &f.name),
-            Reference::PrecedenceGroup(p) => write!(fmt, "{}", &p.name),
             Reference::Keyword(s) => write!(fmt, "{}", s),
         }
     }

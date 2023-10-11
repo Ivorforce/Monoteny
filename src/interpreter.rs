@@ -46,6 +46,7 @@ pub struct Runtime {
 }
 
 pub struct Source {
+    pub module_order: Vec<String>,
     pub module_by_name: HashMap<String, Box<Module>>,
 
     // Cache of aggregated module_by_name fields for quick reference.
@@ -79,6 +80,7 @@ impl Runtime {
             builtins: Rc::clone(builtins),
             function_evaluators: Default::default(),
             source: Source {
+                module_order: vec![],
                 module_by_name: Default::default(),
                 trait_references: Default::default(),
                 fn_heads: Default::default(),
@@ -121,8 +123,8 @@ impl Runtime {
         let mut scope = self.builtins.create_scope();
 
         // TODO This needs to be ordered.
-        for module in self.source.module_by_name.values() {
-            scope.import(module)
+        for module_name in self.source.module_order.iter() {
+            scope.import(&self.source.module_by_name[module_name])
                 .map_err(|e| RuntimeError::new(e.to_string())).map_err(|e| vec![e])?;
         }
 

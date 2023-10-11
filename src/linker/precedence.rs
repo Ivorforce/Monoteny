@@ -2,6 +2,7 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
+use strum::{Display, EnumIter};
 use uuid::Uuid;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::linker::imperative::ImperativeLinker;
@@ -14,18 +15,19 @@ use crate::program::r#struct::Struct;
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::util::position::{Positioned, positioned};
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Display, EnumIter)]
 pub enum OperatorAssociativity {
     LeftUnary,  // Evaluated with the operator left of the expression.
+    RightUnary,  // Evaluated with the operator right of the expression.
     Left,  // Left evaluated first.
     Right, // Right evaluated first.
     None,  // Fail parsing if more than one neighboring operator is found.
-    ConjunctivePairs, // Evaluated in pairs, joined by && operations.
+    LeftConjunctivePairs, // Evaluated in pairs left first, joined by && operations.
 }
 
-#[derive(Eq)]
+#[derive(Eq, Debug)]
 pub struct PrecedenceGroup {
-    pub id: Uuid,
+    pub trait_id: Uuid,
     pub name: String,
     pub associativity: OperatorAssociativity,
 }
@@ -39,7 +41,7 @@ pub struct OperatorPattern {
 impl PrecedenceGroup {
     pub fn new(name: &str, associativity: OperatorAssociativity) -> PrecedenceGroup {
         PrecedenceGroup {
-            id: Uuid::new_v4(),
+            trait_id: Uuid::new_v4(),
             name: String::from(name),
             associativity,
         }
@@ -48,13 +50,13 @@ impl PrecedenceGroup {
 
 impl PartialEq for PrecedenceGroup {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
+        self.trait_id == other.trait_id
     }
 }
 
 impl Hash for PrecedenceGroup {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state)
+        self.trait_id.hash(state)
     }
 }
 
@@ -273,7 +275,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                     i += 1;
                 }
             }
-            OperatorAssociativity::ConjunctivePairs => {
+            OperatorAssociativity::LeftConjunctivePairs => {
                 // Iteration direction doesn't matter here.
                 let mut i = 0;
                 while i < keywords.len() {
@@ -313,7 +315,8 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                 }
             }
             // Unary operators are already resolved at this stage.
-            OperatorAssociativity::LeftUnary => {}
+            OperatorAssociativity::LeftUnary => {},
+            OperatorAssociativity::RightUnary => todo!(),
         }
 
         if keywords.len() == 0 {

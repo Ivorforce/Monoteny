@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
-use crate::linker::precedence::PrecedenceGroup;
+use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::allocation::Reference;
 use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer};
 use crate::program::traits::TraitGraph;
@@ -81,6 +81,11 @@ impl <'a> Scope<'a> {
     }
 
     pub fn import(&mut self, module: &Module) -> RResult<()> {
+        // This wipes any existing patterns, but I think that's what we want.
+        if let Some(precedence) = &module.precedence_order {
+            self.set_precedence_order(precedence.clone());
+        }
+
         for pattern in module.patterns.iter() {
             self.add_pattern(Rc::clone(pattern))?;
         }
@@ -92,6 +97,12 @@ impl <'a> Scope<'a> {
         self.traits.add_graph(&module.trait_conformance);
 
         Ok(())
+    }
+
+    pub fn set_precedence_order(&mut self, precedence: Vec<Rc<PrecedenceGroup>>) {
+        self.precedence_groups = precedence.into_iter()
+            .map(|p| (p, HashMap::new()))
+            .collect_vec();
     }
 
     pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>) -> RResult<()> {
@@ -173,7 +184,7 @@ impl <'a> Scope<'a> {
                     PatternPart::Keyword(keyword),
                     PatternPart::Parameter { .. },
                 ] => {
-                    assert_eq!(precedence_group.name, "LeftUnaryPrecedence");
+                    assert_eq!(precedence_group.associativity, OperatorAssociativity::LeftUnary);
                     keyword_map.insert(keyword.clone(), pattern.alias.clone());
                     self.insert_keyword(keyword);
                 },
@@ -181,17 +192,14 @@ impl <'a> Scope<'a> {
                     PatternPart::Parameter { .. },
                     PatternPart::Keyword(keyword),
                 ] => {
-                    assert_eq!(precedence_group.name, "RightUnaryPrecedence");
-                    keyword_map.insert(keyword.clone(), pattern.alias.clone());
-                    self.insert_keyword(keyword);
+                    todo!("Right unary operators aren't supported yet.")
                 },
                 [
                     PatternPart::Parameter { .. },
                     PatternPart::Keyword(keyword),
                     PatternPart::Parameter { .. },
                 ] => {
-                    assert_ne!(precedence_group.name, "LeftUnaryPrecedence");
-                    assert_ne!(precedence_group.name, "RightUnaryPrecedence");
+                    assert_ne!(precedence_group.associativity, OperatorAssociativity::LeftUnary);
                     keyword_map.insert(keyword.clone(), pattern.alias.clone());
                     self.insert_keyword(keyword);
                 }
@@ -203,7 +211,7 @@ impl <'a> Scope<'a> {
             return Ok(())
         }
 
-        panic!()
+        panic!("Cannot find precedence group {:?} in: {:?}", pattern.precedence_group, self.precedence_groups);
     }
 }
 

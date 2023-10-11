@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
+use crate::linker::precedence::PrecedenceGroup;
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionPointer, FunctionType};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::traits::{Trait, TraitGraph};
@@ -13,6 +14,7 @@ pub struct Module {
     /// For each trait, its metatype getter function.
     pub trait_by_getter: HashMap<Rc<FunctionHead>, Rc<Trait>>,
 
+    pub precedence_order: Option<Vec<Rc<PrecedenceGroup>>>,
     pub patterns: HashSet<Rc<Pattern>>,
     pub trait_conformance: Box<TraitGraph>,
 
@@ -41,6 +43,7 @@ impl Module {
             id: Default::default(),
             name,
             trait_by_getter: Default::default(),
+            precedence_order: None,
             patterns: Default::default(),
             trait_conformance: Box::new(TraitGraph::new()),
             fn_pointers: Default::default(),

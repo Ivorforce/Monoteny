@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::rc::Rc;
+use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::{ErrInRange, RResult, RuntimeError};
@@ -11,8 +12,10 @@ use crate::linker::imperative::ImperativeLinker;
 use crate::linker::scopes;
 use crate::linker::conformance::ConformanceLinker;
 use crate::linker::interface::{link_function_pointer, link_operator_pointer};
+use crate::linker::precedence_order::link_precedence_order;
 use crate::linker::type_factory::TypeFactory;
 use crate::linker::traits::{TraitLinker, try_make_struct};
+use crate::parser::ast::Term;
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
 use crate::program::functions::{FunctionHead, FunctionType, FunctionForm, FunctionInterface, FunctionPointer, Parameter, ParameterKey};
 use crate::program::generics::TypeForest;
@@ -219,6 +222,16 @@ impl <'a> GlobalLinker<'a> {
                         self.module.transpile_functions.push(Rc::clone(&fun.target));
                         fun
                     },
+                    "precedence_order" => {
+                        guard!(let Some(body) = &syntax.body else {
+                            return Err(RuntimeError::new(format!("@{} needs an array literal body.", syntax.macro_name)))
+                        });
+
+                        let precedence_order = link_precedence_order(body)?;
+                        self.module.precedence_order = Some(precedence_order.clone());
+                        self.global_variables.set_precedence_order(precedence_order);
+                        return Ok(())
+                    }
                     _ => return Err(RuntimeError::new(format!("Function macro could not be resolved: {}", syntax.macro_name))),
                 };
 

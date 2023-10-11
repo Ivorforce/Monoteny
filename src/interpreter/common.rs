@@ -4,10 +4,11 @@ use crate::interpreter::{RuntimeError, Runtime};
 
 pub fn load(runtime: &mut Runtime) -> Result<(), Vec<RuntimeError>> {
     for name in [
-        "patterns", "math", "strings", "debug",
+        "precedence", "patterns", "math", "strings", "debug",
     ] {
         let module = runtime.load_file(&PathBuf::from(format!("monoteny/common/{}.monoteny", name)))?;
-        runtime.source.module_by_name.insert(name.into(), module);
+        runtime.source.module_order.push(name.to_string());
+        runtime.source.module_by_name.insert(name.to_string(), module);
     }
 
     for ptr in runtime.source.module_by_name["debug"].fn_pointers.values() {
