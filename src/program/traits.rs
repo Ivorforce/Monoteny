@@ -30,11 +30,11 @@ pub struct Trait {
     // Functions required by this trait specifically (not its requirements).
     // The head of each function to its pointer (how it is defined).
     pub abstract_functions: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
-    pub variable_hints: Vec<VariableHint>,
+    pub field_hints: Vec<FieldHint>,
 }
 
 #[derive(Clone)]
-pub struct VariableHint {
+pub struct FieldHint {
     pub name: String,
     pub type_: Box<TypeProto>,
     pub setter: Option<Rc<FunctionHead>>,
@@ -332,7 +332,7 @@ impl Trait {
             generics: Default::default(),
             requirements: Default::default(),
             abstract_functions: Default::default(),
-            variable_hints: Default::default(),
+            field_hints: Default::default(),
         }
     }
 
@@ -343,7 +343,7 @@ impl Trait {
             generics: HashMap::from([("Self".to_string(), Rc::new(Trait::new_flat("Self".to_string())))]),
             requirements: Default::default(),
             abstract_functions: Default::default(),
-            variable_hints: Default::default(),
+            field_hints: Default::default(),
         }
     }
 

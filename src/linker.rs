@@ -8,5 +8,6 @@ pub mod precedence;
 pub mod type_factory;
 pub mod interface;
 pub mod precedence_order;
+pub mod fields;
 
 pub use crate::linker::global::link_file;

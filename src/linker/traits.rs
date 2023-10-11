@@ -5,14 +5,14 @@ use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::linker::global::GlobalLinker;
-use crate::linker::scopes;
+use crate::linker::{fields, scopes};
 use crate::linker::interface::link_function_pointer;
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::functions::{FunctionForm, FunctionHead, FunctionInterface, FunctionPointer, FunctionType, Parameter, ParameterKey};
 use crate::program::global::BuiltinFunctionHint;
-use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule, VariableHint};
+use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub struct TraitLinker<'a> {
@@ -52,24 +52,14 @@ impl <'a> TraitLinker<'a> {
                     return Err(RuntimeError::new(format!("Variables cannot be generic: {}", identifier)));
                 }
 
-                let getter = make_getter(self.generic_self_type.clone(), identifier, variable_type.clone());
-                self.trait_.insert_function(Rc::clone(&getter));
-
-                let setter = match mutability {
-                    Mutability::Immutable => None,
-                    Mutability::Mutable => {
-                        let setter = make_setter(self.generic_self_type.clone(), identifier, variable_type.clone());
-                        self.trait_.insert_function(Rc::clone(&setter));
-                        Some(Rc::clone(&setter.target))
-                    }
-                };
-
-                self.trait_.variable_hints.push(VariableHint {
-                    name: identifier.clone(),
-                    setter,
-                    getter: Some(Rc::clone(&getter.target)),
-                    type_: variable_type,
-                });
+                let field = fields::make(
+                    identifier,
+                    &self.generic_self_type,
+                    &variable_type,
+                    true,
+                    mutability == &Mutability::Mutable,
+                );
+                fields::add_to_trait(&mut self.trait_, field);
             }
             _ => {
                 return Err(RuntimeError::new(format!("Statement {} not valid in a trait context.", statement)));
@@ -80,54 +70,9 @@ impl <'a> TraitLinker<'a> {
     }
 }
 
-fn make_setter(struct_type: Box<TypeProto>, identifier: &str, variable_type: Box<TypeProto>) -> Rc<FunctionPointer> {
-    Rc::new(FunctionPointer {
-        target: FunctionHead::new(
-            Rc::new(FunctionInterface {
-                parameters: vec![Parameter {
-                    external_key: ParameterKey::Positional,
-                    internal_name: "self".to_string(),
-                    type_: struct_type,
-                }, Parameter {
-                    external_key: ParameterKey::Positional,
-                    internal_name: identifier.to_string(),
-                    type_: variable_type,
-                }],
-                return_type: TypeProto::void(),
-                requirements: Default::default(),
-                generics: Default::default(),
-            }),
-            FunctionType::Static
-        ),
-        name: identifier.to_string(),
-        form: FunctionForm::MemberImplicit,
-    })
-}
-
-fn make_getter(struct_type: Box<TypeProto>, identifier: &str, variable_type: Box<TypeProto>) -> Rc<FunctionPointer> {
-    Rc::new(FunctionPointer {
-        target: FunctionHead::new(
-            Rc::new(FunctionInterface {
-                parameters: vec![
-                    Parameter {
-                    external_key: ParameterKey::Positional,
-                    internal_name: "self".to_string(),
-                    type_: struct_type,
-                }],
-                return_type: variable_type.clone(),
-                requirements: Default::default(),
-                generics: Default::default(),
-            }),
-            FunctionType::Static
-        ),
-        name: identifier.to_string(),
-        form: FunctionForm::MemberImplicit,
-    })
-}
-
 pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult<()> {
     let mut unaccounted_for_abstract_functions: HashSet<_> = trait_.abstract_functions.keys().collect();
-    trait_.variable_hints.iter().for_each(|hint| {
+    trait_.field_hints.iter().for_each(|hint| {
         [&hint.getter, &hint.setter].into_iter().flatten().map(|g| unaccounted_for_abstract_functions.remove(g)).collect_vec();
     });
 
@@ -148,27 +93,34 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
     ];
     let mut parameter_mapping = vec![];
 
-    for hint in trait_.variable_hints.iter() {
-        let variable_as_object = ObjectReference::new_immutable(hint.type_.clone());
+    for abstract_field in trait_.field_hints.iter() {
+        let variable_as_object = ObjectReference::new_immutable(abstract_field.type_.clone());
+        let struct_field = fields::make(
+            &abstract_field.name,
+            &struct_type,
+            &abstract_field.type_,
+            abstract_field.getter.is_some(),
+            abstract_field.setter.is_some(),
+        );
 
         // TODO Once generic types are supported, the variable type should be mapped to actual types
-        if let Some(abstract_getter) = &hint.getter {
-            let struct_getter = make_getter(struct_type.clone(), hint.name.as_str(), hint.type_.clone());
-            linker.module.fn_builtin_hints.insert(Rc::clone(&struct_getter.target), BuiltinFunctionHint::Getter(Rc::clone(&variable_as_object)));
-            function_mapping.insert(Rc::clone(abstract_getter), Rc::clone(&struct_getter.target));
-            linker.add_function_interface(struct_getter, &vec![])?;
+        if let Some(abstract_getter) = &abstract_field.getter {
+            let struct_getter = struct_field.getter.clone().unwrap();
+            linker.module.fn_builtin_hints.insert(Rc::clone(&struct_getter), BuiltinFunctionHint::Getter(Rc::clone(&variable_as_object)));
+            function_mapping.insert(Rc::clone(abstract_getter), Rc::clone(&struct_getter));
+            linker.add_function_interface(fields::make_ptr(&struct_field, struct_getter), &vec![])?;
         }
-        if let Some(abstract_setter) = &hint.setter {
-            let struct_setter = make_setter(struct_type.clone(), hint.name.as_str(), hint.type_.clone());
-            linker.module.fn_builtin_hints.insert(Rc::clone(&struct_setter.target), BuiltinFunctionHint::Setter(Rc::clone(&variable_as_object)));
-            function_mapping.insert(Rc::clone(abstract_setter), Rc::clone(&struct_setter.target));
-            linker.add_function_interface(struct_setter, &vec![])?;
+        if let Some(abstract_setter) = &abstract_field.setter {
+            let struct_setter = struct_field.setter.clone().unwrap();
+            linker.module.fn_builtin_hints.insert(Rc::clone(&struct_setter), BuiltinFunctionHint::Setter(Rc::clone(&variable_as_object)));
+            function_mapping.insert(Rc::clone(abstract_setter), Rc::clone(&struct_setter));
+            linker.add_function_interface(fields::make_ptr(&struct_field, struct_setter), &vec![])?;
         }
 
         parameters.push(Parameter {
-            external_key: ParameterKey::Name(hint.name.clone()),
-            internal_name: hint.name.clone(),
-            type_: hint.type_.clone(),
+            external_key: ParameterKey::Name(abstract_field.name.clone()),
+            internal_name: abstract_field.name.clone(),
+            type_: abstract_field.type_.clone(),
         });
         parameter_mapping.push(variable_as_object);
     }

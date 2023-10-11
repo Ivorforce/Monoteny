@@ -20,7 +20,7 @@ pub fn transpile_class(type_def: &TypeProto, context: &ClassContext) -> Box<ast:
     // TODO Need to account for bindings
     match &type_def.unit {
         TypeUnit::Struct(struct_) => {
-            for hint in &struct_.variable_hints {
+            for hint in &struct_.field_hints {
                 statements.push(Box::new(ast::Statement::VariableAssignment {
                     target: Box::new(ast::Expression::NamedReference(hint.name.clone())),
                     value: None,
