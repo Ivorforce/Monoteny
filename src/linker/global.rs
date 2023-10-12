@@ -11,7 +11,7 @@ use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::scopes;
 use crate::linker::conformance::ConformanceLinker;
-use crate::linker::interface::{link_function_pointer, link_operator_pointer};
+use crate::linker::interface::{link_function_interface, link_operator_interface};
 use crate::linker::precedence_order::link_precedence_order;
 use crate::linker::type_factory::TypeFactory;
 use crate::linker::traits::{TraitLinker, try_make_struct};
@@ -86,21 +86,21 @@ impl <'a> GlobalLinker<'a> {
             }
             ast::Statement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
-                let (fun, representation) = link_function_pointer(&syntax, &scope, &self.runtime, requirements)?;
+                let (fun, representation) = link_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements)?;
 
                 if let Some(body) = &syntax.body {
                     self.schedule_function_body(Rc::clone(&fun), body, pstatement.position.clone());
                 }
-                self.add_function_interface(fun, representation, &syntax.decorators)?;
+                self.add_function_interface(fun, representation, &vec![])?;
             }
             ast::Statement::Operator(syntax) => {
                 let scope = &self.global_variables;
-                let (fun, representation) = link_operator_pointer(&syntax, &scope, &self.runtime, requirements)?;
+                let (fun, representation) = link_operator_interface(&syntax, &scope, &self.runtime, requirements)?;
 
                 if let Some(body) = &syntax.body {
                     self.schedule_function_body(Rc::clone(&fun), body, pstatement.position.clone());
                 }
-                self.add_function_interface(fun, representation, &syntax.decorators)?;
+                self.add_function_interface(fun, representation, &vec![])?;
             }
             ast::Statement::Trait(syntax) => {
                 let mut trait_ = Trait::new_with_self(syntax.name.clone());
@@ -181,69 +181,40 @@ impl <'a> GlobalLinker<'a> {
                     if let Some(body) = &fun.body {
                         self.schedule_function_body(Rc::clone(&fun.function), body, pstatement.position.clone());
                     }
-                    self.add_function_interface(fun.function, fun.representation.clone(), fun.decorators)?;
+                    self.add_function_interface(fun.function, fun.representation.clone(), &fun.decorators)?;
                 }
             }
-            ast::Statement::Macro(syntax) => {
-                let (fun, representation) = match syntax.macro_name.as_str() {
-                    "main" => {
-                        let (fun, representation) = (
-                            FunctionHead::new_static(
-                                Rc::new(FunctionInterface {
-                                    parameters: vec![],
-                                    return_type: TypeProto::unit(TypeUnit::Void),
-                                    requirements: Default::default(),
-                                    generics: Default::default(),
-                                })
-                            ),
-                            FunctionRepresentation::new("main", FunctionForm::GlobalFunction)
-                        );
-                        self.module.main_functions.push(Rc::clone(&fun));
-                        (fun, representation)
-                    },
-                    "transpile" => {
-                        let transpiler_trait = self.runtime.source.module_by_name["core.transpilation"].trait_by_getter.values()
-                            .filter(|x| x.name == "Transpiler")
-                            .exactly_one().unwrap();
-
-                        // TODO This should use a generic transpiler, not a struct.
-                        let (fun, representation) = (
-                            FunctionHead::new_static(
-                                Rc::new(FunctionInterface {
-                                    parameters: vec![
-                                        Parameter {
-                                            external_key: ParameterKey::Positional,
-                                            internal_name: String::from("transpiler"),
-                                            type_: TypeProto::unit(TypeUnit::Struct(Rc::clone(transpiler_trait))),
+            ast::Statement::Expression(e) => {
+                match &e[..] {
+                    [l, r] => {
+                        match (&l.value, &r.value) {
+                            (ast::Term::MacroIdentifier(macro_name), ast::Term::Struct(args)) => {
+                                match macro_name.as_str() {
+                                    "precedence_order" => {
+                                        let body = args.iter().exactly_one()
+                                            .map_err(|_| RuntimeError::new(format!("Macro {}! needs exactly one parameter.", macro_name)))?;
+                                        if body.key != ParameterKey::Positional {
+                                            return Err(RuntimeError::new(format!("Macro {}! needs exactly one parameter.", macro_name)));
                                         }
-                                    ],
-                                    return_type: TypeProto::unit(TypeUnit::Void),
-                                    requirements: Default::default(),
-                                    generics: Default::default(),
-                                }),
-                            ),
-                            FunctionRepresentation::new("transpile", FunctionForm::GlobalFunction)
-                        );
-                        self.module.transpile_functions.push(Rc::clone(&fun));
-                        (fun, representation)
-                    },
-                    "precedence_order" => {
-                        guard!(let Some(body) = &syntax.body else {
-                            return Err(RuntimeError::new(format!("@{} needs an array literal body.", syntax.macro_name)))
-                        });
+                                        if body.type_declaration.is_some() {
+                                            return Err(RuntimeError::new(format!("Macro {}! needs exactly one parameter.", macro_name)));
+                                        }
 
-                        let precedence_order = link_precedence_order(body)?;
-                        self.module.precedence_order = Some(precedence_order.clone());
-                        self.global_variables.set_precedence_order(precedence_order);
-                        return Ok(())
+                                        let precedence_order = link_precedence_order(&body.value)?;
+                                        self.module.precedence_order = Some(precedence_order.clone());
+                                        self.global_variables.set_precedence_order(precedence_order);
+                                        return Ok(())
+                                    }
+                                    _ => return Err(RuntimeError::new(format!("Unrecognized macro: {}!", macro_name)))
+                                }
+                            }
+                            _ => {}
+                        }
                     }
-                    _ => return Err(RuntimeError::new(format!("Function macro could not be resolved: {}", syntax.macro_name))),
-                };
-
-                if let Some(body) = &syntax.body {
-                    self.schedule_function_body(Rc::clone(&fun), body, pstatement.position.clone());
+                    _ => {},
                 }
-                self.add_function_interface(fun, representation, &syntax.decorators)?;
+
+                return Err(RuntimeError::new(format!("Expression {} is not supported in a global context.", e)))
             }
             statement => {
                 return Err(RuntimeError::new(format!("Statement {} is not supported in a global context.", statement)))

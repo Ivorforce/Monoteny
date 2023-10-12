@@ -7,6 +7,7 @@ use crate::parser::error::Error;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token<'a> {
     Identifier(&'a str),
+    MacroIdentifier(&'a str),
     OperatorIdentifier(&'a str),
     StringLiteral(String),
     IntLiteral(&'a str),
@@ -185,8 +186,15 @@ impl<'i> Iterator for Lexer<'i> {
                 if matches!(ch, 'a'..='z' | 'A'..='Z' | '_' | '$' | '#') {
                     let mut input = self.input.clone();
                     let len = 1 + Self::advance_while(&mut input, |ch| ch.is_alphanumeric() || matches!(ch, '_' | '$' | '#'));
-
                     advance(&mut self.input, len - 1);
+
+                    if let Some((_, '!')) = input.peek() {
+                        self.input.next();  // Skip !
+                        let end = self.peek_next_pos(input);
+                        let slice = unsafe { self.source.get_unchecked(start..end) };
+                        return Some(Ok((start, Token::MacroIdentifier(slice), end)));
+                    };
+
                     let end = self.peek_next_pos(input);
                     let slice = unsafe { self.source.get_unchecked(start..end) };
 
@@ -232,6 +240,7 @@ impl<'i> Iterator for Lexer<'i> {
 }
 
 impl<'i> Lexer<'i> {
+    // Advances until the next peeked character does not match f anymore.
     fn advance_while(input: &mut Peekable<CharIndices>, f: fn(char) -> bool) -> i32 {
         let mut len = 0;
 
@@ -282,6 +291,7 @@ impl<'i> Display for Token<'i> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Token::Identifier(s) => write!(f, "{}", s),
+            Token::MacroIdentifier(s) => write!(f, "{}", s),
             Token::OperatorIdentifier(s) => write!(f, "{}", s),
             Token::IntLiteral(s) => write!(f, "{}", s),
             Token::RealLiteral(s) => write!(f, "{}", s),

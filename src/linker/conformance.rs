@@ -6,7 +6,7 @@ use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::monomorphize::map_interface_types;
 use crate::linker::scopes;
-use crate::linker::interface::link_function_pointer;
+use crate::linker::interface::link_function_interface;
 use crate::parser::ast;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
@@ -16,7 +16,7 @@ use crate::util::fmt::fmta;
 pub struct UnlinkedFunctionImplementation<'a> {
     pub function: Rc<FunctionHead>,
     pub representation: FunctionRepresentation,
-    pub decorators: &'a Vec<String>,
+    pub decorators: Vec<String>,
     pub body: &'a Option<ast::Expression>,
 }
 
@@ -32,13 +32,13 @@ impl <'a, 'b> ConformanceLinker<'a, 'b> {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
                 //  to the ID of the parent abstract function. That way, we can avoid another
                 //  generic to generic mapping later.
-                let (function, representation) = link_function_pointer(&syntax, &scope, self.runtime, requirements)?;
+                let (function, representation) = link_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements)?;
 
                 self.functions.push(UnlinkedFunctionImplementation {
                     function,
                     representation,
                     body: &syntax.body,
-                    decorators: &syntax.decorators,
+                    decorators: vec![],
                 });
             }
             _ => {

@@ -1,4 +1,4 @@
-def @precedence_order :: [
+precedence_order!([
     LeftUnaryPrecedence(LeftUnary),
     ExponentiationPrecedence(Right),
     MultiplicationPrecedence(Left),
@@ -6,4 +6,4 @@ def @precedence_order :: [
     ComparisonPrecedence(LeftConjunctivePairs),
     LogicalConjunctionPrecedence(Left),
     LogicalDisjunctionPrecedence(Left),
-];
+]);

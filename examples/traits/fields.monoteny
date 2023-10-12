@@ -1,3 +1,5 @@
+-- use!(module(monoteny.common));
+
 trait Animal {
     -- Immutable Field
     let species 'String;
@@ -7,7 +9,7 @@ trait Animal {
     var height_cm 'Float32;
 };
 
-def @main :: {
+def main! :: {
     -- Create a cat with pre-defined name and height.
     var animal = Animal(species: "Cat", name: "Noir", height_cm: 180);
 
@@ -19,6 +21,6 @@ def @main :: {
     write_line("And is now: \(animal.height_cm)");
 };
 
-def @transpile :: {
+def transpile! :: {
     transpiler.add(main);
 };

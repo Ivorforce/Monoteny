@@ -333,6 +333,9 @@ impl <'a> ImperativeLinker<'a> {
                     }
                 }
             }
+            ast::Term::MacroIdentifier(s) => {
+                todo!()
+            }
             ast::Term::IntLiteral(string) => {
                 let string_expression_id = self.link_string_literal(string)?;
 

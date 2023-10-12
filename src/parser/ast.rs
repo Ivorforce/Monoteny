@@ -17,21 +17,19 @@ pub struct Module {
 
 #[derive(Eq, PartialEq)]
 pub struct Function {
-    pub decorators: Vec<String>,
-
-    pub target_type: Option<Box<Expression>>,
-    pub identifier: String,
-    pub parameters: Vec<Box<KeyedParameter>>,
-    pub return_type: Option<Expression>,
-
+    pub interface: FunctionInterface,
     pub body: Option<Expression>,
 }
 
 #[derive(Eq, PartialEq)]
-pub struct GlobalMacro {
-    pub decorators: Vec<String>,
-    pub macro_name: String,
-    pub body: Option<Expression>,
+pub enum FunctionInterface {
+    Macro(String),
+    Explicit {
+        identifier: String,
+        target_type: Option<Box<Expression>>,
+        parameters: Vec<Box<KeyedParameter>>,
+        return_type: Option<Expression>,
+    }
 }
 
 #[derive(Eq, PartialEq)]
@@ -44,7 +42,6 @@ pub struct KeyedParameter {
 #[derive(Eq, PartialEq)]
 pub struct OperatorFunction {
     pub parts: Vec<Box<OperatorArgument>>,
-    pub decorators: Vec<String>,
 
     pub body: Option<Expression>,
     pub return_type: Option<Expression>,
@@ -66,8 +63,6 @@ pub struct PatternDeclaration {
 
 #[derive(Eq, PartialEq)]
 pub struct TraitDefinition {
-    pub decorators: Vec<String>,
-
     pub name: String,
     pub statements: Vec<Box<Positioned<Statement>>>,
 }
@@ -98,7 +93,6 @@ pub enum Statement {
     Pattern(Box<PatternDeclaration>),
     Trait(Box<TraitDefinition>),
     Conformance(Box<TraitConformanceDeclaration>),
-    Macro(Box<GlobalMacro>),
 }
 
 #[derive(Eq, PartialEq)]
@@ -128,6 +122,7 @@ impl From<Vec<Box<Positioned<Term>>>> for Expression {
 pub enum Term {
     Error(RuntimeError),
     Identifier(String),
+    MacroIdentifier(String),
     IntLiteral(String),
     RealLiteral(String),
     MemberAccess { target: Box<Positioned<Term>>, member_name: String },
@@ -185,19 +180,8 @@ impl Display for Module {
 
 impl Display for Function {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        for decorator in self.decorators.iter() {
-            writeln!(fmt, "@{}", decorator)?;
-        }
-        write!(fmt, "def ")?;
-        if let Some(target_type) = &self.target_type {
-            write!(fmt, "{{{}}}.", target_type)?;
-        }
-        write!(fmt, "{}(", self.identifier)?;
-        for item in self.parameters.iter() { write!(fmt, "{},", item)? };
-        write!(fmt, ")")?;
-        if let Some(return_type) = &self.return_type {
-            write!(fmt, " -> {}", return_type)?;
-        }
+        write!(fmt, "def {}", self.interface)?;
+
         if let Some(body) = &self.body {
             write!(fmt, " :: {}", body)?;
         }
@@ -207,9 +191,6 @@ impl Display for Function {
 
 impl Display for OperatorFunction {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        for decorator in self.decorators.iter() {
-            writeln!(fmt, "@{}", decorator)?;
-        }
         write!(fmt, "def ")?;
         for argument in self.parts.iter() {
             write!(fmt, "{} ", argument)?;
@@ -224,16 +205,25 @@ impl Display for OperatorFunction {
     }
 }
 
-impl Display for GlobalMacro {
+impl Display for FunctionInterface {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        for decorator in self.decorators.iter() {
-            writeln!(fmt, "@{}", decorator)?;
+        match self {
+            FunctionInterface::Macro(m) => write!(fmt, "@{}", m)?,
+            FunctionInterface::Explicit { identifier, target_type, parameters, return_type } => {
+                if let Some(target_type) = &target_type {
+                    write!(fmt, "{{{}}}.", target_type)?;
+                }
+
+                write!(fmt, "{}(", identifier)?;
+                for item in parameters.iter() { write!(fmt, "{},", item)? };
+                write!(fmt, ")")?;
+
+                if let Some(return_type) = &return_type {
+                    write!(fmt, " -> {}", return_type)?;
+                }
+            }
         }
-        write!(fmt, "def @{}", self.macro_name)?;
-        if let Some(body) = &self.body {
-            write!(fmt, " :: {}", body)?;
-        }
-        return Ok(())
+        Ok(())
     }
 }
 
@@ -290,7 +280,6 @@ impl Display for Statement {
             Statement::Operator(operator) => write!(fmt, "{}", operator),
             Statement::Trait(trait_) => write!(fmt, "{}", trait_),
             Statement::Conformance(conformance) => write!(fmt, "{}", conformance),
-            Statement::Macro(macro_) => write!(fmt, "{}", macro_),
         }
     }
 }
@@ -306,6 +295,7 @@ impl Display for Term {
         match self {
             Term::Error(_) => write!(fmt, "ERR"),
             Term::Identifier(s) => write!(fmt, "{}", s),
+            Term::MacroIdentifier(s) => write!(fmt, "{}!", s),
             Term::IntLiteral(s) => write!(fmt, "{}", s),
             Term::RealLiteral(s) => write!(fmt, "{}", s),
             Term::StringLiteral(parts) => {

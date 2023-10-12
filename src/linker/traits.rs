@@ -6,7 +6,7 @@ use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::linker::global::GlobalLinker;
 use crate::linker::{fields, scopes};
-use crate::linker::interface::link_function_pointer;
+use crate::linker::interface::link_function_interface;
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::{Mutability, ObjectReference};
@@ -27,7 +27,7 @@ impl <'a> TraitLinker<'a> {
     pub fn link_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
-                let (fun, representation) = link_function_pointer(&syntax, &scope, self.runtime, requirements)?;
+                let (fun, representation) = link_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements)?;
                 if !syntax.body.is_none() {
                     return Err(RuntimeError::new(format!("Abstract function {} cannot have a body.", fmta(|fmt| fun.format(fmt, &representation)))));
                 };
