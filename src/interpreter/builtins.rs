@@ -18,8 +18,8 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     // -------------------------------------- Monoteny files --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    let module = runtime.load_file(&PathBuf::from("monoteny/core.monoteny"), module_name("core"))?;
-    runtime.source.module_by_name.insert(module.name.clone(), module);
+    runtime.repository.add("core", PathBuf::from("monoteny"));
+    runtime.get_or_load_module(&module_name("core"))?;
 
     for (function, representation) in runtime.source.module_by_name[&module_name("core.debug")].fn_representations.iter() {
         runtime.function_evaluators.insert(function.unwrap_id(), match representation.name.as_str() {

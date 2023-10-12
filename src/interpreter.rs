@@ -1,7 +1,6 @@
 pub mod builtins;
 pub mod compiler;
 pub mod run;
-pub mod common;
 
 use std::alloc::{alloc, dealloc, Layout};
 use std::collections::HashMap;
@@ -23,6 +22,7 @@ use crate::program::functions::{FunctionHead, FunctionType};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::module::{Module, module_name, ModuleName};
 use crate::program::traits::{RequirementsFulfillment, Trait};
+use crate::repository::Repository;
 
 
 pub type FunctionInterpreterImpl = Rc<dyn Fn(&mut FunctionInterpreter, ExpressionID, &RequirementsFulfillment) -> Option<Value>>;
@@ -44,6 +44,7 @@ pub struct Runtime {
 
     // These remain unchanged after linking.
     pub source: Source,
+    pub repository: Box<Repository>,
 }
 
 pub struct Source {
@@ -88,6 +89,7 @@ impl Runtime {
                 fn_implementations: Default::default(),
                 fn_builtin_hints: Default::default(),
             },
+            repository: Repository::new(),
         });
 
         runtime.load(&builtins.module);
@@ -108,12 +110,8 @@ impl Runtime {
         }
 
         // Gotta load the module first.
-
-        if !matches!(first_part.as_str(), "common" | "core") {
-            return Err(RuntimeError::new(format!("Loading modules is not supported at this point: {:?}", name)));
-        };
-
-        let module = self.load_file(&PathBuf::from(format!("monoteny/{}.monoteny", name.join("/"))), name.clone())?;
+        let path = self.repository.resolve_module_path(name)?;
+        let module = self.load_file(&path, name.clone())?;
         self.source.module_by_name.insert(name.clone(), module);
         Ok(&self.source.module_by_name[name])
     }

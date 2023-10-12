@@ -13,6 +13,7 @@ pub mod monomorphize;
 pub mod integration_tests;
 pub mod constant_folding;
 pub mod error;
+pub mod repository;
 
 use std::env;
 use std::ffi::OsStr;
@@ -24,7 +25,7 @@ use clap::{arg, Command};
 use itertools::Itertools;
 use colored::Colorize;
 use crate::error::{dump_failure, dump_result, dump_start, dump_success, dump_named_failure, RuntimeError, RResult};
-use crate::interpreter::{Runtime, common};
+use crate::interpreter::Runtime;
 use crate::program::module::{Module, module_name};
 use crate::transpiler::Context;
 
@@ -74,10 +75,7 @@ fn main() -> ExitCode {
                     return dump_failure( e);
                 }
             };
-            if let Err(e) = common::load(&mut runtime) {
-                _ = dump_start("import(monoteny.common)");
-                return dump_failure( e);
-            }
+            runtime.repository.add("common", PathBuf::from("monoteny"));
 
             let module = match runtime.load_file(input_path, module_name("main")) {
                 Ok(m) => m,
@@ -106,10 +104,7 @@ fn main() -> ExitCode {
                     return dump_failure( e);
                 }
             };
-            if let Err(e) = common::load(&mut runtime) {
-                _ = dump_start("import(monoteny.common)");
-                return dump_failure( e);
-            }
+            runtime.repository.add("common", PathBuf::from("monoteny"));
 
             let mut error_count = 0;
             for path in paths {
@@ -153,10 +148,7 @@ fn main() -> ExitCode {
                     return dump_failure( e);
                 }
             };
-            if let Err(e) = common::load(&mut runtime) {
-                _ = dump_start("import(monoteny.common)");
-                return dump_failure( e);
-            }
+            runtime.repository.add("common", PathBuf::from("monoteny"));
 
             let module = match runtime.load_file(input_path, module_name("main")) {
                 Ok(m) => m,
