@@ -67,7 +67,13 @@ fn main() -> ExitCode {
             let input_path = sub_matches.get_one::<PathBuf>("PATH").unwrap();
 
             let builtins = program::builtins::create_builtins();
-            let mut runtime = Runtime::new(&builtins);
+            let mut runtime = match Runtime::new(&builtins) {
+                Ok(r) => r,
+                Err(e) => {
+                    _ = dump_start("import(monoteny.core)");
+                    return dump_failure( e);
+                }
+            };
             if let Err(e) = common::load(&mut runtime) {
                 _ = dump_start("import(monoteny.common)");
                 return dump_failure( e);
@@ -93,7 +99,13 @@ fn main() -> ExitCode {
             let start = dump_start(format!("check for {} file(s)", paths.len()).as_str());
 
             let builtins = program::builtins::create_builtins();
-            let mut runtime = Runtime::new(&builtins);
+            let mut runtime = match Runtime::new(&builtins) {
+                Ok(r) => r,
+                Err(e) => {
+                    _ = dump_start("import(monoteny.core)");
+                    return dump_failure( e);
+                }
+            };
             if let Err(e) = common::load(&mut runtime) {
                 _ = dump_start("import(monoteny.common)");
                 return dump_failure( e);
@@ -134,7 +146,13 @@ fn main() -> ExitCode {
             };
 
             let builtins = program::builtins::create_builtins();
-            let mut runtime = Runtime::new(&builtins);
+            let mut runtime = match Runtime::new(&builtins) {
+                Ok(r) => r,
+                Err(e) => {
+                    _ = dump_start("import(monoteny.core)");
+                    return dump_failure( e);
+                }
+            };
             match common::load(&mut runtime) {
                 Err(e) => return dump_named_failure("import(monoteny.common)", e),
                 _ => {}

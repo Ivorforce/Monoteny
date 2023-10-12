@@ -63,7 +63,7 @@ pub struct Source {
     pub fn_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
     /// For relevant functions, their implementation.
     pub fn_implementations: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
-    /// For relevant functions, a hint what type of builtin it is.
+    /// For relevant functions, a hint what type of core it is.
     pub fn_builtin_hints: HashMap<Rc<FunctionHead>, BuiltinFunctionHint>,
 }
 
@@ -76,7 +76,7 @@ pub struct FunctionInterpreter<'a> {
 }
 
 impl Runtime {
-    pub fn new(builtins: &Rc<Builtins>) -> Box<Runtime> {
+    pub fn new(builtins: &Rc<Builtins>) -> Result<Box<Runtime>, Vec<RuntimeError>> {
         let mut runtime = Box::new(Runtime {
             builtins: Rc::clone(builtins),
             function_evaluators: Default::default(),
@@ -92,10 +92,10 @@ impl Runtime {
             },
         });
 
-        builtins::load(&mut runtime);
         runtime.load_module(&builtins.module);
+        builtins::load(&mut runtime)?;
 
-        runtime
+        Ok(runtime)
     }
 
     pub fn load_file(&mut self, path: &PathBuf) -> Result<Box<Module>, Vec<RuntimeError>> {

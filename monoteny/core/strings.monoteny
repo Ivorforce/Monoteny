@@ -6,4 +6,4 @@ declare String is ToString {
 };
 
 -- Provided by the transpiler.
-def {String} + {String} -> String;
+def add(lhs 'String, rhs 'String) -> String;

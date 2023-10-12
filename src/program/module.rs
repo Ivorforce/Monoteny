@@ -22,13 +22,13 @@ pub struct Module {
     /// For referencable functions, their 'default' representation for calling them.
     pub fn_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
     /// For referencable functions, a provider function to get it as a function.
-    /// FIXME We don't really need to keep track of these. This could be a builtin hint.
+    /// FIXME We don't really need to keep track of these. This could be a core hint.
     ///  This requires us to provide a FunctionImplementation for call_as_function on every function
     ///  object. Next commit.
     pub fn_getters: HashMap<Rc<FunctionHead>, Rc<FunctionHead>>,
     /// For relevant functions, their implementation.
     pub fn_implementations: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
-    /// For relevant functions, a hint what type of builtin it is.
+    /// For relevant functions, a hint what type of core it is.
     pub fn_builtin_hints: HashMap<Rc<FunctionHead>, BuiltinFunctionHint>,
 
     /// These come from decorators.

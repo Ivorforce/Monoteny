@@ -78,7 +78,7 @@ pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -
 
     while let Some(function_binding) = transpiler.monomorphizer.new_encountered_calls.pop() {
         guard!(let Some(implementation) = runtime.source.fn_implementations.get(&function_binding.function) else {
-            // We don't have an implementation ready, so it must be a builtin or otherwise injected.
+            // We don't have an implementation ready, so it must be a core or otherwise injected.
             continue;
         });
 

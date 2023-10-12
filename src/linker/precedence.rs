@@ -184,30 +184,35 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
     }
 
     // Reduce all unary operators, and build interspersed arguments / operators list.
-    let left_unary_operators = &scope.precedence_groups[0].1;
-    while !tokens.is_empty() {
-        let ptoken = tokens.remove(tokens.len() - 1);
-        guard!(let Token::Keyword(keyword) = ptoken.value else {
-            return Err(RuntimeError::new(String::from("Expecting an operator but got an expression.")))
-        });
-
-        if let Some(ptoken) = tokens.get(tokens.len() - 1) {
-            if let Token::Expression(expression) = &ptoken.value {
-                // Binary Operator, because left of operator is an expression!
-                arguments.insert(0, ptoken.with_value(*expression));
-                keywords.insert(0, keyword);
-                tokens.remove(tokens.len() - 1);
-
-                continue
-            }
+    if let Some((group, left_unary_operators)) = &scope.precedence_groups.get(0) {
+        if group.associativity != OperatorAssociativity::LeftUnary {
+            todo!("Left Unary operators must be first for now.");
         }
 
-        let overload = scope.resolve(Environment::Global, &left_unary_operators[&keyword])?.as_function_overload()?;
+        while !tokens.is_empty() {
+            let ptoken = tokens.remove(tokens.len() - 1);
+            guard!(let Token::Keyword(keyword) = ptoken.value else {
+                return Err(RuntimeError::new(String::from("Expecting an operator but got an expression.")))
+            });
 
-        // Unary operator, because left of operator is an operator!
-        let argument = arguments.remove(0);
-        let expression_id = linker.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional], vec![argument.value], scope, ptoken.position)?;
-        arguments.insert(0, argument.with_value(expression_id));
+            if let Some(ptoken) = tokens.get(tokens.len() - 1) {
+                if let Token::Expression(expression) = &ptoken.value {
+                    // Binary Operator, because left of operator is an expression!
+                    arguments.insert(0, ptoken.with_value(*expression));
+                    keywords.insert(0, keyword);
+                    tokens.remove(tokens.len() - 1);
+
+                    continue
+                }
+            }
+
+            let overload = scope.resolve(Environment::Global, &left_unary_operators[&keyword])?.as_function_overload()?;
+
+            // Unary operator, because left of operator is an operator!
+            let argument = arguments.remove(0);
+            let expression_id = linker.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional], vec![argument.value], scope, ptoken.position)?;
+            arguments.insert(0, argument.with_value(expression_id));
+        }
     }
 
     if arguments.len() == 1 {
