@@ -24,7 +24,7 @@ use std::process::ExitCode;
 use clap::{arg, Command};
 use itertools::Itertools;
 use colored::Colorize;
-use crate::error::{dump_failure, dump_result, dump_start, dump_success, dump_named_failure, RuntimeError, RResult};
+use crate::error::{dump_failure, dump_result, dump_start, dump_success, dump_named_failure, RResult};
 use crate::interpreter::Runtime;
 use crate::program::module::{Module, module_name};
 use crate::transpiler::Context;

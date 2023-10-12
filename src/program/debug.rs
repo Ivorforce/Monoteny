@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::program::computation_tree::ExpressionID;
-use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionInterface, Parameter, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::types::{TypeProto, TypeUnit};

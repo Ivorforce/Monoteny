@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
-use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType};
+use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::module::Module;
 use crate::program::primitives;
 use crate::program::traits::Trait;

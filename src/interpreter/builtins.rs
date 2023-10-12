@@ -5,7 +5,7 @@ use monoteny_macro::{bin_op, parse_op, un_op, fun_op, to_string_op, load_constan
 use std::str::FromStr;
 use guard::guard;
 use uuid::Uuid;
-use crate::error::{RResult, RuntimeError};
+use crate::error::RResult;
 use crate::interpreter::{FunctionInterpreterImpl, Runtime, Value};
 use crate::program::functions::FunctionHead;
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};

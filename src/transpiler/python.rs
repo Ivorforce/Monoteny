@@ -13,7 +13,7 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::error::{RResult, RuntimeError};
+use crate::error::RResult;
 use crate::transpiler;
 use crate::interpreter::Runtime;
 use crate::program::computation_tree::ExpressionOperation;

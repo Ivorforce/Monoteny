@@ -10,7 +10,7 @@ use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{imports, interpreter_mock, scopes};
 use crate::linker::conformance::ConformanceLinker;
-use crate::linker::imports::{Import, link_imports};
+use crate::linker::imports::link_imports;
 use crate::linker::interface::{link_function_interface, link_operator_interface};
 use crate::linker::precedence_order::link_precedence_order;
 use crate::linker::type_factory::TypeFactory;
@@ -21,7 +21,6 @@ use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::generics::TypeForest;
 use crate::program::module::{Module, ModuleName};
 use crate::program::types::*;
-use crate::util::iter::omega;
 use crate::util::position::Positioned;
 
 pub struct GlobalLinker<'a> {

@@ -4,7 +4,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::linker::precedence::PrecedenceGroup;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
-use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType};
+use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::traits::{Trait, TraitGraph};
 use crate::program::types::{Pattern, TypeProto, TypeUnit};

@@ -9,7 +9,7 @@ use crate::linker::imperative::ImperativeLinker;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::debug::MockFunctionInterface;
-use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::traits::{RequirementsFulfillment, Trait, TraitBinding, TraitGraph};

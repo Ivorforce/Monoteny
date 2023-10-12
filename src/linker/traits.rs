@@ -11,7 +11,7 @@ use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
-use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType, Parameter, ParameterKey};
+use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
 use crate::program::global::BuiltinFunctionHint;
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::{TypeProto, TypeUnit};

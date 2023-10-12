@@ -8,7 +8,6 @@ use crate::linker::interpreter_mock;
 use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
 use crate::parser::ast;
 use crate::parser::ast::Term;
-use crate::program::functions::ParameterKey;
 
 pub fn link_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<PrecedenceGroup>>> {
     let error = RuntimeError::new(format!("@precedence_order needs an array literal body."));

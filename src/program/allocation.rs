@@ -4,7 +4,6 @@ use uuid::Uuid;
 use std::rc::Rc;
 use guard::guard;
 use crate::error::{RResult, RuntimeError};
-use crate::linker::precedence::PrecedenceGroup;
 use crate::program::function_object::FunctionOverload;
 use crate::program::functions::FunctionHead;
 use crate::program::types::{TypeProto, TypeUnit};

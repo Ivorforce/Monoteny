@@ -52,6 +52,13 @@ pub fn link_module(body: &ast::Expression) -> RResult<Import> {
                         ast::Term::StringLiteral(string) => {
                             let literal = interpreter_mock::plain_string_literal("module!", string).err_in_range(&pterm.position)?;
 
+                            if literal == "." {
+                                return Ok(Import {
+                                    is_relative: true,
+                                    elements: vec![],
+                                })
+                            }
+
                             let mut elements = literal.split(".").collect_vec();
                             let is_relative = match elements.first() {
                                 Some(p) => {
