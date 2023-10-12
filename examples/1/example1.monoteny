@@ -1,4 +1,4 @@
--- import(monoteny.dialects.common.0.0);
+-- use(monoteny.common);
 
 -- Make a pattern: `a /_ b` calls `floor_div(lhs: <>, rhs: <>)`
 pattern floor_div(MultiplicationPrecedence) :: {lhs} /_ {rhs};

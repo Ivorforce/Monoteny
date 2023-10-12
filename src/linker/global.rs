@@ -202,7 +202,7 @@ impl <'a> GlobalLinker<'a> {
                         (fun, representation)
                     },
                     "transpile" => {
-                        let transpiler_trait = self.runtime.source.module_by_name["transpilation"].trait_by_getter.values()
+                        let transpiler_trait = self.runtime.source.module_by_name["core.transpilation"].trait_by_getter.values()
                             .filter(|x| x.name == "Transpiler")
                             .exactly_one().unwrap();
 
