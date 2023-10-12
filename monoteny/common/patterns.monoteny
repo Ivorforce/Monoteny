@@ -1,3 +1,7 @@
+use!(
+    module!("common.precedence"),
+);
+
 pattern positive(LeftUnaryPrecedence) :: + {arg};
 pattern negative(LeftUnaryPrecedence) :: - {arg};
 -- TODO Alias differently?

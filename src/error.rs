@@ -19,17 +19,27 @@ pub struct RuntimeError {
     pub msg: String,
 }
 
-pub type RResult<V> = Result<V, RuntimeError>;
+pub type RResult<V> = Result<V, Vec<RuntimeError>>;
 
 impl RuntimeError {
-    pub fn new(msg: String) -> RuntimeError {
-        RuntimeError {
+    pub fn new(msg: String) -> Vec<RuntimeError> {
+        vec![RuntimeError {
             position: FilePosition {
                 file: None,
                 range: None,
             },
             msg,
-        }
+        }]
+    }
+
+    pub fn new_in_range(msg: String, range: Range<usize>) -> Vec<RuntimeError> {
+        vec![RuntimeError {
+            position: FilePosition {
+                file: None,
+                range: None,
+            },
+            msg,
+        }.in_range(range)]
     }
 
     pub fn in_range(&self, range: Range<usize>) -> RuntimeError {
@@ -100,7 +110,7 @@ pub trait ErrInRange<R> {
 
 impl<V> ErrInRange<RResult<V>> for RResult<V> {
     fn err_in_range(self, range: &Range<usize>) -> RResult<V> {
-        self.map_err(|e| e.in_range(range.clone()))
+        self.map_err(|e| e.iter().map(|e| e.in_range(range.clone())).collect())
     }
 }
 
@@ -109,7 +119,7 @@ pub fn dump_start(name: &str) -> Instant {
     Instant::now()
 }
 
-pub fn dump_result<V>(start: Instant, result: Result<V, Vec<RuntimeError>>) -> ExitCode {
+pub fn dump_result<V>(start: Instant, result: RResult<V>) -> ExitCode {
     match result {
         Ok(_) => dump_success(start,),
         Err(e) => dump_failure(e),
@@ -118,13 +128,13 @@ pub fn dump_result<V>(start: Instant, result: Result<V, Vec<RuntimeError>>) -> E
 
 pub fn dump_named_failure(name: &str, err: Vec<RuntimeError>) -> ExitCode {
     println!("{}", format_errors(&err));
-    println!("\n{} on {} ({} error(s))", "Failure".red().bold(), name, err.len());
+    println!("\n{} on {}: {} error(s)", "Failure".red().bold(), name, err.len());
     ExitCode::FAILURE
 }
 
 pub fn dump_failure(err: Vec<RuntimeError>) -> ExitCode {
     println!("{}", format_errors(&err));
-    println!("\n{} ({} error(s))", "Failure".red().bold(), err.len());
+    println!("\n{}: {} error(s)", "Failure".red().bold(), err.len());
     ExitCode::FAILURE
 }
 

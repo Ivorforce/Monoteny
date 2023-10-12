@@ -12,17 +12,17 @@ use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use crate::{linker, parser};
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compiler::make_function_getter;
+use crate::linker::imports;
 use crate::parser::ast;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionType};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
-use crate::program::module::Module;
+use crate::program::module::{Module, module_name, ModuleName};
 use crate::program::traits::{RequirementsFulfillment, Trait};
-
 
 
 pub type FunctionInterpreterImpl = Rc<dyn Fn(&mut FunctionInterpreter, ExpressionID, &RequirementsFulfillment) -> Option<Value>>;
@@ -47,8 +47,7 @@ pub struct Runtime {
 }
 
 pub struct Source {
-    pub module_order: Vec<String>,
-    pub module_by_name: HashMap<String, Box<Module>>,
+    pub module_by_name: HashMap<ModuleName, Box<Module>>,
 
     // Cache of aggregated module_by_name fields for quick reference.
 
@@ -76,12 +75,11 @@ pub struct FunctionInterpreter<'a> {
 }
 
 impl Runtime {
-    pub fn new(builtins: &Rc<Builtins>) -> Result<Box<Runtime>, Vec<RuntimeError>> {
+    pub fn new(builtins: &Rc<Builtins>) -> RResult<Box<Runtime>> {
         let mut runtime = Box::new(Runtime {
             builtins: Rc::clone(builtins),
             function_evaluators: Default::default(),
             source: Source {
-                module_order: vec![],
                 module_by_name: Default::default(),
                 trait_references: Default::default(),
                 fn_heads: Default::default(),
@@ -92,16 +90,38 @@ impl Runtime {
             },
         });
 
-        runtime.load_module(&builtins.module);
+        runtime.load(&builtins.module);
         builtins::load(&mut runtime)?;
 
         Ok(runtime)
     }
 
-    pub fn load_file(&mut self, path: &PathBuf) -> Result<Box<Module>, Vec<RuntimeError>> {
+    pub fn get_or_load_module(&mut self, name: &ModuleName) -> RResult<&Module> {
+        guard!(let Some(first_part) = name.first() else {
+            return Err(RuntimeError::new(format!("{:?} is not a valid module name.", name)))
+        });
+
+        // FIXME this should be if let Some( ... but the compiler bugs out
+        if self.source.module_by_name.contains_key(name) {
+            // Module is already loaded!
+            return Ok(&self.source.module_by_name[name]);
+        }
+
+        // Gotta load the module first.
+
+        if !matches!(first_part.as_str(), "common" | "core") {
+            return Err(RuntimeError::new(format!("Loading modules is not supported at this point: {:?}", name)));
+        };
+
+        let module = self.load_file(&PathBuf::from(format!("monoteny/{}.monoteny", name.join("/"))), name.clone())?;
+        self.source.module_by_name.insert(name.clone(), module);
+        Ok(&self.source.module_by_name[name])
+    }
+
+    pub fn load_file(&mut self, path: &PathBuf, name: ModuleName) -> RResult<Box<Module>> {
         let content = std::fs::read_to_string(&path)
-            .map_err(|e| vec![RuntimeError::new(e.to_string())])?;
-        self.load_source(&content)
+            .map_err(|e| RuntimeError::new(format!("Error loading {:?}: {}", path, e)))?;
+        self.load_source(&content, name)
             .map_err(|errs| {
                 errs.into_iter().map(|e| {
                     e.in_file(path.clone())
@@ -109,32 +129,30 @@ impl Runtime {
             })
     }
 
-    pub fn load_source(&mut self, source: &str) -> Result<Box<Module>, Vec<RuntimeError>> {
+    pub fn load_source(&mut self, source: &str, name: ModuleName) -> RResult<Box<Module>> {
         // We can ignore the errors. All errors are stored inside the AST too and will fail there.
         // TODO When JIT loading is implemented, we should still try to link all non-loaded
         //  functions / modules and warn if they fail. We can also then warn they're unused too.
-        let (ast, _) = parser::parse_program(source)
-            .map_err(|e| vec![RuntimeError::new(e.to_string())])?;
-        self.load_ast(&ast)
+        let (ast, _) = parser::parse_program(source)?;
+        self.load_ast(&ast, name)
     }
 
-    pub fn load_ast(&mut self, syntax: &ast::Module) -> Result<Box<Module>, Vec<RuntimeError>> {
+    pub fn load_ast(&mut self, syntax: &ast::Module, name: ModuleName) -> RResult<Box<Module>> {
         let mut scope = self.builtins.create_scope();
 
-        // TODO This needs to be ordered.
-        for module_name in self.source.module_order.iter() {
-            scope.import(&self.source.module_by_name[module_name])
-                .map_err(|e| RuntimeError::new(e.to_string())).map_err(|e| vec![e])?;
+        let core_name = module_name("core");
+        if self.source.module_by_name.contains_key(&core_name) {
+            imports::deep(self, core_name, &mut scope)?;
         }
 
-        let module = linker::link_file(syntax, &scope, self)?;
+        let module = linker::link_file(syntax, &scope, self, name)?;
 
-        self.load_module(&module);
+        self.load(&module);
 
         Ok(module)
     }
 
-    pub fn load_module(&mut self, module: &Module) {
+    pub fn load(&mut self, module: &Module) {
         self.source.trait_references.extend(module.trait_by_getter.clone());
         self.source.fn_heads.extend(module.fn_representations.keys().map(|f| (f.function_id, Rc::clone(f))).collect_vec());
         self.source.fn_getters.extend(module.fn_getters.clone());

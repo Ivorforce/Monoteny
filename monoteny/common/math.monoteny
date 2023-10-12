@@ -1,3 +1,9 @@
+use!(
+    module!("common.precedence"),
+    module!("common.patterns"),
+    module!("common.debug"),
+);
+
 def pi -> $Real :: 3.141592653589793;
 def tau -> $Real :: 6.283185307179586;
 

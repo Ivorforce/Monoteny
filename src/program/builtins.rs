@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use crate::linker::scopes;
 use crate::program;
-use crate::program::module::Module;
+use crate::program::module::{Module, module_name};
 use crate::program::traits::Trait;
 
 pub mod primitives;
@@ -16,7 +16,7 @@ pub struct Builtins {
 }
 
 pub fn create_builtins() -> Rc<Builtins> {
-    let mut module = Module::new("monoteny.core".to_string());
+    let mut module = Module::new(module_name("core"));
 
     let primitive_traits = primitives::create_traits(&mut module);
     let traits = traits::create(&mut module, &primitive_traits);

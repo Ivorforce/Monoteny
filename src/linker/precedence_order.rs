@@ -4,6 +4,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 use strum::IntoEnumIterator;
 use crate::error::{ErrInRange, RResult, RuntimeError};
+use crate::linker::interpreter_mock;
 use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
 use crate::parser::ast;
 use crate::parser::ast::Term;
@@ -45,22 +46,14 @@ pub fn link_precedence_group(body: &ast::Expression) -> RResult<Rc<PrecedenceGro
         [l, r] => {
             match (&l.value, &r.value) {
                 (Term::Identifier(name), Term::Struct(struct_args)) => {
-                    match &struct_args[..] {
-                        [arg] => {
-                            if arg.key != ParameterKey::Positional || arg.type_declaration.is_some() {
-                                return Err(error).err_in_range(&r.position)
-                            }
+                    let body = interpreter_mock::plain_parameter("Precedence Group", struct_args)?;
+                    let associativity = link_associativity(body).err_in_range(&r.position)?;
 
-                            let associativity = link_associativity(&arg.value)
-                                .err_in_range(&r.position)?;
-                            Ok(Rc::new(PrecedenceGroup {
-                                trait_id: Uuid::new_v4(),
-                                name: name.to_string(),
-                                associativity,
-                            }))
-                        }
-                        _ => Err(error).err_in_range(&r.position)
-                    }
+                    Ok(Rc::new(PrecedenceGroup {
+                        trait_id: Uuid::new_v4(),
+                        name: name.to_string(),
+                        associativity,
+                    }))
                 }
                 _ => Err(error).err_in_range(&l.position)
             }

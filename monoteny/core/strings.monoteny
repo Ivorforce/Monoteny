@@ -1,3 +1,7 @@
+use!(
+    module!("core.bool"),
+);
+
 -- The easiest way to format an object: It formats itself!
 def format(object '$ToString) -> String :: object.to_string();
 

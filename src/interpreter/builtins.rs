@@ -5,28 +5,23 @@ use monoteny_macro::{bin_op, parse_op, un_op, fun_op, to_string_op, load_constan
 use std::str::FromStr;
 use guard::guard;
 use uuid::Uuid;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::interpreter::{FunctionInterpreterImpl, Runtime, Value};
 use crate::program::functions::FunctionHead;
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
+use crate::program::module::module_name;
 use crate::program::primitives;
 use crate::program::types::TypeUnit;
 
-pub fn load(runtime: &mut Runtime) -> Result<(), Vec<RuntimeError>> {
+pub fn load(runtime: &mut Runtime) -> RResult<()> {
     // -------------------------------------- ------ --------------------------------------
     // -------------------------------------- Monoteny files --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    for name in [
-        "bool", "strings", "debug", "transpilation"
-    ] {
-        let module_name = format!("core.{}", name);
-        let module = runtime.load_file(&PathBuf::from(format!("monoteny/core/{}.monoteny", name)))?;
-        runtime.source.module_order.push(module_name.clone());
-        runtime.source.module_by_name.insert(module_name, module);
-    }
+    let module = runtime.load_file(&PathBuf::from("monoteny/core.monoteny"), module_name("core"))?;
+    runtime.source.module_by_name.insert(module.name.clone(), module);
 
-    for (function, representation) in runtime.source.module_by_name["core.debug"].fn_representations.iter() {
+    for (function, representation) in runtime.source.module_by_name[&module_name("core.debug")].fn_representations.iter() {
         runtime.function_evaluators.insert(function.unwrap_id(), match representation.name.as_str() {
             "_write_line" => Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
@@ -49,7 +44,7 @@ pub fn load(runtime: &mut Runtime) -> Result<(), Vec<RuntimeError>> {
         });
     }
 
-    for (function, representation) in runtime.source.module_by_name["core.transpilation"].fn_representations.iter() {
+    for (function, representation) in runtime.source.module_by_name[&module_name("core.transpilation")].fn_representations.iter() {
         runtime.function_evaluators.insert(
             function.function_id,
             Rc::new(move |interpreter, expression_id, binding| {
@@ -82,7 +77,7 @@ pub fn load(runtime: &mut Runtime) -> Result<(), Vec<RuntimeError>> {
         );
     }
 
-    for (function, representation) in runtime.source.module_by_name["core.bool"].fn_representations.iter() {
+    for (function, representation) in runtime.source.module_by_name[&module_name("core.bool")].fn_representations.iter() {
         runtime.function_evaluators.insert(function.unwrap_id(), match representation.name.as_str() {
             "true" => load_constant!(bool true),
             "false" => load_constant!(bool false),

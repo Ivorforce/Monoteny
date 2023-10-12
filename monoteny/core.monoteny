@@ -1,0 +1,6 @@
+include!(
+    module!(".bool"),
+    module!(".strings"),
+    module!(".debug"),
+    module!(".transpilation")
+);

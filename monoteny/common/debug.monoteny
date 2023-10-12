@@ -1,3 +1,8 @@
+use!(
+    module!("common.precedence"),
+    module!("common.patterns"),
+);
+
 def exit_with_error(error '$ToString) -> # :: {
     write_line(error);
     return _exit_with_error();

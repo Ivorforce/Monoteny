@@ -9,7 +9,7 @@ use crate::linker::scopes;
 use crate::parser::ast;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 pub use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
-use crate::program::module::Module;
+use crate::program::module::{Module, module_name};
 use crate::program::traits::TraitBinding;
 use crate::program::types::{PatternPart, TypeProto, TypeUnit};
 
@@ -36,7 +36,7 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
                     Ok((fun, representation))
                 },
                 "transpile" => {
-                    let transpiler_trait = runtime.source.module_by_name["core.transpilation"].trait_by_getter.values()
+                    let transpiler_trait = runtime.source.module_by_name[&module_name("core.transpilation")].trait_by_getter.values()
                         .filter(|x| x.name == "Transpiler")
                         .exactly_one().unwrap();
 

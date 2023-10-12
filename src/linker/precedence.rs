@@ -180,7 +180,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
         arguments.push(final_ptoken.with_value(*expression));
     }
     else {
-        return Err(RuntimeError::new(String::from("Expression missing the final argument.")).in_range(final_ptoken.position))
+        return Err(RuntimeError::new_in_range(String::from("Expression missing the final argument."), final_ptoken.position))
     }
 
     // Reduce all unary operators, and build interspersed arguments / operators list.

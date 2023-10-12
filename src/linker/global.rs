@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::{ErrInRange, RResult, RuntimeError};
@@ -9,18 +8,20 @@ use crate::interpreter::Runtime;
 use crate::parser::ast;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
-use crate::linker::scopes;
+use crate::linker::{imports, interpreter_mock, scopes};
 use crate::linker::conformance::ConformanceLinker;
+use crate::linker::imports::{Import, link_imports};
 use crate::linker::interface::{link_function_interface, link_operator_interface};
 use crate::linker::precedence_order::link_precedence_order;
 use crate::linker::type_factory::TypeFactory;
 use crate::linker::traits::{TraitLinker, try_make_struct};
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
-use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType, Parameter, ParameterKey};
+use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::generics::TypeForest;
-use crate::program::module::Module;
+use crate::program::module::{Module, ModuleName};
 use crate::program::types::*;
+use crate::util::iter::omega;
 use crate::util::position::Positioned;
 
 pub struct GlobalLinker<'a> {
@@ -30,10 +31,10 @@ pub struct GlobalLinker<'a> {
     pub module: Module,
 }
 
-pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runtime) -> Result<Box<Module>, Vec<RuntimeError>> {
+pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runtime, name: ModuleName) -> RResult<Box<Module>> {
     let mut global_linker = GlobalLinker {
         runtime,
-        module: Module::new("main".to_string()),  // TODO Give it a name!
+        module: Module::new(name),  // TODO Give it a name!
         global_variables: scope.subscope(),
         function_bodies: Default::default(),
     };
@@ -41,8 +42,7 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runt
     // Resolve global types / interfaces
     for statement in &syntax.global_statements {
         global_linker.link_global_statement(statement, &HashSet::new())
-            .err_in_range(&statement.position)
-            .map_err(|e| vec![e])?;
+            .err_in_range(&statement.position)?;
     }
 
     let global_variable_scope = global_linker.global_variables;
@@ -65,7 +65,7 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runt
                 global_linker.module.fn_implementations.insert(Rc::clone(&head), implementation);
             }
             Err(e) => {
-                errors.push(e.in_range(pbody.position.clone()));
+                errors.extend(e.iter().map(|e| e.in_range(pbody.position.clone())));
             }
         }
     }
@@ -191,18 +191,25 @@ impl <'a> GlobalLinker<'a> {
                             (ast::Term::MacroIdentifier(macro_name), ast::Term::Struct(args)) => {
                                 match macro_name.as_str() {
                                     "precedence_order" => {
-                                        let body = args.iter().exactly_one()
-                                            .map_err(|_| RuntimeError::new(format!("Macro {}! needs exactly one parameter.", macro_name)))?;
-                                        if body.key != ParameterKey::Positional {
-                                            return Err(RuntimeError::new(format!("Macro {}! needs exactly one parameter.", macro_name)));
-                                        }
-                                        if body.type_declaration.is_some() {
-                                            return Err(RuntimeError::new(format!("Macro {}! needs exactly one parameter.", macro_name)));
-                                        }
+                                        let body = interpreter_mock::plain_parameter(format!("{}!", macro_name).as_str(), args)?;
 
-                                        let precedence_order = link_precedence_order(&body.value)?;
+                                        let precedence_order = link_precedence_order(body)?;
                                         self.module.precedence_order = Some(precedence_order.clone());
                                         self.global_variables.set_precedence_order(precedence_order);
+                                        return Ok(())
+                                    }
+                                    "use" => {
+                                        for import in link_imports(args)? {
+                                            self.import(&&import.relative_to(&self.module.name))?;
+                                        }
+                                        return Ok(())
+                                    }
+                                    "include" => {
+                                        for import in link_imports(args)? {
+                                            let import = import.relative_to(&self.module.name);
+                                            self.import(&import)?;
+                                            self.module.included_modules.push(import);
+                                        }
                                         return Ok(())
                                     }
                                     _ => return Err(RuntimeError::new(format!("Unrecognized macro: {}!", macro_name)))
@@ -224,6 +231,13 @@ impl <'a> GlobalLinker<'a> {
         Ok(())
     }
 
+    fn import(&mut self, import: &Vec<String>) -> RResult<()> {
+        let root_module = self.runtime.get_or_load_module(import)?;
+        let root_module_name = root_module.name.clone();
+        imports::deep(&mut self.runtime, root_module_name, &mut self.global_variables)?;
+        Ok(())
+    }
+
     pub fn link_pattern(&mut self, syntax: &ast::PatternDeclaration) -> RResult<Rc<Pattern>> {
         let precedence_group = self.global_variables.resolve_precedence_group(&syntax.precedence);
 
@@ -235,7 +249,7 @@ impl <'a> GlobalLinker<'a> {
         }))
     }
 
-    fn add_trait(&mut self, trait_: &Rc<Trait>) -> Result<(), RuntimeError> {
+    fn add_trait(&mut self, trait_: &Rc<Trait>) -> RResult<()> {
         let getter = self.module.add_trait(&trait_);
         self.global_variables.overload_function(&getter, FunctionRepresentation::new(&trait_.name, FunctionForm::GlobalImplicit))?;
         self.runtime.source.trait_references.insert(getter, Rc::clone(trait_));

@@ -125,7 +125,7 @@ impl TypeForest {
         let map: HashMap<_, _> = structs.into_iter().map(|(struct_, type_)| {
             let identity = self._register(struct_.id);
             self.bind_identity(identity, type_)?;
-            Ok((struct_, identity))
+            Ok::<(&Rc<Trait>, Uuid), Vec<RuntimeError>>((struct_, identity))
         }).try_collect()?;
 
         let mut replace_map = HashMap::new();

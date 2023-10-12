@@ -42,7 +42,7 @@ def {'$Real[Cartesian]}.to_spherical() -> $Real[Spherical] :: {
   );
 };
 
-def @main :: {
+def main! :: {
   -- Define dimensions
   let n, coord;
   
@@ -56,7 +56,7 @@ def @main :: {
   print(lea);
 };
 
-def @transpile :: {
+def transpile! :: {
   transpiler.add(main);
 };
 ```
@@ -109,20 +109,21 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
   - [ ] Stored Properties (for traits with associated Self)
     - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract traits
     - [ ] Anonymous Structs: `... -> (a: Int32, b: Float32) ... return (a: a, b: b)`
-    - [ ] Delegation (`@delegate(Eq) var ...`) (implement all / selected trait offered by the property by calling it on the property)
+    - [ ] Delegation (`delegate!(Eq) var ...`) (implement all / selected trait offered by the property by calling it on the property)
     - [ ] Deconstruction assignment (`let (x, y, z) = vec`)
       - [x] `let`: Assign new variables
       - [x] `upd`: Change existing variables
     - [ ] Generic: Any used generics will automatically generify the object
   - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
 - Running
-  - [x] `@main` decorates functions that can be run from the cli.
-  - [x] `@transpile` decorates functions that can transpile the code.
-  - [ ] Pass parameters to `@main` and `@transpile` from the cli (array of strings).
-- [ ] Modules (imports)
+  - [x] `main!` decorates functions that can be run from the cli.
+  - [x] `transpile!` decorates functions that can transpile the code.
+  - [ ] Pass parameters to `main!` and `transpile!` from the cli (array of strings).
+- [x] Modules
+  - [x] `use!` statements: Make the module's contents directly referrable in the scope.
+  - [x] `include!` statements: When importing this module, also import the others.
   - [ ] Namespaces
-  - [ ] `use` statements: Use parts of a module without changing or re-exporting it.
-  - [ ] `@private` decorators: Functions or traits that can only be referenced using qualified syntax.
+  - [ ] `private` decorators: Functions or traits that can only be referenced using qualified syntax.
   - [ ] `inherit` statements: Use and expose another module within your module, allowing additions and overrides.
 - [ ] Control Callbacks (e.g. `def if(expression 'Bool, onTrue 'fun, onFalse 'Fun[Option]) { ... }`))
   - [ ] `if ... :: { } else :: { }`

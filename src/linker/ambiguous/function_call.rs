@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use std::ops::Range;
 use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
-use crate::error::{RResult, RuntimeError};
+use crate::error::{format_errors, RResult, RuntimeError};
 use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
 use crate::program::calls::FunctionBinding;
@@ -33,7 +33,7 @@ pub struct AmbiguousFunctionCall {
     pub range: Range<usize>,
 
     pub candidates: Vec<Box<AmbiguousFunctionCandidate>>,
-    pub failed_candidates: Vec<(Box<AmbiguousFunctionCandidate>, RuntimeError)>,
+    pub failed_candidates: Vec<(Box<AmbiguousFunctionCandidate>, Vec<RuntimeError>)>,
 }
 
 impl AmbiguousFunctionCall {
@@ -120,7 +120,7 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             [] => panic!(),
             [(candidate, err)] => {
                 // TODO How so?
-                Err(RuntimeError::new(format!("function {:?} could not be resolved. Candidate failed type / requirements test with error:\n{}", &candidate.function, err)))
+                Err(RuntimeError::new(format!("function {:?} could not be resolved. Candidate failed type / requirements test with error:\n{}", &candidate.function, format_errors(err))))
             }
             cs => {
                 let signature = MockFunctionInterface {

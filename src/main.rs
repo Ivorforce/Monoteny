@@ -23,9 +23,9 @@ use std::process::ExitCode;
 use clap::{arg, Command};
 use itertools::Itertools;
 use colored::Colorize;
-use crate::error::{dump_failure, dump_result, dump_start, dump_success, dump_named_failure, RuntimeError};
+use crate::error::{dump_failure, dump_result, dump_start, dump_success, dump_named_failure, RuntimeError, RResult};
 use crate::interpreter::{Runtime, common};
-use crate::program::module::Module;
+use crate::program::module::{Module, module_name};
 use crate::transpiler::Context;
 
 
@@ -79,14 +79,14 @@ fn main() -> ExitCode {
                 return dump_failure( e);
             }
 
-            let module = match runtime.load_file(input_path) {
+            let module = match runtime.load_file(input_path, module_name("main")) {
                 Ok(m) => m,
                 Err(e) => return dump_named_failure(format!("import({})", input_path.as_os_str().to_string_lossy()).as_str(), e),
             };
 
             dump_result(
                 dump_start(format!("{}:@main", input_path.as_os_str().to_string_lossy()).as_str()),
-                interpreter::run::main(&module, &mut runtime).map_err(|e| vec![e])
+                interpreter::run::main(&module, &mut runtime)
             )
         },
         Some(("check", sub_matches)) => {
@@ -113,7 +113,7 @@ fn main() -> ExitCode {
 
             let mut error_count = 0;
             for path in paths {
-                match runtime.load_file(path) {
+                match runtime.load_file(path, module_name("main")) {
                     Ok(_) => {},
                     Err(e) => {
                         dump_named_failure(format!("import({})", path.as_os_str().to_string_lossy()).as_str(), e);
@@ -153,12 +153,12 @@ fn main() -> ExitCode {
                     return dump_failure( e);
                 }
             };
-            match common::load(&mut runtime) {
-                Err(e) => return dump_named_failure("import(monoteny.common)", e),
-                _ => {}
+            if let Err(e) = common::load(&mut runtime) {
+                _ = dump_start("import(monoteny.common)");
+                return dump_failure( e);
             }
 
-            let module = match runtime.load_file(input_path) {
+            let module = match runtime.load_file(input_path, module_name("main")) {
                 Ok(m) => m,
                 Err(e) => return dump_named_failure(format!("import({})", input_path.as_os_str().to_string_lossy()).as_str(), e),
             };
@@ -190,13 +190,13 @@ fn main() -> ExitCode {
     }
 }
 
-fn transpile_target(base_filename: &str, base_output_path: &Path, should_constant_fold: bool, mut runtime: &mut Box<Runtime>, module: &Box<Module>, output_extension: &str) -> Result<Vec<PathBuf>, Vec<RuntimeError>> {
+fn transpile_target(base_filename: &str, base_output_path: &Path, should_constant_fold: bool, mut runtime: &mut Box<Runtime>, module: &Box<Module>, output_extension: &str) -> RResult<Vec<PathBuf>> {
     let mut context = match output_extension {
         "py" => transpiler::python::create_context(&runtime),
         output_extension => panic!("File type not supported: {}", output_extension)
     };
 
-    let mut transpiler = transpiler::run(&module, &mut runtime, &mut context).map_err(|e| vec![e])?;
+    let mut transpiler = transpiler::run(&module, &mut runtime, &mut context)?;
 
     if should_constant_fold {
         transpiler::constant_fold(&mut transpiler);

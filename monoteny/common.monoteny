@@ -1,0 +1,6 @@
+include!(
+    module!(".precedence"),
+    module!(".patterns"),
+    module!(".debug"),
+    module!(".math"),
+);

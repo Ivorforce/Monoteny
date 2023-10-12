@@ -1,3 +1,9 @@
+use!(
+    module!("core.bool"),
+    module!("core.strings"),
+    module!("core.debug"),
+);
+
 trait Transpiler {
 };
 

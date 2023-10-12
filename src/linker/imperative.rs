@@ -299,7 +299,7 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_term(&mut self, syntax: &Positioned<ast::Term>, scope: &scopes::Scope) -> RResult<Positioned<precedence::Token>> {
         let token = match &syntax.value {
             ast::Term::Error(err) => {
-                return Err(err.clone())
+                return Err(vec![err.clone()])
             }
             ast::Term::Identifier(s) => {
                 let variable = scope.resolve(scopes::Environment::Global, s)?;

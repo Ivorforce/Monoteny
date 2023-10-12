@@ -37,7 +37,7 @@ impl <'a> TypeFactory<'a> {
         let function = overload.functions.iter().exactly_one()
             .map_err(|_| RuntimeError::new("Function overload cannot be resolved to a type.".to_string()))?;
         let trait_ = self.runtime.source.trait_references.get(function)
-            .ok_or_else(|| RuntimeError::new("Interpreted types aren't supported yet; please use an explicit type for now. 1".to_string()))?;
+            .ok_or_else(|| RuntimeError::new(format!("Interpreted types aren't supported yet; please use an explicit type for now.\n{}", name)))?;
 
         return Ok(Rc::clone(trait_))
     }

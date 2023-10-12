@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use itertools::Itertools;
 use uuid::Uuid;
 use crate::linker::precedence::PrecedenceGroup;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
@@ -8,9 +9,18 @@ use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::traits::{Trait, TraitGraph};
 use crate::program::types::{Pattern, TypeProto, TypeUnit};
 
+pub type ModuleName = Vec<String>;
+
+pub fn module_name(name: &str) -> ModuleName {
+    name.split(".").map(ToString::to_string).collect_vec()
+}
+
 pub struct Module {
     pub id: Uuid,
-    pub name: String,
+    pub name: ModuleName,
+
+    /// For each trait, its metatype getter function.
+    pub included_modules: Vec<Vec<String>>,
 
     /// For each trait, its metatype getter function.
     pub trait_by_getter: HashMap<Rc<FunctionHead>, Rc<Trait>>,
@@ -39,10 +49,11 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn new(name: String) -> Module {
+    pub fn new(name: ModuleName) -> Module {
         Module {
             id: Default::default(),
             name,
+            included_modules: vec![],
             trait_by_getter: Default::default(),
             precedence_order: None,
             patterns: Default::default(),
