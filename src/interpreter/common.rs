@@ -1,22 +1,25 @@
+use std::alloc::{alloc, Layout};
 use std::path::PathBuf;
 use std::rc::Rc;
 use guard::guard;
+use monoteny_macro::load_constant;
 use uuid::Uuid;
-use crate::interpreter::{RuntimeError, Runtime};
+use crate::error::RuntimeError;
+use crate::interpreter::{Runtime, Value};
 use crate::program::functions::FunctionHead;
 use crate::program::types::TypeUnit;
 
 pub fn load(runtime: &mut Runtime) -> Result<(), Vec<RuntimeError>> {
     for name in [
-        "precedence", "patterns", "math", "strings", "debug", "transpilation",
+        "precedence", "patterns", "bool", "math", "strings", "debug", "transpilation",
     ] {
         let module = runtime.load_file(&PathBuf::from(format!("monoteny/common/{}.monoteny", name)))?;
         runtime.source.module_order.push(name.to_string());
         runtime.source.module_by_name.insert(name.to_string(), module);
     }
 
-    for ptr in runtime.source.module_by_name["debug"].fn_pointers.values() {
-        runtime.function_evaluators.insert(ptr.target.unwrap_id(), match ptr.name.as_str() {
+    for (function, representation) in runtime.source.module_by_name["debug"].fn_representations.iter() {
+        runtime.function_evaluators.insert(function.unwrap_id(), match representation.name.as_str() {
             "_write_line" => Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
                     let args = interpreter.implementation.expression_forest.arguments[&expression_id].clone();
@@ -38,9 +41,9 @@ pub fn load(runtime: &mut Runtime) -> Result<(), Vec<RuntimeError>> {
         });
     }
 
-    for ptr in runtime.source.module_by_name["transpilation"].fn_pointers.values() {
+    for (function, representation) in runtime.source.module_by_name["transpilation"].fn_representations.iter() {
         runtime.function_evaluators.insert(
-            ptr.target.function_id,
+            function.function_id,
             Rc::new(move |interpreter, expression_id, binding| {
                 unsafe {
                     let arguments = interpreter.evaluate_arguments(expression_id);
@@ -69,6 +72,14 @@ pub fn load(runtime: &mut Runtime) -> Result<(), Vec<RuntimeError>> {
                 }
             })
         );
+    }
+
+    for (function, representation) in runtime.source.module_by_name["bool"].fn_representations.iter() {
+        runtime.function_evaluators.insert(function.unwrap_id(), match representation.name.as_str() {
+            "true" => load_constant!(bool true),
+            "false" => load_constant!(bool false),
+            _ => continue,
+        });
     }
 
     Ok(())

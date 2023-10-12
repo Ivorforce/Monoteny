@@ -15,9 +15,9 @@ use crate::linker::interface::{link_function_pointer, link_operator_pointer};
 use crate::linker::precedence_order::link_precedence_order;
 use crate::linker::type_factory::TypeFactory;
 use crate::linker::traits::{TraitLinker, try_make_struct};
-use crate::parser::ast::Term;
+use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
-use crate::program::functions::{FunctionHead, FunctionType, FunctionForm, FunctionInterface, FunctionPointer, Parameter, ParameterKey};
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType, Parameter, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::module::Module;
 use crate::program::types::*;
@@ -86,21 +86,21 @@ impl <'a> GlobalLinker<'a> {
             }
             ast::Statement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
-                let fun = link_function_pointer(&syntax, &scope, &self.runtime, requirements)?;
+                let (fun, representation) = link_function_pointer(&syntax, &scope, &self.runtime, requirements)?;
 
                 if let Some(body) = &syntax.body {
-                    self.schedule_function_body(Rc::clone(&fun.target), body, pstatement.position.clone());
+                    self.schedule_function_body(Rc::clone(&fun), body, pstatement.position.clone());
                 }
-                self.add_function_interface(fun, &syntax.decorators)?;
+                self.add_function_interface(fun, representation, &syntax.decorators)?;
             }
             ast::Statement::Operator(syntax) => {
                 let scope = &self.global_variables;
-                let fun = link_operator_pointer(&syntax, &scope, &self.runtime, requirements)?;
+                let (fun, representation) = link_operator_pointer(&syntax, &scope, &self.runtime, requirements)?;
 
                 if let Some(body) = &syntax.body {
-                    self.schedule_function_body(Rc::clone(&fun.target), body, pstatement.position.clone());
+                    self.schedule_function_body(Rc::clone(&fun), body, pstatement.position.clone());
                 }
-                self.add_function_interface(fun, &syntax.decorators)?;
+                self.add_function_interface(fun, representation, &syntax.decorators)?;
             }
             ast::Statement::Trait(syntax) => {
                 let mut trait_ = Trait::new_with_self(syntax.name.clone());
@@ -109,11 +109,13 @@ impl <'a> GlobalLinker<'a> {
                 let generic_self_meta_type = TypeProto::meta(generic_self_type.clone());
                 // This is not the same reference as what module.add_trait returns - that reference is for the global metatype getter.
                 //  Inside, we use the Self getter.
-                let generic_self_self_getter = FunctionPointer::new_global_implicit("Self", FunctionInterface::new_provider(&generic_self_meta_type, vec![]));
+                let generic_self_self_getter = FunctionHead::new_static(
+                    FunctionInterface::new_provider(&generic_self_meta_type, vec![]),
+                );
 
                 let mut scope = self.global_variables.subscope();
-                scope.overload_function(&generic_self_self_getter)?;
-                self.runtime.source.trait_references.insert(Rc::clone(&generic_self_self_getter.target), Rc::clone(&trait_.generics["Self"]));
+                scope.overload_function(&generic_self_self_getter, FunctionRepresentation::new("Self", FunctionForm::GlobalImplicit))?;
+                self.runtime.source.trait_references.insert(Rc::clone(&generic_self_self_getter), Rc::clone(&trait_.generics["Self"]));
 
                 let mut linker = TraitLinker {
                     runtime: &self.runtime,
@@ -148,12 +150,14 @@ impl <'a> GlobalLinker<'a> {
                     _ => panic!()
                 };
 
-                let self_getter = FunctionPointer::new_global_implicit("Self", FunctionInterface::new_provider(&self_meta_type, vec![]));
+                let self_getter = FunctionHead::new_static(
+                    FunctionInterface::new_provider(&self_meta_type, vec![]),
+                );
                 let self_binding = declared.create_generic_binding(vec![("Self", self_type)]);
 
                 let mut scope = self.global_variables.subscope();
-                scope.overload_function(&self_getter)?;
-                self.runtime.source.trait_references.insert(Rc::clone(&self_getter.target), self_trait);
+                scope.overload_function(&self_getter, FunctionRepresentation::new("Self", FunctionForm::GlobalImplicit))?;
+                self.runtime.source.trait_references.insert(Rc::clone(&self_getter), self_trait);
 
                 let mut linker = ConformanceLinker { runtime: &self.runtime, functions: vec![], };
                 for statement in syntax.statements.iter() {
@@ -175,29 +179,27 @@ impl <'a> GlobalLinker<'a> {
 
                 for fun in linker.functions {
                     if let Some(body) = &fun.body {
-                        self.schedule_function_body(Rc::clone(&fun.pointer.target), body, pstatement.position.clone());
+                        self.schedule_function_body(Rc::clone(&fun.function), body, pstatement.position.clone());
                     }
-                    self.add_function_interface(fun.pointer, fun.decorators)?;
+                    self.add_function_interface(fun.function, fun.representation.clone(), fun.decorators)?;
                 }
             }
             ast::Statement::Macro(syntax) => {
-                let fun = match syntax.macro_name.as_str() {
+                let (fun, representation) = match syntax.macro_name.as_str() {
                     "main" => {
-                        let fun = Rc::new(FunctionPointer {
-                            target: FunctionHead::new(
+                        let (fun, representation) = (
+                            FunctionHead::new_static(
                                 Rc::new(FunctionInterface {
                                     parameters: vec![],
                                     return_type: TypeProto::unit(TypeUnit::Void),
                                     requirements: Default::default(),
                                     generics: Default::default(),
-                                }),
-                                FunctionType::Static
+                                })
                             ),
-                            name: "main".to_string(),
-                            form: FunctionForm::GlobalFunction,
-                        });
-                        self.module.main_functions.push(Rc::clone(&fun.target));
-                        fun
+                            FunctionRepresentation::new("main", FunctionForm::GlobalFunction)
+                        );
+                        self.module.main_functions.push(Rc::clone(&fun));
+                        (fun, representation)
                     },
                     "transpile" => {
                         let transpiler_trait = self.runtime.source.module_by_name["transpilation"].trait_by_getter.values()
@@ -205,8 +207,8 @@ impl <'a> GlobalLinker<'a> {
                             .exactly_one().unwrap();
 
                         // TODO This should use a generic transpiler, not a struct.
-                        let fun = Rc::new(FunctionPointer {
-                            target: FunctionHead::new(
+                        let (fun, representation) = (
+                            FunctionHead::new_static(
                                 Rc::new(FunctionInterface {
                                     parameters: vec![
                                         Parameter {
@@ -219,13 +221,11 @@ impl <'a> GlobalLinker<'a> {
                                     requirements: Default::default(),
                                     generics: Default::default(),
                                 }),
-                                FunctionType::Static
                             ),
-                            name: "transpile".to_string(),
-                            form: FunctionForm::GlobalFunction,
-                        });
-                        self.module.transpile_functions.push(Rc::clone(&fun.target));
-                        fun
+                            FunctionRepresentation::new("transpile", FunctionForm::GlobalFunction)
+                        );
+                        self.module.transpile_functions.push(Rc::clone(&fun));
+                        (fun, representation)
                     },
                     "precedence_order" => {
                         guard!(let Some(body) = &syntax.body else {
@@ -241,9 +241,9 @@ impl <'a> GlobalLinker<'a> {
                 };
 
                 if let Some(body) = &syntax.body {
-                    self.schedule_function_body(Rc::clone(&fun.target), body, pstatement.position.clone());
+                    self.schedule_function_body(Rc::clone(&fun), body, pstatement.position.clone());
                 }
-                self.add_function_interface(fun, &syntax.decorators)?;
+                self.add_function_interface(fun, representation, &syntax.decorators)?;
             }
             statement => {
                 return Err(RuntimeError::new(format!("Statement {} is not supported in a global context.", statement)))
@@ -266,24 +266,24 @@ impl <'a> GlobalLinker<'a> {
 
     fn add_trait(&mut self, trait_: &Rc<Trait>) -> Result<(), RuntimeError> {
         let getter = self.module.add_trait(&trait_);
-        self.global_variables.overload_function(&getter)?;
-        self.runtime.source.trait_references.insert(Rc::clone(&getter.target), Rc::clone(trait_));
+        self.global_variables.overload_function(&getter, FunctionRepresentation::new(&trait_.name, FunctionForm::GlobalImplicit))?;
+        self.runtime.source.trait_references.insert(getter, Rc::clone(trait_));
 
         try_make_struct(trait_, self)?;
         Ok(())
     }
 
-    pub fn add_function_interface(&mut self, pointer: Rc<FunctionPointer>, decorators: &Vec<String>) -> RResult<()> {
+    pub fn add_function_interface(&mut self, pointer: Rc<FunctionHead>, representation: FunctionRepresentation, decorators: &Vec<String>) -> RResult<()> {
         // Add the function to our module
-        self.module.add_function(Rc::clone(&pointer));
+        self.module.add_function(Rc::clone(&pointer), representation.clone());
 
         // Make it usable in our current scope.
-        self.global_variables.overload_function(&pointer)?;
+        self.global_variables.overload_function(&pointer, representation)?;
         // The runtime also needs to know about the function.
         // TODO Technically we need to load it too, because future linked functions may want to call it.
         self.runtime.source.fn_getters.insert(
-            Rc::clone(&pointer.target),
-            Rc::clone(&self.module.fn_getters[&pointer.target])
+            Rc::clone(&pointer),
+            Rc::clone(&self.module.fn_getters[&pointer])
         );
 
         // if interface.is_member_function {

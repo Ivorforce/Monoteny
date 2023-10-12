@@ -122,13 +122,6 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
                 }
             }
 
-            BuiltinFunctionHint::True => {
-                ("True", FunctionForm::Constant(KEYWORD_IDS["True"]))
-            }
-            BuiltinFunctionHint::False => {
-                ("False", FunctionForm::Constant(KEYWORD_IDS["False"]))
-            }
-
             BuiltinFunctionHint::Constructor(_) => continue,
             BuiltinFunctionHint::Getter(_) => continue,
             BuiltinFunctionHint::Setter(_) => continue,
@@ -155,8 +148,8 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     }
 
     // TODO Some of these sneakily convert the type - especially float to int and vice versa.
-    for ptr in runtime.source.module_by_name["math"].fn_pointers.values() {
-        let representation = match ptr.name.as_str() {
+    for (function, representation) in runtime.source.module_by_name["math"].fn_representations.iter() {
+        let representation = match representation.name.as_str() {
             "factorial" => "math.factorial",
             "sin" => "math.sin",
             "cos" => "math.cos",
@@ -179,32 +172,44 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
             _ => continue,
         };
 
-        representations.builtin_functions.insert(Rc::clone(&ptr.target));
-        global.insert_fixed_name(ptr.target.function_id, representation);
+        representations.builtin_functions.insert(Rc::clone(function));
+        global.insert_fixed_name(function.function_id, representation);
         // By the time we need other representations hopefully we can use object namespaces
-        representations.function_representations.insert(Rc::clone(&ptr.target), FunctionForm::FunctionCall(ptr.target.function_id));
+        representations.function_representations.insert(Rc::clone(function), FunctionForm::FunctionCall(function.function_id));
     }
 
-    for ptr in runtime.source.module_by_name["debug"].fn_pointers.values() {
-        let representation = match ptr.name.as_str() {
+    for (function, representation) in runtime.source.module_by_name["debug"].fn_representations.iter() {
+        let representation = match representation.name.as_str() {
             "_write_line" => "print",
             "_exit_with_error" => "exit",
             _ => continue,
         };
 
-        representations.builtin_functions.insert(Rc::clone(&ptr.target));
-        global.insert_fixed_name(ptr.target.function_id, representation);
-        representations.function_representations.insert(Rc::clone(&ptr.target), FunctionForm::FunctionCall(ptr.target.function_id));
+        representations.builtin_functions.insert(Rc::clone(function));
+        global.insert_fixed_name(function.function_id, representation);
+        representations.function_representations.insert(Rc::clone(function), FunctionForm::FunctionCall(function.function_id));
     }
 
-    for ptr in runtime.source.module_by_name["strings"].fn_pointers.values() {
-        let (higher_order_name, representation) = match ptr.name.as_str() {
+    for (function, representation) in runtime.source.module_by_name["strings"].fn_representations.iter() {
+        let (higher_order_name, representation) = match representation.name.as_str() {
             "add" => ("op.add", FunctionForm::Binary(KEYWORD_IDS["+"])),
             _ => continue,
         };
 
-        representations.builtin_functions.insert(Rc::clone(&ptr.target));
-        global.insert_fixed_name(ptr.target.function_id, higher_order_name);
-        representations.function_representations.insert(Rc::clone(&ptr.target), representation);
+        representations.builtin_functions.insert(Rc::clone(function));
+        global.insert_fixed_name(function.function_id, higher_order_name);
+        representations.function_representations.insert(Rc::clone(function), representation);
+    }
+
+    for (function, representation) in runtime.source.module_by_name["bool"].fn_representations.iter() {
+        let (higher_order_name, representation) = match representation.name.as_str() {
+            "true" => ("True", FunctionForm::Constant(KEYWORD_IDS["True"])),
+            "false" => ("False", FunctionForm::Constant(KEYWORD_IDS["False"])),
+            _ => continue,
+        };
+
+        representations.builtin_functions.insert(Rc::clone(function));
+        global.insert_fixed_name(function.function_id, higher_order_name);
+        representations.function_representations.insert(Rc::clone(function), representation);
     }
 }

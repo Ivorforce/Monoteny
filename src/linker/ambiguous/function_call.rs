@@ -3,14 +3,14 @@ use std::fmt::{Display, Formatter};
 use std::ops::Range;
 use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
-use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::debug::MockFunctionInterface;
-use crate::program::functions::{FunctionForm, FunctionHead, ParameterKey};
+use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::traits::{RequirementsFulfillment, Trait, TraitBinding, TraitGraph};
 use crate::program::types::TypeProto;
@@ -26,7 +26,7 @@ pub struct AmbiguousFunctionCandidate {
 
 pub struct AmbiguousFunctionCall {
     pub expression_id: ExpressionID,
-    pub function_name: String,
+    pub representation: FunctionRepresentation,
     pub arguments: Vec<ExpressionID>,
     pub traits: TraitGraph,
 
@@ -67,7 +67,7 @@ impl AmbiguousFunctionCall {
 
 impl Display for AmbiguousFunctionCall {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Ambiguous function call ({} candidates): {}", self.candidates.len(), self.function_name)
+        write!(f, "Ambiguous function call ({} candidates): {}", self.candidates.len(), self.representation.name)
     }
 }
 
@@ -124,8 +124,7 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             }
             cs => {
                 let signature = MockFunctionInterface {
-                    function_name: self.function_name.to_string(),
-                    form: FunctionForm::GlobalFunction,
+                    representation: self.representation.clone(),
                     argument_keys: self.arguments.iter().map(|a| ParameterKey::Positional).collect_vec(),
                     arguments: self.arguments.clone(),
                     types: &linker.types,

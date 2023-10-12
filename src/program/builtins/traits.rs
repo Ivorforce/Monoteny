@@ -1,11 +1,54 @@
 use std::collections::HashMap;
 use std::rc::Rc;
-use crate::program::functions::{FunctionInterface, FunctionPointer};
+use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType};
 use crate::program::module::Module;
 use crate::program::primitives;
 use crate::program::traits::Trait;
 use crate::program::types::{TypeProto, TypeUnit};
 
+pub struct FunctionPointer {
+    pub target: Rc<FunctionHead>,
+    pub representation: FunctionRepresentation,
+}
+
+impl FunctionPointer {
+    pub fn new_global_function(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
+        Rc::new(FunctionPointer {
+            target: FunctionHead::new_static(interface),
+            representation: FunctionRepresentation {
+                name: name.to_string(),
+                form: FunctionForm::GlobalFunction,
+            },
+        })
+    }
+
+    pub fn new_member_function(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
+        Rc::new(FunctionPointer {
+            target: FunctionHead::new_static(interface),
+            representation: FunctionRepresentation {
+                name: name.to_string(),
+                form: FunctionForm::MemberFunction,
+            },
+        })
+    }
+
+    pub fn new_global_implicit(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
+        Rc::new(FunctionPointer {
+            target: FunctionHead::new_static(interface),
+            representation: FunctionRepresentation {
+                name: name.to_string(),
+                form: FunctionForm::GlobalImplicit,
+            },
+        })
+    }
+}
+
+pub fn insert_functions<'a, I>(module: &mut Trait, functions: I) where I: Iterator<Item=&'a Rc<FunctionPointer>> {
+    for ptr in functions {
+        module.insert_function(Rc::clone(&ptr.target), ptr.representation.clone())
+    }
+}
 
 #[allow(non_snake_case)]
 pub struct Traits {
@@ -159,7 +202,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
 
     let mut Eq = Trait::new_with_self("Eq".to_string());
     let eq_functions = make_eq_functions(&Eq.create_generic_type("Self"), &bool_type);
-    Eq.insert_functions([
+    insert_functions(&mut Eq, [
         &eq_functions.equal_to,
         &eq_functions.not_equal_to,
     ].into_iter());
@@ -168,7 +211,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
 
     let mut Ord = Trait::new_with_self("Ord".to_string());
     let ord_functions = make_ord_functions(&Ord.create_generic_type("Self"), &bool_type);
-    Ord.insert_functions([
+    insert_functions(&mut Ord, [
         &ord_functions.greater_than,
         &ord_functions.greater_than_or_equal_to,
         &ord_functions.lesser_than,
@@ -180,7 +223,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
 
     let mut Number = Trait::new_with_self("Number".to_string());
     let number_functions = make_number_functions(&Number.create_generic_type("Self"));
-    Number.insert_functions([
+    insert_functions(&mut Number, [
         &number_functions.add,
         &number_functions.subtract,
         &number_functions.multiply,
@@ -200,7 +243,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     //  Maybe a candidate for return self.strip().
     let mut ToString = Trait::new_with_self("ToString".to_string());
     let to_string_function = make_to_string_function(&ToString, &String);
-    ToString.insert_functions([
+    insert_functions(&mut ToString, [
         &to_string_function
     ].into_iter());
     let ToString = Rc::new(ToString);
@@ -214,7 +257,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
             ConstructableByIntLiteral.create_generic_type("Self"),
         )
     );
-    ConstructableByIntLiteral.insert_functions([
+    insert_functions(&mut ConstructableByIntLiteral, [
         &parse_int_literal_function
     ].into_iter());
     let ConstructableByIntLiteral = Rc::new(ConstructableByIntLiteral);
@@ -229,7 +272,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
             ConstructableByRealLiteral.create_generic_type("Self")
         ),
     );
-    ConstructableByRealLiteral.insert_functions([
+    insert_functions(&mut ConstructableByRealLiteral, [
         &parse_real_literal_function
     ].into_iter());
     let ConstructableByRealLiteral = Rc::new(ConstructableByRealLiteral);
@@ -238,7 +281,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
 
     let mut Real = Trait::new_with_self("Real".to_string());
     let float_functions = make_real_functions(&Real.create_generic_type("Self"));
-    Real.insert_functions([
+    insert_functions(&mut Real, [
         &float_functions.exponent,
         &float_functions.logarithm
     ].into_iter());

@@ -2,7 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
 use crate::program::computation_tree::ExpressionOperation;
-use crate::program::functions::{FunctionHead, FunctionPointer};
+use crate::program::function_object::FunctionRepresentation;
+use crate::program::functions::FunctionHead;
 use crate::program::global::FunctionImplementation;
 use crate::program::types::TypeProto;
 use crate::transpiler::namespaces;
@@ -38,17 +39,17 @@ pub enum FunctionForm {
     Binary(Uuid),
 }
 
-pub fn find_for_function(function_representations: &mut HashMap<Rc<FunctionHead>, FunctionForm>, global_namespace: &mut namespaces::Level, implementation: &Box<FunctionImplementation>, pointer: &Rc<FunctionPointer>) {
+pub fn find_for_function(function_representations: &mut HashMap<Rc<FunctionHead>, FunctionForm>, global_namespace: &mut namespaces::Level, implementation: &Box<FunctionImplementation>, representation: FunctionRepresentation) {
     if implementation.parameter_locals.is_empty() {
         // TODO We could make a helper function and still use a constant even if we use blocks.
         let has_blocks = implementation.expression_forest.operations.values().any(|op| matches!(op, ExpressionOperation::Block));
         if !has_blocks {
-            global_namespace.insert_name(implementation.head.function_id, pointer.name.as_str());
+            global_namespace.insert_name(implementation.head.function_id, representation.name.as_str());
             function_representations.insert(Rc::clone(&implementation.head), FunctionForm::Constant(implementation.head.function_id));
             return
         }
     }
 
-    global_namespace.insert_name(implementation.head.function_id, pointer.name.as_str());
+    global_namespace.insert_name(implementation.head.function_id, representation.name.as_str());
     function_representations.insert(Rc::clone(&implementation.head), FunctionForm::FunctionCall(implementation.head.function_id));
 }

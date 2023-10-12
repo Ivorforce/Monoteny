@@ -10,10 +10,12 @@ use crate::linker::interface::link_function_pointer;
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::{Mutability, ObjectReference};
-use crate::program::functions::{FunctionForm, FunctionHead, FunctionInterface, FunctionPointer, FunctionType, Parameter, ParameterKey};
+use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType, Parameter, ParameterKey};
 use crate::program::global::BuiltinFunctionHint;
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::{TypeProto, TypeUnit};
+use crate::util::fmt::fmta;
 
 pub struct TraitLinker<'a> {
     pub runtime: &'a Runtime,
@@ -25,12 +27,12 @@ impl <'a> TraitLinker<'a> {
     pub fn link_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
-                let fun = link_function_pointer(&syntax, &scope, self.runtime, requirements)?;
+                let (fun, representation) = link_function_pointer(&syntax, &scope, self.runtime, requirements)?;
                 if !syntax.body.is_none() {
-                    return Err(RuntimeError::new(format!("Abstract function {} cannot have a body.", fun.name)));
+                    return Err(RuntimeError::new(format!("Abstract function {} cannot have a body.", fmta(|fmt| fun.format(fmt, &representation)))));
                 };
 
-                self.trait_.insert_function(fun);
+                self.trait_.insert_function(fun, representation);
             }
             ast::Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment } => {
                 if let Some(_) = assignment {
@@ -108,13 +110,21 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
             let struct_getter = struct_field.getter.clone().unwrap();
             linker.module.fn_builtin_hints.insert(Rc::clone(&struct_getter), BuiltinFunctionHint::Getter(Rc::clone(&variable_as_object)));
             function_mapping.insert(Rc::clone(abstract_getter), Rc::clone(&struct_getter));
-            linker.add_function_interface(fields::make_ptr(&struct_field, struct_getter), &vec![])?;
+            linker.add_function_interface(
+                struct_getter,
+                FunctionRepresentation::new(&struct_field.name, FunctionForm::MemberImplicit),
+                &vec![])?
+            ;
         }
         if let Some(abstract_setter) = &abstract_field.setter {
             let struct_setter = struct_field.setter.clone().unwrap();
             linker.module.fn_builtin_hints.insert(Rc::clone(&struct_setter), BuiltinFunctionHint::Setter(Rc::clone(&variable_as_object)));
             function_mapping.insert(Rc::clone(abstract_setter), Rc::clone(&struct_setter));
-            linker.add_function_interface(fields::make_ptr(&struct_field, struct_setter), &vec![])?;
+            linker.add_function_interface(
+                struct_setter,
+                FunctionRepresentation::new(&struct_field.name, FunctionForm::MemberImplicit),
+                &vec![]
+            )?;
         }
 
         parameters.push(Parameter {
@@ -132,21 +142,20 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
     linker.module.trait_conformance.add_conformance_rule(TraitConformanceRule::direct(Rc::clone(&conformance)));
     linker.global_variables.traits.add_conformance_rule(TraitConformanceRule::direct(conformance));
 
-    let constructor = Rc::new(FunctionPointer {
-        target: FunctionHead::new(
+    let constructor = FunctionHead::new_static(
             Rc::new(FunctionInterface {
                 parameters,
                 return_type: struct_type,
                 requirements: Default::default(),
                 generics: Default::default(),
             }),
-            FunctionType::Static
-        ),
-        name: "call_as_function".to_string(),
-        form: FunctionForm::MemberFunction,
-    });
-    linker.module.fn_builtin_hints.insert(Rc::clone(&constructor.target), BuiltinFunctionHint::Constructor(parameter_mapping));
-    linker.add_function_interface(constructor,  &vec![])?;
+    );
+    linker.module.fn_builtin_hints.insert(Rc::clone(&constructor), BuiltinFunctionHint::Constructor(parameter_mapping));
+    linker.add_function_interface(
+        constructor,
+        FunctionRepresentation::new("call_as_function", FunctionForm::MemberFunction),
+        &vec![],
+    )?;
 
     Ok(())
 }

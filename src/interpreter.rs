@@ -17,7 +17,8 @@ use crate::interpreter::compiler::make_function_getter;
 use crate::parser::ast;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
-use crate::program::functions::{FunctionHead, FunctionPointer, FunctionType};
+use crate::program::function_object::FunctionRepresentation;
+use crate::program::functions::{FunctionHead, FunctionType};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::module::Module;
 use crate::program::traits::{RequirementsFulfillment, Trait};
@@ -59,7 +60,7 @@ pub struct Source {
     /// For referencible functions, a way to load it. The getter itself does not get a getter.
     pub fn_getters: HashMap<Rc<FunctionHead>, Rc<FunctionHead>>,
     /// For referencible functions, its 'default' representation for syntax.
-    pub fn_pointers: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
+    pub fn_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
     /// For relevant functions, their implementation.
     pub fn_implementations: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
     /// For relevant functions, a hint what type of builtin it is.
@@ -85,7 +86,7 @@ impl Runtime {
                 trait_references: Default::default(),
                 fn_heads: Default::default(),
                 fn_getters: Default::default(),
-                fn_pointers: Default::default(),
+                fn_representations: Default::default(),
                 fn_implementations: Default::default(),
                 fn_builtin_hints: Default::default(),
             },
@@ -135,9 +136,9 @@ impl Runtime {
 
     pub fn load_module(&mut self, module: &Module) {
         self.source.trait_references.extend(module.trait_by_getter.clone());
-        self.source.fn_heads.extend(module.fn_pointers.keys().map(|f| (f.function_id, Rc::clone(f))).collect_vec());
+        self.source.fn_heads.extend(module.fn_representations.keys().map(|f| (f.function_id, Rc::clone(f))).collect_vec());
         self.source.fn_getters.extend(module.fn_getters.clone());
-        self.source.fn_pointers.extend(module.fn_pointers.clone());
+        self.source.fn_representations.extend(module.fn_representations.clone());
         self.source.fn_implementations.extend(module.fn_implementations.clone());
         self.source.fn_builtin_hints.extend(module.fn_builtin_hints.clone());
 

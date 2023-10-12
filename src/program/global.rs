@@ -30,8 +30,6 @@ pub enum BuiltinFunctionHint {
     Constructor(Vec<Rc<ObjectReference>>),
     Getter(Rc<ObjectReference>),
     Setter(Rc<ObjectReference>),
-    True,
-    False,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

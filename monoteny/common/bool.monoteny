@@ -1,0 +1,2 @@
+def true -> Bool;
+def false -> Bool;

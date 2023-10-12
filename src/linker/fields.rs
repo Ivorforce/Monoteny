@@ -1,11 +1,12 @@
 use std::rc::Rc;
-use crate::program::functions::{FunctionForm, FunctionHead, FunctionInterface, FunctionPointer, FunctionType, Parameter, ParameterKey};
-use crate::program::traits::{Trait, FieldHint};
+use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType, Parameter, ParameterKey};
+use crate::program::traits::{FieldHint, Trait};
 use crate::program::types::TypeProto;
 
 pub fn make(name: &str, self_type: &Box<TypeProto>, field_type: &Box<TypeProto>, add_getter: bool, add_setter: bool) -> FieldHint {
     let getter = add_getter.then_some({
-        let head = FunctionHead::new(
+        let head = FunctionHead::new_static(
             Rc::new(FunctionInterface {
                 parameters: vec![
                     Parameter {
@@ -17,13 +18,12 @@ pub fn make(name: &str, self_type: &Box<TypeProto>, field_type: &Box<TypeProto>,
                 requirements: Default::default(),
                 generics: Default::default(),
             }),
-            FunctionType::Static
         );
         head
     });
 
     let setter = add_setter.then_some({
-        let head = FunctionHead::new(
+        let head = FunctionHead::new_static(
             Rc::new(FunctionInterface {
                 parameters: vec![Parameter {
                     external_key: ParameterKey::Positional,
@@ -38,7 +38,6 @@ pub fn make(name: &str, self_type: &Box<TypeProto>, field_type: &Box<TypeProto>,
                 requirements: Default::default(),
                 generics: Default::default(),
             }),
-            FunctionType::Static
         );
         head
     });
@@ -51,24 +50,18 @@ pub fn make(name: &str, self_type: &Box<TypeProto>, field_type: &Box<TypeProto>,
     }
 }
 
-pub fn add_to_trait(trait_: &mut Trait, hint: FieldHint) {
-    if let Some(getter) = &hint.getter {
+pub fn add_to_trait(trait_: &mut Trait, field: FieldHint) {
+    if let Some(getter) = &field.getter {
         trait_.insert_function(
-            make_ptr(&hint, Rc::clone(getter))
+            Rc::clone(getter),
+            FunctionRepresentation::new(&field.name, FunctionForm::MemberImplicit)
         )
     }
-    if let Some(setter) = &hint.setter {
+    if let Some(setter) = &field.setter {
         trait_.insert_function(
-            make_ptr(&hint, Rc::clone(setter))
+            Rc::clone(setter),
+            FunctionRepresentation::new(&field.name, FunctionForm::MemberImplicit)
         )
     }
-    trait_.field_hints.push(hint)
-}
-
-pub fn make_ptr(hint: &FieldHint, function: Rc<FunctionHead>) -> Rc<FunctionPointer> {
-    Rc::new(FunctionPointer {
-        target: function,
-        name: hint.name.clone(),
-        form: FunctionForm::MemberImplicit,
-    })
+    trait_.field_hints.push(field)
 }

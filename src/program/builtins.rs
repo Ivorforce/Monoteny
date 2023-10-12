@@ -6,7 +6,6 @@ use crate::program::module::Module;
 use crate::program::traits::Trait;
 
 pub mod primitives;
-pub mod common;
 pub mod traits;
 
 pub struct Builtins {
@@ -22,7 +21,6 @@ pub fn create_builtins() -> Rc<Builtins> {
     let primitive_traits = primitives::create_traits(&mut module);
     let traits = traits::create(&mut module, &primitive_traits);
     primitives::create_functions(&mut module, &traits, &primitive_traits);
-    common::create_functions(&mut module, &primitive_traits);
 
     Rc::new(Builtins {
         module: Rc::new(module),

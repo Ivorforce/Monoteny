@@ -3,17 +3,9 @@ use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use uuid::Uuid;
-use crate::error::{RResult, RuntimeError};
+use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::TypeProto;
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub enum FunctionForm {
-    GlobalFunction,
-    GlobalImplicit,
-    MemberFunction,
-    MemberImplicit,
-}
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ParameterKey {
@@ -25,7 +17,7 @@ pub enum ParameterKey {
 pub enum FunctionType {
     Static,
     /// Not a real function call, rather to be delegated through the requirement's resolution.
-    Polymorphic { provided_by_assumption: Rc<TraitBinding>, abstract_function: Rc<FunctionPointer> },
+    Polymorphic { provided_by_assumption: Rc<TraitBinding>, abstract_function: Rc<FunctionHead> },
 }
 
 /// The 'head' of a function. It is identifiable by its ID and has an interface.
@@ -35,27 +27,6 @@ pub struct FunctionHead {
     pub function_id: Uuid,
     pub function_type: FunctionType,
     pub interface: Rc<FunctionInterface>,
-}
-
-/// An object that says 'Oh, I know a function!'
-/// It associates the function with a name and a form.
-#[derive(PartialEq, Eq, Hash)]
-pub struct FunctionPointer {
-    /// The underlying function.
-    pub target: Rc<FunctionHead>,
-
-    /// Name of the function.
-    pub name: String,
-    /// How the functon looks in syntax.
-    pub form: FunctionForm,
-}
-
-/// Reference to a multiplicity of functions, usually resolved when attempting to call
-#[derive(Clone, PartialEq, Eq)]
-pub struct FunctionOverload {
-    pub pointers: HashSet<Rc<FunctionPointer>>,
-    pub name: String,
-    pub form: FunctionForm,
 }
 
 /// A parameter as visible from the outside.
@@ -163,10 +134,10 @@ impl FunctionInterface {
         })
     }
 
-    pub fn fmt_with_form(&self, fmt: &mut Formatter<'_>, name: &str, form: FunctionForm) -> std::fmt::Result {
+    pub fn format(&self, fmt: &mut Formatter<'_>, representation: &FunctionRepresentation) -> std::fmt::Result {
         let mut head = 0;
 
-        let has_args = match form {
+        let has_args = match representation.form {
             FunctionForm::GlobalFunction => true,
             FunctionForm::GlobalImplicit => false,
             FunctionForm::MemberFunction => {
@@ -181,7 +152,7 @@ impl FunctionInterface {
             }
         };
 
-        write!(fmt, "{}", name)?;
+        write!(fmt, "{}", representation.name)?;
 
         if has_args {
             write!(fmt, "(")?;
@@ -214,40 +185,11 @@ impl FunctionInterface {
     }
 }
 
-impl FunctionPointer {
-    pub fn new_global_function(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
-        Rc::new(FunctionPointer {
-            target: FunctionHead::new(interface, FunctionType::Static),
-            name: name.into(),
-            form: FunctionForm::GlobalFunction,
-        })
-    }
-
-    pub fn new_member_function(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
-        Rc::new(FunctionPointer {
-            target: FunctionHead::new(interface, FunctionType::Static),
-            name: name.into(),
-            form: FunctionForm::MemberFunction,
-        })
-    }
-
-    pub fn new_global_implicit(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
-        Rc::new(FunctionPointer {
-            target: FunctionHead::new(interface, FunctionType::Static),
-            name: name.into(),
-            form: FunctionForm::GlobalImplicit,
-        })
-    }
-
-    pub fn can_match_strict(&self, other: &FunctionPointer) -> bool {
-        if &self.name != &other.name { return false; }
-        if &self.form != &other.form { return false; }
-
-        self.target.can_match(&other.target)
-    }
-}
-
 impl FunctionHead {
+    pub fn new_static(interface: Rc<FunctionInterface>) -> Rc<FunctionHead> {
+        Self::new(interface, FunctionType::Static)
+    }
+
     pub fn new(interface: Rc<FunctionInterface>, function_type: FunctionType) -> Rc<FunctionHead> {
         Rc::new(FunctionHead {
             function_id: Uuid::new_v4(),
@@ -256,14 +198,14 @@ impl FunctionHead {
         })
     }
 
-    pub fn fmt_with_form(&self, fmt: &mut Formatter<'_>, name: &str, form: FunctionForm) -> std::fmt::Result {
+    pub fn format(&self, fmt: &mut Formatter<'_>, representation: &FunctionRepresentation) -> std::fmt::Result {
         let call_type_symbol = match self.function_type {
             FunctionType::Static => "|",
             FunctionType::Polymorphic { .. } => "?"
         };
         write!(fmt, "-{}({})--> ", call_type_symbol, &self.function_id)?;
 
-        self.interface.fmt_with_form(fmt, name, form)
+        self.interface.format(fmt, representation)
     }
 
     pub fn unwrap_id(&self) -> Uuid {
@@ -271,43 +213,6 @@ impl FunctionHead {
             FunctionType::Static => self.function_id,
             FunctionType::Polymorphic { .. } => panic!("Cannot unwrap polymorphic implementation ID"),
         }
-    }
-
-    pub fn can_match(&self, other: &FunctionHead) -> bool {
-        // TODO Should try to match generics?
-        if &self.function_type != &other.function_type { return false; }
-        if &self.interface != &other.interface { return false; }
-
-        true
-    }
-}
-
-impl FunctionOverload {
-    pub fn from(function: &Rc<FunctionPointer>) -> Rc<FunctionOverload> {
-        Rc::new(FunctionOverload {
-            pointers: HashSet::from([Rc::clone(function)]),
-            name: function.name.clone(),
-            form: function.form.clone(),
-        })
-    }
-
-    pub fn adding_function(&self, function: &Rc<FunctionPointer>) -> RResult<Rc<FunctionOverload>> {
-        if self.form != function.form {
-            return Err(RuntimeError::new(format!("Cannot overload functions and constants.")))
-        }
-
-        Ok(Rc::new(FunctionOverload {
-            pointers: self.pointers.iter()
-                .chain([function])
-                .map(Rc::clone)
-                .collect(),
-            name: self.name.clone(),
-            form: self.form.clone(),
-        }))
-    }
-
-    pub fn iter_heads(&self) -> impl Iterator<Item=&Rc<FunctionHead>> {
-        self.pointers.iter().map(|p| &p.target)
     }
 }
 
@@ -335,15 +240,9 @@ impl Hash for FunctionHead {
     }
 }
 
-impl Debug for FunctionPointer {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        self.target.fmt_with_form(fmt, &self.name, self.form)
-    }
-}
-
 impl Debug for FunctionHead {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        self.fmt_with_form(fmt, &"fn".to_string(), FunctionForm::GlobalFunction)
+        self.format(fmt, &FunctionRepresentation::new("fn", FunctionForm::GlobalFunction))
     }
 }
 

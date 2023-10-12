@@ -10,7 +10,8 @@ use crate::linker::scopes;
 use crate::linker::scopes::Environment;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
-use crate::program::functions::{FunctionOverload, ParameterKey};
+use crate::program::function_object::FunctionOverload;
+use crate::program::functions::ParameterKey;
 use crate::program::r#struct::Struct;
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::util::position::{Positioned, positioned};
@@ -81,8 +82,8 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                 match previous.map(|v| &v.value) {
                     Some(Token::FunctionReference { overload, target }) => {
                         let expression_id = linker.link_function_call(
-                            overload.iter_heads(),
-                            &overload.name,
+                            overload.functions.iter(),
+                            overload.representation.clone(),
                             target.iter().map(|_| &ParameterKey::Positional).chain(&struct_.keys).cloned().collect(),
                             target.iter().chain(&struct_.values).cloned().collect(),
                             scope,
@@ -98,8 +99,8 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                             .as_function_overload().err_in_range(&ptoken.position)?;
 
                         let expression_id = linker.link_function_call(
-                            overload.iter_heads(),
-                            &overload.name,
+                            overload.functions.iter(),
+                            overload.representation.clone(),
                             [&ParameterKey::Positional].into_iter().chain(&struct_.keys).cloned().collect(),
                             [expression].into_iter().chain(&struct_.values).cloned().collect(),
                             scope,
@@ -152,12 +153,12 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
     for i in 0 .. tokens.len() {
         let ptoken = &tokens[i];
         if let Token::FunctionReference { overload, target } = &ptoken.value {
-            match overload.pointers.iter().exactly_one() {
+            match overload.functions.iter().exactly_one() {
                 Ok(function) => {
-                    let getter = Rc::clone(&linker.runtime.source.fn_getters[&function.target]);
+                    let getter = Rc::clone(&linker.runtime.source.fn_getters[function]);
                     let expression_id = linker.link_unambiguous_expression(
                         vec![],
-                        &TypeProto::unit(TypeUnit::Function(Rc::clone(&function.target))),
+                        &TypeProto::unit(TypeUnit::Function(Rc::clone(function))),
                         // Call the getter of the function 'object' instead of the function itself.
                         ExpressionOperation::FunctionCall(FunctionBinding::pure(getter))
                     )?;
@@ -205,7 +206,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
 
         // Unary operator, because left of operator is an operator!
         let argument = arguments.remove(0);
-        let expression_id = linker.link_function_call(overload.iter_heads(), &overload.name, vec![ParameterKey::Positional], vec![argument.value], scope, ptoken.position)?;
+        let expression_id = linker.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional], vec![argument.value], scope, ptoken.position)?;
         arguments.insert(0, argument.with_value(expression_id));
     }
 
@@ -228,7 +229,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
             i,
             Positioned {
                 position: range.clone(),
-                value: linker.link_function_call(overload.iter_heads(), &overload.name, vec![ParameterKey::Positional, ParameterKey::Positional], vec![lhs.value, rhs.value], scope, range)?,
+                value: linker.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional, ParameterKey::Positional], vec![lhs.value, rhs.value], scope, range)?,
             }
         ))
     };

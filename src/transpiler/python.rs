@@ -120,7 +120,7 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
                         }
                     }
                     BuiltinFunctionHint::Getter(ref_) => {
-                        let ptr = &runtime.source.fn_pointers[&binding.function];
+                        let ptr = &runtime.source.fn_representations[&binding.function];
                         member_namespace.insert_fixed_name(ref_.id, &ptr.name);  // TODO This should not be fixed.
                         representations.function_representations.insert(
                             Rc::clone(&binding.function),
@@ -128,7 +128,7 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
                         );
                     }
                     BuiltinFunctionHint::Setter(ref_) => {
-                        let ptr = &runtime.source.fn_pointers[&binding.function];
+                        let ptr = &runtime.source.fn_representations[&binding.function];
                         member_namespace.insert_fixed_name(ref_.id, &ptr.name);  // TODO This should not be fixed.
                         representations.function_representations.insert(
                             Rc::clone(&binding.function),
@@ -145,20 +145,20 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
 
     for implementation in transpiler.exported_functions.iter() {
         // TODO Register with priority over internal symbols. Internal functions can use understore prefix if need be.
-        let ptr = &runtime.source.fn_pointers[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
+        let representation = &runtime.source.fn_representations[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
         representations::find_for_function(
             &mut representations.function_representations,
             &mut file_namespace,
-            implementation, ptr
+            implementation, representation.clone()
         );
     }
 
     for implementation in transpiler.internal_functions.iter() {
-        let ptr = &runtime.source.fn_pointers[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
+        let representation = &runtime.source.fn_representations[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
         representations::find_for_function(
             &mut representations.function_representations,
             &mut file_namespace,
-            implementation, ptr
+            implementation, representation.clone()
         );
     }
 

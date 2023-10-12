@@ -2,7 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use uuid::Uuid;
 use crate::linker::precedence::PrecedenceGroup;
-use crate::program::functions::{FunctionHead, FunctionInterface, FunctionPointer, FunctionType};
+use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::traits::{Trait, TraitGraph};
 use crate::program::types::{Pattern, TypeProto, TypeUnit};
@@ -19,7 +20,7 @@ pub struct Module {
     pub trait_conformance: Box<TraitGraph>,
 
     /// For referencable functions, their 'default' representation for calling them.
-    pub fn_pointers: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
+    pub fn_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
     /// For referencable functions, a provider function to get it as a function.
     /// FIXME We don't really need to keep track of these. This could be a builtin hint.
     ///  This requires us to provide a FunctionImplementation for call_as_function on every function
@@ -46,7 +47,7 @@ impl Module {
             precedence_order: None,
             patterns: Default::default(),
             trait_conformance: Box::new(TraitGraph::new()),
-            fn_pointers: Default::default(),
+            fn_representations: Default::default(),
             fn_getters: Default::default(),
             fn_implementations: Default::default(),
             fn_builtin_hints: Default::default(),
@@ -55,28 +56,27 @@ impl Module {
         }
     }
 
-    pub fn add_trait(&mut self, trait_: &Rc<Trait>) -> Rc<FunctionPointer> {
+    pub fn add_trait(&mut self, trait_: &Rc<Trait>) -> Rc<FunctionHead> {
         let meta_type = TypeProto::meta(TypeProto::unit(TypeUnit::Struct(Rc::clone(trait_))));
-        let getter = FunctionPointer::new_global_implicit(trait_.name.as_str(), FunctionInterface::new_provider(&meta_type, vec![]));
+        let getter = FunctionHead::new_static(FunctionInterface::new_provider(&meta_type, vec![]));
 
         self.trait_by_getter.insert(
-            Rc::clone(&getter.target),
+            Rc::clone(&getter),
             Rc::clone(trait_),
         );
-        self.add_function(Rc::clone(&getter));
+        self.add_function(Rc::clone(&getter), FunctionRepresentation::new(&trait_.name, FunctionForm::GlobalImplicit));
         getter
     }
 
-    pub fn add_function(&mut self, function: Rc<FunctionPointer>) {
-        let getter = FunctionHead::new(
-            FunctionInterface::new_provider(&TypeProto::unit(TypeUnit::Function(Rc::clone(&function.target))), vec![]),
-            FunctionType::Static
+    pub fn add_function(&mut self, function: Rc<FunctionHead>, representation: FunctionRepresentation) {
+        let getter = FunctionHead::new_static(
+            FunctionInterface::new_provider(&TypeProto::unit(TypeUnit::Function(Rc::clone(&function))), vec![]),
         );
-        self.fn_getters.insert(Rc::clone(&function.target), getter);
+        self.fn_getters.insert(Rc::clone(&function), getter);
 
-        self.fn_pointers.insert(
-            Rc::clone(&function.target),
+        self.fn_representations.insert(
             function,
+            representation,
         );
     }
 }

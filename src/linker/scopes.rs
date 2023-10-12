@@ -4,7 +4,8 @@ use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::allocation::Reference;
-use crate::program::functions::{FunctionForm, FunctionOverload, FunctionPointer};
+use crate::program::function_object::{FunctionForm, FunctionOverload, FunctionRepresentation};
+use crate::program::functions::FunctionHead;
 use crate::program::traits::TraitGraph;
 use crate::program::module::Module;
 use crate::program::types::{Pattern, PatternPart};
@@ -90,8 +91,8 @@ impl <'a> Scope<'a> {
             self.add_pattern(Rc::clone(pattern))?;
         }
 
-        for function in module.fn_pointers.values() {
-            self.overload_function(function)?;
+        for (function, representation) in module.fn_representations.iter() {
+            self.overload_function(function, representation.clone())?;
         }
 
         self.traits.add_graph(&module.trait_conformance);
@@ -105,9 +106,9 @@ impl <'a> Scope<'a> {
             .collect_vec();
     }
 
-    pub fn overload_function(&mut self, fun: &Rc<FunctionPointer>) -> RResult<()> {
-        let name = &fun.name;
-        let environment = Environment::from_form(&fun.form);
+    pub fn overload_function(&mut self, fun: &Rc<FunctionHead>, representation: FunctionRepresentation) -> RResult<()> {
+        let name = &representation.name;
+        let environment = Environment::from_form(&representation.form);
 
         let mut refs = self.references_mut(environment);
 
@@ -118,7 +119,7 @@ impl <'a> Scope<'a> {
             if let Reference::FunctionOverload(overload) = existing {
                 let overload = Reference::FunctionOverload(overload.adding_function(fun)?);
 
-                refs.insert(fun.name.clone(), overload);
+                refs.insert(representation.name.clone(), overload);
             }
             else {
                 panic!("Cannot overload with function '{}' if a reference exists in the same scope under the same name.", name);
@@ -130,14 +131,14 @@ impl <'a> Scope<'a> {
                 let overload = Reference::FunctionOverload(overload.adding_function(fun)?);
 
                 let mut refs = self.references_mut(environment);
-                refs.insert(fun.name.clone(), overload);
+                refs.insert(representation.name.clone(), overload);
             }
 
             let mut refs = self.references_mut(environment);
 
-            let overload = Reference::FunctionOverload(FunctionOverload::from(fun));
+            let overload = Reference::FunctionOverload(FunctionOverload::from(fun, representation.clone()));
 
-            refs.insert(fun.name.clone(), overload);
+            refs.insert(representation.name.clone(), overload);
         }
 
         Ok(())

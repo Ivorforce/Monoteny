@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use strum::IntoEnumIterator;
 use crate::program::builtins::traits;
-use crate::program::builtins::traits::{make_to_string_function, Traits};
-use crate::program::functions::{FunctionInterface, FunctionPointer};
+use crate::program::builtins::traits::{FunctionPointer, make_to_string_function, Traits};
+use crate::program::functions::FunctionInterface;
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
 use crate::program::module::Module;
 use crate::program::primitives;
@@ -27,7 +27,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
     let bool_type = TypeProto::simple_struct(&basis[&primitives::Type::Bool]);
 
     let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module| {
-        module.add_function(Rc::clone(function));
+        module.add_function(Rc::clone(&function.target), function.representation.clone());
         module.fn_builtin_hints.insert(
             Rc::clone(&function.target),
             BuiltinFunctionHint::PrimitiveOperation { type_: primitive_type, operation }
@@ -155,29 +155,17 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         "and_f",
         FunctionInterface::new_operator(2, &bool_type, &bool_type)
     );
-    module.fn_builtin_hints.insert(
-        Rc::clone(&and_op.target),
-        BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::And }
-    );
-    module.add_function(and_op);
+    add_function(&and_op, primitives::Type::Bool, PrimitiveOperation::And, module);
 
     let or__op = FunctionPointer::new_global_function(
         "or_f",
         FunctionInterface::new_operator(2, &bool_type, &bool_type)
     );
-    module.fn_builtin_hints.insert(
-        Rc::clone(&or__op.target),
-        BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::Or }
-    );
-    module.add_function(or__op);
+    add_function(&or__op, primitives::Type::Bool, PrimitiveOperation::Or, module);
 
     let not_op = FunctionPointer::new_global_function(
         "not_f",
         FunctionInterface::new_operator(1, &bool_type, &bool_type)
     );
-    module.fn_builtin_hints.insert(
-        Rc::clone(&not_op.target),
-        BuiltinFunctionHint::PrimitiveOperation { type_: primitives::Type::Bool, operation: PrimitiveOperation::Not }
-    );
-    module.add_function(not_op);
+    add_function(&not_op, primitives::Type::Bool, PrimitiveOperation::Not, module);
 }

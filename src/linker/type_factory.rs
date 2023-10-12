@@ -34,7 +34,7 @@ impl <'a> TypeFactory<'a> {
         let reference = self.scope.resolve(Environment::Global, &name)?;
         let overload = reference.as_function_overload()?;
 
-        let function = overload.iter_heads().exactly_one()
+        let function = overload.functions.iter().exactly_one()
             .map_err(|_| RuntimeError::new("Function overload cannot be resolved to a type.".to_string()))?;
         let trait_ = self.runtime.source.trait_references.get(function)
             .ok_or_else(|| RuntimeError::new("Interpreted types aren't supported yet; please use an explicit type for now. 1".to_string()))?;

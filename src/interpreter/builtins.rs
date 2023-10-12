@@ -1,11 +1,8 @@
 use std::alloc::{alloc, Layout};
 use std::rc::Rc;
-use monoteny_macro::{bin_op, parse_op, un_op, fun_op, load_constant, to_string_op};
+use monoteny_macro::{bin_op, parse_op, un_op, fun_op, to_string_op};
 use std::str::FromStr;
-use guard::guard;
-use uuid::Uuid;
 use crate::interpreter::{FunctionInterpreterImpl, Runtime, Value};
-use crate::program::functions::FunctionHead;
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
 use crate::program::primitives;
 use crate::program::types::TypeUnit;
@@ -25,8 +22,6 @@ pub fn load(runtime: &mut Runtime) {
                 create_primitive_op(type_.clone(), operation.clone())
             }
             BuiltinFunctionHint::Constructor(_) => todo!(),
-            BuiltinFunctionHint::True => load_constant!(bool true),
-            BuiltinFunctionHint::False => load_constant!(bool false),
             BuiltinFunctionHint::Getter(_) => todo!(),
             BuiltinFunctionHint::Setter(_) => todo!(),
         });

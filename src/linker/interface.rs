@@ -8,12 +8,13 @@ use crate::linker::type_factory::TypeFactory;
 use crate::linker::scopes;
 use crate::parser::ast;
 use crate::parser::ast::{Expression, OperatorArgument};
-use crate::program::functions::{FunctionForm, FunctionPointer, FunctionType, FunctionInterface, ParameterKey, Parameter, FunctionHead};
+use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType, Parameter, ParameterKey};
 use crate::program::traits::TraitBinding;
 use crate::program::types::{PatternPart, TypeProto};
 
 
-pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<Rc<FunctionPointer>> {
+pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
     let mut type_factory = TypeFactory::new(scope, runtime);
 
     let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x, true)).unwrap_or_else(|| Ok(TypeProto::void()))?;
@@ -36,22 +37,23 @@ pub fn link_function_pointer(function: &ast::Function, scope: &scopes::Scope, ru
         });
     }
 
-    Ok(Rc::new(FunctionPointer {
-        target: FunctionHead::new(
+    Ok((
+        FunctionHead::new_static(
             Rc::new(FunctionInterface {
                 parameters,
                 return_type,
                 requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
                 generics: type_factory.generics,
             }),
-            FunctionType::Static
         ),
-        name: function.identifier.clone(),
-        form: if function.target_type.is_none() { FunctionForm::GlobalFunction } else { FunctionForm::MemberFunction },
-    }))
+        FunctionRepresentation::new(
+            &function.identifier,
+            if function.target_type.is_none() { FunctionForm::GlobalFunction } else { FunctionForm::MemberFunction }
+        )
+    ))
 }
 
-pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::Scope, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<Rc<FunctionPointer>> {
+pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::Scope, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
     let mut type_factory = TypeFactory::new(scope, runtime);
 
     let return_type = function.return_type.as_ref().map(|x| type_factory.link_type(&x, true)).unwrap_or_else(|| Ok(TypeProto::void()))?;
@@ -59,21 +61,20 @@ pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::S
     if let [OperatorArgument::Keyword(name)] = &function.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
         // Constant
 
-        let fun = Rc::new(FunctionPointer {
-            target: FunctionHead::new(
+        return Ok((
+            FunctionHead::new_static(
                 Rc::new(FunctionInterface {
                     parameters: vec![],
                     return_type,
                     requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
                     generics: type_factory.generics,
                 }),
-                FunctionType::Static
             ),
-            name: name.clone(),
-            form: FunctionForm::GlobalImplicit,
-        });
-
-        return Ok(fun)
+            FunctionRepresentation::new(
+                name,
+                FunctionForm::GlobalImplicit
+            )
+        ))
     }
 
     // TODO Throw if multiple patterns match
@@ -92,19 +93,20 @@ pub fn link_operator_pointer(function: &ast::OperatorFunction, scope: &scopes::S
             });
         }
 
-        return Ok(Rc::new(FunctionPointer {
-            target: FunctionHead::new(
+        return Ok((
+            FunctionHead::new_static(
                 Rc::new(FunctionInterface {
                     parameters,
                     return_type,
                     requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
                     generics: type_factory.generics,
                 }),
-                FunctionType::Static
             ),
-            name: pattern.alias.clone(),
-            form: FunctionForm::GlobalFunction,
-        }))
+            FunctionRepresentation::new(
+                &pattern.alias,
+                FunctionForm::GlobalFunction,
+            )
+        ))
     }
 
     return Err(RuntimeError::new(format!("Unknown pattern in function definition: {}", function.parts.iter().map(|x| x.to_string()).join(" "))));

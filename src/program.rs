@@ -11,3 +11,4 @@ pub mod module;
 pub mod calls;
 pub mod r#struct;
 pub mod debug;
+pub mod function_object;

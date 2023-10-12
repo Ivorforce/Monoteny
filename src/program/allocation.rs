@@ -5,7 +5,8 @@ use std::rc::Rc;
 use guard::guard;
 use crate::error::{RResult, RuntimeError};
 use crate::linker::precedence::PrecedenceGroup;
-use crate::program::functions::{FunctionHead, FunctionOverload};
+use crate::program::function_object::FunctionOverload;
+use crate::program::functions::FunctionHead;
 use crate::program::types::{TypeProto, TypeUnit};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -95,7 +96,7 @@ impl Debug for Reference {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Reference::Local(t) => write!(fmt, "{:?}", t.type_),
-            Reference::FunctionOverload(f) => write!(fmt, "{}", &f.name),
+            Reference::FunctionOverload(f) => write!(fmt, "{}", &f.representation.name),
             Reference::Keyword(s) => write!(fmt, "{}", s),
         }
     }

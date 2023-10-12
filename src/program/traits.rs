@@ -8,7 +8,8 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::linker::ambiguous::AmbiguityResult;
-use crate::program::functions::{FunctionHead, FunctionPointer, FunctionType, FunctionInterface};
+use crate::program::function_object::FunctionRepresentation;
+use crate::program::functions::{FunctionHead, FunctionType, FunctionInterface};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::util::fmt::write_keyval;
@@ -29,7 +30,7 @@ pub struct Trait {
 
     // Functions required by this trait specifically (not its requirements).
     // The head of each function to its pointer (how it is defined).
-    pub abstract_functions: HashMap<Rc<FunctionHead>, Rc<FunctionPointer>>,
+    pub abstract_functions: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
     pub field_hints: Vec<FieldHint>,
 }
 
@@ -287,31 +288,27 @@ impl TraitGraph {
         for trait_binding in deep_requirements.iter() {
             let mut binding_resolution = HashMap::new();
 
-            for abstract_fun in trait_binding.trait_.abstract_functions.values() {
-                let mapped_pointer = Rc::new(FunctionPointer {
-                    name: abstract_fun.name.clone(),
-                    form: abstract_fun.form.clone(),
-                    target: FunctionHead::new(
-                        Rc::new(FunctionInterface {
-                            parameters: abstract_fun.target.interface.parameters.iter().map(|x| {
-                                x.mapping_type(&|type_| type_.replacing_structs(&trait_binding.generic_to_type))
-                            }).collect(),
-                            return_type: abstract_fun.target.interface.return_type.replacing_structs(&trait_binding.generic_to_type),
-                            requirements: abstract_fun.target.interface.requirements.iter().map(|req| {
-                                req.mapping_types(&|type_| type_.replacing_structs(&trait_binding.generic_to_type))
-                            }).collect(),
-                            // the function's own generics aren't mapped; we're only binding those from the trait itself.
-                            generics: abstract_fun.target.interface.generics.clone(),
-                        }),
-                        FunctionType::Polymorphic {
-                            provided_by_assumption: Rc::clone(&trait_binding),
-                            abstract_function: Rc::clone(abstract_fun)
-                        }
-                    ),
-                });
+            for abstract_fun in trait_binding.trait_.abstract_functions.keys() {
+                let mapped_head = FunctionHead::new(
+                    Rc::new(FunctionInterface {
+                        parameters: abstract_fun.interface.parameters.iter().map(|x| {
+                            x.mapping_type(&|type_| type_.replacing_structs(&trait_binding.generic_to_type))
+                        }).collect(),
+                        return_type: abstract_fun.interface.return_type.replacing_structs(&trait_binding.generic_to_type),
+                        requirements: abstract_fun.interface.requirements.iter().map(|req| {
+                            req.mapping_types(&|type_| type_.replacing_structs(&trait_binding.generic_to_type))
+                        }).collect(),
+                        // the function's own generics aren't mapped; we're only binding those from the trait itself.
+                        generics: abstract_fun.interface.generics.clone(),
+                    }),
+                    FunctionType::Polymorphic {
+                        provided_by_assumption: Rc::clone(&trait_binding),
+                        abstract_function: Rc::clone(abstract_fun)
+                    }
+                );;
                 binding_resolution.insert(
-                    Rc::clone(&abstract_fun.target),
-                    Rc::clone(&mapped_pointer.target)
+                    Rc::clone(&abstract_fun),
+                    mapped_head
                 );
             }
 
@@ -361,14 +358,8 @@ impl Trait {
         })
     }
 
-    pub fn insert_function(&mut self, function: Rc<FunctionPointer>) {
-        self.abstract_functions.insert(Rc::clone(&function.target), function);
-    }
-
-    pub fn insert_functions<'a, I>(&mut self, functions: I) where I: Iterator<Item=&'a Rc<FunctionPointer>> {
-        for ptr in functions {
-            self.insert_function(Rc::clone(ptr))
-        }
+    pub fn insert_function(&mut self, function: Rc<FunctionHead>, representation: FunctionRepresentation) {
+        self.abstract_functions.insert(function, representation);
     }
 
     pub fn add_simple_parent_requirement(&mut self, parent_trait: &Rc<Trait>) {

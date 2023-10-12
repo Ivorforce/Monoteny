@@ -7,15 +7,16 @@ use itertools::Itertools;
 use try_map::FallibleMapExt;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::program::computation_tree::{ExpressionTree, ExpressionID, ExpressionOperation};
+use crate::program::computation_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
 use crate::linker::{precedence, scopes};
-use crate::linker::ambiguous::{AmbiguousFunctionCall, AmbiguousFunctionCandidate, AmbiguousAbstractCall, LinkerAmbiguity, AmbiguityResult};
+use crate::linker::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, LinkerAmbiguity};
 use crate::linker::precedence::link_patterns;
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::{ObjectReference, Reference};
 use crate::program::debug::MockFunctionInterface;
-use crate::program::functions::{FunctionForm, FunctionHead, FunctionOverload, FunctionPointer, ParameterKey};
+use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
 use crate::program::r#struct::Struct;
@@ -65,13 +66,9 @@ impl <'a> ImperativeLinker<'a> {
                 // TODO Do we need to keep track of the object reference created by this trait conformance?
                 //  For the record, it SHOULD be created - an abstract function reference can still be passed around,
                 //  assigned and maybe called later.
-                let ptr = &conformance.binding.trait_.abstract_functions[abstract_function];
                 scope.overload_function(
-                    &Rc::new(FunctionPointer {
-                        target: Rc::clone(function),
-                        name: ptr.name.clone(),
-                        form: ptr.form.clone(),
-                    }),
+                    function,
+                    conformance.binding.trait_.abstract_functions[abstract_function].clone(),
                 )?;
             }
         }
@@ -229,7 +226,7 @@ impl <'a> ImperativeLinker<'a> {
                     let overload = scope
                         .resolve(scopes::Environment::Member, identifier)?
                         .as_function_overload()?;
-                    self.link_function_call(overload.iter_heads(), &overload.name, vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
+                    self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
                 }
                 else {
                     // Assign to local variable
@@ -321,13 +318,13 @@ impl <'a> ImperativeLinker<'a> {
                         precedence::Token::Keyword(keyword.clone())
                     }
                     Reference::FunctionOverload(overload) => {
-                        match overload.form {
+                        match overload.representation.form {
                             FunctionForm::GlobalFunction => {
                                 precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
                             }
                             FunctionForm::GlobalImplicit => {
                                 precedence::Token::Expression(
-                                    self.link_function_call(overload.iter_heads(), &overload.name, vec![], vec![], scope, syntax.position.clone())?
+                                    self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![], vec![], scope, syntax.position.clone())?
                                 )
                             }
                             FunctionForm::MemberFunction => panic!(),
@@ -369,10 +366,10 @@ impl <'a> ImperativeLinker<'a> {
                 let overload = scope.resolve(scopes::Environment::Member, member_name)?
                     .as_function_overload()?;
 
-                match overload.form {
+                match overload.representation.form {
                     FunctionForm::MemberImplicit => {
                         precedence::Token::Expression(
-                            self.link_function_call(overload.iter_heads(), &overload.name, vec![ParameterKey::Positional], vec![*target], scope, syntax.position.clone())?
+                            self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional], vec![*target], scope, syntax.position.clone())?
                         )
                     }
                     FunctionForm::MemberFunction => {
@@ -454,9 +451,9 @@ impl <'a> ImperativeLinker<'a> {
 
         match variable {
             Reference::FunctionOverload(overload) => {
-                match overload.form {
+                match overload.representation.form {
                     FunctionForm::GlobalFunction => {
-                        let expression_id = self.link_function_call(overload.iter_heads(), &overload.name, keys, args, scope, range)?;
+                        let expression_id = self.link_function_call(overload.functions.iter(), overload.representation.clone(), keys, args, scope, range)?;
                         // Make sure the return type is actually String.
                         self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.traits.String))))?;
                         Ok(expression_id)
@@ -470,11 +467,11 @@ impl <'a> ImperativeLinker<'a> {
         }
     }
 
-    pub fn link_conjunctive_pairs(&mut self, arguments: Vec<Positioned<ExpressionID>>, operations: Vec<Rc<FunctionOverload>>) -> RResult<Positioned<ExpressionID>> {
+    pub fn link_conjunctive_pairs(&mut self, arguments: Vec<Positioned<ExpressionID>>, operations: Vec<Rc<FunctionHead>>) -> RResult<Positioned<ExpressionID>> {
         todo!()
     }
 
-    pub fn link_function_call<'b>(&mut self, functions: impl Iterator<Item=&'b Rc<FunctionHead>>, fn_name: &str, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> RResult<ExpressionID> {
+    pub fn link_function_call<'b>(&mut self, functions: impl Iterator<Item=&'b Rc<FunctionHead>>, representation: FunctionRepresentation, argument_keys: Vec<ParameterKey>, argument_expressions: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> RResult<ExpressionID> {
         // TODO Check if any arguments are void before anything else
         let argument_keys: Vec<&ParameterKey> = argument_keys.iter().collect();
 
@@ -508,7 +505,7 @@ impl <'a> ImperativeLinker<'a> {
 
             self.register_ambiguity(Box::new(AmbiguousFunctionCall {
                 expression_id,
-                function_name: fn_name.to_string(),
+                representation,
                 arguments: argument_expressions,
                 traits: scope.traits.clone(),
                 range,
@@ -522,8 +519,7 @@ impl <'a> ImperativeLinker<'a> {
         // TODO We should probably output the locations of candidates.
 
         let signature = MockFunctionInterface {
-            function_name: fn_name.to_string(),
-            form: FunctionForm::GlobalFunction,
+            representation,
             argument_keys: argument_keys.clone().into_iter().cloned().collect_vec(),
             arguments: argument_expressions.clone(),
             types: &self.types,
