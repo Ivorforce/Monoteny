@@ -61,7 +61,7 @@ impl ExpressionTree {
     }
 
     pub fn deep_children(&self, start: ExpressionID) -> Vec<ExpressionID> {
-        omega([start].into_iter(), |e| self.arguments[e].iter().cloned())
+        omega([start].into_iter(), |e| self.arguments[e].iter().cloned()).collect_vec()
     }
 }
 

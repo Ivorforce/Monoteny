@@ -134,7 +134,7 @@ impl<'a> Refactor<'a> {
             return self.dependents.get(*head).iter().flat_map(|x| x.iter())
                 .filter_map(|dependent| self.inline_hints.remove(dependent).map(|hint| (dependent, hint)))
                 .collect_vec().into_iter()
-        });
+        }).collect_vec();
 
         for (head, hint) in all_affected {
             match &hint {
