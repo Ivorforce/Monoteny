@@ -22,6 +22,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::rc::Rc;
 use clap::{arg, Command};
 use itertools::Itertools;
 use colored::Colorize;
@@ -30,7 +31,7 @@ use crate::interpreter::Runtime;
 use crate::program::module::{Module, module_name};
 use crate::refactor::constant_folding::ConstantFold;
 use crate::refactor::Refactor;
-use crate::transpiler::Context;
+use crate::transpiler::LanguageContext;
 
 
 fn cli() -> Command<'static> {
@@ -135,8 +136,11 @@ fn main() -> ExitCode {
             let base_filename = output_path_proto.file_name().and_then(OsStr::to_str).unwrap();
             let base_output_path = output_path_proto.parent().unwrap();
 
+            let config = transpiler::Config {
+                should_constant_fold: !sub_matches.is_present("NOFOLD"),
+                should_monomorphize: true,
+            };
             let should_output_all = sub_matches.is_present("ALL");
-            let should_constant_fold = !sub_matches.is_present("NOFOLD");
 
             let output_extensions: Vec<&str> = match should_output_all {
                 true => vec!["py"],
@@ -162,7 +166,7 @@ fn main() -> ExitCode {
 
             for output_extension in output_extensions {
                 let start = dump_start(format!("{}:@transpile using {}", input_path.as_os_str().to_string_lossy(), output_extension).as_str());
-                match transpile_target(base_filename, base_output_path, should_constant_fold, &mut runtime, &module, output_extension) {
+                match transpile_target(base_filename, base_output_path, &config, &mut runtime, &module, output_extension) {
                     Ok(paths) => {
                         for path in paths {
                             println!("{}", path.to_str().unwrap());
@@ -185,33 +189,15 @@ fn main() -> ExitCode {
     }
 }
 
-fn transpile_target(base_filename: &str, base_output_path: &Path, should_constant_fold: bool, mut runtime: &mut Box<Runtime>, module: &Box<Module>, output_extension: &str) -> RResult<Vec<PathBuf>> {
+fn transpile_target(base_filename: &str, base_output_path: &Path, config: &transpiler::Config, mut runtime: &mut Box<Runtime>, module: &Box<Module>, output_extension: &str) -> RResult<Vec<PathBuf>> {
     let mut context = match output_extension {
         "py" => transpiler::python::create_context(&runtime),
         output_extension => panic!("File type not supported: {}", output_extension)
     };
 
-    let mut transpiler = transpiler::run(&module, &mut runtime, &mut context)?;
-    let mut refactor = Refactor::new();
+    let transpiler = interpreter::run::transpile(&module, &mut runtime)?;
 
-    for implementation in transpiler.exported_functions.iter_mut() {
-        refactor.add(implementation, false);
-    }
-    for implementation in transpiler.internal_functions.iter_mut() {
-        refactor.add(implementation, true);
-    }
-
-    if should_constant_fold {
-        let mut constant_folder = ConstantFold::new(&mut refactor);
-
-        constant_folder.run();
-
-        let inlined: HashSet<_> = refactor.inline_hints.keys().collect();
-        // The order of the internal functions is unimportant anyway, because they are sorted later.
-        transpiler.internal_functions.retain(|imp| !inlined.contains(&imp.head));
-    }
-
-    let file_map = context.make_files(base_filename, &runtime, &transpiler)?;
+    let file_map = context.make_files(base_filename, &runtime, transpiler, config)?;
     let output_files = file_map.into_iter().map(|(filename, content)| {
         let file_path = base_output_path.join(filename);
         let mut f = File::create(file_path.clone()).expect("Unable to create file");

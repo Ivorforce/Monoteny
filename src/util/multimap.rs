@@ -12,3 +12,9 @@ pub fn insert_into_multimap<K, V>(multimap: &mut HashMap<K, HashSet<V>>, key: K,
         }
     }
 }
+
+pub fn remove_from_multimap<K, V>(multimap: &mut HashMap<K, HashSet<V>>, key: &K, value: &V) where K: Hash, V: Hash, K: Eq, V: Eq, V: Clone, K: Clone {
+    if let Some(map) = multimap.get_mut(key) {
+        map.remove(value);
+    }
+}

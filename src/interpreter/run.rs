@@ -1,12 +1,16 @@
 use std::alloc::{alloc, Layout};
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ops::DerefMut;
 use std::rc::Rc;
 use guard::guard;
+use itertools::Itertools;
 use crate::error::RResult;
 use crate::interpreter::{FunctionInterpreter, Runtime, RuntimeError, Value};
 use crate::program::functions::FunctionHead;
 use crate::program::module::Module;
 use crate::program::traits::RequirementsFulfillment;
+use crate::transpiler::{TranspiledArtifact, Transpiler};
 
 pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
     let entry_function = match &module.main_functions[..] {
@@ -40,7 +44,7 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
 }
 
 // The function is written like this
-pub fn transpile(module: &Module, runtime: &mut Runtime, callback: &dyn Fn(Rc<FunctionHead>, &Runtime)) -> RResult<()> {
+pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpiler>> {
     let entry_function = match &module.transpile_functions[..] {
         [] => return Err(RuntimeError::new(format!("No @transpile function declared."))),
         [f] => f,
@@ -53,16 +57,29 @@ pub fn transpile(module: &Module, runtime: &mut Runtime, callback: &dyn Fn(Rc<Fu
     });
 
     let mut assignments = HashMap::new();
+    let mut transpiler = Rc::new(RefCell::new(Box::new(Transpiler {
+        main_function: module.main_functions.iter().at_most_one()
+            .map_err(|_| RuntimeError::new(format!("Too many @main functions declared: {:?}", module.main_functions)))?
+            .cloned(),
+        exported_artifacts: vec![],
+    })));
 
-    let transpiler_obj = &implementation.parameter_locals[0];
+    let transpiler_obj_ref = &implementation.parameter_locals[0];
+
+    let callback = |function_head, runtime: &Runtime| {
+        let mut transpiler = transpiler.borrow_mut();
+        let transpiler = transpiler.deref_mut();
+
+        transpiler.exported_artifacts.push(TranspiledArtifact::Function(function_head));
+    };
 
     // Set the transpiler object.
     unsafe {
         let transpiler_layout = Layout::new::<&dyn Fn(Rc<FunctionHead>, &Runtime)>();
         let ptr = alloc(transpiler_layout);
-        *(ptr as *mut &dyn Fn(Rc<FunctionHead>, &Runtime)) = callback;
+        *(ptr as *mut &dyn Fn(Rc<FunctionHead>, &Runtime)) = &callback;
         assignments.insert(
-            transpiler_obj.id,
+            transpiler_obj_ref.id,
             Value { data: ptr, layout: transpiler_layout }
         );
     }
@@ -79,7 +96,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime, callback: &dyn Fn(Rc<Fu
         interpreter.run();
     }
 
-    Ok(())
+    Ok(Rc::try_unwrap(transpiler).map_err(|_| ()).expect("Internal Error on try_unwrap(exported_artifacts)").into_inner())
 }
 
 

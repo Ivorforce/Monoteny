@@ -13,7 +13,7 @@ use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, Tr
 use crate::program::types::TypeProto;
 
 
-pub struct Monomorphizer {
+pub struct Monomorphize {
     pub new_encountered_calls: Vec<Rc<FunctionBinding>>,
     pub encountered_calls: HashSet<Rc<FunctionBinding>>,
     // Not every call that is mapped is actually encountered.
@@ -22,16 +22,16 @@ pub struct Monomorphizer {
     pub resolved_call_to_mono_call: HashMap<Rc<FunctionBinding>, Rc<FunctionBinding>>,
 }
 
-impl Monomorphizer {
-    pub fn new() -> Monomorphizer {
-        Monomorphizer {
+impl Monomorphize {
+    pub fn new() -> Monomorphize {
+        Monomorphize {
             new_encountered_calls: Default::default(),
             encountered_calls: Default::default(),
             resolved_call_to_mono_call: Default::default(),
         }
     }
 
-    pub fn monomorphize_function(&mut self, implementation: &mut Box<FunctionImplementation>, function_binding: &Rc<FunctionBinding>, should_monomorphize: &dyn Fn(&Rc<FunctionBinding>) -> bool) {
+    pub fn monomorphize_function(&mut self, implementation: &mut FunctionImplementation, function_binding: &Rc<FunctionBinding>, should_monomorphize: impl Fn(&Rc<FunctionBinding>) -> bool) {
         // Map types.
         let generic_replacement_map = &function_binding.requirements_fulfillment.generic_mapping;
 

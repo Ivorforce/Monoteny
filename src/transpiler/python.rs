@@ -8,6 +8,7 @@ pub mod keywords;
 
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
+use std::hash::Hash;
 use std::ops::DerefMut;
 use std::rc::Rc;
 use guard::guard;
@@ -19,9 +20,11 @@ use crate::interpreter::Runtime;
 use crate::program::computation_tree::ExpressionOperation;
 
 use crate::program::functions::FunctionHead;
-use crate::program::global::BuiltinFunctionHint;
+use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::types::TypeUnit;
-use crate::transpiler::{namespaces, Transpiler};
+use crate::refactor::constant_folding::ConstantFold;
+use crate::refactor::Refactor;
+use crate::transpiler::{Config, namespaces, TranspiledArtifact, Transpiler};
 use crate::transpiler::python::ast::Statement;
 use crate::transpiler::python::class::{ClassContext, transpile_class};
 use crate::transpiler::python::imperative::{FunctionContext, transpile_function};
@@ -34,13 +37,37 @@ pub struct Context {
     pub builtin_member_namespace: namespaces::Level,
 }
 
-impl transpiler::Context for Context {
-    fn builtin_functions(&self) -> HashSet<Rc<FunctionHead>> {
-        self.representations.builtin_functions.clone()
-    }
+impl transpiler::LanguageContext for Context {
+    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: Box<Transpiler>, config: &Config) -> RResult<HashMap<String, String>> {
+        let mut refactor = Refactor::new(runtime);
 
-    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: &Transpiler) -> RResult<HashMap<String, String>> {
-        let ast = create_ast(transpiler, self, runtime)?;
+        for artifact in transpiler.exported_artifacts {
+            match artifact {
+                TranspiledArtifact::Function(head) => {
+                    refactor.add(runtime.source.fn_implementations[&head].clone());
+                }
+            }
+        }
+
+        if config.should_monomorphize {
+            let builtin_functions = self.representations.builtin_functions.clone();
+            for head in refactor.explicit_functions.iter().cloned().collect_vec() {
+                refactor.monomorphize(head, &|binding| !builtin_functions.contains(&binding.function))
+            }
+        }
+        else {
+            todo!()
+        }
+
+        if config.should_constant_fold {
+            let mut constant_folder = ConstantFold::new(&mut refactor);
+            constant_folder.run();
+        }
+
+        let mapped_call_to_user_call = refactor.monomorphize.get_mono_call_to_original_call();
+        let exported_functions = refactor.explicit_functions.iter().map(|head| refactor.implementation_by_head.remove(head).unwrap()).collect_vec();
+        let internal_functions = refactor.invented_functions.iter().map(|head| refactor.implementation_by_head.remove(head).unwrap()).collect_vec();
+        let ast = create_ast(transpiler.main_function, exported_functions, internal_functions, &mapped_call_to_user_call, self, runtime)?;
 
         Ok(HashMap::from([
             (format!("{}.py", filename), ast.to_string())
@@ -58,7 +85,7 @@ pub fn create_context(runtime: &Runtime) -> Context {
     context
 }
 
-pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime) -> RResult<Box<ast::Module>> {
+pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: Vec<Box<FunctionImplementation>>, internal_functions: Vec<Box<FunctionImplementation>>, mapped_call_to_user_call: &HashMap<Rc<FunctionHead>, Rc<FunctionHead>>, context: &Context, runtime: &Runtime) -> RResult<Box<ast::Module>> {
     let mut representations = context.representations.clone();
     let builtin_structs: HashSet<_> = representations.type_ids.keys().cloned().collect();
 
@@ -69,8 +96,6 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
     //  Maybe it will naturally arise later.
     let mut member_namespace = context.builtin_global_namespace.clone();
     let mut file_namespace = global_namespace.add_sublevel();
-
-    let reverse_mapped_calls = transpiler.monomorphizer.get_mono_call_to_original_call();
 
     // ================= Names ==================
 
@@ -84,7 +109,7 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
 
     // We only really know from encountered calls which structs are left after monomorphization.
     // So let's just search the encountered calls.
-    for implementation in transpiler.exported_functions.iter().chain(transpiler.internal_functions.iter()) {
+    for implementation in exported_functions.iter().chain(internal_functions.iter()) {
         let function_namespace = file_namespace.add_sublevel();
         // Map internal variable names
         for (variable, name) in implementation.locals_names.iter() {
@@ -143,9 +168,9 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
 
     // ================= Representations ==================
 
-    for implementation in transpiler.exported_functions.iter() {
+    for implementation in exported_functions.iter() {
         // TODO Register with priority over internal symbols. Internal functions can use understore prefix if need be.
-        let representation = &runtime.source.fn_representations[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
+        let representation = &runtime.source.fn_representations[mapped_call_to_user_call.get(&implementation.head).unwrap_or(&implementation.head)];
         representations::find_for_function(
             &mut representations.function_representations,
             &mut file_namespace,
@@ -153,8 +178,8 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
         );
     }
 
-    for implementation in transpiler.internal_functions.iter() {
-        let representation = &runtime.source.fn_representations[reverse_mapped_calls.get(&implementation.head).unwrap_or(&implementation.head)];
+    for implementation in internal_functions.iter() {
+        let representation = &runtime.source.fn_representations[mapped_call_to_user_call.get(&implementation.head).unwrap_or(&implementation.head)];
         representations::find_for_function(
             &mut representations.function_representations,
             &mut file_namespace,
@@ -172,7 +197,7 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
         exported_statements: vec![],
         internal_statements: vec![],
         exported_names: HashSet::new(),
-        main_function: transpiler.main_function.clone().map(|head| names[&head.function_id].clone())
+        main_function: main_function.map(|head| names[&head.function_id].clone())
     });
 
     for (struct_type, id) in representations.type_ids.iter() {
@@ -195,8 +220,8 @@ pub fn create_ast(transpiler: &Transpiler, context: &Context, runtime: &Runtime)
     }
 
     for (implementations, is_exported) in [
-        (&transpiler.exported_functions, true),
-        (&transpiler.internal_functions, false),
+        (&exported_functions, true),
+        (&internal_functions, false),
     ] {
         for implementation in implementations.iter() {
             let context = FunctionContext {

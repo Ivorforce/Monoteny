@@ -6,13 +6,15 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
+use crate::interpreter::Runtime;
 use crate::linker::interface::FunctionHead;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, truncate_tree};
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
+use crate::refactor::monomorphize::Monomorphize;
 use crate::util::iter::omega;
-use crate::util::multimap::insert_into_multimap;
+use crate::util::multimap::{insert_into_multimap, remove_from_multimap};
 
 
 #[derive(Clone, Debug)]
@@ -23,35 +25,44 @@ pub enum InlineHint {
 }
 
 pub struct Refactor<'a> {
-    pub implementation_by_head: HashMap<Rc<FunctionHead>, &'a mut FunctionImplementation>,
-    pub dependents: HashMap<Rc<FunctionHead>, HashSet<Rc<FunctionHead>>>,
+    pub runtime: &'a Runtime,
 
-    pub forbid_interface_changes: HashSet<Rc<FunctionHead>>,
+    pub explicit_functions: Vec<Rc<FunctionHead>>,
+    pub invented_functions: Vec<Rc<FunctionHead>>,
+
+    pub implementation_by_head: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
+    pub callers: HashMap<Rc<FunctionHead>, HashSet<Rc<FunctionHead>>>,
+    pub callees: HashMap<Rc<FunctionHead>, HashSet<Rc<FunctionHead>>>,
+
     pub inline_hints: HashMap<Rc<FunctionHead>, InlineHint>,
+
+    pub monomorphize: Monomorphize,
 }
 
 impl<'a> Refactor<'a> {
-    pub fn new() -> Refactor<'a> {
+    pub fn new(runtime: &'a Runtime) -> Refactor<'a> {
         Refactor {
+            runtime,
             implementation_by_head: Default::default(),
-            dependents: Default::default(),
-            forbid_interface_changes: Default::default(),
+            explicit_functions: vec![],
+            invented_functions: vec![],
+            callers: Default::default(),
+            callees: Default::default(),
             inline_hints: Default::default(),
+            monomorphize: Monomorphize::new(),
         }
     }
 
-    pub fn add(&mut self, implementation: &'a mut FunctionImplementation, allow_inline: bool) {
+    pub fn add(&mut self, mut implementation: Box<FunctionImplementation>) {
+        self.explicit_functions.push(Rc::clone(&implementation.head));
+        self._add(implementation)
+    }
+
+    fn _add(&mut self, mut implementation: Box<FunctionImplementation>) {
         let head = Rc::clone(&implementation.head);
 
-        if !allow_inline {
-            self.forbid_interface_changes.insert(Rc::clone(&head));
-        }
-
-        for dependency in gather_dependencies(implementation) {
-            insert_into_multimap(&mut self.dependents, dependency, Rc::clone(&implementation.head));
-        }
-
         self.implementation_by_head.insert(Rc::clone(&head), implementation);
+        self.update_callees(&head);
 
         if !self.inline_hints.is_empty() {
             // In case any calls have already been inlined before this implementation was added.
@@ -59,8 +70,21 @@ impl<'a> Refactor<'a> {
         }
     }
 
+    pub fn update_callees(&mut self, head: &Rc<FunctionHead>) {
+        if let Some(previous_callees) = self.callees.get(head) {
+            for previous_callee in previous_callees.iter() {
+                remove_from_multimap(&mut self.callers, previous_callee, head);
+            }
+        }
+        let new_callees = gather_callees(&self.implementation_by_head[head]);
+        for callee in new_callees.iter() {
+            insert_into_multimap(&mut self.callers, Rc::clone(callee), Rc::clone(head));
+        }
+        self.callees.insert(Rc::clone(head), new_callees);
+    }
+
     pub fn try_inline(&mut self, head: &Rc<FunctionHead>) -> bool {
-        if self.forbid_interface_changes.contains(head) {
+        if self.explicit_functions.contains(head) {
             return false
         }
 
@@ -74,9 +98,10 @@ impl<'a> Refactor<'a> {
 
         self._inline_cascade(head, hint);
 
-        for dependent in self.dependents.get(head).iter().flat_map(|x| x.iter()).cloned().collect_vec() {
-            self.inline_calls(&dependent);
+        for caller in self.callers.get(head).iter().flat_map(|x| x.iter()).cloned().collect_vec() {
+            self.inline_calls(&caller);
         }
+        self.invented_functions.retain(|f| f != head);
 
         return true
     }
@@ -129,17 +154,13 @@ impl<'a> Refactor<'a> {
             }
         }
 
-        // TODO We don't know what calls we removed, so we don't know on whose dependents we still are.
-        //  This isn't a problem, just a bit ínefficient.
-        for dependency in gather_dependencies(implementation) {
-            insert_into_multimap(&mut self.dependents, dependency, Rc::clone(&implementation.head));
-        }
+        self.update_callees(head);
     }
 
     fn _inline_cascade(&mut self, head: &Rc<FunctionHead>, hint: InlineHint) {
         let all_affected = omega([(head, hint)].into_iter(), |(head, hint)| {
-            return self.dependents.get(*head).iter().flat_map(|x| x.iter())
-                .filter_map(|dependent| self.inline_hints.remove(dependent).map(|hint| (dependent, hint)))
+            return self.callers.get(*head).iter().flat_map(|x| x.iter())
+                .filter_map(|caller| self.inline_hints.remove(caller).map(|hint| (caller, hint)))
                 .collect_vec().into_iter()
         }).collect_vec();
 
@@ -166,16 +187,59 @@ impl<'a> Refactor<'a> {
             };
         }
     }
+
+    pub fn monomorphize(&mut self, head: Rc<FunctionHead>, should_monomorphize: &impl Fn(&Rc<FunctionBinding>) -> bool) {
+        let mut implementation = self.implementation_by_head.get_mut(&head).unwrap();
+
+        if !implementation.head.interface.generics.is_empty() {
+            // We'll need to somehow transpile requirements as protocols and generics as generics.
+            // That's for later!
+            panic!("Transpiling generic functions is not supported yet: {:?}", implementation.head);
+        }
+
+        self.monomorphize.monomorphize_function(
+            implementation,
+            &Rc::new(FunctionBinding {
+                // The implementation's pointer is fine.
+                function: Rc::clone(&head),
+                // The resolution SHOULD be empty: The function is transpiled WITH its generics.
+                // Unless generics are bound in the transpile directive, which is TODO
+                requirements_fulfillment: RequirementsFulfillment::empty(),
+            }),
+            should_monomorphize
+        );
+        self.update_callees(&head);
+
+        while let Some(function_binding) = self.monomorphize.new_encountered_calls.pop() {
+            guard!(let Some(implementation) = self.runtime.source.fn_implementations.get(&function_binding.function) else {
+            // We don't have an implementation ready, so it must be a core or otherwise injected.
+            continue;
+        });
+
+            // We may not create a new one through monomorphization, but we still need to take ownership.
+            let mut mono_implementation = implementation.clone();
+            // If the call had an empty fulfillment, it wasn't monomorphized. We can just use the implementation itself!
+            if self.monomorphize.resolved_call_to_mono_call.contains_key(&function_binding) {
+                self.monomorphize.monomorphize_function(
+                    &mut mono_implementation,
+                    &function_binding,
+                    should_monomorphize
+                );
+            };
+
+            self.invented_functions.push(Rc::clone(&mono_implementation.head));
+            self._add(mono_implementation);
+        }
+    }
 }
 
-pub fn gather_dependencies(implementation: &FunctionImplementation) -> HashSet<Rc<FunctionHead>> {
-    let mut dependencies = HashSet::new();
+pub fn gather_callees(implementation: &FunctionImplementation) -> HashSet<Rc<FunctionHead>> {
+    let mut callees = HashSet::new();
 
-    // First get all dependencies
     for expression_op in implementation.expression_forest.operations.values() {
         match expression_op {
             ExpressionOperation::FunctionCall(f) => {
-                dependencies.insert(Rc::clone(&f.function));
+                callees.insert(Rc::clone(&f.function));
             }
             ExpressionOperation::PairwiseOperations { .. } => {
                 todo!()
@@ -184,7 +248,7 @@ pub fn gather_dependencies(implementation: &FunctionImplementation) -> HashSet<R
         }
     }
 
-    dependencies
+    callees
 }
 
 pub fn try_inline(implementation: &FunctionImplementation) -> Option<InlineHint> {
