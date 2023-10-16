@@ -10,8 +10,8 @@ use crate::program::traits::RequirementsFulfillment;
 use crate::util::iter::omega;
 use crate::util::multimap::insert_into_multimap;
 
-pub struct ConstantFold {
-    pub implementation_by_head: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
+pub struct ConstantFold<'a> {
+    pub implementation_by_head: HashMap<Rc<FunctionHead>, &'a mut FunctionImplementation>,
 
     pub dependents: HashMap<Rc<FunctionHead>, HashSet<Rc<FunctionHead>>>,
 
@@ -32,8 +32,8 @@ pub enum InlineHint {
 /// - those that lookup a global variable (eg function reference)
 /// - those that do nothing
 ///
-impl ConstantFold {
-    pub fn new() -> ConstantFold {
+impl<'a> ConstantFold<'a> {
+    pub fn new() -> ConstantFold<'a> {
         ConstantFold {
             implementation_by_head: Default::default(),
             dependents: Default::default(),
@@ -42,7 +42,7 @@ impl ConstantFold {
         }
     }
 
-    pub fn add(&mut self, mut implementation: Box<FunctionImplementation>, allow_inline: bool) {
+    pub fn add(&mut self, mut implementation: &'a mut FunctionImplementation, allow_inline: bool) {
         self.gather_dependencies(&mut implementation);
 
         if !allow_inline {
@@ -214,11 +214,6 @@ impl ConstantFold {
             }
             _ => {}
         }
-    }
-
-    pub fn drain_all_functions_yield_uninlined(&mut self) -> Vec<Box<FunctionImplementation>> {
-        self.implementation_by_head.retain(|head, _| !self.inline_hints.contains_key(head));
-        self.implementation_by_head.drain().map(|(_, imp)| imp).collect()
     }
 }
 

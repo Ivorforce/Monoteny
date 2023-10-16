@@ -111,18 +111,16 @@ pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -
 pub fn constant_fold(transpiler: &mut Transpiler) {
     // Run constant folder
     let mut constant_folder = ConstantFold::new();
-    let exported_function_order = transpiler.exported_functions.iter().map(|x| Rc::clone(&x.head)).collect_vec();
 
     // The exported functions aren't called so it makes sense to prepare the internal functions first.
-    for implementation in transpiler.internal_functions.drain(..) {
+    for implementation in transpiler.internal_functions.iter_mut() {
         constant_folder.add(implementation, true);
     }
-    for implementation in transpiler.exported_functions.drain(..) {
+    for implementation in transpiler.exported_functions.iter_mut() {
         constant_folder.add(implementation, false);
     }
+    let inlined: HashSet<_> = constant_folder.inline_hints.keys().collect();
 
-    // Exported functions MUST be there still, because they can't be inlined.
-    transpiler.exported_functions.extend(exported_function_order.iter().map(|x| constant_folder.implementation_by_head.remove(x).unwrap()).collect_vec());
     // The order of the internal functions is unimportant anyway, because they are sorted later.
-    transpiler.internal_functions = constant_folder.drain_all_functions_yield_uninlined();
+    transpiler.internal_functions.retain(|imp| !inlined.contains(&imp.head));
 }
