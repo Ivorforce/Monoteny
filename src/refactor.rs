@@ -98,7 +98,7 @@ impl<'a> Refactor<'a> {
             return false
         });
 
-        self._inline_cascade(head, hint);
+        self.inline_hints.insert(Rc::clone(head), hint);
 
         for caller in self.callers.get(head).iter().flat_map(|x| x.iter()).cloned().collect_vec() {
             self.inline_calls(&caller);
@@ -114,37 +114,6 @@ impl<'a> Refactor<'a> {
         inline_calls(implementation, &self.inline_hints);
 
         self.update_callees(head);
-    }
-
-    fn _inline_cascade(&mut self, head: &Rc<FunctionHead>, hint: InlineHint) {
-        let all_affected = omega([(head, hint)].into_iter(), |(head, hint)| {
-            return self.callers.get(*head).iter().flat_map(|x| x.iter())
-                .filter_map(|caller| self.inline_hints.remove(caller).map(|hint| (caller, hint)))
-                .collect_vec().into_iter()
-        }).collect_vec();
-
-        for (head, hint) in all_affected {
-            match &hint {
-                InlineHint::ReplaceCall(target, arg_idxs) => {
-                    match self.inline_hints.get(target) {
-                        None => self.inline_hints.insert(Rc::clone(&head), hint),
-                        Some(InlineHint::ReplaceCall(target_head, target_arg_idxs)) => {
-                            self.inline_hints.insert(
-                                Rc::clone(&head),
-                                InlineHint::ReplaceCall(Rc::clone(target_head), target_arg_idxs.iter().map(|idx| arg_idxs[*idx].clone()).collect_vec())
-                            )
-                        }
-                        Some(InlineHint::YieldParameter(yield_idx)) => {
-                            // Same as above here.
-                            assert_eq!(*yield_idx, 0);
-                            self.inline_hints.insert(Rc::clone(&head), InlineHint::YieldParameter(arg_idxs[*yield_idx]))
-                        }
-                        Some(other_hint) => self.inline_hints.insert(Rc::clone(&head), other_hint.clone()),
-                    }
-                }
-                _ => self.inline_hints.insert(Rc::clone(&head), hint)
-            };
-        }
     }
 
     pub fn monomorphize(&mut self, head: Rc<FunctionHead>, should_monomorphize: &impl Fn(&Rc<FunctionBinding>) -> bool) {

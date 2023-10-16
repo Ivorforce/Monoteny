@@ -72,47 +72,57 @@ pub fn get_trivial_expression_call_target(expression_id: &ExpressionID, implemen
 
 pub fn inline_calls(implementation: &mut Box<FunctionImplementation>, hints: &HashMap<Rc<FunctionHead>, InlineHint>) {
     let expression_forest = &mut implementation.expression_forest;
-    for expression_id in expression_forest.deep_children(implementation.root_expression_id) {
-        guard!(let Some(operation) = expression_forest.operations.get(&expression_id) else {
-            // We have been truncated meanwhile!
-            continue;
-        });
+    'expression: for expression_id in expression_forest.deep_children(implementation.root_expression_id) {
+        'inline: loop {
+            guard!(let Some(operation) = expression_forest.operations.get(&expression_id) else {
+                // We have been truncated meanwhile!
+                continue 'expression;
+            });
 
-        match operation {
-            ExpressionOperation::FunctionCall(f) => {
-                if let Some(inline_hint) = hints.get(&f.function) {
-                    match inline_hint {
-                        InlineHint::ReplaceCall(target_function, idxs) => {
-                            let operation = expression_forest.operations.get_mut(&expression_id).unwrap();
-                            *operation = ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
-                                function: Rc::clone(&target_function),
-                                // The requirements fulfillment can be empty because otherwise it wouldn't have been inlined.
-                                requirements_fulfillment: RequirementsFulfillment::empty(),
-                            }));
-                            let arguments = expression_forest.arguments.get_mut(&expression_id).unwrap();
-                            let arguments_before = arguments.clone();
-                            *arguments = idxs.iter().map(|idx| arguments[*idx]).collect_vec();
-                            truncate_tree(arguments_before, arguments.iter().cloned().collect(), expression_forest);
+            match operation {
+                ExpressionOperation::FunctionCall(f) => {
+                    if let Some(inline_hint) = hints.get(&f.function) {
+                        match inline_hint {
+                            InlineHint::ReplaceCall(target_function, idxs) => {
+                                let operation = expression_forest.operations.get_mut(&expression_id).unwrap();
+                                *operation = ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
+                                    function: Rc::clone(&target_function),
+                                    // The requirements fulfillment can be empty because otherwise it wouldn't have been inlined.
+                                    requirements_fulfillment: RequirementsFulfillment::empty(),
+                                }));
+                                let arguments = expression_forest.arguments.get_mut(&expression_id).unwrap();
+                                let arguments_before = arguments.clone();
+                                *arguments = idxs.iter().map(|idx| arguments[*idx]).collect_vec();
+                                truncate_tree(arguments_before, arguments.iter().cloned().collect(), expression_forest);
+                                continue 'inline
+                            }
+                            InlineHint::YieldParameter(idx) => {
+                                let arguments_before = expression_forest.arguments[&expression_id].clone();
+                                let replacement_id = arguments_before[*idx];
+                                let replacement_operation = expression_forest.operations.remove(&replacement_id).unwrap();
+                                let replacement_arguments = expression_forest.arguments.remove(&replacement_id).unwrap();
+
+                                let operation = expression_forest.operations.get_mut(&expression_id).unwrap();
+                                *operation = replacement_operation;
+                                let arguments = expression_forest.arguments.get_mut(&expression_id).unwrap();
+                                *arguments = replacement_arguments;
+                                truncate_tree(arguments_before, [replacement_id].into_iter().collect(), expression_forest);
+                                continue 'inline
+                            },
+                            InlineHint::NoOp => {
+                                todo!("Should do this in another loop and remove if it's in a block, otherwise throw");
+                                continue 'inline
+                            },
                         }
-                        InlineHint::YieldParameter(idx) => {
-                            let arguments_before = expression_forest.arguments[&expression_id].clone();
-                            let replacement_id = arguments_before[*idx];
-                            let replacement_operation = expression_forest.operations.remove(&replacement_id).unwrap();
-                            let replacement_arguments = expression_forest.arguments.remove(&replacement_id).unwrap();
-
-                            let operation = expression_forest.operations.get_mut(&expression_id).unwrap();
-                            *operation = replacement_operation;
-                            let arguments = expression_forest.arguments.get_mut(&expression_id).unwrap();
-                            *arguments = replacement_arguments;
-                            truncate_tree(arguments_before, [replacement_id].into_iter().collect(), expression_forest);
-                        },
-                        InlineHint::NoOp => {
-                            todo!("Should do this in another loop and remove if it's in a block, otherwise throw")
-                        },
                     }
                 }
+                ExpressionOperation::PairwiseOperations { .. } => {
+                    todo!()
+                }
+                _ => {},
             }
-            _ => {}
+
+            continue 'expression
         }
     }
 }
