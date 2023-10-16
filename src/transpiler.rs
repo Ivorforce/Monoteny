@@ -9,6 +9,7 @@ use crate::program::global::FunctionImplementation;
 
 pub mod python;
 pub mod namespaces;
+pub mod structs;
 
 pub struct Config {
     pub should_constant_fold: bool,

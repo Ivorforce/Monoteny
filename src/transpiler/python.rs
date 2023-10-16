@@ -24,7 +24,7 @@ use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::types::TypeUnit;
 use crate::refactor::constant_folding::ConstantFold;
 use crate::refactor::Refactor;
-use crate::transpiler::{Config, namespaces, TranspiledArtifact, Transpiler};
+use crate::transpiler::{Config, namespaces, structs, TranspiledArtifact, Transpiler};
 use crate::transpiler::python::ast::Statement;
 use crate::transpiler::python::class::{ClassContext, transpile_class};
 use crate::transpiler::python::imperative::{FunctionContext, transpile_function};
@@ -109,10 +109,17 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
         )
     }
 
+    // Names for exported structs
+    let mut structs = HashMap::new();
+    structs::find(&exported_functions, &runtime.source, &mut structs);
+    let exported_structs = structs.keys().cloned().collect_vec();
+    for struct_ in structs.values() {
+        exports_namespace.insert_name(struct_.trait_.id, struct_.trait_.name.as_str());
+    }
+
+    // Names for traits
+    // TODO This should not be used; instead we should monomorphize traits.
     for (head, trait_) in runtime.source.trait_references.iter() {
-        // TODO This should not be fixed - but it currently clashes otherwise with Constructor's name choosing.
-        //  Technically the trait references should be monomorphized, because an access to Vec<String> is not the same
-        //  after monomorphization as Vec<Int32>. They should be two different constants.
         exports_namespace.insert_name(trait_.id, trait_.name.as_str());
         representations.function_representations.insert(Rc::clone(head), FunctionForm::Constant(trait_.id));
     }
@@ -128,58 +135,32 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
             println!("Local {:?}", ref_);
             function_namespace.insert_name(ref_.id, name);
         }
-
-        for (expression_id, operation) in implementation.expression_forest.operations.iter() {
-            if let ExpressionOperation::FunctionCall(binding) = operation {
-                guard!(let Some(hint) = runtime.source.fn_builtin_hints.get(&binding.function) else {
-                    continue;
-                });
-                let hint: &BuiltinFunctionHint = hint;
-
-                match hint {
-                    BuiltinFunctionHint::Constructor(object_refs) => {
-                        let type_ = &binding.function.interface.return_type;  // Fulfillment for Self
-                        if let Entry::Vacant(entry) = representations.type_ids.entry(type_.clone()) {
-                            // TODO If we have generics, we should include their bindings in the name somehow.
-                            //  Eg. ArrayFloat. Probably only if it's exactly one. Otherwise, we need to be ok with
-                            //  just the auto-renames.
-                            let (name, trait_id) = match &type_.unit {
-                                TypeUnit::Struct(trait_) => (&trait_.name, trait_.id),
-                                // Technically only the name is unsupported here, but later we'd need to actually construct it too.
-                                _ => panic!("Unsupported Constructor Type")
-                            };
-                            // TODO This logic will fall apart if we have multiple instantiations of the same type.
-                            //  In that case we probably want to monomorphize the struct getter per-object so we can
-                            //  differentiate them and assign different names.
-                            entry.insert(trait_id);
-                            representations.function_representations.insert(
-                                Rc::clone(&binding.function),
-                                FunctionForm::CallAsFunction
-                            );
-                        }
-                    }
-                    BuiltinFunctionHint::GetMemberField(ref_) => {
-                        let ptr = &runtime.source.fn_representations[&binding.function];
-                        internals_namespace.insert_name(ref_.id, &ptr.name);  // TODO We should run over all members of all used structs, not just the members we happen to use.
-                        representations.function_representations.insert(
-                            Rc::clone(&binding.function),
-                            FunctionForm::GetMemberField(ref_.id)
-                        );
-                    }
-                    BuiltinFunctionHint::SetMemberField(ref_) => {
-                        let ptr = &runtime.source.fn_representations[&binding.function];
-                        internals_namespace.insert_name(ref_.id, &ptr.name);  // TODO We should run over all members of all used structs, not just the members we happen to use.
-                        representations.function_representations.insert(
-                            Rc::clone(&binding.function),
-                            FunctionForm::SetMemberField(ref_.id)
-                        );
-                    }
-                    _ => {},
-                }
-            }
-        }
     }
 
+    // Internal struct names
+    structs::find(&internal_functions, &runtime.source, &mut structs);
+    let internal_structs = structs.keys().filter(|s| !exported_structs.contains(s)).collect_vec();
+    for type_ in internal_structs.iter() {
+        let struct_ = &structs[*type_];
+        internals_namespace.insert_name(struct_.trait_.id, struct_.trait_.name.as_str());
+    }
+
+    // Other struct pertaining functions
+    for struct_ in structs.values() {
+        let namespace = member_namespace.add_sublevel();
+        for (field, getter) in struct_.getters.iter() {
+            let ptr = &runtime.source.fn_representations[getter];
+            namespace.insert_name(field.id, ptr.name.as_str());
+            representations.function_representations.insert(Rc::clone(getter), FunctionForm::GetMemberField(field.id));
+        }
+        for (field, getter) in struct_.setters.iter() {
+            representations.function_representations.insert(Rc::clone(getter), FunctionForm::SetMemberField(field.id));
+        }
+        representations.function_representations.insert(Rc::clone(&struct_.constructor), FunctionForm::CallAsFunction);
+        representations.type_ids.insert(struct_.type_.clone(), struct_.trait_.id);
+    }
+
+    // Internal / generated functions
     for implementation in internal_functions.iter() {
         let representation = &runtime.source.fn_representations[mapped_call_to_user_call.get(&implementation.head).unwrap_or(&implementation.head)];
         representations::find_for_function(
