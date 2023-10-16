@@ -133,7 +133,6 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
         let function_namespace = internals_namespace.add_sublevel();
         // Map internal variable names
         for (ref_, name) in implementation.locals_names.iter() {
-            println!("Local {:?}", ref_);
             function_namespace.insert_name(ref_.id, name);
         }
     }
