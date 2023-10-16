@@ -171,9 +171,9 @@ impl<'a> Refactor<'a> {
 
         while let Some(function_binding) = self.monomorphize.new_encountered_calls.pop() {
             guard!(let Some(implementation) = self.runtime.source.fn_implementations.get(&function_binding.function) else {
-            // We don't have an implementation ready, so it must be a core or otherwise injected.
-            continue;
-        });
+                // We don't have an implementation ready, so it must be a core or otherwise injected.
+                continue;
+            });
 
             // We may not create a new one through monomorphization, but we still need to take ownership.
             let mut mono_implementation = implementation.clone();
