@@ -5,6 +5,7 @@ use itertools::Itertools;
 use crate::error::RResult;
 use crate::interpreter::Runtime;
 use crate::program::functions::FunctionHead;
+use crate::program::global::FunctionImplementation;
 
 pub mod python;
 pub mod namespaces;
@@ -15,7 +16,7 @@ pub struct Config {
 }
 
 pub enum TranspiledArtifact {
-    Function(Rc<FunctionHead>)
+    Function(Box<FunctionImplementation>)
 }
 
 pub struct Transpiler {

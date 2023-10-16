@@ -69,8 +69,9 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     let callback = |function_head, runtime: &Runtime| {
         let mut transpiler = transpiler.borrow_mut();
         let transpiler = transpiler.deref_mut();
+        let implementation = runtime.source.fn_implementations[&function_head].clone();
 
-        transpiler.exported_artifacts.push(TranspiledArtifact::Function(function_head));
+        transpiler.exported_artifacts.push(TranspiledArtifact::Function(implementation));
     };
 
     // Set the transpiler object.

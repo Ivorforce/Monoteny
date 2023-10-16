@@ -43,8 +43,8 @@ impl transpiler::LanguageContext for Context {
 
         for artifact in transpiler.exported_artifacts {
             match artifact {
-                TranspiledArtifact::Function(head) => {
-                    refactor.add(runtime.source.fn_implementations[&head].clone());
+                TranspiledArtifact::Function(implementation) => {
+                    refactor.add(implementation);
                 }
             }
         }
