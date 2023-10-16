@@ -95,22 +95,34 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
     //  and currently we have no way of identifying object namespaces easily.
     //  Maybe it will naturally arise later.
     let mut member_namespace = context.builtin_global_namespace.clone();
-    let mut file_namespace = global_namespace.add_sublevel();
+    let mut exports_namespace = global_namespace.add_sublevel();
 
     // ================= Names ==================
+
+    // Names for exported functions
+    for implementation in exported_functions.iter() {
+        let representation = &runtime.source.fn_representations[mapped_call_to_user_call.get(&implementation.head).unwrap_or(&implementation.head)];
+        representations::find_for_function(
+            &mut representations.function_representations,
+            &mut exports_namespace,
+            implementation, representation.clone()
+        )
+    }
 
     for (head, trait_) in runtime.source.trait_references.iter() {
         // TODO This should not be fixed - but it currently clashes otherwise with Constructor's name choosing.
         //  Technically the trait references should be monomorphized, because an access to Vec<String> is not the same
         //  after monomorphization as Vec<Int32>. They should be two different constants.
-        file_namespace.insert_name(trait_.id, trait_.name.as_str());
+        exports_namespace.insert_name(trait_.id, trait_.name.as_str());
         representations.function_representations.insert(Rc::clone(head), FunctionForm::Constant(trait_.id));
     }
+
+    let mut internals_namespace = exports_namespace.add_sublevel();
 
     // We only really know from encountered calls which structs are left after monomorphization.
     // So let's just search the encountered calls.
     for implementation in exported_functions.iter().chain(internal_functions.iter()) {
-        let function_namespace = file_namespace.add_sublevel();
+        let function_namespace = internals_namespace.add_sublevel();
         // Map internal variable names
         for (ref_, name) in implementation.locals_names.iter() {
             println!("Local {:?}", ref_);
@@ -148,7 +160,7 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
                     }
                     BuiltinFunctionHint::GetMemberField(ref_) => {
                         let ptr = &runtime.source.fn_representations[&binding.function];
-                        file_namespace.insert_name(ref_.id, &ptr.name);  // TODO We should run over all members of all used structs, not just the members we happen to use.
+                        internals_namespace.insert_name(ref_.id, &ptr.name);  // TODO We should run over all members of all used structs, not just the members we happen to use.
                         representations.function_representations.insert(
                             Rc::clone(&binding.function),
                             FunctionForm::GetMemberField(ref_.id)
@@ -156,7 +168,7 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
                     }
                     BuiltinFunctionHint::SetMemberField(ref_) => {
                         let ptr = &runtime.source.fn_representations[&binding.function];
-                        file_namespace.insert_name(ref_.id, &ptr.name);  // TODO We should run over all members of all used structs, not just the members we happen to use.
+                        internals_namespace.insert_name(ref_.id, &ptr.name);  // TODO We should run over all members of all used structs, not just the members we happen to use.
                         representations.function_representations.insert(
                             Rc::clone(&binding.function),
                             FunctionForm::SetMemberField(ref_.id)
@@ -168,21 +180,13 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
         }
     }
 
-    // ================= Representations ==================
-
-    for (implementations, is_exported) in [
-        (&exported_functions, true),
-        (&internal_functions, false),
-    ] {
-        for implementation in implementations.iter() {
-            // TODO Register with priority over internal symbols. Internal functions can use understore prefix if need be.
-            let representation = &runtime.source.fn_representations[mapped_call_to_user_call.get(&implementation.head).unwrap_or(&implementation.head)];
-            representations::find_for_function(
-                &mut representations.function_representations,
-                &mut file_namespace,
-                implementation, representation.clone()
-            )
-        }
+    for implementation in internal_functions.iter() {
+        let representation = &runtime.source.fn_representations[mapped_call_to_user_call.get(&implementation.head).unwrap_or(&implementation.head)];
+        representations::find_for_function(
+            &mut representations.function_representations,
+            &mut internals_namespace,
+            implementation, representation.clone()
+        )
     }
 
     // ================= Build AST ==================
