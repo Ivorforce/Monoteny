@@ -1,9 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
 use std::rc::Rc;
+use itertools::Itertools;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::generics::GenericAlias;
+use crate::util::iter::omega;
 
 pub type ExpressionID = GenericAlias;
 
@@ -56,5 +58,23 @@ impl ExpressionTree {
             operations: HashMap::new(),
             arguments: HashMap::new(),
         }
+    }
+
+    pub fn deep_children(&mut self, start: ExpressionID) -> Vec<ExpressionID> {
+        omega([start].into_iter(), |e| self.arguments[e].iter().cloned())
+    }
+}
+
+pub fn truncate_tree(mut include: Vec<ExpressionID>, exclude: HashSet<ExpressionID>, forest: &mut ExpressionTree) {
+    while let Some(next) = include.pop() {
+        if exclude.contains(&next) {
+            continue;
+        }
+
+        // It's enough to remove arguments and operations.
+        // The type forest may still contain orphans, but that's ok. And our type doesn't change
+        //  from inlining.
+        forest.operations.remove(&next);
+        include.extend(forest.arguments.remove(&next).unwrap());
     }
 }

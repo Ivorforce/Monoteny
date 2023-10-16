@@ -4,7 +4,7 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
-use crate::constant_folding::ConstantFold;
+use crate::refactor::constant_folding::ConstantFold;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter;
 use crate::interpreter::Runtime;
@@ -106,21 +106,4 @@ pub fn run(module: &Module, runtime: &mut Runtime, context: &mut impl Context) -
     //  badly implemented. This should be caught by the same sorter and throw if it happens.
 
     Ok(transpiler)
-}
-
-pub fn constant_fold(transpiler: &mut Transpiler) {
-    // Run constant folder
-    let mut constant_folder = ConstantFold::new();
-
-    // The exported functions aren't called so it makes sense to prepare the internal functions first.
-    for implementation in transpiler.internal_functions.iter_mut() {
-        constant_folder.add(implementation, true);
-    }
-    for implementation in transpiler.exported_functions.iter_mut() {
-        constant_folder.add(implementation, false);
-    }
-    let inlined: HashSet<_> = constant_folder.inline_hints.keys().collect();
-
-    // The order of the internal functions is unimportant anyway, because they are sorted later.
-    transpiler.internal_functions.retain(|imp| !inlined.contains(&imp.head));
 }
