@@ -112,10 +112,9 @@ impl ConstantFold {
     }
 
     fn _inline_cascade(&mut self, head: &Rc<FunctionHead>, hint: InlineHint) {
-        let all_affected: Vec<(Rc<FunctionHead>, InlineHint)> = omega([(Rc::clone(head), hint)].into_iter(), |(head, hint)| {
-            return self.dependents.get(head).iter().map(|x| x.iter()).flatten()
-                .cloned()
-                .filter_map(|dependent| self.inline_hints.remove(&dependent).map(|hint| (dependent, hint)))
+        let all_affected = omega([(head, hint)].into_iter(), |(head, hint)| {
+            return self.dependents.get(*head).iter().map(|x| x.iter()).flatten()
+                .filter_map(|dependent| self.inline_hints.remove(dependent).map(|hint| (dependent, hint)))
                 .collect_vec().into_iter()
         });
 
