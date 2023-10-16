@@ -3,6 +3,8 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::linker::precedence::PrecedenceGroup;
+use crate::program::builtins::Builtins;
+use crate::program::builtins::traits::Traits;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
@@ -67,8 +69,8 @@ impl Module {
         }
     }
 
-    pub fn add_trait(&mut self, trait_: &Rc<Trait>) -> Rc<FunctionHead> {
-        let meta_type = TypeProto::meta(TypeProto::unit(TypeUnit::Struct(Rc::clone(trait_))));
+    pub fn add_trait(&mut self, metatype: &Rc<Trait>, trait_: &Rc<Trait>) -> Rc<FunctionHead> {
+        let meta_type = TypeProto::one_arg(metatype, TypeProto::unit_struct(trait_));
         let getter = FunctionHead::new_static(FunctionInterface::new_provider(&meta_type, vec![]));
 
         self.trait_by_getter.insert(

@@ -62,14 +62,14 @@ impl <'a> TypeFactory<'a> {
         match term {
             ast::Term::Identifier(type_name) => {
                 if let Some(type_) = self.generics.get(type_name) {
-                    return Ok(TypeProto::unit(TypeUnit::Struct(Rc::clone(type_))))
+                    return Ok(TypeProto::unit_struct(type_))
                 }
 
                 if !allow_anonymous_generics || !(type_name.starts_with("#") || type_name.starts_with("$")) {
                     // No special generic; let's try just resolving it normally.
                     let trait_ = self.resolve_trait(type_name)?;
                     // Found a trait! Until we actually interpret the expression, this is guaranteed to be unbound.
-                    return Ok(TypeProto::unit(TypeUnit::Struct(trait_)));
+                    return Ok(TypeProto::unit_struct(&trait_));
                 }
 
                 let type_ = Box::new(TypeProto {

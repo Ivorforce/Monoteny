@@ -191,14 +191,14 @@ pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<Function
         FunctionInterface::new_member(
             type_.create_generic_type("Self"),
             [].into_iter(),
-            TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))
+            TypeProto::unit_struct(&String)
         )
     )
 }
 
 #[allow(non_snake_case)]
-pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, Rc<Trait>>) -> Traits {
-    let bool_type = TypeProto::simple_struct(&primitive_traits[&primitives::Type::Bool]);
+pub fn create(module: &mut Module, metatype: &Rc<Trait>, primitive_traits: &HashMap<primitives::Type, Rc<Trait>>) -> Traits {
+    let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
 
     let mut Eq = Trait::new_with_self("Eq".to_string());
     let eq_functions = make_eq_functions(&Eq.create_generic_type("Self"), &bool_type);
@@ -207,7 +207,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         &eq_functions.not_equal_to,
     ].into_iter());
     let Eq = Rc::new(Eq);
-    module.add_trait(&Eq);
+    module.add_trait(metatype, &Eq);
 
     let mut Ord = Trait::new_with_self("Ord".to_string());
     let ord_functions = make_ord_functions(&Ord.create_generic_type("Self"), &bool_type);
@@ -219,7 +219,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     ].into_iter());
     Ord.add_simple_parent_requirement(&Eq);
     let Ord = Rc::new(Ord);
-    module.add_trait(&Ord);
+    module.add_trait(metatype, &Ord);
 
     let mut Number = Trait::new_with_self("Number".to_string());
     let number_functions = make_number_functions(&Number.create_generic_type("Self"));
@@ -233,11 +233,11 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     ].into_iter());
     Number.add_simple_parent_requirement(&Ord);
     let Number = Rc::new(Number);
-    module.add_trait(&Number);
+    module.add_trait(metatype, &Number);
 
     let mut String = Trait::new_with_self("String".to_string());
     let String = Rc::new(String);
-    module.add_trait(&String);
+    module.add_trait(metatype, &String);
 
     // TODO String is not ToString. We could declare it on the struct, but that seems counterintuitive, no?
     //  Maybe a candidate for return self.strip().
@@ -247,13 +247,13 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         &to_string_function
     ].into_iter());
     let ToString = Rc::new(ToString);
-    module.add_trait(&ToString);
+    module.add_trait(metatype, &ToString);
 
     let mut ConstructableByIntLiteral = Trait::new_with_self("ConstructableByIntLiteral".to_string());
     let parse_int_literal_function = FunctionPointer::new_global_function(
         "parse_int_literal",
         FunctionInterface::new_simple(
-            [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
+            [TypeProto::unit_struct(&String)].into_iter(),
             ConstructableByIntLiteral.create_generic_type("Self"),
         )
     );
@@ -261,14 +261,14 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         &parse_int_literal_function
     ].into_iter());
     let ConstructableByIntLiteral = Rc::new(ConstructableByIntLiteral);
-    module.add_trait(&ConstructableByIntLiteral);
+    module.add_trait(metatype, &ConstructableByIntLiteral);
 
 
     let mut ConstructableByRealLiteral = Trait::new_with_self("ConstructableByRealLiteral".to_string());
     let parse_real_literal_function = FunctionPointer::new_global_function(
         "parse_real_literal",
         FunctionInterface::new_simple(
-            [TypeProto::unit(TypeUnit::Struct(Rc::clone(&String)))].into_iter(),
+            [TypeProto::unit_struct(&String)].into_iter(),
             ConstructableByRealLiteral.create_generic_type("Self")
         ),
     );
@@ -276,7 +276,7 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
         &parse_real_literal_function
     ].into_iter());
     let ConstructableByRealLiteral = Rc::new(ConstructableByRealLiteral);
-    module.add_trait(&ConstructableByRealLiteral);
+    module.add_trait(metatype, &ConstructableByRealLiteral);
 
 
     let mut Real = Trait::new_with_self("Real".to_string());
@@ -289,13 +289,13 @@ pub fn create(module: &mut Module, primitive_traits: &HashMap<primitives::Type, 
     Real.add_simple_parent_requirement(&ConstructableByRealLiteral);
     Real.add_simple_parent_requirement(&ConstructableByIntLiteral);
     let Real = Rc::new(Real);
-    module.add_trait(&Real);
+    module.add_trait(metatype, &Real);
 
     let mut Int = Trait::new_with_self("Int".to_string());
     Int.add_simple_parent_requirement(&Number);
     Int.add_simple_parent_requirement(&ConstructableByIntLiteral);
     let Int = Rc::new(Int);
-    module.add_trait(&Int);
+    module.add_trait(metatype, &Int);
 
     Traits {
         Eq,

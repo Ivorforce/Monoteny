@@ -9,7 +9,7 @@ use crate::program::primitives;
 use crate::program::traits::{Trait, TraitConformanceRule};
 use crate::program::types::{TypeProto, TypeUnit};
 
-pub fn create_traits(module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>> {
+pub fn create_traits(metatype: &Rc<Trait>, module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>> {
     let mut traits: HashMap<primitives::Type, Rc<Trait>> = Default::default();
 
     for primitive_type in [
@@ -28,7 +28,7 @@ pub fn create_traits(module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>
         primitives::Type::Float(64),
     ] {
         let trait_ = Rc::new(Trait::new_with_self(primitive_type.identifier_string()));
-        module.add_trait(&trait_);
+        module.add_trait(metatype, &trait_);
         traits.insert(primitive_type, trait_);
     }
 
@@ -37,7 +37,7 @@ pub fn create_traits(module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>
 
 #[allow(non_snake_case)]
 pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<primitives::Type, Rc<Trait>>) {
-    let bool_type = TypeProto::simple_struct(&basis[&primitives::Type::Bool]);
+    let bool_type = TypeProto::unit_struct(&basis[&primitives::Type::Bool]);
 
     let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module| {
         module.add_function(Rc::clone(&function.target), function.representation.clone());
@@ -48,7 +48,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
     };
 
     for (primitive_type, trait_) in basis.iter() {
-        let type_ = TypeProto::simple_struct(&basis[primitive_type]);
+        let type_ = TypeProto::unit_struct(&basis[primitive_type]);
         let primitive_type = *primitive_type;
 
         // Pair-Associative
@@ -105,7 +105,7 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
 
         let _parse_int_literal = FunctionPointer::new_global_function(
             "parse_int_literal",
-            FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_)
+            FunctionInterface::new_operator(1, &TypeProto::unit_struct(&traits.String), &type_)
         );
         add_function(&_parse_int_literal, primitive_type, PrimitiveOperation::ParseIntString, module);
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(

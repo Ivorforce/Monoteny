@@ -345,7 +345,7 @@ impl Trait {
     }
 
     pub fn create_generic_type(self: &Trait, generic_name: &str) -> Box<TypeProto> {
-        TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.generics[generic_name])))
+        TypeProto::unit_struct(&self.generics[generic_name])
     }
 
     pub fn create_generic_binding(self: &Rc<Trait>, generic_to_type: Vec<(&str, Box<TypeProto>)>) -> Rc<TraitBinding> {

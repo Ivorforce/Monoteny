@@ -123,12 +123,12 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     for (struct_, id) in [
         (&runtime.builtins.traits.String, PSEUDO_KEYWORD_IDS["str"]),
     ].into_iter() {
-        representations.type_ids.insert(TypeProto::unit(TypeUnit::Struct(Rc::clone(struct_))), id);
+        representations.type_ids.insert(TypeProto::unit_struct(struct_), id);
     }
 
     for (primitive, name) in primitive_map.iter() {
         let struct_ = &runtime.builtins.primitives[primitive];
-        representations.type_ids.insert(TypeProto::unit(TypeUnit::Struct(Rc::clone(struct_))), PSEUDO_KEYWORD_IDS[name]);
+        representations.type_ids.insert(TypeProto::unit_struct(struct_), PSEUDO_KEYWORD_IDS[name]);
     }
 
     // TODO Some of these sneakily convert the type - especially float to int and vice versa.

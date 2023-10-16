@@ -105,7 +105,7 @@ impl <'a> GlobalLinker<'a> {
                 let mut trait_ = Trait::new_with_self(syntax.name.clone());
 
                 let generic_self_type = trait_.create_generic_type("Self");
-                let generic_self_meta_type = TypeProto::meta(generic_self_type.clone());
+                let generic_self_meta_type = TypeProto::one_arg(&self.runtime.builtins.Metatype, generic_self_type.clone());
                 // This is not the same reference as what module.add_trait returns - that reference is for the global metatype getter.
                 //  Inside, we use the Self getter.
                 let generic_self_self_getter = FunctionHead::new_static(
@@ -131,7 +131,6 @@ impl <'a> GlobalLinker<'a> {
             ast::Statement::Conformance(syntax) => {
                 let mut type_factory = TypeFactory::new(&self.global_variables, &mut self.runtime);
                 let self_type = type_factory.link_type(&syntax.declared_for, true)?;
-                let self_meta_type = TypeProto::meta(self_type.clone());
                 let declared = type_factory.resolve_trait(&syntax.declared)?;
                 if declared.generics.keys().collect_vec() != vec!["Self"] {
                     // Requires 1) parsing generics that the programmer binds
@@ -149,6 +148,7 @@ impl <'a> GlobalLinker<'a> {
                     _ => panic!()
                 };
 
+                let self_meta_type = TypeProto::one_arg(&self.runtime.builtins.Metatype, self_type.clone());
                 let self_getter = FunctionHead::new_static(
                     FunctionInterface::new_provider(&self_meta_type, vec![]),
                 );
@@ -249,7 +249,7 @@ impl <'a> GlobalLinker<'a> {
     }
 
     fn add_trait(&mut self, trait_: &Rc<Trait>) -> RResult<()> {
-        let getter = self.module.add_trait(&trait_);
+        let getter = self.module.add_trait(&self.runtime.builtins.Metatype, &trait_);
         self.global_variables.overload_function(&getter, FunctionRepresentation::new(&trait_.name, FunctionForm::GlobalImplicit))?;
         self.runtime.source.trait_references.insert(getter, Rc::clone(trait_));
 

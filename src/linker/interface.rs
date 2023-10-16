@@ -23,7 +23,7 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
                         FunctionHead::new_static(
                             Rc::new(FunctionInterface {
                                 parameters: vec![],
-                                return_type: TypeProto::unit(TypeUnit::Void),
+                                return_type: TypeProto::void(),
                                 requirements: Default::default(),
                                 generics: Default::default(),
                             })
@@ -48,10 +48,10 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
                                     Parameter {
                                         external_key: ParameterKey::Positional,
                                         internal_name: String::from("transpiler"),
-                                        type_: TypeProto::unit(TypeUnit::Struct(Rc::clone(transpiler_trait))),
+                                        type_: TypeProto::unit_struct(transpiler_trait),
                                     }
                                 ],
-                                return_type: TypeProto::unit(TypeUnit::Void),
+                                return_type: TypeProto::void(),
                                 requirements: Default::default(),
                                 generics: Default::default(),
                             }),

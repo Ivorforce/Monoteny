@@ -8,9 +8,11 @@ use crate::program::traits::Trait;
 pub mod primitives;
 pub mod traits;
 
+#[allow(non_snake_case)]
 pub struct Builtins {
     pub module: Rc<Module>,
 
+    pub Metatype: Rc<Trait>,
     pub primitives: HashMap<program::primitives::Type, Rc<Trait>>,
     pub traits: traits::Traits,
 }
@@ -18,12 +20,17 @@ pub struct Builtins {
 pub fn create_builtins() -> Rc<Builtins> {
     let mut module = Module::new(module_name("core"));
 
-    let primitive_traits = primitives::create_traits(&mut module);
-    let traits = traits::create(&mut module, &primitive_traits);
+    let mut Metatype = Trait::new_with_self("Type".to_string());
+    let Metatype = Rc::new(Metatype);
+    module.add_trait(&Metatype, &Metatype);
+
+    let primitive_traits = primitives::create_traits(&Metatype, &mut module);
+    let traits = traits::create(&mut module, &Metatype, &primitive_traits);
     primitives::create_functions(&mut module, &traits, &primitive_traits);
 
     Rc::new(Builtins {
         module: Rc::new(module),
+        Metatype,
         primitives: primitive_traits,
         traits,
     })

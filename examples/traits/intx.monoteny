@@ -1,0 +1,28 @@
+trait IntX {
+    var bits 'IntNative;
+};
+
+-- Every normal trait is Applied<Type>
+trait Applied<IntX> {
+    -- The content is evaluated like a function, with Self (IntX object) in the scope.
+    -- With the exception that variable declarations and functions are gathered.
+    if Self.bits <= 0 {
+        panic("Unsupported number of bits: \(Self.bits)");
+    }
+
+    var bits 'Bool[0 ..< Self.bits];
+}
+
+-- You could do it multiple times
+trait Applied<Applied<IntX>> {
+
+}
+
+-- For the type functions are defined as normal.
+def {IntX}.count_bits :: self.bits;
+
+-- Self is an object that is carried around in the type info - NOT the object itself.
+def {Applied<IntX>}.bits :: Self.bits;
+
+-- An actual application of the type matches only objects whose type is equal to the declared type.
+def {IntX(32)}.test -> Bool :: true;

@@ -154,7 +154,7 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_string_literal(&mut self, value: &str) -> RResult<ExpressionID> {
         self.link_unambiguous_expression(
             vec![],
-            &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.traits.String))),
+            &TypeProto::unit_struct(&self.runtime.builtins.traits.String),
             ExpressionOperation::StringLiteral(value.to_string())
         )
     }
@@ -213,7 +213,7 @@ impl <'a> ImperativeLinker<'a> {
 
                 let expression_id = self.register_new_expression(vec![assignment]);
                 self.expressions.operations.insert(expression_id, ExpressionOperation::SetLocal(object_ref));
-                self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
+                self.types.bind(expression_id, &TypeProto::void())?;
                 expression_id
             },
             ast::Statement::VariableAssignment { target, identifier, new_value } => {
@@ -236,7 +236,7 @@ impl <'a> ImperativeLinker<'a> {
                     self.types.bind(new_value, &object_ref.type_)?;
                     let expression_id = self.register_new_expression(vec![new_value]);
                     self.expressions.operations.insert(expression_id, ExpressionOperation::SetLocal(Rc::clone(&object_ref)));
-                    self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
+                    self.types.bind(expression_id, &TypeProto::void())?;
                     expression_id
                 }
             }
@@ -251,7 +251,7 @@ impl <'a> ImperativeLinker<'a> {
 
                     let expression_id = self.register_new_expression(vec![result]);
                     self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
-                    self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
+                    self.types.bind(expression_id, &TypeProto::void())?;
                     expression_id
                 } else {
                     if !self.function.interface.return_type.unit.is_void() {
@@ -260,7 +260,7 @@ impl <'a> ImperativeLinker<'a> {
 
                     let expression_id = self.register_new_expression(vec![]);
                     self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
-                    self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Void))?;
+                    self.types.bind(expression_id, &TypeProto::void())?;
                     expression_id
                 }
             },
@@ -458,7 +458,7 @@ impl <'a> ImperativeLinker<'a> {
                     FunctionForm::GlobalFunction => {
                         let expression_id = self.link_function_call(overload.functions.iter(), overload.representation.clone(), keys, args, scope, range)?;
                         // Make sure the return type is actually String.
-                        self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.builtins.traits.String))))?;
+                        self.types.bind(expression_id, &TypeProto::unit_struct(&self.runtime.builtins.traits.String))?;
                         Ok(expression_id)
                     }
                     // this could happen if somebody uses def format ... without parentheses.

@@ -24,8 +24,6 @@ pub enum TypeUnit {
     /// Having it doesn't hurt anyway; an implementation might actually pass void objects around
     ///  to simplify logic.
     Void,
-    /// Type of a type
-    MetaType,
     /// some type that isn't bound yet. This is fully unique and should not be created statically or imported.
     Generic(GenericAlias),
     /// Bound to an instance of a trait. The arguments are the generic bindings.
@@ -72,7 +70,6 @@ impl Debug for TypeUnit {
         match self {
             TypeUnit::Struct(s) => write!(fmt, "{}", s.name),
             TypeUnit::Generic(g) => write!(fmt, "#({})", g),
-            TypeUnit::MetaType => write!(fmt, "MetaType"),
             TypeUnit::Void => write!(fmt, "Void"),
             TypeUnit::Function(f) => write!(fmt, "{:?}", f),
         }
@@ -88,14 +85,14 @@ impl TypeProto {
         Box::new(TypeProto { unit, arguments: vec![] })
     }
 
-    pub fn meta(subtype: Box<TypeProto>) -> Box<TypeProto> {
+    pub fn one_arg(trait_: &Rc<Trait>, subtype: Box<TypeProto>) -> Box<TypeProto> {
         Box::new(TypeProto {
-            unit: TypeUnit::MetaType,
+            unit: TypeUnit::Struct(Rc::clone(trait_)),
             arguments: vec![subtype]
         })
     }
 
-    pub fn simple_struct(trait_: &Rc<Trait>) -> Box<TypeProto> {
+    pub fn unit_struct(trait_: &Rc<Trait>) -> Box<TypeProto> {
         TypeProto::unit(TypeUnit::Struct(Rc::clone(trait_)))
     }
 

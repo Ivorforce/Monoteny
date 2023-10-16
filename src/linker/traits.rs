@@ -84,13 +84,13 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
 
     // Can be instantiated as a struct!
 
-    let struct_type = TypeProto::unit(TypeUnit::Struct(Rc::clone(&trait_)));
+    let struct_type = TypeProto::unit_struct(trait_);
     let mut function_mapping = HashMap::new();
     let mut parameters = vec![
         Parameter {
             external_key: ParameterKey::Positional,
             internal_name: "type".to_string(),
-            type_: TypeProto::meta(struct_type.clone()),
+            type_: TypeProto::one_arg(&linker.runtime.builtins.Metatype, struct_type.clone()),
         }
     ];
     let mut parameter_mapping = vec![];
