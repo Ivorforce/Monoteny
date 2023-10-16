@@ -1,18 +1,9 @@
 use std::collections::hash_map::RandomState;
-use std::rc::Rc;
 use linked_hash_set::LinkedHashSet;
-use crate::program::functions::FunctionHead;
 use crate::refactor::Refactor;
 
 pub struct ConstantFold<'a, 'b> {
     pub refactor: &'a mut Refactor<'b>,
-}
-
-#[derive(Clone, Debug)]
-pub enum InlineHint {
-    ReplaceCall(Rc<FunctionHead>, Vec<usize>),
-    YieldParameter(usize),
-    NoOp,
 }
 
 /// For now, the constant folder is only capable of inlining trivial functions:

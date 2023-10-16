@@ -6,7 +6,6 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
-use crate::refactor::constant_folding::InlineHint;
 use crate::linker::interface::FunctionHead;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, truncate_tree};
@@ -14,6 +13,14 @@ use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
 use crate::util::iter::omega;
 use crate::util::multimap::insert_into_multimap;
+
+
+#[derive(Clone, Debug)]
+pub enum InlineHint {
+    ReplaceCall(Rc<FunctionHead>, Vec<usize>),
+    YieldParameter(usize),
+    NoOp,
+}
 
 pub struct Refactor<'a> {
     pub implementation_by_head: HashMap<Rc<FunctionHead>, &'a mut FunctionImplementation>,
@@ -240,3 +247,4 @@ pub fn get_trivial_expression_call_target(expression_id: &ExpressionID, implemen
 
     None
 }
+
