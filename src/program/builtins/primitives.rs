@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::rc::Rc;
-use strum::IntoEnumIterator;
 use crate::program::builtins::traits;
 use crate::program::builtins::traits::{FunctionPointer, make_to_string_function, Traits};
 use crate::program::functions::FunctionInterface;
@@ -13,7 +12,21 @@ use crate::program::types::{TypeProto, TypeUnit};
 pub fn create_traits(module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>> {
     let mut traits: HashMap<primitives::Type, Rc<Trait>> = Default::default();
 
-    for primitive_type in primitives::Type::iter() {
+    for primitive_type in [
+        primitives::Type::Bool,
+        primitives::Type::Int(8),
+        primitives::Type::Int(16),
+        primitives::Type::Int(32),
+        primitives::Type::Int(64),
+        primitives::Type::Int(128),
+        primitives::Type::UInt(8),
+        primitives::Type::UInt(16),
+        primitives::Type::UInt(32),
+        primitives::Type::UInt(64),
+        primitives::Type::UInt(128),
+        primitives::Type::Float(32),
+        primitives::Type::Float(64),
+    ] {
         let trait_ = Rc::new(Trait::new_with_self(primitive_type.identifier_string()));
         module.add_trait(&trait_);
         traits.insert(primitive_type, trait_);

@@ -22,16 +22,16 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
 
     let primitive_map = HashMap::from([
         (primitives::Type::Bool, "bool"),
-        (primitives::Type::Int8, "int8"),
-        (primitives::Type::Int16, "int16"),
-        (primitives::Type::Int32, "int32"),
-        (primitives::Type::Int64, "int64"),
-        (primitives::Type::UInt8, "uint8"),
-        (primitives::Type::UInt16, "uint16"),
-        (primitives::Type::UInt32, "uint32"),
-        (primitives::Type::UInt64, "uint64"),
-        (primitives::Type::Float32, "float32"),
-        (primitives::Type::Float64, "float64"),
+        (primitives::Type::Int(8), "int8"),
+        (primitives::Type::Int(16), "int16"),
+        (primitives::Type::Int(32), "int32"),
+        (primitives::Type::Int(64), "int64"),
+        (primitives::Type::UInt(8), "uint8"),
+        (primitives::Type::UInt(16), "uint16"),
+        (primitives::Type::UInt(32), "uint32"),
+        (primitives::Type::UInt(64), "uint64"),
+        (primitives::Type::Float(32), "float32"),
+        (primitives::Type::Float(64), "float64"),
     ]);
 
     // The operators can normally be referenced as operators (which the transpiler does do).
