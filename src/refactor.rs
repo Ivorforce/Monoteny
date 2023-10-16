@@ -66,10 +66,8 @@ impl<'a> Refactor<'a> {
         self.implementation_by_head.insert(Rc::clone(&head), implementation);
         self.update_callees(&head);
 
-        if !self.inline_hints.is_empty() {
-            // In case any calls have already been inlined before this implementation was added.
-            self.inline_calls(&head);
-        }
+        // In case any calls have already been inlined before this implementation was added.
+        self.inline_calls(&head);
     }
 
     pub fn update_callees(&mut self, head: &Rc<FunctionHead>) {
@@ -110,6 +108,10 @@ impl<'a> Refactor<'a> {
     }
 
     pub fn inline_calls(&mut self, head: &Rc<FunctionHead>) {
+        if self.inline_hints.is_empty() {
+            return
+        }
+
         let implementation = self.implementation_by_head.get_mut(head).unwrap();
 
         inline_calls(implementation, &self.inline_hints);
