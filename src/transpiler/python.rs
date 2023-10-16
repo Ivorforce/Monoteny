@@ -168,23 +168,19 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
 
     // ================= Representations ==================
 
-    for implementation in exported_functions.iter() {
-        // TODO Register with priority over internal symbols. Internal functions can use understore prefix if need be.
-        let representation = &runtime.source.fn_representations[mapped_call_to_user_call.get(&implementation.head).unwrap_or(&implementation.head)];
-        representations::find_for_function(
-            &mut representations.function_representations,
-            &mut file_namespace,
-            implementation, representation.clone()
-        );
-    }
-
-    for implementation in internal_functions.iter() {
-        let representation = &runtime.source.fn_representations[mapped_call_to_user_call.get(&implementation.head).unwrap_or(&implementation.head)];
-        representations::find_for_function(
-            &mut representations.function_representations,
-            &mut file_namespace,
-            implementation, representation.clone()
-        );
+    for (implementations, is_exported) in [
+        (&exported_functions, true),
+        (&internal_functions, false),
+    ] {
+        for implementation in implementations.iter() {
+            // TODO Register with priority over internal symbols. Internal functions can use understore prefix if need be.
+            let representation = &runtime.source.fn_representations[mapped_call_to_user_call.get(&implementation.head).unwrap_or(&implementation.head)];
+            representations::find_for_function(
+                &mut representations.function_representations,
+                &mut file_namespace,
+                implementation, representation.clone()
+            )
+        }
     }
 
     // ================= Build AST ==================
