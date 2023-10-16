@@ -60,13 +60,6 @@ impl ObjectReference {
             mutability: Mutability::Immutable
         })
     }
-
-    pub fn as_function_head(&self) -> RResult<&Rc<FunctionHead>> {
-        match &self.type_.unit {
-            TypeUnit::Function(f) => Ok(f),
-            _ => Err(RuntimeError::new(format!("Object is not a function.")))
-        }
-    }
 }
 
 impl PartialEq for ObjectReference {
