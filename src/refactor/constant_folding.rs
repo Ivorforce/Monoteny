@@ -34,7 +34,9 @@ impl<'a, 'b> ConstantFold<'a, 'b> {
             if self.refactor.try_inline(&current) {
                 if let Some(dependents) = self.refactor.dependents.get(&current) {
                     // Try inlining those that changed again.
-                    // TODO This could be more efficient
+                    // TODO This could be more efficient: It only makes sense to change functions once.
+                    //  The inlining call can be delayed until we're sure we can either be inlined
+                    //  ourselves, or we just postpone it until everything else is done.
                     next.extend(dependents.iter().cloned())
                 }
             }
