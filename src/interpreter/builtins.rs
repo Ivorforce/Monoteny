@@ -97,8 +97,8 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
                 create_primitive_op(type_.clone(), operation.clone())
             }
             BuiltinFunctionHint::Constructor(_) => todo!(),
-            BuiltinFunctionHint::Getter(_) => todo!(),
-            BuiltinFunctionHint::Setter(_) => todo!(),
+            BuiltinFunctionHint::GetMemberField(_) => todo!(),
+            BuiltinFunctionHint::SetMemberField(_) => todo!(),
         });
     }
 

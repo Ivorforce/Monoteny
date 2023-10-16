@@ -28,8 +28,8 @@ pub struct FunctionImplementation {
 pub enum BuiltinFunctionHint {
     PrimitiveOperation { operation: PrimitiveOperation, type_: primitives::Type },
     Constructor(Vec<Rc<ObjectReference>>),
-    Getter(Rc<ObjectReference>),
-    Setter(Rc<ObjectReference>),
+    GetMemberField(Rc<ObjectReference>),
+    SetMemberField(Rc<ObjectReference>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

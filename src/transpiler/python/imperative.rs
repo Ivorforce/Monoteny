@@ -210,6 +210,7 @@ fn transpile_function_call(context: &FunctionContext, function: &Rc<FunctionHead
         FunctionForm::GetMemberField(id) => {
             assert_eq!(arguments.len(), 1);
             let object = transpile_expression(arguments[0], context);
+            println!("Get {}", id);
             return Left(Box::new(ast::Expression::MemberAccess(object, context.names[id].clone())))
         },
         FunctionForm::SetMemberField(id) => {

@@ -60,10 +60,72 @@ lazy_static! {
     ]);
 }
 
+lazy_static! {
+    // These aren't keywords, but are treated as such for now for simplicity.
+    pub static ref PSEUDO_KEYWORD_IDS: HashMap<&'static str, Uuid> = HashMap::from_iter([
+        "bool",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+        "float32",
+        "float64",
+        "str",
+
+        "np",
+
+        "op",
+        "op.eq",
+        "op.ne",
+        "op.gt",
+        "op.lt",
+        "op.ge",
+        "op.le",
+        "op.and",
+        "op.or_",
+        "op.not_",
+        "op.neg",
+        "op.add",
+        "op.sub",
+        "op.mul",
+        "op.div",
+        "op.truediv",
+        "op.mod",
+        "op.pow",
+        "op.log",
+
+        "math",
+        "math.factorial",
+        "math.log",
+        "math.sin",
+        "math.cos",
+        "math.tan",
+        "math.sinh",
+        "math.cosh",
+        "math.tanh",
+        "math.asin",
+        "math.acos",
+        "math.atan",
+        "math.asinh",
+        "math.acosh",
+        "math.atanh",
+        "math.ceil",
+        "math.floor",
+        "round",
+        "abs",
+
+        "exit",
+        "print",
+    ].into_iter().map(|s| (s, Uuid::new_v4())));
+}
+
 pub fn register(namespace: &mut namespaces::Level) {
     // Keywords
-    for (keyword, id) in KEYWORD_IDS.iter() {
-        // Don't really need an ID but it's easy to just do it like this here.
-        namespace.insert_fixed_name(*id, keyword);
+    for (keyword, id) in KEYWORD_IDS.iter().chain(PSEUDO_KEYWORD_IDS.iter()) {
+        namespace.insert_name(*id, keyword);
     }
 }

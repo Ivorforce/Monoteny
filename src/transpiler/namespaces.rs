@@ -1,12 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
+use linked_hash_set::LinkedHashSet;
 use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct Level {
-    claims: HashMap<String, Vec<Uuid>>,
-    // These claims always use the desired name, even if multiple claims exist
-    fixed_names: HashSet<Uuid>,
+    claims: HashMap<String, LinkedHashSet<Uuid>>,
     sublevels: Vec<Level>
 }
 
@@ -14,28 +13,22 @@ impl Level {
     pub fn new() -> Level {
         Level {
             claims: HashMap::new(),
-            fixed_names: HashSet::new(),
             sublevels: Vec::new(),
         }
     }
 
     pub fn insert_name(&mut self, uuid: Uuid, name: &str) -> Uuid {
         if let Some(existing) = self.claims.get_mut(name) {
-            existing.push(uuid);
+            existing.insert_if_absent(uuid);
         }
         else {
             self.claims.insert(
                 name.to_string(),
-                vec![uuid.clone()]
+                LinkedHashSet::from_iter([uuid.clone()])
             );
         }
 
         uuid
-    }
-
-    pub fn insert_fixed_name(&mut self, uuid: Uuid, name: &str) -> Uuid {
-        self.fixed_names.insert(uuid);
-        self.insert_name(uuid, name)
     }
 
     pub fn add_sublevel(&mut self) -> &mut Level {
@@ -52,14 +45,14 @@ impl Level {
         }
 
         for (name, claims) in self.claims.iter().sorted_by_key(|(name, claims)| name.len()) {
-            if let [claim] = claims[..] {
+            if let Ok(claim) = claims.iter().exactly_one() {
                 // Can use plain name
                 let mut name = name.clone();
                 while reserved.contains(&name) {
                     name = format!("{}_", name);
                 }
                 reserved.insert(name.clone());
-                mapping.insert(claim, name);
+                mapping.insert(*claim, name);
             }
             else {
                 // Need to postfix each name with an idx
@@ -70,17 +63,11 @@ impl Level {
 
                 let mut idx = 0;
                 for claim in claims.iter() {
-                    if self.fixed_names.contains(claim) {
-                        reserved.insert(name.clone());
-                        mapping.insert(claim.clone(), name.clone());
-                    }
-                    else {
-                        let postfixed_name = make_name(&prefix, idx);
-                        reserved.insert(postfixed_name.clone());
+                    let postfixed_name = make_name(&prefix, idx);
+                    reserved.insert(postfixed_name.clone());
 
-                        mapping.insert(claim.clone(), postfixed_name);
-                        idx += 1;
-                    }
+                    mapping.insert(claim.clone(), postfixed_name);
+                    idx += 1;
                 }
             }
         }

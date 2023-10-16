@@ -10,12 +10,11 @@ use itertools::Itertools;
 use crate::interpreter::Runtime;
 use crate::linker::interface::FunctionHead;
 use crate::program::calls::FunctionBinding;
-use crate::program::computation_tree::{ExpressionOperation, truncate_tree};
+use crate::program::computation_tree::ExpressionOperation;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
 use crate::refactor::inline::{inline_calls, try_inline};
 use crate::refactor::monomorphize::Monomorphize;
-use crate::util::iter::omega;
 use crate::util::multimap::{insert_into_multimap, remove_from_multimap};
 
 

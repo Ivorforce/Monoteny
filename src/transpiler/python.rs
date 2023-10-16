@@ -103,8 +103,8 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
         // TODO This should not be fixed - but it currently clashes otherwise with Constructor's name choosing.
         //  Technically the trait references should be monomorphized, because an access to Vec<String> is not the same
         //  after monomorphization as Vec<Int32>. They should be two different constants.
-        file_namespace.insert_fixed_name(head.function_id, trait_.name.as_str());
-        representations.function_representations.insert(Rc::clone(head), FunctionForm::Constant(head.function_id));
+        file_namespace.insert_name(trait_.id, trait_.name.as_str());
+        representations.function_representations.insert(Rc::clone(head), FunctionForm::Constant(trait_.id));
     }
 
     // We only really know from encountered calls which structs are left after monomorphization.
@@ -112,8 +112,9 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
     for implementation in exported_functions.iter().chain(internal_functions.iter()) {
         let function_namespace = file_namespace.add_sublevel();
         // Map internal variable names
-        for (variable, name) in implementation.locals_names.iter() {
-            function_namespace.insert_name(variable.id.clone(), name);
+        for (ref_, name) in implementation.locals_names.iter() {
+            println!("Local {:?}", ref_);
+            function_namespace.insert_name(ref_.id, name);
         }
 
         for (expression_id, operation) in implementation.expression_forest.operations.iter() {
@@ -130,31 +131,32 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
                             // TODO If we have generics, we should include their bindings in the name somehow.
                             //  Eg. ArrayFloat. Probably only if it's exactly one. Otherwise, we need to be ok with
                             //  just the auto-renames.
-                            let name = match &type_.unit {
-                                TypeUnit::Struct(struct_) => &struct_.name,
+                            let (name, trait_id) = match &type_.unit {
+                                TypeUnit::Struct(trait_) => (&trait_.name, trait_.id),
                                 // Technically only the name is unsupported here, but later we'd need to actually construct it too.
                                 _ => panic!("Unsupported Constructor Type")
                             };
-                            let id = Uuid::new_v4();
-                            entry.insert(id);
-                            file_namespace.insert_fixed_name(id, name);
+                            // TODO This logic will fall apart if we have multiple instantiations of the same type.
+                            //  In that case we probably want to monomorphize the struct getter per-object so we can
+                            //  differentiate them and assign different names.
+                            entry.insert(trait_id);
                             representations.function_representations.insert(
                                 Rc::clone(&binding.function),
                                 FunctionForm::CallAsFunction
                             );
                         }
                     }
-                    BuiltinFunctionHint::Getter(ref_) => {
+                    BuiltinFunctionHint::GetMemberField(ref_) => {
                         let ptr = &runtime.source.fn_representations[&binding.function];
-                        member_namespace.insert_fixed_name(ref_.id, &ptr.name);  // TODO This should not be fixed.
+                        file_namespace.insert_name(ref_.id, &ptr.name);  // TODO We should run over all members of all used structs, not just the members we happen to use.
                         representations.function_representations.insert(
                             Rc::clone(&binding.function),
                             FunctionForm::GetMemberField(ref_.id)
                         );
                     }
-                    BuiltinFunctionHint::Setter(ref_) => {
+                    BuiltinFunctionHint::SetMemberField(ref_) => {
                         let ptr = &runtime.source.fn_representations[&binding.function];
-                        member_namespace.insert_fixed_name(ref_.id, &ptr.name);  // TODO This should not be fixed.
+                        file_namespace.insert_name(ref_.id, &ptr.name);  // TODO We should run over all members of all used structs, not just the members we happen to use.
                         representations.function_representations.insert(
                             Rc::clone(&binding.function),
                             FunctionForm::SetMemberField(ref_.id)

@@ -8,7 +8,7 @@ use crate::program::module::module_name;
 use crate::program::primitives;
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::python::{Context, keywords};
-use crate::transpiler::python::keywords::KEYWORD_IDS;
+use crate::transpiler::python::keywords::{KEYWORD_IDS, PSEUDO_KEYWORD_IDS};
 use crate::transpiler::python::representations::FunctionForm;
 
 
@@ -21,7 +21,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     keywords::register(member);
 
     let primitive_map = HashMap::from([
-        (primitives::Type::Bool, "Bool"),
+        (primitives::Type::Bool, "bool"),
         (primitives::Type::Int8, "int8"),
         (primitives::Type::Int16, "int16"),
         (primitives::Type::Int32, "int32"),
@@ -33,15 +33,6 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
         (primitives::Type::Float32, "float32"),
         (primitives::Type::Float64, "float64"),
     ]);
-
-    // TODO Imports; we should resolve names deeply in the future
-    for type_name in [
-        "bool",
-        "np", "op",
-        "math",
-    ] {
-        global.insert_fixed_name(Uuid::new_v4(), type_name);
-    }
 
     // The operators can normally be referenced as operators (which the transpiler does do).
     // However, if a reference is required, we need to resort to another strategy.
@@ -103,20 +94,17 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
                 ("op.pow", FunctionForm::Binary(KEYWORD_IDS["**"]))
             }
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Log, type_ } => {
-                global.insert_fixed_name(head.function_id, "math.log");
-                ("math.log", FunctionForm::FunctionCall(head.function_id))
+                ("math.log", FunctionForm::FunctionCall(PSEUDO_KEYWORD_IDS["math.log"]))
             }
 
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ToString, type_ } => {
-                global.insert_fixed_name(head.function_id, "str");
-                ("str", FunctionForm::FunctionCall(head.function_id))
+                ("str", FunctionForm::FunctionCall(PSEUDO_KEYWORD_IDS["str"]))
             }
 
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ParseIntString, type_ }
             | BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ParseRealString, type_ } => {
                 if let Some(builtin_name) = primitive_map.get(type_) {
-                    global.insert_fixed_name(head.function_id, builtin_name);
-                    (builtin_name.clone(), FunctionForm::FunctionCall(head.function_id))
+                    (builtin_name.clone(), FunctionForm::FunctionCall(PSEUDO_KEYWORD_IDS[builtin_name]))
                 }
                 else {
                     continue
@@ -124,93 +112,84 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
             }
 
             BuiltinFunctionHint::Constructor(_) => continue,
-            BuiltinFunctionHint::Getter(_) => continue,
-            BuiltinFunctionHint::Setter(_) => continue,
+            BuiltinFunctionHint::GetMemberField(_) => continue,
+            BuiltinFunctionHint::SetMemberField(_) => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(head));
         representations.function_representations.insert(Rc::clone(head), representation);
-        global.insert_fixed_name(head.function_id, higher_order_ref_name);
     }
 
-    for (struct_, name) in [
-        (&runtime.builtins.traits.String, "str"),
+    for (struct_, id) in [
+        (&runtime.builtins.traits.String, PSEUDO_KEYWORD_IDS["str"]),
     ].into_iter() {
-        let id = Uuid::new_v4();
         representations.type_ids.insert(TypeProto::unit(TypeUnit::Struct(Rc::clone(struct_))), id);
-        global.insert_fixed_name(id, &name.to_string());
     }
 
     for (primitive, name) in primitive_map.iter() {
-        let id = Uuid::new_v4();
         let struct_ = &runtime.builtins.primitives[primitive];
-        representations.type_ids.insert(TypeProto::unit(TypeUnit::Struct(Rc::clone(struct_))), id);
-        global.insert_fixed_name(id, &name.to_string());
+        representations.type_ids.insert(TypeProto::unit(TypeUnit::Struct(Rc::clone(struct_))), PSEUDO_KEYWORD_IDS[name]);
     }
 
     // TODO Some of these sneakily convert the type - especially float to int and vice versa.
     for (function, representation) in runtime.source.module_by_name[&module_name("common.math")].fn_representations.iter() {
-        let representation = match representation.name.as_str() {
-            "factorial" => "math.factorial",
-            "sin" => "math.sin",
-            "cos" => "math.cos",
-            "tan" => "math.tan",
-            "sinh" => "math.sinh",
-            "cosh" => "math.cosh",
-            "tanh" => "math.tanh",
-            "arcsin" => "math.asin",
-            "arccos" => "math.acos",
-            "arctan" => "math.atan",
-            "arcsinh" => "math.asinh",
-            "arccosh" => "math.acosh",
-            "arctanh" => "math.atanh",
+        let id = match representation.name.as_str() {
+            "factorial" => PSEUDO_KEYWORD_IDS["math.factorial"],
+            "sin" => PSEUDO_KEYWORD_IDS["math.sin"],
+            "cos" => PSEUDO_KEYWORD_IDS["math.cos"],
+            "tan" => PSEUDO_KEYWORD_IDS["math.tan"],
+            "sinh" => PSEUDO_KEYWORD_IDS["math.sinh"],
+            "cosh" => PSEUDO_KEYWORD_IDS["math.cosh"],
+            "tanh" => PSEUDO_KEYWORD_IDS["math.tanh"],
+            "arcsin" => PSEUDO_KEYWORD_IDS["math.asin"],
+            "arccos" => PSEUDO_KEYWORD_IDS["math.acos"],
+            "arctan" => PSEUDO_KEYWORD_IDS["math.atan"],
+            "arcsinh" => PSEUDO_KEYWORD_IDS["math.asinh"],
+            "arccosh" => PSEUDO_KEYWORD_IDS["math.acosh"],
+            "arctanh" => PSEUDO_KEYWORD_IDS["math.atanh"],
 
-            "ceil" => "math.ceil",
-            "floor" => "math.floor",
-            "round" => "round",
+            "ceil" => PSEUDO_KEYWORD_IDS["math.ceil"],
+            "floor" => PSEUDO_KEYWORD_IDS["math.floor"],
+            "round" => PSEUDO_KEYWORD_IDS["round"],
 
-            "abs" => "abs",
+            "abs" => PSEUDO_KEYWORD_IDS["abs"],
             _ => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(function));
-        global.insert_fixed_name(function.function_id, representation);
         // By the time we need other representations hopefully we can use object namespaces
-        representations.function_representations.insert(Rc::clone(function), FunctionForm::FunctionCall(function.function_id));
+        representations.function_representations.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
     }
 
     for (function, representation) in runtime.source.module_by_name[&module_name("core.debug")].fn_representations.iter() {
-        let representation = match representation.name.as_str() {
-            "_write_line" => "print",
-            "_exit_with_error" => "exit",
+        let id = match representation.name.as_str() {
+            "_write_line" => PSEUDO_KEYWORD_IDS["print"],
+            "_exit_with_error" => PSEUDO_KEYWORD_IDS["exit"],
             _ => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(function));
-        global.insert_fixed_name(function.function_id, representation);
-        representations.function_representations.insert(Rc::clone(function), FunctionForm::FunctionCall(function.function_id));
+        representations.function_representations.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
     }
 
     for (function, representation) in runtime.source.module_by_name[&module_name("core.strings")].fn_representations.iter() {
-        let (higher_order_name, representation) = match representation.name.as_str() {
+        let (higher_order_name, id) = match representation.name.as_str() {
             "add" => ("op.add", FunctionForm::Binary(KEYWORD_IDS["+"])),
             _ => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(function));
-        global.insert_fixed_name(function.function_id, higher_order_name);
-        representations.function_representations.insert(Rc::clone(function), representation);
+        representations.function_representations.insert(Rc::clone(function), id);
     }
 
     for (function, representation) in runtime.source.module_by_name[&module_name("core.bool")].fn_representations.iter() {
-        let (higher_order_name, representation) = match representation.name.as_str() {
+        let (higher_order_name, id) = match representation.name.as_str() {
             "true" => ("True", FunctionForm::Constant(KEYWORD_IDS["True"])),
             "false" => ("False", FunctionForm::Constant(KEYWORD_IDS["False"])),
             _ => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(function));
-        global.insert_fixed_name(function.function_id, higher_order_name);
-        representations.function_representations.insert(Rc::clone(function), representation);
+        representations.function_representations.insert(Rc::clone(function), id);
     }
 }

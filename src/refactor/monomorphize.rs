@@ -42,7 +42,7 @@ impl Monomorphize {
         // TODO For fully internal variables, it would be enough to set the type to the Any's corresponding Generic,
         //  because those have been bound in the type forest. For variables featured in the interface, however, the
         //  type must be properly resolved. So we might as well map all variables to resolved types.
-        let variable_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = implementation.locals_names.keys()
+        let locals_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = implementation.locals_names.keys()
             .map(|v| {
                 (Rc::clone(v), map_variable(v, &implementation.type_forest, &generic_replacement_map))
             })
@@ -106,10 +106,10 @@ impl Monomorphize {
                 }
                 ExpressionOperation::GetLocal(v) => {
                     // If we cannot find a replacement, it's a static variable. Unless we have a bug.
-                    *operation = ExpressionOperation::GetLocal(Rc::clone(variable_map.get(v).unwrap_or(v)))
+                    *operation = ExpressionOperation::GetLocal(Rc::clone(locals_map.get(v).unwrap_or(v)))
                 }
                 ExpressionOperation::SetLocal(v) => {
-                    *operation = ExpressionOperation::SetLocal(Rc::clone(variable_map.get(v).unwrap_or(v)))
+                    *operation = ExpressionOperation::SetLocal(Rc::clone(locals_map.get(v).unwrap_or(v)))
                 }
                 ExpressionOperation::ArrayLiteral => {},
                 ExpressionOperation::StringLiteral(_) => {},
@@ -120,10 +120,10 @@ impl Monomorphize {
 
         // Update parameter variables
         for param_variable in implementation.parameter_locals.iter_mut() {
-            *param_variable = Rc::clone(&variable_map[param_variable])
+            *param_variable = Rc::clone(&locals_map[param_variable])
         }
         implementation.locals_names = implementation.locals_names.drain().map(|(key, value)| {
-            (Rc::clone(&variable_map[&key]), value)
+            (Rc::clone(&locals_map[&key]), value)
         }).collect();
 
         // Requirements
