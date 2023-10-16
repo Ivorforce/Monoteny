@@ -93,7 +93,7 @@ pub fn link_module(body: &ast::Expression) -> RResult<Import> {
 }
 
 pub fn deep(runtime: &mut Runtime, module_name: ModuleName, scope: &mut scopes::Scope) -> RResult<()> {
-    let all_modules = omega([module_name].into_iter(), &|m| runtime.source.module_by_name[m].included_modules.clone().into_iter());
+    let all_modules = omega([module_name].into_iter(), |m| runtime.source.module_by_name[m].included_modules.clone().into_iter());
 
     for module in all_modules {
         scope.import(&runtime.source.module_by_name[&module])?;

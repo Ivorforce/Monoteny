@@ -7,6 +7,7 @@ use crate::program::computation_tree::{ExpressionTree, ExpressionID, ExpressionO
 use crate::program::functions::FunctionHead;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
+use crate::util::iter::omega;
 use crate::util::multimap::insert_into_multimap;
 
 pub struct ConstantFold {
@@ -111,34 +112,34 @@ impl ConstantFold {
     }
 
     fn _inline_cascade(&mut self, head: &Rc<FunctionHead>, hint: InlineHint) {
-        match &hint {
-            InlineHint::ReplaceCall(target, arg_idxs) => {
-                match self.inline_hints.get(target) {
-                    None => self.inline_hints.insert(Rc::clone(head), hint),
-                    Some(InlineHint::ReplaceCall(target_head, target_arg_idxs)) => {
-                        self.inline_hints.insert(
-                            Rc::clone(&head),
-                            InlineHint::ReplaceCall(Rc::clone(target_head), target_arg_idxs.iter().map(|idx| arg_idxs[*idx].clone()).collect_vec())
-                        )
-                    }
-                    Some(InlineHint::YieldParameter(yield_idx)) => {
-                        // Same as above here.
-                        assert_eq!(*yield_idx, 0);
-                        self.inline_hints.insert(Rc::clone(&head), InlineHint::YieldParameter(arg_idxs[*yield_idx]))
-                    }
-                    Some(other_hint) => self.inline_hints.insert(Rc::clone(head), other_hint.clone()),
-                }
-            }
-            _ => self.inline_hints.insert(Rc::clone(head), hint)
-        };
+        let all_affected: Vec<(Rc<FunctionHead>, InlineHint)> = omega([(Rc::clone(head), hint)].into_iter(), |(head, hint)| {
+            return self.dependents.get(head).iter().map(|x| x.iter()).flatten()
+                .cloned()
+                .filter_map(|dependent| self.inline_hints.remove(&dependent).map(|hint| (dependent, hint)))
+                .collect_vec().into_iter()
+        });
 
-        // This isn't efficient but it's easy to write
-        for dependent in self.dependents.get(head).cloned().unwrap_or(HashSet::new()) {
-            if let Some(inline_hint) = self.inline_hints.remove(&dependent) {
-                // Re-insert the dependent with the same cascading rules as above
-                // - transitive rules ensure we never accidentally call a function that's already inlined.
-                self._inline_cascade(&dependent, inline_hint);
-            }
+        for (head, hint) in all_affected {
+            match &hint {
+                InlineHint::ReplaceCall(target, arg_idxs) => {
+                    match self.inline_hints.get(target) {
+                        None => self.inline_hints.insert(Rc::clone(&head), hint),
+                        Some(InlineHint::ReplaceCall(target_head, target_arg_idxs)) => {
+                            self.inline_hints.insert(
+                                Rc::clone(&head),
+                                InlineHint::ReplaceCall(Rc::clone(target_head), target_arg_idxs.iter().map(|idx| arg_idxs[*idx].clone()).collect_vec())
+                            )
+                        }
+                        Some(InlineHint::YieldParameter(yield_idx)) => {
+                            // Same as above here.
+                            assert_eq!(*yield_idx, 0);
+                            self.inline_hints.insert(Rc::clone(&head), InlineHint::YieldParameter(arg_idxs[*yield_idx]))
+                        }
+                        Some(other_hint) => self.inline_hints.insert(Rc::clone(&head), other_hint.clone()),
+                    }
+                }
+                _ => self.inline_hints.insert(Rc::clone(&head), hint)
+            };
         }
     }
 
