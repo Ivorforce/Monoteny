@@ -1,4 +1,4 @@
--- use(monoteny.common);
+use!(module!("common"));
 
 -- Make a pattern: `a /_ b` calls `floor_div(lhs: <>, rhs: <>)`
 pattern floor_div(MultiplicationPrecedence) :: {lhs} /_ {rhs};
@@ -17,7 +17,7 @@ def square(value: '$Number) -> $Number :: value.square();
 def pi_ish -> $Real :: 3.14;
 def pi_ish -> $Int :: 3;
 
-def @main :: {
+def main! :: {
     -- Print string
     write_line("Test: \"Success\"");
 
@@ -36,7 +36,7 @@ def @main :: {
     write_line("Bool Value: \(b < 2 and not (value > 2) and true)");
 };
 
-def @transpile :: {
+def transpile! :: {
     -- The idea is that if we transpile this and run it, it should yield the same output
     -- as if running using the interpreter.
 

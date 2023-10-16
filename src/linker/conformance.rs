@@ -4,7 +4,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::monomorphize::map_interface_types;
+use crate::refactor::monomorphize::map_interface_types;
 use crate::linker::scopes;
 use crate::linker::interface::link_function_interface;
 use crate::parser::ast;

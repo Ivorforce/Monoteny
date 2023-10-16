@@ -8,7 +8,7 @@ use crate::refactor::constant_folding::ConstantFold;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter;
 use crate::interpreter::Runtime;
-use crate::monomorphize::Monomorphizer;
+use crate::refactor::monomorphize::Monomorphizer;
 use crate::program::calls::FunctionBinding;
 use crate::program::functions::FunctionHead;
 use crate::program::global::FunctionImplementation;

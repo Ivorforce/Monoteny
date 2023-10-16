@@ -63,7 +63,9 @@ impl Monomorphizer {
         }
 
         // Find function calls in the expression forest
-        for (expression_id, operation) in implementation.expression_forest.operations.iter_mut() {
+        for expression_id in implementation.expression_forest.deep_children(implementation.root_expression_id) {
+            let mut operation = implementation.expression_forest.operations.get_mut(&expression_id).unwrap();
+
             match operation {
                 ExpressionOperation::FunctionCall(call) => {
                     let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &implementation.type_forest);

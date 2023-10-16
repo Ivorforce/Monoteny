@@ -1,4 +1,5 @@
 pub mod constant_folding;
+pub mod monomorphize;
 
 use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;

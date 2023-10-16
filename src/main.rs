@@ -9,12 +9,13 @@ pub mod parser;
 pub mod program;
 pub mod transpiler;
 pub mod util;
-pub mod monomorphize;
 pub mod integration_tests;
-pub mod constant_folding;
 pub mod error;
 pub mod repository;
+pub mod graphs;
+pub mod refactor;
 
+use std::collections::HashSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fs::File;
@@ -24,9 +25,11 @@ use std::process::ExitCode;
 use clap::{arg, Command};
 use itertools::Itertools;
 use colored::Colorize;
-use crate::error::{dump_failure, dump_result, dump_start, dump_success, dump_named_failure, RResult};
+use crate::error::{dump_failure, dump_named_failure, dump_result, dump_start, dump_success, RResult};
 use crate::interpreter::Runtime;
 use crate::program::module::{Module, module_name};
+use crate::refactor::constant_folding::ConstantFold;
+use crate::refactor::Refactor;
 use crate::transpiler::Context;
 
 
@@ -189,9 +192,23 @@ fn transpile_target(base_filename: &str, base_output_path: &Path, should_constan
     };
 
     let mut transpiler = transpiler::run(&module, &mut runtime, &mut context)?;
+    let mut refactor = Refactor::new();
+
+    for implementation in transpiler.exported_functions.iter_mut() {
+        refactor.add(implementation, false);
+    }
+    for implementation in transpiler.internal_functions.iter_mut() {
+        refactor.add(implementation, true);
+    }
 
     if should_constant_fold {
-        transpiler::constant_fold(&mut transpiler);
+        let mut constant_folder = ConstantFold::new(&mut refactor);
+
+        constant_folder.run();
+
+        let inlined: HashSet<_> = refactor.inline_hints.keys().collect();
+        // The order of the internal functions is unimportant anyway, because they are sorted later.
+        transpiler.internal_functions.retain(|imp| !inlined.contains(&imp.head));
     }
 
     let file_map = context.make_files(base_filename, &runtime, &transpiler)?;

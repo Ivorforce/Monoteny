@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import operator as op
+from dataclasses import dataclass
 from numpy import int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64
 from typing import Any, Callable
 
@@ -23,20 +24,10 @@ def main():
 # ========================== ======== ============================
 
 
-def square(self: float32) -> float32:
-    """
-    <DOCSTRING TODO>
-
-    Args:
-        self: TODO
-
-    Returns:
-        <TODO>
-    """
-    return self * self
-
-
 e: float32 = float32(2.718281828459045)
+
+
+pi_ish_0: int32 = int32(3)
 
 
 tau: float32 = float32(6.283185307179586)
@@ -53,13 +44,23 @@ def floor_div(lhs: float32, rhs: float32) -> float32:
     Returns:
         <TODO>
     """
-    return math.floor(lhs / rhs)
-
-
-pi_ish_0: int32 = int32(3)
+    return math.floor(lhs // rhs)
 
 
 pi_ish_1: float32 = float32(3.14)
+
+
+def square(self: float32) -> float32:
+    """
+    <DOCSTRING TODO>
+
+    Args:
+        self: TODO
+
+    Returns:
+        <TODO>
+    """
+    return self * self
 
 
 __all__ = [

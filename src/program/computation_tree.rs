@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::rc::Rc;
 use itertools::Itertools;
@@ -60,7 +60,7 @@ impl ExpressionTree {
         }
     }
 
-    pub fn deep_children(&mut self, start: ExpressionID) -> Vec<ExpressionID> {
+    pub fn deep_children(&self, start: ExpressionID) -> Vec<ExpressionID> {
         omega([start].into_iter(), |e| self.arguments[e].iter().cloned())
     }
 }
