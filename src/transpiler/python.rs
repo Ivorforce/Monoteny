@@ -111,6 +111,7 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
 
     // Names for exported structs
     let mut structs = HashMap::new();
+    // TODO We only need to export structs that are mentioned in the interfaces of exported functions.
     structs::find(&exported_functions, &runtime.source, &mut structs);
     let exported_structs = structs.keys().cloned().collect_vec();
     for struct_ in structs.values() {
