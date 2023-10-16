@@ -10,13 +10,13 @@ def main():
     """
     <DOCSTRING TODO>
     """
-    write_line("Test: \"Success\"")
+    print("Test: \"Success\"")
     value: float32 = square(float32(2.2)) * math.sin(e)
-    write_line("Value: " + str(value))
+    print("Value: " + str(value))
     b: float32 = square(value) + pi_ish_1
     b: float32 = floor_div(square(b) ** (-float32(2.2)), value) + tau
     c: int32 = pi_ish_0 // int32(2)
-    write_line("Bool Value: " + str(((b < float32(2)) and (not (value > float32(2)))) and True))
+    print("Bool Value: " + str(((b < float32(2)) and (not (value > float32(2)))) and True))
 
 
 # ========================== ======== ============================
@@ -61,16 +61,6 @@ def square(self: float32) -> float32:
         <TODO>
     """
     return self * self
-
-
-def write_line(value: str):
-    """
-    <DOCSTRING TODO>
-
-    Args:
-        value: TODO
-    """
-    print(value)
 
 
 __all__ = [

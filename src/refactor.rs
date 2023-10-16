@@ -85,27 +85,28 @@ impl<'a> Refactor<'a> {
         self.callees.insert(Rc::clone(head), new_callees);
     }
 
-    pub fn try_inline(&mut self, head: &Rc<FunctionHead>) -> bool {
+    pub fn try_inline(&mut self, head: &Rc<FunctionHead>) -> Result<HashSet<Rc<FunctionHead>>, ()> {
         if self.explicit_functions.contains(head) {
-            return false
+            return Err(())
         }
 
         guard!(let Some(imp) = self.implementation_by_head.get_mut(head) else {
-            return false
+            return Err(())
         });
 
         guard!(let Some(hint) = try_inline(imp) else {
-            return false
+            return Err(())
         });
 
         self.inline_hints.insert(Rc::clone(head), hint);
 
-        for caller in self.callers.get(head).iter().flat_map(|x| x.iter()).cloned().collect_vec() {
-            self.inline_calls(&caller);
+        let affected = self.callers.get(head).cloned().unwrap_or(HashSet::new());
+        for caller in affected.iter() {
+            self.inline_calls(caller);
         }
         self.invented_functions.retain(|f| f != head);
 
-        return true
+        return Ok(affected)
     }
 
     pub fn inline_calls(&mut self, head: &Rc<FunctionHead>) {
