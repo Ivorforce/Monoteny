@@ -11,5 +11,6 @@ pub mod precedence_order;
 pub mod fields;
 pub mod imports;
 pub mod interpreter_mock;
+pub mod referencible;
 
 pub use crate::linker::global::link_file;

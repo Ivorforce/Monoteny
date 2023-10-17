@@ -23,6 +23,7 @@ pub struct FunctionRepresentation {
 #[derive(Clone, PartialEq, Eq)]
 pub struct FunctionOverload {
     pub functions: HashSet<Rc<FunctionHead>>,
+    // Note: If representation is NOT an implicit, the functions within are getters.
     pub representation: FunctionRepresentation,
 }
 
@@ -51,5 +52,25 @@ impl FunctionOverload {
                 .collect(),
             representation: self.representation.clone(),
         }))
+    }
+}
+
+impl FunctionForm {
+    pub fn implicit(&self) -> FunctionForm {
+        match self {
+            FunctionForm::GlobalFunction => FunctionForm::GlobalImplicit,
+            FunctionForm::GlobalImplicit => FunctionForm::GlobalImplicit,
+            FunctionForm::MemberFunction => FunctionForm::MemberImplicit,
+            FunctionForm::MemberImplicit => FunctionForm::MemberImplicit,
+        }
+    }
+
+    pub fn is_implicit(&self) -> bool {
+        match self {
+            FunctionForm::GlobalFunction => false,
+            FunctionForm::GlobalImplicit => true,
+            FunctionForm::MemberFunction => false,
+            FunctionForm::MemberImplicit => true,
+        }
     }
 }

@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::rc::Rc;
+use guard::guard;
 use strum::IntoEnumIterator;
-use uuid::Uuid;
 use crate::interpreter::Runtime;
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
 use crate::program::module::module_name;
 use crate::program::primitives;
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::types::TypeProto;
 use crate::transpiler::python::{Context, keywords};
 use crate::transpiler::python::keywords::{KEYWORD_IDS, PSEUDO_KEYWORD_IDS};
 use crate::transpiler::python::representations::FunctionForm;
@@ -36,8 +36,12 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
 
     // The operators can normally be referenced as operators (which the transpiler does do).
     // However, if a reference is required, we need to resort to another strategy.
-    for (head, hint) in runtime.source.module_by_name[&module_name("builtins")].fn_builtin_hints.iter() {
-        let (higher_order_ref_name, representation) = match hint {
+    for function in runtime.source.module_by_name[&module_name("builtins")].explicit_functions(&runtime.source) {
+        guard!(let Some(builtin_hint) = runtime.source.fn_builtin_hints.get(function) else {
+            continue;
+        });
+
+        let (higher_order_ref_name, representation) = match builtin_hint {
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::EqualTo, type_ } => {
                 ("op.eq", FunctionForm::Binary(KEYWORD_IDS["=="]))
             }
@@ -111,13 +115,13 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
                 }
             }
 
-            BuiltinFunctionHint::Constructor(_) => continue,
-            BuiltinFunctionHint::GetMemberField(_) => continue,
-            BuiltinFunctionHint::SetMemberField(_) => continue,
+            BuiltinFunctionHint::Constructor(_, _) => continue,
+            BuiltinFunctionHint::GetMemberField(_, _) => continue,
+            BuiltinFunctionHint::SetMemberField(_, _) => continue,
         };
 
-        representations.builtin_functions.insert(Rc::clone(head));
-        representations.function_representations.insert(Rc::clone(head), representation);
+        representations.builtin_functions.insert(Rc::clone(function));
+        representations.function_representations.insert(Rc::clone(function), representation);
     }
 
     for (struct_, id) in [
@@ -132,7 +136,9 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     }
 
     // TODO Some of these sneakily convert the type - especially float to int and vice versa.
-    for (function, representation) in runtime.source.module_by_name[&module_name("common.math")].fn_representations.iter() {
+    for function in runtime.source.module_by_name[&module_name("common.math")].explicit_functions(&runtime.source) {
+        let representation = &runtime.source.fn_representations[function];
+
         let id = match representation.name.as_str() {
             "factorial" => PSEUDO_KEYWORD_IDS["math.factorial"],
             "sin" => PSEUDO_KEYWORD_IDS["math.sin"],
@@ -161,7 +167,9 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
         representations.function_representations.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
     }
 
-    for (function, representation) in runtime.source.module_by_name[&module_name("core.debug")].fn_representations.iter() {
+    for function in runtime.source.module_by_name[&module_name("core.debug")].explicit_functions(&runtime.source) {
+        let representation = &runtime.source.fn_representations[function];
+
         let id = match representation.name.as_str() {
             "_write_line" => PSEUDO_KEYWORD_IDS["print"],
             "_exit_with_error" => PSEUDO_KEYWORD_IDS["exit"],
@@ -172,7 +180,9 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
         representations.function_representations.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
     }
 
-    for (function, representation) in runtime.source.module_by_name[&module_name("core.strings")].fn_representations.iter() {
+    for function in runtime.source.module_by_name[&module_name("core.strings")].explicit_functions(&runtime.source) {
+        let representation = &runtime.source.fn_representations[function];
+
         let (higher_order_name, id) = match representation.name.as_str() {
             "add" => ("op.add", FunctionForm::Binary(KEYWORD_IDS["+"])),
             _ => continue,
@@ -182,7 +192,9 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
         representations.function_representations.insert(Rc::clone(function), id);
     }
 
-    for (function, representation) in runtime.source.module_by_name[&module_name("core.bool")].fn_representations.iter() {
+    for function in runtime.source.module_by_name[&module_name("core.bool")].explicit_functions(&runtime.source) {
+        let representation = &runtime.source.fn_representations[function];
+
         let (higher_order_name, id) = match representation.name.as_str() {
             "true" => ("True", FunctionForm::Constant(KEYWORD_IDS["True"])),
             "false" => ("False", FunctionForm::Constant(KEYWORD_IDS["False"])),

@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
+use crate::interpreter::Runtime;
 use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
 use crate::program::allocation::Reference;
 use crate::program::function_object::{FunctionForm, FunctionOverload, FunctionRepresentation};
@@ -81,7 +82,7 @@ impl <'a> Scope<'a> {
         }
     }
 
-    pub fn import(&mut self, module: &Module) -> RResult<()> {
+    pub fn import(&mut self, module: &Module, runtime: &Runtime) -> RResult<()> {
         // This wipes any existing patterns, but I think that's what we want.
         if let Some(precedence) = &module.precedence_order {
             self.set_precedence_order(precedence.clone());
@@ -91,7 +92,8 @@ impl <'a> Scope<'a> {
             self.add_pattern(Rc::clone(pattern))?;
         }
 
-        for (function, representation) in module.fn_representations.iter() {
+        for function in module.exposed_functions.iter() {
+            let representation = &runtime.source.fn_representations[function];
             self.overload_function(function, representation.clone())?;
         }
 

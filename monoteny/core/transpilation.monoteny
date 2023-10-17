@@ -8,3 +8,5 @@ trait Transpiler {
 };
 
 def {Transpiler}.add(object '#A);
+
+def transpile(transpiler 'Transpiler);

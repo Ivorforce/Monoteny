@@ -8,7 +8,7 @@ use crate::interpreter::Runtime;
 use crate::parser::ast;
 use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
-use crate::linker::{imports, interpreter_mock, scopes};
+use crate::linker::{imports, interpreter_mock, referencible, scopes};
 use crate::linker::conformance::ConformanceLinker;
 use crate::linker::imports::link_imports;
 use crate::linker::interface::{link_function_interface, link_operator_interface};
@@ -61,7 +61,7 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runt
 
         match resolver.link_function_body(&pbody.value, &global_variable_scope) {
             Ok(implementation) => {
-                global_linker.module.fn_implementations.insert(Rc::clone(&head), implementation);
+                runtime.source.fn_implementations.insert(Rc::clone(&head), implementation);
             }
             Err(e) => {
                 errors.extend(e.iter().map(|e| e.in_range(pbody.position.clone())));
@@ -249,34 +249,17 @@ impl <'a> GlobalLinker<'a> {
     }
 
     fn add_trait(&mut self, trait_: &Rc<Trait>) -> RResult<()> {
-        let getter = self.module.add_trait(&self.runtime.Metatype, &trait_);
-        self.global_variables.overload_function(&getter, FunctionRepresentation::new(&trait_.name, FunctionForm::GlobalImplicit))?;
-        self.runtime.source.trait_references.insert(getter, Rc::clone(trait_));
-
+        referencible::add_trait(self.runtime, &mut self.module, Some(&mut self.global_variables), &trait_)?;
         try_make_struct(trait_, self)?;
         Ok(())
     }
 
     pub fn add_function_interface(&mut self, pointer: Rc<FunctionHead>, representation: FunctionRepresentation, decorators: &Vec<String>) -> RResult<()> {
-        // Add the function to our module
-        self.module.add_function(Rc::clone(&pointer), representation.clone());
-
-        // Make it usable in our current scope.
-        self.global_variables.overload_function(&pointer, representation)?;
-        // The runtime also needs to know about the function.
-        // TODO Technically we need to load it too, because future linked functions may want to call it.
-        self.runtime.source.fn_getters.insert(
-            Rc::clone(&pointer),
-            Rc::clone(&self.module.fn_getters[&pointer])
-        );
-
-        // if interface.is_member_function {
-        // TODO Create an additional variable as Metatype.function(self, ...args)?
-        // }
-
         for decorator in decorators.iter() {
             return Err(RuntimeError::new(format!("Decorator could not be resolved: {}", decorator)))
         }
+
+        referencible::add_function(self.runtime, &mut self.module, Some(&mut self.global_variables), pointer, representation)?;
 
         Ok(())
     }

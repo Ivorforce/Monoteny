@@ -12,8 +12,7 @@ use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use crate::{linker, parser, program};
 use crate::error::{RResult, RuntimeError};
-use crate::interpreter::compiler::make_function_getter;
-use crate::linker::{imports, scopes};
+use crate::linker::{imports, referencible, scopes};
 use crate::parser::ast;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::function_object::FunctionRepresentation;
@@ -53,7 +52,7 @@ pub struct Source {
 
     // Cache of aggregated module_by_name fields for quick reference.
 
-    /// For each function_id, its head.
+    /// For every getter, which trait it provides.
     pub trait_references: HashMap<Rc<FunctionHead>, Rc<Trait>>,
 
     /// For each function_id, its head.
@@ -82,7 +81,7 @@ impl Runtime {
         let Metatype = Rc::new(Metatype);
 
         let mut runtime = Box::new(Runtime {
-            Metatype,
+            Metatype: Rc::clone(&Metatype),
             primitives: None,
             traits: None,
             function_evaluators: Default::default(),
@@ -99,9 +98,8 @@ impl Runtime {
         });
 
         let mut builtins_module = program::builtins::create_builtins(&mut runtime);
-        builtins_module.add_trait(&runtime.Metatype, &runtime.Metatype);
+        referencible::add_trait(&mut runtime, &mut builtins_module, None, &Metatype).unwrap();
 
-        runtime.load(&builtins_module);
         runtime.source.module_by_name.insert(builtins_module.name.clone(), builtins_module);
         builtins::load(&mut runtime)?;
 
@@ -158,30 +156,7 @@ impl Runtime {
             imports::deep(self, core_name, &mut scope)?;
         }
 
-        let module = linker::link_file(syntax, &scope, self, name)?;
-
-        self.load(&module);
-
-        Ok(module)
-    }
-
-    pub fn load(&mut self, module: &Module) {
-        self.source.trait_references.extend(module.trait_by_getter.clone());
-        self.source.fn_heads.extend(module.fn_representations.keys().map(|f| (f.function_id, Rc::clone(f))).collect_vec());
-        self.source.fn_getters.extend(module.fn_getters.clone());
-        self.source.fn_representations.extend(module.fn_representations.clone());
-        self.source.fn_implementations.extend(module.fn_implementations.clone());
-        self.source.fn_builtin_hints.extend(module.fn_builtin_hints.clone());
-
-        for (head, implementation) in module.fn_implementations.iter() {
-            self.function_evaluators.insert(implementation.head.function_id, compiler::compile_function(implementation));
-
-            // Function getter
-            self.function_evaluators.insert(
-                module.fn_getters[head].function_id,
-                make_function_getter(implementation.implementation_id),  // FIXME you sure you don't need the head id?
-            );
-        }
+        linker::link_file(syntax, &scope, self, name)
     }
 }
 

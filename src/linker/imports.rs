@@ -35,7 +35,7 @@ pub fn link_imports(body: &Vec<ast::StructArgument>) -> RResult<Vec<Import>> {
 }
 
 pub fn link_module(body: &ast::Expression) -> RResult<Import> {
-    let error = RuntimeError::new(format!("Precedence group parameter is not a module."));
+    let error = RuntimeError::new(format!("Import parameter is not a module."));
 
     match &body[..] {
         [l, r] => {
@@ -92,11 +92,11 @@ pub fn link_module(body: &ast::Expression) -> RResult<Import> {
     }
 }
 
-pub fn deep(runtime: &mut Runtime, module_name: ModuleName, scope: &mut scopes::Scope) -> RResult<()> {
+pub fn deep(runtime: &Runtime, module_name: ModuleName, scope: &mut scopes::Scope) -> RResult<()> {
     let all_modules = omega([&module_name].into_iter(), |m| runtime.source.module_by_name[*m].included_modules.iter());
 
     for module in all_modules {
-        scope.import(&runtime.source.module_by_name[module])?;
+        scope.import(&runtime.source.module_by_name[module], runtime)?;
     }
 
     Ok(())

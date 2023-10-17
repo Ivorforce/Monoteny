@@ -11,7 +11,7 @@ use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 pub use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
 use crate::program::module::{Module, module_name};
 use crate::program::traits::TraitBinding;
-use crate::program::types::{PatternPart, TypeProto, TypeUnit};
+use crate::program::types::{PatternPart, TypeProto};
 
 
 pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
@@ -19,45 +19,26 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
         ast::FunctionInterface::Macro(m) => {
             match m.as_str() {
                 "main" => {
-                    let (fun, representation) = (
-                        FunctionHead::new_static(
-                            Rc::new(FunctionInterface {
-                                parameters: vec![],
-                                return_type: TypeProto::void(),
-                                requirements: Default::default(),
-                                generics: Default::default(),
-                            })
-                        ),
-                        FunctionRepresentation::new("main", FunctionForm::GlobalFunction)
-                    );
+                    let proto_function = runtime.source.module_by_name[&module_name("core.run")].explicit_functions(&runtime.source).into_iter()
+                        .filter(|function| runtime.source.fn_representations[*function].name == "main")
+                        .exactly_one().unwrap();
+
+                    let fun = FunctionHead::new_static(Rc::clone(&proto_function.interface));
+                    let representation = FunctionRepresentation::new("main", FunctionForm::GlobalFunction);
+
                     if let Some(module) = module {
                         module.main_functions.push(Rc::clone(&fun));
                     }
                     Ok((fun, representation))
                 },
                 "transpile" => {
-                    let transpiler_trait = runtime.source.module_by_name[&module_name("core.transpilation")].trait_by_getter.values()
-                        .filter(|x| x.name == "Transpiler")
+                    let proto_function = runtime.source.module_by_name[&module_name("core.transpilation")].explicit_functions(&runtime.source).into_iter()
+                        .filter(|function| runtime.source.fn_representations[*function].name == "transpile")
                         .exactly_one().unwrap();
 
-                    // TODO This should use a generic transpiler, not a struct.
-                    let (fun, representation) = (
-                        FunctionHead::new_static(
-                            Rc::new(FunctionInterface {
-                                parameters: vec![
-                                    Parameter {
-                                        external_key: ParameterKey::Positional,
-                                        internal_name: String::from("transpiler"),
-                                        type_: TypeProto::unit_struct(transpiler_trait),
-                                    }
-                                ],
-                                return_type: TypeProto::void(),
-                                requirements: Default::default(),
-                                generics: Default::default(),
-                            }),
-                        ),
-                        FunctionRepresentation::new("transpile", FunctionForm::GlobalFunction)
-                    );
+                    let fun = FunctionHead::new_static(Rc::clone(&proto_function.interface));
+                    let representation = FunctionRepresentation::new("transpile", FunctionForm::GlobalFunction);
+
                     if let Some(module) = module {
                         module.transpile_functions.push(Rc::clone(&fun));
                     }

@@ -25,13 +25,13 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
         return Err(RuntimeError::new(format!("@main function has a return value.")));
     }
 
-    guard!(let Some(implementation) = module.fn_implementations.get(entry_function) else {
+    guard!(let Some(implementation) = runtime.source.fn_implementations.get(entry_function) else {
         return Err(RuntimeError::new(format!("Cannot run @main function because it does not have a body.")));
     });
 
     let mut interpreter = FunctionInterpreter {
-        runtime,
         implementation: Rc::new(*implementation.clone()),
+        runtime,
         // No parameters and return type = nothing to bind!
         requirements_fulfillment: RequirementsFulfillment::empty(),
         locals: HashMap::new(),
@@ -52,7 +52,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     };
     assert!(entry_function.interface.return_type.unit.is_void(), "@transpile function has a return value.");
 
-    guard!(let Some(implementation) = module.fn_implementations.get(entry_function) else {
+    guard!(let Some(implementation) = runtime.source.fn_implementations.get(entry_function) else {
         return Err(RuntimeError::new(format!("Cannot run @transpile function because it does not have a body.")));
     });
 
@@ -86,8 +86,8 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     }
 
     let mut interpreter = FunctionInterpreter {
-        runtime,
         implementation: Rc::new(*implementation.clone()),
+        runtime,
         // TODO Technically we should bind Transpiler here. It should be a subtype of Transpiler
         //  depending on the target language.
         requirements_fulfillment: RequirementsFulfillment::empty(),

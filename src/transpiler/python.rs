@@ -7,21 +7,16 @@ pub mod representations;
 pub mod keywords;
 
 use std::collections::{HashMap, HashSet};
-use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::ops::DerefMut;
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
-use uuid::Uuid;
 use crate::error::RResult;
 use crate::transpiler;
 use crate::interpreter::Runtime;
-use crate::program::computation_tree::ExpressionOperation;
 
 use crate::program::functions::FunctionHead;
-use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
-use crate::program::types::TypeUnit;
+use crate::program::global::FunctionImplementation;
 use crate::refactor::constant_folding::ConstantFold;
 use crate::refactor::Refactor;
 use crate::transpiler::{Config, namespaces, structs, TranspiledArtifact, Transpiler};

@@ -9,7 +9,7 @@ use crate::program::allocation::ObjectReference;
 use crate::program::computation_tree::ExpressionOperation;
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
 use crate::program::traits::Trait;
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::types::TypeProto;
 
 pub struct Struct {
     pub type_: Box<TypeProto>,
@@ -31,16 +31,13 @@ pub fn find(implementations: &Vec<Box<FunctionImplementation>>, source: &Source,
                 let hint: &BuiltinFunctionHint = hint;
 
                 match hint {
-                    BuiltinFunctionHint::Constructor(fields) => {
+                    BuiltinFunctionHint::Constructor(trait_, fields) => {
                         let type_ = &binding.function.interface.return_type;  // Fulfillment for Self
                         if let Entry::Vacant(entry) = map.entry(type_.clone()) {
                             // TODO If we have generics, we should include their bindings in the name somehow.
                             //  Eg. ArrayFloat. Probably only if it's exactly one. Otherwise, we need to be ok with
                             //  just the auto-renames.
-                            let trait_ = match &type_.unit {
-                                TypeUnit::Struct(trait_) => Rc::clone(trait_),
-                                _ => panic!("Unsupported Constructor Type")
-                            };
+
                             // TODO This logic will fall apart if we have multiple instantiations of the same type.
                             //  In that case we probably want to monomorphize the struct getter per-object so we can
                             //  differentiate them and assign different names.
@@ -50,13 +47,13 @@ pub fn find(implementations: &Vec<Box<FunctionImplementation>>, source: &Source,
 
                             for (head, hint) in source.fn_builtin_hints.iter() {
                                 match hint {
-                                    BuiltinFunctionHint::GetMemberField(ref_) => {
-                                        if fields.contains(ref_) {
+                                    BuiltinFunctionHint::GetMemberField(trait_field, ref_) => {
+                                        if trait_field == trait_ && fields.contains(ref_) {
                                             getters.insert(Rc::clone(ref_), Rc::clone(head));
                                         }
                                     }
-                                    BuiltinFunctionHint::SetMemberField(ref_) => {
-                                        if fields.contains(ref_) {
+                                    BuiltinFunctionHint::SetMemberField(trait_field, ref_) => {
+                                        if trait_field == trait_ && fields.contains(ref_) {
                                             setters.insert(Rc::clone(ref_), Rc::clone(head));
                                         }
                                     }
@@ -66,7 +63,7 @@ pub fn find(implementations: &Vec<Box<FunctionImplementation>>, source: &Source,
 
                             entry.insert(Struct {
                                 type_: type_.clone(),
-                                trait_,
+                                trait_: Rc::clone(trait_),
                                 constructor: Rc::clone(&binding.function),
                                 fields: fields.clone(),
                                 getters,

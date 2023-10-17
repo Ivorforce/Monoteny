@@ -15,22 +15,18 @@ pub mod repository;
 pub mod graphs;
 pub mod refactor;
 
-use std::collections::HashSet;
 use std::env;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-use std::rc::Rc;
 use clap::{arg, Command};
 use itertools::Itertools;
 use colored::Colorize;
 use crate::error::{dump_failure, dump_named_failure, dump_result, dump_start, dump_success, RResult};
 use crate::interpreter::Runtime;
 use crate::program::module::{Module, module_name};
-use crate::refactor::constant_folding::ConstantFold;
-use crate::refactor::Refactor;
 use crate::transpiler::LanguageContext;
 
 

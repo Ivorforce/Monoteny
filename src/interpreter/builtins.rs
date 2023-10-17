@@ -21,7 +21,9 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     runtime.repository.add("core", PathBuf::from("monoteny"));
     runtime.get_or_load_module(&module_name("core"))?;
 
-    for (function, representation) in runtime.source.module_by_name[&module_name("core.debug")].fn_representations.iter() {
+    for function in runtime.source.module_by_name[&module_name("core.debug")].explicit_functions(&runtime.source) {
+        let representation = &runtime.source.fn_representations[function];
+
         runtime.function_evaluators.insert(function.unwrap_id(), match representation.name.as_str() {
             "_write_line" => Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
@@ -44,7 +46,9 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         });
     }
 
-    for (function, representation) in runtime.source.module_by_name[&module_name("core.transpilation")].fn_representations.iter() {
+    for function in runtime.source.module_by_name[&module_name("core.transpilation")].explicit_functions(&runtime.source) {
+        let representation = &runtime.source.fn_representations[function];
+
         runtime.function_evaluators.insert(
             function.function_id,
             Rc::new(move |interpreter, expression_id, binding| {
@@ -77,7 +81,9 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         );
     }
 
-    for (function, representation) in runtime.source.module_by_name[&module_name("core.bool")].fn_representations.iter() {
+    for function in runtime.source.module_by_name[&module_name("core.bool")].explicit_functions(&runtime.source) {
+        let representation = &runtime.source.fn_representations[function];
+
         runtime.function_evaluators.insert(function.unwrap_id(), match representation.name.as_str() {
             "true" => load_constant!(bool true),
             "false" => load_constant!(bool false),
@@ -89,14 +95,18 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     // -------------------------------------- Math --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    for (head, builtin_hint) in runtime.source.module_by_name[&module_name("builtins")].fn_builtin_hints.iter() {
-        runtime.function_evaluators.insert(head.unwrap_id(), match builtin_hint {
+    for function in runtime.source.module_by_name[&module_name("builtins")].explicit_functions(&runtime.source) {
+        guard!(let Some(builtin_hint) = runtime.source.fn_builtin_hints.get(function) else {
+            continue;
+        });
+
+        runtime.function_evaluators.insert(function.unwrap_id(), match builtin_hint {
             BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
                 create_primitive_op(type_.clone(), operation.clone())
             }
-            BuiltinFunctionHint::Constructor(_) => todo!(),
-            BuiltinFunctionHint::GetMemberField(_) => todo!(),
-            BuiltinFunctionHint::SetMemberField(_) => todo!(),
+            BuiltinFunctionHint::Constructor(_, _) => todo!(),
+            BuiltinFunctionHint::GetMemberField(_, _) => todo!(),
+            BuiltinFunctionHint::SetMemberField(_, _) => todo!(),
         });
     }
 

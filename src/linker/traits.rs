@@ -14,7 +14,7 @@ use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
 use crate::program::global::BuiltinFunctionHint;
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::types::TypeProto;
 use crate::util::fmt::fmta;
 
 pub struct TraitLinker<'a> {
@@ -108,7 +108,10 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         // TODO Once generic types are supported, the variable type should be mapped to actual types
         if let Some(abstract_getter) = &abstract_field.getter {
             let struct_getter = struct_field.getter.clone().unwrap();
-            linker.module.fn_builtin_hints.insert(Rc::clone(&struct_getter), BuiltinFunctionHint::GetMemberField(Rc::clone(&variable_as_object)));
+            linker.runtime.source.fn_builtin_hints.insert(
+                Rc::clone(&struct_getter),
+                BuiltinFunctionHint::GetMemberField(Rc::clone(trait_), Rc::clone(&variable_as_object))
+            );
             function_mapping.insert(Rc::clone(abstract_getter), Rc::clone(&struct_getter));
             linker.add_function_interface(
                 struct_getter,
@@ -118,7 +121,10 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         }
         if let Some(abstract_setter) = &abstract_field.setter {
             let struct_setter = struct_field.setter.clone().unwrap();
-            linker.module.fn_builtin_hints.insert(Rc::clone(&struct_setter), BuiltinFunctionHint::SetMemberField(Rc::clone(&variable_as_object)));
+            linker.runtime.source.fn_builtin_hints.insert(
+                Rc::clone(&struct_setter),
+                BuiltinFunctionHint::SetMemberField(Rc::clone(trait_), Rc::clone(&variable_as_object))
+            );
             function_mapping.insert(Rc::clone(abstract_setter), Rc::clone(&struct_setter));
             linker.add_function_interface(
                 struct_setter,
@@ -143,14 +149,17 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
     linker.global_variables.traits.add_conformance_rule(TraitConformanceRule::direct(conformance));
 
     let constructor = FunctionHead::new_static(
-            Rc::new(FunctionInterface {
-                parameters,
-                return_type: struct_type,
-                requirements: Default::default(),
-                generics: Default::default(),
-            }),
+        Rc::new(FunctionInterface {
+            parameters,
+            return_type: struct_type,
+            requirements: Default::default(),
+            generics: Default::default(),
+        }),
     );
-    linker.module.fn_builtin_hints.insert(Rc::clone(&constructor), BuiltinFunctionHint::Constructor(parameter_mapping));
+    linker.runtime.source.fn_builtin_hints.insert(
+        Rc::clone(&constructor),
+        BuiltinFunctionHint::Constructor(Rc::clone(trait_), parameter_mapping)
+    );
     linker.add_function_interface(
         constructor,
         FunctionRepresentation::new("call_as_function", FunctionForm::MemberFunction),

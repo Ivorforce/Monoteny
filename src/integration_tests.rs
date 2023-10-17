@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use itertools::Itertools;
-    use crate::{interpreter, parser, program, transpiler};
+    use crate::{interpreter, parser, transpiler};
     use crate::interpreter::{common, Runtime};
     use crate::parser::ast::*;
     use crate::program::functions::ParameterKey;

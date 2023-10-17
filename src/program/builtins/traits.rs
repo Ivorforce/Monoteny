@@ -1,12 +1,12 @@
-use std::collections::HashMap;
 use std::rc::Rc;
 use crate::interpreter::Runtime;
+use crate::linker::referencible;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::module::Module;
 use crate::program::primitives;
 use crate::program::traits::Trait;
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::types::TypeProto;
 
 pub struct FunctionPointer {
     pub target: Rc<FunctionHead>,
@@ -52,6 +52,7 @@ pub fn insert_functions<'a, I>(module: &mut Trait, functions: I) where I: Iterat
 }
 
 #[allow(non_snake_case)]
+#[derive(Clone)]
 pub struct Traits {
     pub Eq: Rc<Trait>,
     pub Eq_functions: EqFunctions,
@@ -78,7 +79,7 @@ pub struct Traits {
     pub Int: Rc<Trait>,
 }
 
-
+#[derive(Clone)]
 pub struct EqFunctions {
     pub equal_to: Rc<FunctionPointer>,
     pub not_equal_to: Rc<FunctionPointer>,
@@ -97,6 +98,7 @@ pub fn make_eq_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>) -> 
     }
 }
 
+#[derive(Clone)]
 pub struct OrdFunctions {
     pub greater_than: Rc<FunctionPointer>,
     pub greater_than_or_equal_to: Rc<FunctionPointer>,
@@ -125,6 +127,7 @@ pub fn make_ord_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>) ->
     }
 }
 
+#[derive(Clone)]
 pub struct NumberFunctions {
     pub add: Rc<FunctionPointer>,
     pub subtract: Rc<FunctionPointer>,
@@ -167,6 +170,7 @@ pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
     }
 }
 
+#[derive(Clone)]
 pub struct RealFunctions {
     pub exponent: Rc<FunctionPointer>,
     pub logarithm: Rc<FunctionPointer>,
@@ -209,7 +213,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
         &eq_functions.not_equal_to,
     ].into_iter());
     let Eq = Rc::new(Eq);
-    module.add_trait(&runtime.Metatype, &Eq);
+    referencible::add_trait(runtime, module, None, &Eq).unwrap();
 
     let mut Ord = Trait::new_with_self("Ord".to_string());
     let ord_functions = make_ord_functions(&Ord.create_generic_type("Self"), &bool_type);
@@ -221,7 +225,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     ].into_iter());
     Ord.add_simple_parent_requirement(&Eq);
     let Ord = Rc::new(Ord);
-    module.add_trait(&runtime.Metatype, &Ord);
+    referencible::add_trait(runtime, module, None, &Ord).unwrap();
 
     let mut Number = Trait::new_with_self("Number".to_string());
     let number_functions = make_number_functions(&Number.create_generic_type("Self"));
@@ -235,11 +239,11 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     ].into_iter());
     Number.add_simple_parent_requirement(&Ord);
     let Number = Rc::new(Number);
-    module.add_trait(&runtime.Metatype, &Number);
+    referencible::add_trait(runtime, module, None, &Number).unwrap();
 
     let mut String = Trait::new_with_self("String".to_string());
     let String = Rc::new(String);
-    module.add_trait(&runtime.Metatype, &String);
+    referencible::add_trait(runtime, module, None, &String).unwrap();
 
     // TODO String is not ToString. We could declare it on the struct, but that seems counterintuitive, no?
     //  Maybe a candidate for return self.strip().
@@ -249,7 +253,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
         &to_string_function
     ].into_iter());
     let ToString = Rc::new(ToString);
-    module.add_trait(&runtime.Metatype, &ToString);
+    referencible::add_trait(runtime, module, None, &ToString).unwrap();
 
     let mut ConstructableByIntLiteral = Trait::new_with_self("ConstructableByIntLiteral".to_string());
     let parse_int_literal_function = FunctionPointer::new_global_function(
@@ -263,7 +267,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
         &parse_int_literal_function
     ].into_iter());
     let ConstructableByIntLiteral = Rc::new(ConstructableByIntLiteral);
-    module.add_trait(&runtime.Metatype, &ConstructableByIntLiteral);
+    referencible::add_trait(runtime, module, None, &ConstructableByIntLiteral).unwrap();
 
 
     let mut ConstructableByRealLiteral = Trait::new_with_self("ConstructableByRealLiteral".to_string());
@@ -278,7 +282,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
         &parse_real_literal_function
     ].into_iter());
     let ConstructableByRealLiteral = Rc::new(ConstructableByRealLiteral);
-    module.add_trait(&runtime.Metatype, &ConstructableByRealLiteral);
+    referencible::add_trait(runtime, module, None, &ConstructableByRealLiteral).unwrap();
 
 
     let mut Real = Trait::new_with_self("Real".to_string());
@@ -291,13 +295,13 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     Real.add_simple_parent_requirement(&ConstructableByRealLiteral);
     Real.add_simple_parent_requirement(&ConstructableByIntLiteral);
     let Real = Rc::new(Real);
-    module.add_trait(&runtime.Metatype, &Real);
+    referencible::add_trait(runtime, module, None, &Real).unwrap();
 
     let mut Int = Trait::new_with_self("Int".to_string());
     Int.add_simple_parent_requirement(&Number);
     Int.add_simple_parent_requirement(&ConstructableByIntLiteral);
     let Int = Rc::new(Int);
-    module.add_trait(&runtime.Metatype, &Int);
+    referencible::add_trait(runtime, module, None, &Int).unwrap();
 
     Traits {
         Eq,

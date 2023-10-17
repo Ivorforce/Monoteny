@@ -13,7 +13,6 @@ use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::function_object::FunctionOverload;
 use crate::program::functions::ParameterKey;
 use crate::program::r#struct::Struct;
-use crate::program::types::{TypeProto, TypeUnit};
 use crate::util::position::{Positioned, positioned};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Display, EnumIter)]
@@ -155,12 +154,12 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
         if let Token::FunctionReference { overload, target } = &ptoken.value {
             match overload.functions.iter().exactly_one() {
                 Ok(function) => {
-                    let getter = Rc::clone(&linker.runtime.source.fn_getters[function]);
+                    let getter = &linker.runtime.source.fn_getters[function];
                     let expression_id = linker.link_unambiguous_expression(
                         vec![],
-                        &TypeProto::unit(TypeUnit::Function(Rc::clone(function))),
+                        &getter.interface.return_type,
                         // Call the getter of the function 'object' instead of the function itself.
-                        ExpressionOperation::FunctionCall(FunctionBinding::pure(getter))
+                        ExpressionOperation::FunctionCall(FunctionBinding::pure(Rc::clone(getter)))
                     )?;
 
                     tokens[i] = ptoken.with_value(Token::Expression(expression_id));

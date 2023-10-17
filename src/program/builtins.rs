@@ -1,10 +1,5 @@
-use std::collections::HashMap;
-use std::rc::Rc;
 use crate::interpreter::Runtime;
-use crate::linker::scopes;
-use crate::program;
 use crate::program::module::{Module, module_name};
-use crate::program::traits::Trait;
 
 pub mod primitives;
 pub mod traits;
