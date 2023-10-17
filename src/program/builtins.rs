@@ -18,7 +18,7 @@ pub struct Builtins {
 }
 
 pub fn create_builtins() -> Rc<Builtins> {
-    let mut module = Module::new(module_name("core"));
+    let mut module = Module::new(module_name("builtins"));
 
     let mut Metatype = Trait::new_with_self("Type".to_string());
     let Metatype = Rc::new(Metatype);
