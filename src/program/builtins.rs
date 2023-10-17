@@ -37,14 +37,6 @@ pub fn create_builtins() -> Rc<Builtins> {
 }
 
 impl Builtins {
-    pub fn create_scope<'a>(&self) -> scopes::Scope<'a> {
-        let mut scope = scopes::Scope::new();
-
-        scope.import(&self.module).unwrap();
-
-        scope
-    }
-
     pub fn get_primitive(&self, trait_: &Trait) -> Option<&program::primitives::Type> {
         for (primitive_type, t) in self.primitives.iter() {
             if trait_.id == t.id {

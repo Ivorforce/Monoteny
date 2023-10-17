@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{linker, parser};
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compiler::make_function_getter;
-use crate::linker::imports;
+use crate::linker::{imports, scopes};
 use crate::parser::ast;
 use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
@@ -136,7 +136,7 @@ impl Runtime {
     }
 
     pub fn load_ast(&mut self, syntax: &ast::Module, name: ModuleName) -> RResult<Box<Module>> {
-        let mut scope = self.builtins.create_scope();
+        let mut scope = self.create_scope();
 
         let core_name = module_name("core");
         if self.source.module_by_name.contains_key(&core_name) {
@@ -167,6 +167,14 @@ impl Runtime {
                 make_function_getter(implementation.implementation_id),  // FIXME you sure you don't need the head id?
             );
         }
+    }
+
+    pub fn create_scope<'a>(&self) -> scopes::Scope<'a> {
+        let mut scope = scopes::Scope::new();
+
+        scope.import(&self.builtins.module).unwrap();
+
+        scope
     }
 }
 
