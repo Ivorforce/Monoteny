@@ -74,6 +74,12 @@ pub struct TraitConformanceDeclaration {
     pub statements: Vec<Box<Positioned<Statement>>>,
 }
 
+#[derive(Eq, PartialEq)]
+pub struct MemberAccess {
+    pub target: Box<Positioned<Term>>,
+    pub member: String,
+}
+
 
 // =============================== Code =====================================
 
@@ -85,7 +91,8 @@ pub enum Statement {
         type_declaration: Option<Expression>,
         assignment: Option<Expression>
     },
-    VariableAssignment { target: Option<Positioned<String>>, identifier: String, new_value: Expression },
+    MemberAssignment { access: MemberAccess, new_value: Expression },
+    LocalAssignment { identifier: String, new_value: Expression },
     Expression(Expression),
     Return(Option<Expression>),
     FunctionDeclaration(Box<Function>),
@@ -143,7 +150,7 @@ pub enum Term {
     MacroIdentifier(String),
     IntLiteral(String),
     RealLiteral(String),
-    MemberAccess { target: Box<Positioned<Term>>, member_name: String },
+    MemberAccess(MemberAccess),
     Struct(Vec<StructArgument>),
     Array(Vec<ArrayArgument>),
     StringLiteral(Vec<Box<Positioned<StringPart>>>),
@@ -282,13 +289,12 @@ impl Display for Statement {
                 }
                 Ok(())
             },
-            Statement::VariableAssignment { target, identifier, new_value } => {
-                write!(fmt, "upd")?;
-                if let Some(target) = target {
-                    write!(fmt, " {}", target)?;
-                }
-                write!(fmt, " {} = {}", identifier, new_value)
+            Statement::MemberAssignment { access, new_value } => {
+                write!(fmt, "upd {} = {}", access, new_value)
             },
+            Statement::LocalAssignment { identifier, new_value } => {
+                write!(fmt, "upd {} = {}", identifier, new_value)
+            }
             Statement::Return(Some(expression)) => write!(fmt, "return {}", expression),
             Statement::Return(None) => write!(fmt, "return"),
             Statement::Expression(ref expression) => write!(fmt, "{}", expression),
@@ -323,7 +329,7 @@ impl Display for Term {
                 }
                 write!(fmt, "\"")
             },
-            Term::MemberAccess { target, member_name } =>  write!(fmt, "{}.{}", target.value, member_name),
+            Term::MemberAccess(access) =>  write!(fmt, "{}", access),
             Term::Struct(arguments) => {
                 write!(fmt, "(")?;
                 write_comma_separated_list(fmt, arguments)?;
@@ -340,6 +346,12 @@ impl Display for Term {
                 write!(fmt, "}}")
             }
         }
+    }
+}
+
+impl Display for MemberAccess {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        write!(fmt, "{}.{}", self.target, self.member)
     }
 }
 

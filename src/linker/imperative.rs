@@ -216,29 +216,27 @@ impl <'a> ImperativeLinker<'a> {
                 self.types.bind(expression_id, &TypeProto::void())?;
                 expression_id
             },
-            ast::Statement::VariableAssignment { target, identifier, new_value } => {
+            ast::Statement::MemberAssignment { access, new_value } => {
                 let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
 
-                if let Some(target) = target {
-                    // Assign to object member
-                    let target = self.link_term(&target.with_value(ast::Term::Identifier(target.value.clone())), scope)?;
-                    let target = link_patterns(vec![target], scope, self)?;
-                    let overload = scope
-                        .resolve(scopes::Environment::Member, identifier)?
-                        .as_function_overload()?;
-                    self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
-                }
-                else {
-                    // Assign to local variable
-                    let object_ref = scope
-                        .resolve(scopes::Environment::Global, identifier)?
-                        .as_local(true)?;
-                    self.types.bind(new_value, &object_ref.type_)?;
-                    let expression_id = self.register_new_expression(vec![new_value]);
-                    self.expressions.operations.insert(expression_id, ExpressionOperation::SetLocal(Rc::clone(&object_ref)));
-                    self.types.bind(expression_id, &TypeProto::void())?;
-                    expression_id
-                }
+                let target = self.link_term(&access.target, scope)?;
+                let target = link_patterns(vec![target], scope, self)?;
+                let overload = scope
+                    .resolve(scopes::Environment::Member, &access.member)?
+                    .as_function_overload()?;
+                self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
+            }
+            ast::Statement::LocalAssignment { identifier, new_value } => {
+                let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
+
+                let object_ref = scope
+                    .resolve(scopes::Environment::Global, identifier)?
+                    .as_local(true)?;
+                self.types.bind(new_value, &object_ref.type_)?;
+                let expression_id = self.register_new_expression(vec![new_value]);
+                self.expressions.operations.insert(expression_id, ExpressionOperation::SetLocal(Rc::clone(&object_ref)));
+                self.types.bind(expression_id, &TypeProto::void())?;
+                expression_id
             }
             ast::Statement::Return(expression) => {
                 if let Some(expression) = expression {
@@ -358,15 +356,15 @@ impl <'a> ImperativeLinker<'a> {
                     syntax.position.clone(),
                 )?)
             }
-            ast::Term::MemberAccess { target, member_name } => {
-                let target = self.link_term(target, scope)
+            ast::Term::MemberAccess(access) => {
+                let target = self.link_term(&access.target, scope)
                     .err_in_range(&syntax.position)?;
 
                 guard!(let precedence::Token::Expression(target) = &target.value else {
                     return Err(RuntimeError::new(format!("Dot notation is not supported in this context.")))
                 });
 
-                let overload = scope.resolve(scopes::Environment::Member, member_name)?
+                let overload = scope.resolve(scopes::Environment::Member, &access.member)?
                     .as_function_overload()?;
 
                 match overload.representation.form {

@@ -137,7 +137,8 @@ Conformance: Box<TraitConformanceDeclaration> = {
 
 Statement: Statement = {
     <mutability: VariableDeclarationMutability> <identifier: Identifier> <type_declaration: ("'" <Expression>)?> <assignment: ("=" <Expression>)?> => Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment },
-    "upd" <target: (<Positioned<Identifier>> ".")?> <identifier: Identifier> "=" <new_value: Expression> => Statement::VariableAssignment { target, identifier, new_value },
+    "upd" <access: MemberAccess> "=" <new_value: Expression> => Statement::MemberAssignment { <> },
+    "upd" <identifier: Identifier> "=" <new_value: Expression> => Statement::LocalAssignment { <> },
     "return" <Expression?> => Statement::Return(<>),
     Expression => Statement::Expression(<>),
     Function => Statement::FunctionDeclaration(<>),
@@ -150,6 +151,10 @@ Statement: Statement = {
 VariableDeclarationMutability: Mutability = {
     "let" => Mutability::Immutable,
     "var" => Mutability::Mutable,
+};
+
+MemberAccess: MemberAccess = {
+    <target: Box<Positioned<Term>>> "." <member: Identifier> => MemberAccess { <> },
 };
 
 // =============================== Expression =====================================
@@ -165,7 +170,7 @@ Term: Term = {
     RealLiteral => Term::RealLiteral(<>),
     "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Term::Array(<>),
     "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Term::Struct(<>),
-    <target: Box<Positioned<Term>>> "." <member_name: Identifier> => Term::MemberAccess { <> },
+    MemberAccess => Term::MemberAccess(<>),
     "\"" <Box<Positioned<StringPart>>*> "\"" => Term::StringLiteral(<>),
     "{" <(<Box<Positioned<Statement>>> ";")*> "}" => Term::Block(<>),
     <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Term::Error(derive_error(&e, start, end)) },
