@@ -57,6 +57,10 @@ impl RuntimeError {
     }
 
     pub fn in_file(&self, path: PathBuf) -> RuntimeError {
+        if self.position.file.is_some() {
+            return self.clone();
+        }
+
         RuntimeError {
             position: FilePosition {
                 file: Some(path),
