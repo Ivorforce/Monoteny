@@ -65,7 +65,7 @@ impl <'a> TraitLinker<'a> {
             }
             ast::Statement::Expression(e) => {
                 e.no_errors()?;
-                return Err(RuntimeError::new(format!("Expression {} not valid in a conformance context.", statement)));
+                return Err(RuntimeError::new(format!("Expression {} not valid in a trait context.", statement)));
             }
             _ => {
                 return Err(RuntimeError::new(format!("Statement {} not valid in a trait context.", statement)));
