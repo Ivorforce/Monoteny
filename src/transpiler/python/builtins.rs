@@ -36,7 +36,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
 
     // The operators can normally be referenced as operators (which the transpiler does do).
     // However, if a reference is required, we need to resort to another strategy.
-    for (head, hint) in runtime.builtins.module.fn_builtin_hints.iter() {
+    for (head, hint) in runtime.source.module_by_name[&module_name("builtins")].fn_builtin_hints.iter() {
         let (higher_order_ref_name, representation) = match hint {
             BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::EqualTo, type_ } => {
                 ("op.eq", FunctionForm::Binary(KEYWORD_IDS["=="]))

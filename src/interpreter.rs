@@ -10,7 +10,7 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
-use crate::{linker, parser};
+use crate::{linker, parser, program};
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compiler::make_function_getter;
 use crate::linker::{imports, scopes};
@@ -76,9 +76,12 @@ pub struct FunctionInterpreter<'a> {
 }
 
 impl Runtime {
-    pub fn new(builtins: &Rc<Builtins>) -> RResult<Box<Runtime>> {
+    pub fn new() -> RResult<Box<Runtime>> {
+        let mut builtins_module = Box::new(Module::new(module_name("builtins")));
+        let builtins = program::builtins::create_builtins(&mut builtins_module);
+
         let mut runtime = Box::new(Runtime {
-            builtins: Rc::clone(builtins),
+            builtins: Rc::clone(&builtins),
             function_evaluators: Default::default(),
             source: Source {
                 module_by_name: Default::default(),
@@ -92,7 +95,8 @@ impl Runtime {
             repository: Repository::new(),
         });
 
-        runtime.load(&builtins.module);
+        runtime.load(&builtins_module);
+        runtime.source.module_by_name.insert(builtins_module.name.clone(), builtins_module);
         builtins::load(&mut runtime)?;
 
         Ok(runtime)
@@ -137,7 +141,11 @@ impl Runtime {
 
     pub fn load_ast(&mut self, syntax: &ast::Module, name: ModuleName) -> RResult<Box<Module>> {
         let mut scope = scopes::Scope::new();
-        scope.import(&self.builtins.module).unwrap();
+
+        let builtins_name = module_name("builtins");
+        if self.source.module_by_name.contains_key(&builtins_name) {
+            imports::deep(self, builtins_name, &mut scope)?;
+        }
 
         let core_name = module_name("core");
         if self.source.module_by_name.contains_key(&core_name) {

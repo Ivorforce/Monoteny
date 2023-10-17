@@ -71,8 +71,7 @@ fn main() -> ExitCode {
         Some(("run", sub_matches)) => {
             let input_path = sub_matches.get_one::<PathBuf>("PATH").unwrap();
 
-            let builtins = program::builtins::create_builtins();
-            let mut runtime = match Runtime::new(&builtins) {
+            let mut runtime = match Runtime::new() {
                 Ok(r) => r,
                 Err(e) => {
                     _ = dump_start("import(monoteny.core)");
@@ -100,8 +99,7 @@ fn main() -> ExitCode {
 
             let start = dump_start(format!("check for {} file(s)", paths.len()).as_str());
 
-            let builtins = program::builtins::create_builtins();
-            let mut runtime = match Runtime::new(&builtins) {
+            let mut runtime = match Runtime::new() {
                 Ok(r) => r,
                 Err(e) => {
                     _ = dump_start("import(monoteny.core)");
@@ -147,8 +145,7 @@ fn main() -> ExitCode {
                 false => vec![output_path_proto.extension().and_then(OsStr::to_str).unwrap()]
             };
 
-            let builtins = program::builtins::create_builtins();
-            let mut runtime = match Runtime::new(&builtins) {
+            let mut runtime = match Runtime::new() {
                 Ok(r) => r,
                 Err(e) => {
                     _ = dump_start("import(monoteny.core)");

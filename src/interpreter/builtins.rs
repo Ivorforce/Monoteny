@@ -91,7 +91,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     // -------------------------------------- Math --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    for (head, builtin_hint) in builtins.module.fn_builtin_hints.iter() {
+    for (head, builtin_hint) in runtime.source.module_by_name[&module_name("builtins")].fn_builtin_hints.iter() {
         runtime.function_evaluators.insert(head.unwrap_id(), match builtin_hint {
             BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
                 create_primitive_op(type_.clone(), operation.clone())

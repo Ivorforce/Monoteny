@@ -39,8 +39,7 @@ def @transpile :: {
             }
         )));
 
-        let builtins = program::builtins::create_builtins();
-        let mut runtime = Runtime::new(&builtins);
+        let mut runtime = Runtime::new();
 
         let module = runtime.load_ast(&parsed)?;
 
@@ -73,8 +72,7 @@ def @transpile :: {
 };
 ".to_string())?;
 
-        let builtins = program::builtins::create_builtins();
-        let mut runtime = Runtime::new(&builtins);
+        let mut runtime = Runtime::new();
 
         let module = runtime.load_ast(&parsed)?;
 
