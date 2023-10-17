@@ -10,7 +10,7 @@ use crate::linker::interface::link_function_interface;
 use crate::parser::ast;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
-use crate::program::traits::{TraitBinding, TraitConformance};
+use crate::program::traits::{Trait, TraitBinding, TraitConformance};
 use crate::util::fmt::fmta;
 
 pub struct UnlinkedFunctionImplementation<'a> {
@@ -26,13 +26,13 @@ pub struct ConformanceLinker<'a, 'b> {
 }
 
 impl <'a, 'b> ConformanceLinker<'a, 'b> {
-    pub fn link_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, scope: &scopes::Scope) -> RResult<()> {
+    pub fn link_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
                 //  to the ID of the parent abstract function. That way, we can avoid another
                 //  generic to generic mapping later.
-                let (function, representation) = link_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements)?;
+                let (function, representation) = link_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
 
                 self.functions.push(UnlinkedFunctionImplementation {
                     function,
@@ -53,13 +53,14 @@ impl <'a, 'b> ConformanceLinker<'a, 'b> {
         Ok(())
     }
 
-    pub fn finalize_conformance(&self, binding: Rc<TraitBinding>, conformance_requirements: &HashSet<Rc<TraitBinding>>) -> RResult<Rc<TraitConformance>> {
+    pub fn finalize_conformance(&self, binding: Rc<TraitBinding>, conformance_requirements: &HashSet<Rc<TraitBinding>>, conformance_generics: &HashMap<String, Rc<Trait>>) -> RResult<Rc<TraitConformance>> {
         let mut function_bindings = HashMap::new();
         let mut unmatched_implementations = self.functions.iter().collect_vec();
 
         for (abstract_function, abstract_representation) in binding.trait_.abstract_functions.iter() {
             let mut expected_interface = map_interface_types(&abstract_function.interface, &binding.generic_to_type);
             expected_interface.requirements.extend(conformance_requirements.clone());
+            expected_interface.generics.extend(conformance_generics.clone());
 
             let matching_implementations = unmatched_implementations.iter().enumerate()
                 .filter(|(i, imp)| &imp.representation == abstract_representation && imp.function.interface.as_ref() == &expected_interface)

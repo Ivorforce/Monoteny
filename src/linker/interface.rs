@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
@@ -10,13 +10,17 @@ use crate::parser::ast;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 pub use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
 use crate::program::module::{Module, module_name};
-use crate::program::traits::TraitBinding;
+use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::{PatternPart, TypeProto};
 
 
-pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
+pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
     match interface {
         ast::FunctionInterface::Macro(m) => {
+            if !requirements.is_empty() || !generics.is_empty() {
+                panic!();
+            }
+
             match m.as_str() {
                 "main" => {
                     let proto_function = runtime.source.module_by_name[&module_name("core.run")].explicit_functions(&runtime.source).into_iter()
@@ -69,13 +73,16 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
                 });
             }
 
+            let mut generics = generics.clone();
+            generics.extend(type_factory.generics);
+
             Ok((
                 FunctionHead::new_static(
                     Rc::new(FunctionInterface {
                         parameters: fn_parameters,
                         return_type,
                         requirements: requirements.iter().chain(&type_factory.requirements).map(Rc::clone).collect(),
-                        generics: type_factory.generics,
+                        generics,
                     }),
                 ),
                 FunctionRepresentation::new(

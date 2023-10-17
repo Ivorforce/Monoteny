@@ -476,20 +476,24 @@ impl Hash for TraitBinding {
 
 impl Debug for Trait {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "{}<", self.name)?;
-        write_keyval(fmt, &self.generics)?;
-        write!(fmt, ">")?;
-
+        write!(fmt, "{}", self.name)?;
+        if !self.generics.is_empty() {
+            write!(fmt, "<")?;
+            write_keyval(fmt, &self.generics)?;
+            write!(fmt, ">")?;
+        }
         Ok(())
     }
 }
 
 impl Debug for TraitBinding {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "{}<", self.trait_.name)?;
-        write_keyval(fmt, &self.generic_to_type)?;
-        write!(fmt, ">")?;
-
+        write!(fmt, "{}", self.trait_.name)?;
+        if !self.generic_to_type.is_empty() {
+            write!(fmt, "<")?;
+            write_keyval(fmt, &self.generic_to_type)?;
+            write!(fmt, ">")?;
+        }
         Ok(())
     }
 }

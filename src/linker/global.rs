@@ -85,7 +85,7 @@ impl <'a> GlobalLinker<'a> {
             }
             ast::Statement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
-                let (fun, representation) = link_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements)?;
+                let (fun, representation) = link_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &HashMap::new())?;
 
                 if let Some(body) = &syntax.body {
                     self.schedule_function_body(Rc::clone(&fun), body, pstatement.position.clone());
@@ -122,7 +122,7 @@ impl <'a> GlobalLinker<'a> {
                     generic_self_type,
                 };
                 for statement in syntax.statements.iter() {
-                    linker.link_statement(&statement.value, requirements, &scope)
+                    linker.link_statement(&statement.value, requirements, &HashMap::new(), &scope)
                         .err_in_range(&statement.position)?;
                 }
 
@@ -138,7 +138,7 @@ impl <'a> GlobalLinker<'a> {
                     panic!("Declaring traits with more than self generics is not supported yet")
                 }
                 let generics = type_factory.generics;
-                let requirements = type_factory.requirements;
+                let conformance_requirements = type_factory.requirements;
 
                 // FIXME This is not ideal; technically the trait_references thing should be a BOUND trait,
                 //  because the user may have bound some generics of self in the declaration.
@@ -160,17 +160,17 @@ impl <'a> GlobalLinker<'a> {
 
                 let mut linker = ConformanceLinker { runtime: &self.runtime, functions: vec![], };
                 for statement in syntax.statements.iter() {
-                    linker.link_statement(&statement.value, &requirements.union(&requirements).cloned().collect(), &scope)
+                    linker.link_statement(&statement.value, &requirements.union(&conformance_requirements).cloned().collect(), &generics, &scope)
                         .err_in_range(&statement.position)?;
                 }
 
                 // TODO To be order independent, we should finalize after sorting...
                 //  ... Or check inconsistencies only at the very end.
-                let conformance = linker.finalize_conformance(self_binding, &requirements)?;
+                let conformance = linker.finalize_conformance(self_binding, &conformance_requirements, &generics)?;
 
                 let rule = Rc::new(TraitConformanceRule {
                     generics,
-                    requirements,
+                    requirements: conformance_requirements,
                     conformance,
                 });
                 self.module.trait_conformance.add_conformance_rule(rule.clone());
