@@ -229,7 +229,11 @@ impl <'a> Scope<'a> {
         }
 
         // take that rust, i steal ur phrasings
-        Err(RuntimeError::new(format!("Cannot find '{}' in this scope", name)))
+        let env_part = match environment {
+            Environment::Global => "",
+            Environment::Member => "."
+        };
+        Err(RuntimeError::new(format!("Cannot find '{}{}' in this scope", env_part, name)))
     }
 
     pub fn resolve_precedence_group(&self, name: &str) -> Rc<PrecedenceGroup> {
