@@ -3,8 +3,6 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::linker::precedence::PrecedenceGroup;
-use crate::program::builtins::Builtins;
-use crate::program::builtins::traits::Traits;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};

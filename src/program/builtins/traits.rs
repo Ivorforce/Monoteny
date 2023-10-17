@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::rc::Rc;
+use crate::interpreter::Runtime;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::module::Module;
@@ -197,7 +198,8 @@ pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<Function
 }
 
 #[allow(non_snake_case)]
-pub fn create(module: &mut Module, metatype: &Rc<Trait>, primitive_traits: &HashMap<primitives::Type, Rc<Trait>>) -> Traits {
+pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
+    let primitive_traits = runtime.primitives.as_ref().unwrap();
     let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
 
     let mut Eq = Trait::new_with_self("Eq".to_string());
@@ -207,7 +209,7 @@ pub fn create(module: &mut Module, metatype: &Rc<Trait>, primitive_traits: &Hash
         &eq_functions.not_equal_to,
     ].into_iter());
     let Eq = Rc::new(Eq);
-    module.add_trait(metatype, &Eq);
+    module.add_trait(&runtime.Metatype, &Eq);
 
     let mut Ord = Trait::new_with_self("Ord".to_string());
     let ord_functions = make_ord_functions(&Ord.create_generic_type("Self"), &bool_type);
@@ -219,7 +221,7 @@ pub fn create(module: &mut Module, metatype: &Rc<Trait>, primitive_traits: &Hash
     ].into_iter());
     Ord.add_simple_parent_requirement(&Eq);
     let Ord = Rc::new(Ord);
-    module.add_trait(metatype, &Ord);
+    module.add_trait(&runtime.Metatype, &Ord);
 
     let mut Number = Trait::new_with_self("Number".to_string());
     let number_functions = make_number_functions(&Number.create_generic_type("Self"));
@@ -233,11 +235,11 @@ pub fn create(module: &mut Module, metatype: &Rc<Trait>, primitive_traits: &Hash
     ].into_iter());
     Number.add_simple_parent_requirement(&Ord);
     let Number = Rc::new(Number);
-    module.add_trait(metatype, &Number);
+    module.add_trait(&runtime.Metatype, &Number);
 
     let mut String = Trait::new_with_self("String".to_string());
     let String = Rc::new(String);
-    module.add_trait(metatype, &String);
+    module.add_trait(&runtime.Metatype, &String);
 
     // TODO String is not ToString. We could declare it on the struct, but that seems counterintuitive, no?
     //  Maybe a candidate for return self.strip().
@@ -247,7 +249,7 @@ pub fn create(module: &mut Module, metatype: &Rc<Trait>, primitive_traits: &Hash
         &to_string_function
     ].into_iter());
     let ToString = Rc::new(ToString);
-    module.add_trait(metatype, &ToString);
+    module.add_trait(&runtime.Metatype, &ToString);
 
     let mut ConstructableByIntLiteral = Trait::new_with_self("ConstructableByIntLiteral".to_string());
     let parse_int_literal_function = FunctionPointer::new_global_function(
@@ -261,7 +263,7 @@ pub fn create(module: &mut Module, metatype: &Rc<Trait>, primitive_traits: &Hash
         &parse_int_literal_function
     ].into_iter());
     let ConstructableByIntLiteral = Rc::new(ConstructableByIntLiteral);
-    module.add_trait(metatype, &ConstructableByIntLiteral);
+    module.add_trait(&runtime.Metatype, &ConstructableByIntLiteral);
 
 
     let mut ConstructableByRealLiteral = Trait::new_with_self("ConstructableByRealLiteral".to_string());
@@ -276,7 +278,7 @@ pub fn create(module: &mut Module, metatype: &Rc<Trait>, primitive_traits: &Hash
         &parse_real_literal_function
     ].into_iter());
     let ConstructableByRealLiteral = Rc::new(ConstructableByRealLiteral);
-    module.add_trait(metatype, &ConstructableByRealLiteral);
+    module.add_trait(&runtime.Metatype, &ConstructableByRealLiteral);
 
 
     let mut Real = Trait::new_with_self("Real".to_string());
@@ -289,13 +291,13 @@ pub fn create(module: &mut Module, metatype: &Rc<Trait>, primitive_traits: &Hash
     Real.add_simple_parent_requirement(&ConstructableByRealLiteral);
     Real.add_simple_parent_requirement(&ConstructableByIntLiteral);
     let Real = Rc::new(Real);
-    module.add_trait(metatype, &Real);
+    module.add_trait(&runtime.Metatype, &Real);
 
     let mut Int = Trait::new_with_self("Int".to_string());
     Int.add_simple_parent_requirement(&Number);
     Int.add_simple_parent_requirement(&ConstructableByIntLiteral);
     let Int = Rc::new(Int);
-    module.add_trait(metatype, &Int);
+    module.add_trait(&runtime.Metatype, &Int);
 
     Traits {
         Eq,

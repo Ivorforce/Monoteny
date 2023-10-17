@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::rc::Rc;
+use crate::interpreter::Runtime;
 use crate::program::builtins::traits;
 use crate::program::builtins::traits::{FunctionPointer, make_to_string_function, Traits};
 use crate::program::functions::FunctionInterface;
@@ -9,7 +10,7 @@ use crate::program::primitives;
 use crate::program::traits::{Trait, TraitConformanceRule};
 use crate::program::types::{TypeProto, TypeUnit};
 
-pub fn create_traits(metatype: &Rc<Trait>, module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>> {
+pub fn create_traits(runtime: &mut Runtime, module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>> {
     let mut traits: HashMap<primitives::Type, Rc<Trait>> = Default::default();
 
     for primitive_type in [
@@ -28,7 +29,7 @@ pub fn create_traits(metatype: &Rc<Trait>, module: &mut Module) -> HashMap<primi
         primitives::Type::Float(64),
     ] {
         let trait_ = Rc::new(Trait::new_with_self(primitive_type.identifier_string()));
-        module.add_trait(metatype, &trait_);
+        module.add_trait(&runtime.Metatype, &trait_);
         traits.insert(primitive_type, trait_);
     }
 
@@ -36,8 +37,10 @@ pub fn create_traits(metatype: &Rc<Trait>, module: &mut Module) -> HashMap<primi
 }
 
 #[allow(non_snake_case)]
-pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<primitives::Type, Rc<Trait>>) {
-    let bool_type = TypeProto::unit_struct(&basis[&primitives::Type::Bool]);
+pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
+    let traits = runtime.traits.as_ref().unwrap();
+    let primitive_traits = runtime.primitives.as_ref().unwrap();
+    let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
 
     let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module| {
         module.add_function(Rc::clone(&function.target), function.representation.clone());
@@ -47,8 +50,8 @@ pub fn create_functions(module: &mut Module, traits: &Traits, basis: &HashMap<pr
         );
     };
 
-    for (primitive_type, trait_) in basis.iter() {
-        let type_ = TypeProto::unit_struct(&basis[primitive_type]);
+    for (primitive_type, trait_) in primitive_traits.iter() {
+        let type_ = TypeProto::unit_struct(&primitive_traits[primitive_type]);
         let primitive_type = *primitive_type;
 
         // Pair-Associative

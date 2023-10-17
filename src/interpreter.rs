@@ -15,7 +15,6 @@ use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compiler::make_function_getter;
 use crate::linker::{imports, scopes};
 use crate::parser::ast;
-use crate::program::builtins::Builtins;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionType};
@@ -34,7 +33,9 @@ pub struct Value {
 }
 
 pub struct Runtime {
-    pub builtins: Rc<Builtins>,
+    pub Metatype: Rc<Trait>,
+    pub primitives: Option<HashMap<program::primitives::Type, Rc<Trait>>>,
+    pub traits: Option<program::builtins::traits::Traits>,
 
     // These are optimized for running and may not reflect the source code itself.
     // They are also only loaded on demand.
@@ -77,11 +78,13 @@ pub struct FunctionInterpreter<'a> {
 
 impl Runtime {
     pub fn new() -> RResult<Box<Runtime>> {
-        let mut builtins_module = Box::new(Module::new(module_name("builtins")));
-        let builtins = program::builtins::create_builtins(&mut builtins_module);
+        let mut Metatype = Trait::new_with_self("Type".to_string());
+        let Metatype = Rc::new(Metatype);
 
         let mut runtime = Box::new(Runtime {
-            builtins: Rc::clone(&builtins),
+            Metatype,
+            primitives: None,
+            traits: None,
             function_evaluators: Default::default(),
             source: Source {
                 module_by_name: Default::default(),
@@ -94,6 +97,9 @@ impl Runtime {
             },
             repository: Repository::new(),
         });
+
+        let mut builtins_module = program::builtins::create_builtins(&mut runtime);
+        builtins_module.add_trait(&runtime.Metatype, &runtime.Metatype);
 
         runtime.load(&builtins_module);
         runtime.source.module_by_name.insert(builtins_module.name.clone(), builtins_module);

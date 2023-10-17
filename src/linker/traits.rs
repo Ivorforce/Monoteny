@@ -90,7 +90,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         Parameter {
             external_key: ParameterKey::Positional,
             internal_name: "type".to_string(),
-            type_: TypeProto::one_arg(&linker.runtime.builtins.Metatype, struct_type.clone()),
+            type_: TypeProto::one_arg(&linker.runtime.Metatype, struct_type.clone()),
         }
     ];
     let mut parameter_mapping = vec![];

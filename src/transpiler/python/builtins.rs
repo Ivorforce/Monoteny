@@ -121,13 +121,13 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     }
 
     for (struct_, id) in [
-        (&runtime.builtins.traits.String, PSEUDO_KEYWORD_IDS["str"]),
+        (&runtime.traits.as_ref().unwrap().String, PSEUDO_KEYWORD_IDS["str"]),
     ].into_iter() {
         representations.type_ids.insert(TypeProto::unit_struct(struct_), id);
     }
 
     for (primitive, name) in primitive_map.iter() {
-        let struct_ = &runtime.builtins.primitives[primitive];
+        let struct_ = &runtime.primitives.as_ref().unwrap()[primitive];
         representations.type_ids.insert(TypeProto::unit_struct(struct_), PSEUDO_KEYWORD_IDS[name]);
     }
 
