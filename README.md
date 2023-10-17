@@ -106,8 +106,8 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
 - [x] `trait`: Objects that functions can be associated with.
   - [x] `trait` `inherit`: Require trait conformance to another trait
   - [x] Abstract Functions, Conformance Declarations
-  - [ ] Stored Properties (for traits with associated Self)
-    - [ ] Structs from traits (`SomeTrait(a: a, b: b)`) - only for non abstract traits
+  - [x] Stored Properties (for traits with associated Self)
+    - [x] Structs from traits (`SomeTrait(a: a, b: b)`) for traits with no abstract functions
     - [ ] Anonymous Structs: `... -> (a: Int32, b: Float32) ... return (a: a, b: b)`
     - [ ] Delegation (`delegate!(Eq) var ...`) (implement all / selected trait offered by the property by calling it on the property)
     - [ ] Deconstruction assignment (`let (x, y, z) = vec`)
