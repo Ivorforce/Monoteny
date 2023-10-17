@@ -219,7 +219,8 @@ impl <'a> ImperativeLinker<'a> {
             ast::Statement::MemberAssignment { access, new_value } => {
                 let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
 
-                let target = self.link_term(&access.target, scope)?;
+                let target = self.link_term(&access.target, scope)
+                    .err_in_range(&access.target.position)?;
                 let target = link_patterns(vec![target], scope, self)?;
                 let overload = scope
                     .resolve(scopes::Environment::Member, &access.member)?
@@ -358,7 +359,7 @@ impl <'a> ImperativeLinker<'a> {
             }
             ast::Term::MemberAccess(access) => {
                 let target = self.link_term(&access.target, scope)
-                    .err_in_range(&syntax.position)?;
+                    .err_in_range(&access.target.position)?;
 
                 guard!(let precedence::Token::Expression(target) = &target.value else {
                     return Err(RuntimeError::new(format!("Dot notation is not supported in this context.")))
