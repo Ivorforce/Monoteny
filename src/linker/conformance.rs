@@ -41,6 +41,10 @@ impl <'a, 'b> ConformanceLinker<'a, 'b> {
                     decorators: vec![],
                 });
             }
+            ast::Statement::Expression(e) => {
+                e.no_errors()?;
+                return Err(RuntimeError::new(format!("Expression {} not valid in a conformance context.", statement)));
+            }
             _ => {
                 return Err(RuntimeError::new(format!("Statement {} not valid in a conformance context.", statement)));
             }

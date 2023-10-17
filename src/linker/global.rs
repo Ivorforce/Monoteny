@@ -184,6 +184,8 @@ impl <'a> GlobalLinker<'a> {
                 }
             }
             ast::Statement::Expression(e) => {
+                e.no_errors()?;
+
                 match &e[..] {
                     [l, r] => {
                         match (&l.value, &r.value) {

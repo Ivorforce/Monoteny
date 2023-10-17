@@ -63,6 +63,10 @@ impl <'a> TraitLinker<'a> {
                 );
                 fields::add_to_trait(&mut self.trait_, field);
             }
+            ast::Statement::Expression(e) => {
+                e.no_errors()?;
+                return Err(RuntimeError::new(format!("Expression {} not valid in a conformance context.", statement)));
+            }
             _ => {
                 return Err(RuntimeError::new(format!("Statement {} not valid in a trait context.", statement)));
             }

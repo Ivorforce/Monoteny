@@ -1,7 +1,7 @@
 use std::fmt::{Display, Error, Formatter};
 use std::ops::{Deref, DerefMut};
 use itertools::Itertools;
-use crate::error::RuntimeError;
+use crate::error::{RResult, RuntimeError};
 use crate::program::functions::ParameterKey;
 use crate::program::allocation::Mutability;
 use crate::program::types::PatternPart;
@@ -97,6 +97,24 @@ pub enum Statement {
 
 #[derive(Eq, PartialEq)]
 pub struct Expression(Vec<Box<Positioned<Term>>>);
+
+impl Expression {
+    pub fn no_errors(&self) -> RResult<()> {
+        let errors = self.iter().filter_map(|t| {
+            match &t.value {
+                Term::Error(e) => Some(e.clone()),
+                _ => None
+            }
+        }).collect_vec();
+
+        if errors.is_empty() {
+            return Ok(())
+        }
+        else {
+            return Err(errors)
+        }
+    }
+}
 
 impl Deref for Expression {
     type Target = Vec<Box<Positioned<Term>>>;
