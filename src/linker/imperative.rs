@@ -530,13 +530,13 @@ impl <'a> ImperativeLinker<'a> {
         match &candidates_with_failed_signature[..] {
             [candidate] => {
                 // TODO Print passed arguments like a signature, not array
-                panic!("function {} could not be resolved. Candidate has mismatching signature: {:?}", signature, candidate)
+                Err(RuntimeError::new(format!("function {} could not be resolved.\nCandidate has mismatching signature: {:?}", signature, candidate)))
             }
             [] => {
-                panic!("function {} could not be resolved.", signature)
+                Err(RuntimeError::new(format!("function {} could not be resolved.", signature)))
             }
             candidates => {
-                panic!("function {} could not be resolved. {} candidates have mismatching signatures.", signature, candidates.len())
+                Err(RuntimeError::new(format!("function {} could not be resolved.\n{} candidates have mismatching signatures.", signature, candidates.len())))
             }
         }
     }
