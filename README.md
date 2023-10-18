@@ -171,8 +171,8 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
     - [ ] Demote existing fixed-width ints and floats (e.g. Int32) to optimizations of IntX
 - [ ] IntF ($Int of auto-adjusting width)
   - [ ] RationalF ($Real using `numerator 'IntF` and `denominator 'IntF`)
-- [ ] FixedDecimal (int number with a fixed floating point position)
-- [ ] DecimalF (decimal of big int with auto-adjusting floating point position)
+  - [ ] DecimalF (decimal of big int with auto-adjusting floating point position)
+- [ ] DecimalFixed (int number with a fixed floating point position)
 - [ ] Generic Export: Allow the export of unspecialized functions through a trait conformance parameter.
 - [ ] `match x with [0: { ... }]`
 - [ ] Local functions and declarations
