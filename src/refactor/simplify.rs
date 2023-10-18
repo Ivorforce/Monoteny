@@ -25,9 +25,11 @@ impl<'a, 'b> Simplify<'a, 'b> {
     }
 
     pub fn run(&mut self) {
-        let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(self.refactor.invented_functions.iter().cloned());
+        let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(self.refactor.implementation_by_head.keys().cloned());
         while let Some(current) = next.pop_front() {
-            if self.inline {
+            let is_explicit = self.refactor.explicit_functions.contains(&current);
+
+            if !is_explicit && self.inline {
                 // Try to inline the function if it's trivial.
                 if let Ok(affected) = self.refactor.try_inline(&current) {
                     // Try inlining those that changed again.
@@ -44,14 +46,24 @@ impl<'a, 'b> Simplify<'a, 'b> {
             // Try to remove unused parameters for the function.
             if self.trim_locals {
                 let implementation = &self.refactor.implementation_by_head[&current];
-                let unused = locals::find_unused_locals(implementation);
-                if !unused.is_empty() {
-                    let swizzle = locals::swizzle_retaining_parameters(implementation, &unused);
-                    let new_head = self.refactor.swizzle_parameters(&current, &swizzle);
+                // TODO What if the parameters' setters call I/O functions?
+                //  We should only remove those that aren't involved in I/O. We can actually
+                //  remove any as long as they're not involved in I/O.
+                let mut remove = locals::find_unused_locals(implementation);
+
+                if is_explicit {
+                    // TODO Cannot change interface for now because it replaces the function head,
+                    //  which may be in use elsewhere.
+                    implementation.parameter_locals.iter().for_each(|l| _ = remove.remove(l));
+                }
+
+                if !remove.is_empty() {
+                    let new_head = self.refactor.remove_locals(&current, &remove);
 
                     if self.inline {
                         self.refactor.inline_calls(&new_head);
-                        next.extend(self.refactor.apply_inline(&current));
+                        let set = self.refactor.apply_inline(&current);
+                        next.extend(set);
                     }
                 }
             }

@@ -8,9 +8,10 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
-use uuid::Uuid;
+use linked_hash_set::LinkedHashSet;
 use crate::interpreter::Runtime;
-use crate::linker::interface::{FunctionHead, FunctionInterface};
+use crate::linker::interface::FunctionHead;
+use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::ExpressionOperation;
 use crate::program::functions::FunctionType;
@@ -32,11 +33,11 @@ pub struct Refactor<'a> {
     pub runtime: &'a mut Runtime,
 
     pub explicit_functions: Vec<Rc<FunctionHead>>,
-    pub invented_functions: Vec<Rc<FunctionHead>>,
+    pub invented_functions: HashSet<Rc<FunctionHead>>,
 
     pub implementation_by_head: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
     pub callers: HashMap<Rc<FunctionHead>, HashSet<Rc<FunctionHead>>>,
-    pub callees: HashMap<Rc<FunctionHead>, HashSet<Rc<FunctionHead>>>,
+    pub callees: HashMap<Rc<FunctionHead>, LinkedHashSet<Rc<FunctionHead>>>,
 
     pub inline_hints: HashMap<Rc<FunctionHead>, InlineHint>,
 
@@ -49,7 +50,7 @@ impl<'a> Refactor<'a> {
             runtime,
             implementation_by_head: Default::default(),
             explicit_functions: vec![],
-            invented_functions: vec![],
+            invented_functions: HashSet::new(),
             callers: Default::default(),
             callees: Default::default(),
             inline_hints: Default::default(),
@@ -70,6 +71,7 @@ impl<'a> Refactor<'a> {
     }
 
     pub fn update_callees(&mut self, head: &Rc<FunctionHead>) {
+        // TODO Generic function calls would break this logic
         if let Some(previous_callees) = self.callees.get(head) {
             for previous_callee in previous_callees.iter() {
                 remove_from_multimap(&mut self.callers, previous_callee, head);
@@ -105,14 +107,6 @@ impl<'a> Refactor<'a> {
         for caller in affected.iter() {
             self.inline_calls(caller);
         }
-        // TODO We need to keep the function, in case any new ones come along that call it,
-        //  or if this function is referenced by a requirements fulfillment.
-        //  Whether those calls should be inlined too should be up to whoever owns us.
-        //  For now we know this won't be the case because generic transpilation doesn't exist yet,
-        //  and no functions are added after the initial charge. When this changes, we to
-        //  search the function tree down in the end to see which are actually used and thus need to
-        //  be exported too.
-        self.invented_functions.retain(|f| f != head);
 
         affected
     }
@@ -129,8 +123,9 @@ impl<'a> Refactor<'a> {
         self.update_callees(head);
     }
 
-    pub fn monomorphize(&mut self, head: Rc<FunctionHead>, should_monomorphize: &impl Fn(&Rc<FunctionBinding>) -> bool) {
+    pub fn monomorphize(&mut self, head: Rc<FunctionHead>, should_monomorphize: &impl Fn(&Rc<FunctionBinding>) -> bool) -> HashSet<Rc<FunctionHead>> {
         let mut implementation = self.implementation_by_head.get_mut(&head).unwrap();
+        let mut new_heads = HashSet::new();
 
         if !implementation.head.interface.generics.is_empty() {
             // We'll need to somehow transpile requirements as protocols and generics as generics.
@@ -150,6 +145,7 @@ impl<'a> Refactor<'a> {
             should_monomorphize
         );
         let new_head = Rc::clone(&implementation.head);
+        new_heads.insert(Rc::clone(&new_head));
         self.runtime.source.fn_implementations.insert(Rc::clone(&new_head), implementation.clone());
         self.copy_quirks_source(&head, &new_head);
         self.update_callees(&head);
@@ -171,20 +167,35 @@ impl<'a> Refactor<'a> {
                 );
             };
 
-            self.invented_functions.push(Rc::clone(&mono_implementation.head));
+            new_heads.insert(Rc::clone(&mono_implementation.head));
+            self.invented_functions.insert(Rc::clone(&mono_implementation.head));
             self.runtime.source.fn_implementations.insert(Rc::clone(&mono_implementation.head), mono_implementation.clone());
             self.copy_quirks_source(&function_binding.function, &mono_implementation.head);
             self._add(mono_implementation);
         }
+
+        new_heads
     }
 
-    pub fn swizzle_parameters(&mut self, function: &Rc<FunctionHead>, new_order: &Vec<usize>) -> Rc<FunctionHead> {
+    pub fn remove_locals(&mut self, function: &Rc<FunctionHead>, removed_locals: &HashSet<Rc<ObjectReference>>) -> Rc<FunctionHead> {
         assert!(function.function_type == FunctionType::Static);
 
-        let new_implementation = locals::swizzle_parameters(&self.implementation_by_head[function], new_order);
+        let mut old_implementation = self.implementation_by_head.get_mut(function).unwrap();
+        let changes_interface = removed_locals.iter().any(|l| old_implementation.parameter_locals.contains(l));
+        if !changes_interface {
+            // We can just change the function in-place!
+            let param_swizzle = locals::remove_locals(old_implementation, removed_locals);
+            assert!(param_swizzle.is_none());
+            return Rc::clone(&old_implementation.head)
+        }
+
+        // We need to create a new function; the interface changes and thus does the FunctionHead.
+
+        let mut new_implementation = old_implementation.clone();
+        let param_swizzle = locals::remove_locals(&mut new_implementation, removed_locals).unwrap();
         let new_head = Rc::clone(&new_implementation.head);
 
-        self.invented_functions.push(Rc::clone(&new_head));
+        self.invented_functions.insert(Rc::clone(&new_head));
         self.runtime.source.fn_implementations.insert(Rc::clone(&new_head), new_implementation.clone());
         self.implementation_by_head.insert(Rc::clone(&new_head), new_implementation);
         self.copy_quirks_source(function, &new_head);
@@ -193,7 +204,8 @@ impl<'a> Refactor<'a> {
 
         // We do not remove the old function. The old function CAN be inlined to call the new one, but it doesn't have to.
         // This is especially important if we get new callers to the old function later. All information is retained.
-        self.inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&new_head), new_order.clone()));
+        self.inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&new_head), param_swizzle.clone()));
+
         new_head
     }
 
@@ -201,12 +213,26 @@ impl<'a> Refactor<'a> {
         self.runtime.source.fn_representations.get(from).cloned().map(|rep| self.runtime.source.fn_representations.insert(Rc::clone(to), rep));
         self.runtime.source.fn_builtin_hints.get(from).cloned().map(|hint| self.runtime.source.fn_builtin_hints.insert(Rc::clone(to), hint));
     }
+
+    pub fn required_functions(&self) -> LinkedHashSet<Rc<FunctionHead>> {
+        let mut next = self.explicit_functions.iter().collect_vec();
+        let mut gathered = LinkedHashSet::new();
+        while let Some(current) = next.pop() {
+            guard!(let Some(callees) = self.callees.get(current) else {
+                continue  // Probably an internal function
+            });
+            gathered.extend(callees.iter().cloned());
+            next.extend(callees.iter())
+        }
+        gathered
+    }
 }
 
-pub fn gather_callees(implementation: &FunctionImplementation) -> HashSet<Rc<FunctionHead>> {
-    let mut callees = HashSet::new();
+pub fn gather_callees(implementation: &FunctionImplementation) -> LinkedHashSet<Rc<FunctionHead>> {
+    let mut callees = LinkedHashSet::new();
 
-    for expression_op in implementation.expression_forest.operations.values() {
+    for expression_id in implementation.expression_forest.deep_children(implementation.root_expression_id) {
+        let expression_op = &implementation.expression_forest.operations[&expression_id];
         match expression_op {
             ExpressionOperation::FunctionCall(f) => {
                 callees.insert(Rc::clone(&f.function));

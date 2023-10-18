@@ -41,6 +41,9 @@ impl <'a> ImperativeLinker<'a> {
         let id = ExpressionID::new_v4();
 
         self.types.register(id);
+        for argument in arguments.iter() {
+            self.expressions.references.insert(*argument, id);
+        }
         self.expressions.arguments.insert(id, arguments);
 
         id

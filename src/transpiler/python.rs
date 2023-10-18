@@ -48,18 +48,19 @@ impl transpiler::LanguageContext for Context {
         if config.should_monomorphize {
             let builtin_functions = self.representations.builtin_functions.clone();
             for head in refactor.explicit_functions.iter().cloned().collect_vec() {
-                refactor.monomorphize(head, &|binding| !builtin_functions.contains(&binding.function))
+                _ = refactor.monomorphize(head, &|binding| !builtin_functions.contains(&binding.function))
             }
         }
         else {
             todo!()
         }
 
-        let mut constant_folder = Simplify::new(&mut refactor, config);
-        constant_folder.run();
+        let mut simplify = Simplify::new(&mut refactor, config);
+        simplify.run();
 
         let exported_functions = refactor.explicit_functions.iter().map(|head| refactor.implementation_by_head.remove(head).unwrap()).collect_vec();
-        let internal_functions = refactor.invented_functions.iter().map(|head| refactor.implementation_by_head.remove(head).unwrap()).collect_vec();
+        // TODO This could also tell us which internal functions are needed!
+        let internal_functions = refactor.required_functions().iter().filter_map(|head| refactor.implementation_by_head.remove(head)).collect_vec();
         let ast = create_ast(transpiler.main_function, exported_functions, internal_functions, self, runtime)?;
 
         Ok(HashMap::from([

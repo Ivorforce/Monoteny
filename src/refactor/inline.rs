@@ -4,7 +4,7 @@ use guard::guard;
 use itertools::Itertools;
 use crate::linker::interface::FunctionHead;
 use crate::program::calls::FunctionBinding;
-use crate::program::computation_tree::{ExpressionID, ExpressionOperation, truncate_tree};
+use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
 use crate::refactor::InlineHint;
@@ -90,23 +90,11 @@ pub fn inline_calls(implementation: &mut Box<FunctionImplementation>, hints: &Ha
                                     // The requirements fulfillment can be empty because otherwise it wouldn't have been inlined.
                                     requirements_fulfillment: RequirementsFulfillment::empty(),
                                 }));
-                                let arguments = expression_forest.arguments.get_mut(&expression_id).unwrap();
-                                let arguments_before = arguments.clone();
-                                *arguments = idxs.iter().map(|idx| arguments[*idx]).collect_vec();
-                                truncate_tree(arguments_before, arguments.iter().cloned().collect(), expression_forest);
+                                expression_forest.swizzle_arguments(expression_id, idxs);
                                 continue 'inline
                             }
                             InlineHint::YieldParameter(idx) => {
-                                let arguments_before = expression_forest.arguments[&expression_id].clone();
-                                let replacement_id = arguments_before[*idx];
-                                let replacement_operation = expression_forest.operations.remove(&replacement_id).unwrap();
-                                let replacement_arguments = expression_forest.arguments.remove(&replacement_id).unwrap();
-
-                                let operation = expression_forest.operations.get_mut(&expression_id).unwrap();
-                                *operation = replacement_operation;
-                                let arguments = expression_forest.arguments.get_mut(&expression_id).unwrap();
-                                *arguments = replacement_arguments;
-                                truncate_tree(arguments_before, [replacement_id].into_iter().collect(), expression_forest);
+                                expression_forest.inline(expression_id, *idx);
                                 continue 'inline
                             },
                             InlineHint::NoOp => {

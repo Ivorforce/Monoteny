@@ -12,7 +12,7 @@ use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionType, FunctionInterface};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::types::{TypeProto, TypeUnit};
-use crate::util::fmt::{write_comma_separated_list, write_comma_separated_list_debug, write_keyval};
+use crate::util::fmt::{write_comma_separated_list, write_keyval};
 use crate::util::hash;
 
 /// The definition of some trait.

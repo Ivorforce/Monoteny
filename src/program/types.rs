@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
 use crate::program::traits::{Trait};
 use crate::linker::precedence::PrecedenceGroup;
-use crate::program::functions::{FunctionHead, ParameterKey};
+use crate::program::functions::ParameterKey;
 use crate::program::generics::GenericAlias;
 use crate::util::fmt::write_comma_separated_list_debug;
 

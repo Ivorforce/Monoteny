@@ -1,15 +1,15 @@
 use std::collections::HashSet;
 use std::rc::Rc;
+use guard::guard;
 use itertools::Itertools;
-use uuid::Uuid;
 use crate::linker::interface::{FunctionHead, FunctionInterface};
 use crate::program::allocation::ObjectReference;
 use crate::program::computation_tree::ExpressionOperation;
 use crate::program::global::FunctionImplementation;
 
-pub fn swizzle_retaining_parameters(function: &FunctionImplementation, unused: &HashSet<Rc<ObjectReference>>) -> Vec<usize> {
+pub fn swizzle_retaining_parameters(function: &FunctionImplementation, removed: &HashSet<Rc<ObjectReference>>) -> Vec<usize> {
     function.parameter_locals.iter().enumerate()
-        .filter_map(|(idx, local)| (!unused.contains(local)).then(|| idx))
+        .filter_map(|(idx, local)| (!removed.contains(local)).then(|| idx))
         .collect_vec()
 }
 
@@ -26,32 +26,54 @@ pub fn find_unused_locals(function: &FunctionImplementation) -> HashSet<Rc<Objec
     return unused
 }
 
-pub fn swizzle_parameters(implementation: &FunctionImplementation, swizzle: &Vec<usize>) -> Box<FunctionImplementation> {
-    // TODO We may be able to remove some generics and requirements.
-    let new_head = FunctionHead::new(Rc::new(FunctionInterface {
-        parameters: swizzle.iter().map(|idx| implementation.head.interface.parameters[*idx].clone()).collect_vec(),
-        return_type: implementation.head.interface.return_type.clone(),
-        requirements: implementation.head.interface.requirements.clone(),
-        generics: implementation.head.interface.generics.clone(),
-    }), implementation.head.function_type.clone());
+pub fn remove_locals(implementation: &mut FunctionImplementation, removed_locals: &HashSet<Rc<ObjectReference>>) -> Option<Vec<usize>> {
+    let changes_interface = removed_locals.iter().any(|l| implementation.parameter_locals.contains(l));
 
-    let mut locals_names = implementation.locals_names.clone();
-    for (idx, parameter) in  implementation.parameter_locals.iter().enumerate() {
-        if swizzle.contains(&idx) {
-            continue
+    let mut expression_forest = &mut implementation.expression_forest;
+    // TODO Also truncate removed from type forest
+    let mut type_forest = &mut implementation.type_forest;
+
+    for expression_id in expression_forest.operations.keys().cloned().collect_vec() {
+        guard!(let Some(operation) = expression_forest.operations.get(&expression_id) else {
+            continue  // Already trimmed
+        });
+
+        match operation {
+            ExpressionOperation::GetLocal(local) => {
+                if removed_locals.contains(local) {
+                    expression_forest.truncate(vec![expression_id]);
+                }
+            }
+            ExpressionOperation::SetLocal(local) => {
+                if removed_locals.contains(local) {
+                    expression_forest.truncate(vec![expression_id]);
+                }
+            }
+            _ => {},
         }
-
-        locals_names.remove(parameter);
     }
 
-    Box::new(FunctionImplementation {
-        implementation_id: Uuid::new_v4(),
-        head: Rc::clone(&new_head),
-        requirements_assumption: implementation.requirements_assumption.clone(),
-        root_expression_id: implementation.root_expression_id,
-        expression_forest: implementation.expression_forest.clone(),
-        type_forest: implementation.type_forest.clone(),
-        parameter_locals: swizzle.iter().map(|idx| implementation.parameter_locals[*idx].clone()).collect_vec(),
-        locals_names,
-    })
+    implementation.locals_names = implementation.locals_names.drain()
+        .filter(|(key, value)| !removed_locals.contains(key))
+        .collect();
+
+    if changes_interface {
+        let swizzle = swizzle_retaining_parameters(implementation, removed_locals);
+
+        // TODO We may be able to remove some generics and requirements.
+        let new_head = FunctionHead::new(Rc::new(FunctionInterface {
+            parameters: swizzle.iter().map(|idx| implementation.head.interface.parameters[*idx].clone()).collect_vec(),
+            return_type: implementation.head.interface.return_type.clone(),
+            requirements: implementation.head.interface.requirements.clone(),
+            generics: implementation.head.interface.generics.clone(),
+        }), implementation.head.function_type.clone());
+
+        implementation.head = new_head;
+        implementation.parameter_locals = swizzle.iter().map(|idx| implementation.parameter_locals[*idx].clone()).collect_vec();
+
+        return Some(swizzle)
+    }
+    else {
+        return None
+    }
 }
