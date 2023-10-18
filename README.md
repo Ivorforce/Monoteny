@@ -165,6 +165,7 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
     - [ ] `if let Some(a) = a :: { }`
     - [ ] `guard let Some(a) = a else { }`
 - [ ] Meta Traits (traits whose instantiations can act as traits)
+  - [ ] This replaces the current trait generics implementation: Generics are arguments that can be resolved by the linker.
   - [ ] IntX (ints with specified bit count) 
     - [ ] FloatX (float with specified bit count) 
     - [ ] PositX (posit with specified bit count) 
