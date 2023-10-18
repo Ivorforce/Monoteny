@@ -364,6 +364,7 @@ dependencies = [
  "lalrpop",
  "lalrpop-util",
  "lazy_static",
+ "linked-hash-map",
  "linked_hash_set",
  "log",
  "monoteny-macro",

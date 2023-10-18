@@ -11,6 +11,7 @@ use std::hash::Hash;
 use std::ops::DerefMut;
 use std::rc::Rc;
 use itertools::Itertools;
+use linked_hash_map::LinkedHashMap;
 use crate::error::RResult;
 use crate::transpiler;
 use crate::interpreter::Runtime;
@@ -105,7 +106,7 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
     }
 
     // Names for exported structs
-    let mut structs = HashMap::new();
+    let mut structs = LinkedHashMap::new();
     // TODO We only need to export structs that are mentioned in the interfaces of exported functions.
     structs::find(&exported_functions, &runtime.source, &mut structs);
     let exported_structs = structs.keys().cloned().collect_vec();
@@ -178,8 +179,8 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
         main_function: main_function.map(|head| names[&head.function_id].clone())
     });
 
-    for (struct_type, id) in representations.type_ids.iter() {
-        if builtin_structs.contains(struct_type) {
+    for struct_ in structs.values() {
+        if builtin_structs.contains(&struct_.type_) {
             continue
         }
 
@@ -189,7 +190,8 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
             representations: &representations,
         };
 
-        let statement = Box::new(Statement::Class(transpile_class(struct_type, &context)));
+        let statement = Box::new(Statement::Class(transpile_class(&struct_.type_, &context)));
+        let id = &representations.type_ids[&struct_.type_];
 
         // TODO Only classes used in the interface of exported functions should be exported.
         //  Everything else is an internal class.

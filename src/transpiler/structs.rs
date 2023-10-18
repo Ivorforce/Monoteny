@@ -1,8 +1,8 @@
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
+use linked_hash_map::{Entry, LinkedHashMap};
 use crate::interpreter::Source;
 use crate::linker::interface::FunctionHead;
 use crate::program::allocation::ObjectReference;
@@ -21,9 +21,11 @@ pub struct Struct {
     pub setters: HashMap<Rc<ObjectReference>, Rc<FunctionHead>>,
 }
 
-pub fn find(implementations: &Vec<Box<FunctionImplementation>>, source: &Source, map: &mut HashMap<Box<TypeProto>, Struct>) {
+pub fn find(implementations: &Vec<Box<FunctionImplementation>>, source: &Source, map: &mut LinkedHashMap<Box<TypeProto>, Struct>) {
     for implementation in implementations {
-        for (expression_id, operation) in implementation.expression_forest.operations.iter() {
+        for expression_id in implementation.expression_forest.deep_children(implementation.root_expression_id) {
+            let operation = &implementation.expression_forest.operations[&expression_id];
+
             if let ExpressionOperation::FunctionCall(binding) = operation {
                 guard!(let Some(hint) = source.fn_builtin_hints.get(&binding.function) else {
                     continue;
