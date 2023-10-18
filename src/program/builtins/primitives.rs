@@ -129,7 +129,6 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
                 (&traits.Number_functions.multiply.target, &number_functions.multiply.target),
                 (&traits.Number_functions.divide.target, &number_functions.divide.target),
                 (&traits.Number_functions.modulo.target, &number_functions.modulo.target),
-                // TODO This shouldn't exist for unsigned types
                 (&traits.Number_functions.negative.target, &number_functions.negative.target),
             ]
         ));
