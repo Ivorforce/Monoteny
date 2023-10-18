@@ -49,13 +49,13 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_function_body(mut self, body: &ast::Expression, scope: &scopes::Scope) -> RResult<Box<FunctionImplementation>> {
         let mut scope = scope.subscope();
 
-        let granted_requirements = scope.traits.assume_granted(
+        let granted_requirements = scope.trait_conformance.assume_granted(
             self.function.interface.requirements.iter().cloned()
         );
 
         // Let our scope know that our parameter types (all of type any!) conform to the requirements
         for conformance in granted_requirements.iter() {
-            scope.traits.add_conformance_rule(TraitConformanceRule::direct(
+            scope.trait_conformance.add_conformance_rule(TraitConformanceRule::direct(
                 Rc::clone(conformance),
             ));
         };
@@ -342,7 +342,7 @@ impl <'a> ImperativeLinker<'a> {
                     vec![string_expression_id],
                     Rc::clone(&self.runtime.traits.as_ref().unwrap().ConstructableByIntLiteral),
                     Rc::clone(&self.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
-                    scope.traits.clone(),
+                    scope.trait_conformance.clone(),
                     syntax.position.clone(),
                 )?)
             }
@@ -353,7 +353,7 @@ impl <'a> ImperativeLinker<'a> {
                     vec![string_expression_id],
                     Rc::clone(&self.runtime.traits.as_ref().unwrap().ConstructableByRealLiteral),
                     Rc::clone(&self.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
-                    scope.traits.clone(),
+                    scope.trait_conformance.clone(),
                     syntax.position.clone(),
                 )?)
             }
@@ -509,7 +509,7 @@ impl <'a> ImperativeLinker<'a> {
                 expression_id,
                 representation,
                 arguments: argument_expressions,
-                traits: scope.traits.clone(),
+                traits: scope.trait_conformance.clone(),
                 range,
                 candidates,
                 failed_candidates: vec![]

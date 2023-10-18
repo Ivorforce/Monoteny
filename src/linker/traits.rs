@@ -151,7 +151,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
     );
     let conformance_rule = TraitConformanceRule::direct(conformance);
     linker.module.trait_conformance.add_conformance_rule(conformance_rule.clone());
-    linker.global_variables.traits.add_conformance_rule(conformance_rule);
+    linker.global_variables.trait_conformance.add_conformance_rule(conformance_rule);
 
     let constructor = FunctionHead::new_static(
         Rc::new(FunctionInterface {

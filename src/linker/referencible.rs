@@ -6,7 +6,7 @@ use crate::linker::interface::{FunctionHead, FunctionInterface};
 use crate::linker::scopes;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::module::Module;
-use crate::program::traits::Trait;
+use crate::program::traits::{Trait, TraitConformanceRule};
 use crate::program::types::TypeProto;
 
 pub fn add_trait(runtime: &mut Runtime, module: &mut Module, scope: Option<&mut scopes::Scope>, trait_: &Rc<Trait>) -> RResult<()> {
@@ -38,6 +38,11 @@ pub fn add_trait(runtime: &mut Runtime, module: &mut Module, scope: Option<&mut 
 pub fn add_function(runtime: &mut Runtime, module: &mut Module, scope: Option<&mut scopes::Scope>, function: Rc<FunctionHead>, representation: FunctionRepresentation) -> RResult<()> {
     // TODO Once functions are actually objects, we can call add_trait from here.
     let function_trait = Rc::new(Trait::new_with_self(&representation.name));
+    let conformance_to_function = TraitConformanceRule::manual(runtime.traits.as_ref().unwrap().Function.create_generic_binding(vec![
+        ("Self", TypeProto::unit_struct(&function_trait))
+    ]), vec![]);
+    module.trait_conformance.add_conformance_rule(Rc::clone(&conformance_to_function));
+
     runtime.source.function_traits.insert(Rc::clone(&function_trait), Rc::clone(&function));
 
     let getter = FunctionHead::new_static(
@@ -63,6 +68,7 @@ pub fn add_function(runtime: &mut Runtime, module: &mut Module, scope: Option<&m
 
     if let Some(scope) = scope {
         scope.overload_function(&exposed_function, runtime.source.fn_representations[&exposed_function].clone())?;
+        scope.trait_conformance.add_conformance_rule(conformance_to_function);
     }
 
     module.exposed_functions.insert(exposed_function);

@@ -25,7 +25,7 @@ pub enum Environment {
 pub struct Scope<'a> {
     pub parent: Option<&'a Scope<'a>>,
 
-    pub traits: TraitGraph,
+    pub trait_conformance: TraitGraph,
 
     pub patterns: HashSet<Rc<Pattern>>,
 
@@ -41,7 +41,7 @@ impl <'a> Scope<'a> {
         Scope {
             parent: None,
 
-            traits: TraitGraph::new(),
+            trait_conformance: TraitGraph::new(),
             precedence_groups: vec![],
 
             patterns: HashSet::new(),
@@ -58,7 +58,7 @@ impl <'a> Scope<'a> {
         Scope {
             parent: Some(self),
 
-            traits: self.traits.clone(),
+            trait_conformance: self.trait_conformance.clone(),
             precedence_groups: self.precedence_groups.clone(),
 
             patterns: self.patterns.clone(),
@@ -97,7 +97,7 @@ impl <'a> Scope<'a> {
             self.overload_function(function, representation.clone())?;
         }
 
-        self.traits.add_graph(&module.trait_conformance);
+        self.trait_conformance.add_graph(&module.trait_conformance);
 
         Ok(())
     }

@@ -174,7 +174,7 @@ impl <'a> GlobalLinker<'a> {
                     conformance,
                 });
                 self.module.trait_conformance.add_conformance_rule(rule.clone());
-                self.global_variables.traits.add_conformance_rule(rule);
+                self.global_variables.trait_conformance.add_conformance_rule(rule);
 
                 for fun in linker.functions {
                     if let Some(body) = &fun.body {
