@@ -43,7 +43,7 @@ impl <'a> TypeFactory<'a> {
     }
 
     fn register_generic(&mut self, name: &str) -> Rc<Trait> {
-        let trait_ = Rc::new(Trait::new_flat(name.to_string()));
+        let trait_ = Rc::new(Trait::new_flat(name));
         self.generics.insert(name.to_string(), Rc::clone(&trait_));
         trait_
     }

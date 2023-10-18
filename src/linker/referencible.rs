@@ -7,7 +7,7 @@ use crate::linker::scopes;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::module::Module;
 use crate::program::traits::Trait;
-use crate::program::types::{TypeProto, TypeUnit};
+use crate::program::types::TypeProto;
 
 pub fn add_trait(runtime: &mut Runtime, module: &mut Module, scope: Option<&mut scopes::Scope>, trait_: &Rc<Trait>) -> RResult<()> {
     let meta_type = TypeProto::one_arg(&runtime.Metatype, TypeProto::unit_struct(trait_));
@@ -36,8 +36,12 @@ pub fn add_trait(runtime: &mut Runtime, module: &mut Module, scope: Option<&mut 
 }
 
 pub fn add_function(runtime: &mut Runtime, module: &mut Module, scope: Option<&mut scopes::Scope>, function: Rc<FunctionHead>, representation: FunctionRepresentation) -> RResult<()> {
+    // TODO Once functions are actually objects, we can call add_trait from here.
+    let function_trait = Rc::new(Trait::new_with_self(&representation.name));
+    runtime.source.function_traits.insert(Rc::clone(&function_trait), Rc::clone(&function));
+
     let getter = FunctionHead::new_static(
-        FunctionInterface::new_provider(&TypeProto::unit(TypeUnit::Function(Rc::clone(&function))), vec![]),
+        FunctionInterface::new_provider(&TypeProto::unit_struct(&function_trait), vec![]),
     );
     runtime.source.fn_heads.insert(function.function_id, Rc::clone(&function));
     runtime.source.fn_heads.insert(getter.function_id, Rc::clone(&getter));

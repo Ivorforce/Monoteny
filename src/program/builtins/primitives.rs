@@ -29,7 +29,7 @@ pub fn create_traits(runtime: &mut Runtime, module: &mut Module) -> HashMap<prim
         primitives::Type::Float(32),
         primitives::Type::Float(64),
     ] {
-        let trait_ = Rc::new(Trait::new_with_self(primitive_type.identifier_string()));
+        let trait_ = Rc::new(Trait::new_with_self(&primitive_type.identifier_string()));
         referencible::add_trait(runtime, module, None, &trait_).unwrap();
         traits.insert(primitive_type, trait_);
     }

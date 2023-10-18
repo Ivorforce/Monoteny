@@ -102,7 +102,7 @@ impl <'a> GlobalLinker<'a> {
                 self.add_function_interface(fun, representation, &vec![])?;
             }
             ast::Statement::Trait(syntax) => {
-                let mut trait_ = Trait::new_with_self(syntax.name.clone());
+                let mut trait_ = Trait::new_with_self(&syntax.name);
 
                 let generic_self_type = trait_.create_generic_type("Self");
                 let generic_self_meta_type = TypeProto::one_arg(&self.runtime.Metatype, generic_self_type.clone());

@@ -54,6 +54,10 @@ pub fn insert_functions<'a, I>(module: &mut Trait, functions: I) where I: Iterat
 #[allow(non_snake_case)]
 #[derive(Clone)]
 pub struct Traits {
+    /// Supertype of all function objects.
+    /// No requirements yet (will require call_as_function to return self!).
+    pub Function: Rc<Trait>,
+
     pub Eq: Rc<Trait>,
     pub Eq_functions: EqFunctions,
 
@@ -206,7 +210,11 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     let primitive_traits = runtime.primitives.as_ref().unwrap();
     let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
 
-    let mut Eq = Trait::new_with_self("Eq".to_string());
+    let mut Function = Trait::new_with_self("Function");
+    let Function = Rc::new(Function);
+    referencible::add_trait(runtime, module, None, &Function).unwrap();
+
+    let mut Eq = Trait::new_with_self("Eq");
     let eq_functions = make_eq_functions(&Eq.create_generic_type("Self"), &bool_type);
     insert_functions(&mut Eq, [
         &eq_functions.equal_to,
@@ -215,7 +223,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     let Eq = Rc::new(Eq);
     referencible::add_trait(runtime, module, None, &Eq).unwrap();
 
-    let mut Ord = Trait::new_with_self("Ord".to_string());
+    let mut Ord = Trait::new_with_self("Ord");
     let ord_functions = make_ord_functions(&Ord.create_generic_type("Self"), &bool_type);
     insert_functions(&mut Ord, [
         &ord_functions.greater_than,
@@ -227,7 +235,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     let Ord = Rc::new(Ord);
     referencible::add_trait(runtime, module, None, &Ord).unwrap();
 
-    let mut Number = Trait::new_with_self("Number".to_string());
+    let mut Number = Trait::new_with_self("Number");
     let number_functions = make_number_functions(&Number.create_generic_type("Self"));
     insert_functions(&mut Number, [
         &number_functions.add,
@@ -241,13 +249,13 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     let Number = Rc::new(Number);
     referencible::add_trait(runtime, module, None, &Number).unwrap();
 
-    let mut String = Trait::new_with_self("String".to_string());
+    let mut String = Trait::new_with_self("String");
     let String = Rc::new(String);
     referencible::add_trait(runtime, module, None, &String).unwrap();
 
     // TODO String is not ToString. We could declare it on the struct, but that seems counterintuitive, no?
     //  Maybe a candidate for return self.strip().
-    let mut ToString = Trait::new_with_self("ToString".to_string());
+    let mut ToString = Trait::new_with_self("ToString");
     let to_string_function = make_to_string_function(&ToString, &String);
     insert_functions(&mut ToString, [
         &to_string_function
@@ -255,7 +263,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     let ToString = Rc::new(ToString);
     referencible::add_trait(runtime, module, None, &ToString).unwrap();
 
-    let mut ConstructableByIntLiteral = Trait::new_with_self("ConstructableByIntLiteral".to_string());
+    let mut ConstructableByIntLiteral = Trait::new_with_self("ConstructableByIntLiteral");
     let parse_int_literal_function = FunctionPointer::new_global_function(
         "parse_int_literal",
         FunctionInterface::new_simple(
@@ -270,7 +278,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     referencible::add_trait(runtime, module, None, &ConstructableByIntLiteral).unwrap();
 
 
-    let mut ConstructableByRealLiteral = Trait::new_with_self("ConstructableByRealLiteral".to_string());
+    let mut ConstructableByRealLiteral = Trait::new_with_self("ConstructableByRealLiteral");
     let parse_real_literal_function = FunctionPointer::new_global_function(
         "parse_real_literal",
         FunctionInterface::new_simple(
@@ -285,7 +293,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     referencible::add_trait(runtime, module, None, &ConstructableByRealLiteral).unwrap();
 
 
-    let mut Real = Trait::new_with_self("Real".to_string());
+    let mut Real = Trait::new_with_self("Real");
     let float_functions = make_real_functions(&Real.create_generic_type("Self"));
     insert_functions(&mut Real, [
         &float_functions.exponent,
@@ -297,13 +305,15 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     let Real = Rc::new(Real);
     referencible::add_trait(runtime, module, None, &Real).unwrap();
 
-    let mut Int = Trait::new_with_self("Int".to_string());
+    let mut Int = Trait::new_with_self("Int");
     Int.add_simple_parent_requirement(&Number);
     Int.add_simple_parent_requirement(&ConstructableByIntLiteral);
     let Int = Rc::new(Int);
     referencible::add_trait(runtime, module, None, &Int).unwrap();
 
     Traits {
+        Function,
+
         Eq,
         Eq_functions: eq_functions,
 

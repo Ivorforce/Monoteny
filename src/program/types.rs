@@ -28,8 +28,6 @@ pub enum TypeUnit {
     Generic(GenericAlias),
     /// Bound to an instance of a trait. The arguments are the generic bindings.
     Struct(Rc<Trait>),
-    /// Bound to a function / reference to a function.
-    Function(Rc<FunctionHead>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -71,7 +69,6 @@ impl Debug for TypeUnit {
             TypeUnit::Struct(s) => write!(fmt, "{}", s.name),
             TypeUnit::Generic(g) => write!(fmt, "#({})", g),
             TypeUnit::Void => write!(fmt, "Void"),
-            TypeUnit::Function(f) => write!(fmt, "{:?}", f),
         }
     }
 }

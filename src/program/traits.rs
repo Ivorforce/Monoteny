@@ -332,10 +332,10 @@ impl TraitGraph {
 }
 
 impl Trait {
-    pub fn new_flat(name: String) -> Trait {
+    pub fn new_flat(name: &str) -> Trait {
         Trait {
             id: Uuid::new_v4(),
-            name,
+            name: name.to_string(),
             generics: Default::default(),
             requirements: Default::default(),
             abstract_functions: Default::default(),
@@ -343,11 +343,11 @@ impl Trait {
         }
     }
 
-    pub fn new_with_self(name: String) -> Trait {
+    pub fn new_with_self(name: &str) -> Trait {
         Trait {
             id: Uuid::new_v4(),
-            name,
-            generics: HashMap::from([("Self".to_string(), Rc::new(Trait::new_flat("Self".to_string())))]),
+            name: name.to_string(),
+            generics: HashMap::from([("Self".to_string(), Rc::new(Trait::new_flat("Self")))]),
             requirements: Default::default(),
             abstract_functions: Default::default(),
             field_hints: Default::default(),

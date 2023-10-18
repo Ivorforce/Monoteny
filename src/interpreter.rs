@@ -54,6 +54,8 @@ pub struct Source {
 
     /// For every getter, which trait it provides.
     pub trait_references: HashMap<Rc<FunctionHead>, Rc<Trait>>,
+    /// For referencible functions, the trait for it as an object.
+    pub function_traits: HashMap<Rc<Trait>, Rc<FunctionHead>>,
 
     /// For each function_id, its head.
     pub fn_heads: HashMap<Uuid, Rc<FunctionHead>>,
@@ -77,7 +79,7 @@ pub struct FunctionInterpreter<'a> {
 
 impl Runtime {
     pub fn new() -> RResult<Box<Runtime>> {
-        let mut Metatype = Trait::new_with_self("Type".to_string());
+        let mut Metatype = Trait::new_with_self("Type");
         let Metatype = Rc::new(Metatype);
 
         let mut runtime = Box::new(Runtime {
@@ -88,6 +90,7 @@ impl Runtime {
             source: Source {
                 module_by_name: Default::default(),
                 trait_references: Default::default(),
+                function_traits: Default::default(),
                 fn_heads: Default::default(),
                 fn_getters: Default::default(),
                 fn_representations: Default::default(),

@@ -63,16 +63,20 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
                     let arg_id = &interpreter.implementation.expression_forest.arguments[&expression_id][1];
                     let arg_type = interpreter.implementation.type_forest.get_unit(arg_id).unwrap();
 
-                    // TODO Once we have a Function supertype we can remove this check.
                     match arg_type {
-                        TypeUnit::Function(f) => {},
-                        _ => panic!("Argument to transpiler.add is not a function: {:?}", arg_type)
-                    };
+                        TypeUnit::Struct(s) => {
+                            if !interpreter.runtime.source.function_traits.contains_key(s) {
+                                panic!("Cannot transpile traits for now: {:?}", s);
+                            }
+                        }
+                        _ => panic!(),
+                    }
 
                     let implementation_id = *(arg.data as *const Uuid);
                     guard!(let implementation = &interpreter.runtime.source.fn_heads[&implementation_id] else {
-                    panic!("Couldn't find function head: {}", implementation_id)
-                });
+                        panic!("Couldn't find function head: {}", implementation_id)
+                    });
+
                     transpiler_callback(Rc::clone(implementation), &interpreter.runtime);
 
                     return None;
