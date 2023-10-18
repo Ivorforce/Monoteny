@@ -1,3 +1,5 @@
+use!(module!("common"));
+
 trait Animal {
     def {Self}.talk() -> String;
 };
@@ -20,7 +22,7 @@ def converse(lhs '$Animal#lhs, rhs '$Animal#rhs) :: {
     write_line("\(lhs.talk()) \(rhs.talk())");
 };
 
-def @main :: {
+def main! :: {
     let dog = Dog();
     let cat = Cat();
 
@@ -30,6 +32,6 @@ def @main :: {
     converse(dog, cat);
 };
 
-def @transpile :: {
+def transpile! :: {
     transpiler.add(main);
 };

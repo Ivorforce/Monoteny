@@ -61,7 +61,7 @@ impl Display for Class {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "@dataclass\nclass {}:\n", self.name)?;
         if self.statements.is_empty() {
-            write!(f, "    pass")?;
+            writeln!(f, "    pass")?;
         }
         else {
             for statement in self.statements.iter() {

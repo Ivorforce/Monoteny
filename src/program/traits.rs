@@ -6,13 +6,13 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::error::{RResult, RuntimeError};
+use crate::error::{format_errors, RResult, RuntimeError};
 use crate::linker::ambiguous::AmbiguityResult;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionType, FunctionInterface};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::types::{TypeProto, TypeUnit};
-use crate::util::fmt::write_keyval;
+use crate::util::fmt::{write_comma_separated_list, write_comma_separated_list_debug, write_keyval};
 use crate::util::hash;
 
 /// The definition of some trait.
@@ -172,6 +172,8 @@ impl TraitGraph {
         });
 
         let mut compatible_conformances = vec![];
+        let mut bind_errors = vec![];
+        let mut requirements_errors = vec![];
 
         // Recalculate
         // TODO clone is a bit much, but we need it to be memory safe
@@ -194,15 +196,16 @@ impl TraitGraph {
                 rule_mapping.bind(tmp_id, &type_.replacing_structs(&rule_generics_map)).unwrap();
 
                 let resolved_type = &resolved_binding.generic_to_type[key];
-                if rule_mapping.bind(tmp_id, resolved_type).is_err() {
+                if let Err(err) = rule_mapping.bind(tmp_id, resolved_type) {
+                    bind_errors.push(err);
                     // Binding failed; this rule is not compatible.
                     continue 'rule;
                 }
             }
 
-            match self.test_requirements(&rule.requirements, &rule_mapping) {
+            match self.test_requirements(&rule.requirements, &rule_generics_map, &rule_mapping) {
                 // Can't use this candidate: While it is compatible, its requirements are not fulfilled.
-                Err(_) => {},
+                Err(err) => requirements_errors.push(err),
                 Ok(AmbiguityResult::Ambiguous) => {
                     // This shouldn't happen because Ambiguous is only thrown when any requirements have
                     //  unbound generics. We resolved those generics using the binding from earlier.
@@ -236,23 +239,30 @@ impl TraitGraph {
         match compatible_conformances.as_slice() {
             [] => {
                 self.conformance_cache.insert(Rc::clone(&resolved_binding), None);
-                Err(RuntimeError::new(String::from(format!("No compatible declaration for trait conformance requirement: {:?}\n{} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations))))
+                if !requirements_errors.is_empty() {
+                    Err(RuntimeError::new(String::from(format!("No compatible declaration for trait conformance requirement: {:?}\n{} rule(s) match types, but their requirements were not satisfied: \n{}", resolved_binding, requirements_errors.len(), requirements_errors.iter().map(|e| format_errors(e)).join("\n")))))
+                }
+                else {
+                    Err(RuntimeError::new(String::from(format!("No compatible declaration for trait conformance requirement: {:?}\n{} rule(s) failed the type check: \n{}", resolved_binding, bind_errors.len(), bind_errors.iter().map(|e| format_errors(e)).join("\n")))))
+                }
             }
             [declaration] => {
                 self.conformance_cache.insert(resolved_binding, Some(Rc::clone(declaration)));
                 Ok(AmbiguityResult::Ok(Rc::clone(declaration)))
             }
             _ => {
-                Err(RuntimeError::new(String::from(format!("Conflicting declarations for trait conformance requirement: {:?}\n{} rules failed the check: {:?}", resolved_binding, cloned_declarations.len(), cloned_declarations))))
+                Err(RuntimeError::new(String::from(format!("Conflicting declarations for trait conformance requirement: {:?}\n{} rules failed the check: \n{:?}", resolved_binding, cloned_declarations.len(), cloned_declarations))))
             }
         }
     }
 
-    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, mapping: &TypeForest) -> RResult<AmbiguityResult<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>>> {
+    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, generics_map: &HashMap<Rc<Trait>, Box<TypeProto>>, mapping: &TypeForest) -> RResult<AmbiguityResult<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>>> {
         let mut conformance = HashMap::new();
 
         for requirement in self.gather_deep_requirements(requirements.iter().cloned()) {
-            match self.satisfy_requirement(&requirement, &mapping)? {
+            let mapped_requirement = requirement.mapping_types(&|t| t.replacing_structs(generics_map));
+
+            match self.satisfy_requirement(&mapped_requirement, &mapping)? {
                 AmbiguityResult::Ok(trait_conformance) => {
                     conformance.insert(requirement.clone(), trait_conformance);
                 }
@@ -479,7 +489,7 @@ impl Debug for Trait {
         write!(fmt, "{}", self.name)?;
         if !self.generics.is_empty() {
             write!(fmt, "<")?;
-            write_keyval(fmt, &self.generics)?;
+            write_comma_separated_list(fmt, &self.generics.keys().collect_vec())?;
             write!(fmt, ">")?;
         }
         Ok(())

@@ -149,8 +149,9 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         trait_.create_generic_binding(vec![("Self", struct_type.clone())]),
         function_mapping,
     );
-    linker.module.trait_conformance.add_conformance_rule(TraitConformanceRule::direct(Rc::clone(&conformance)));
-    linker.global_variables.traits.add_conformance_rule(TraitConformanceRule::direct(conformance));
+    let conformance_rule = TraitConformanceRule::direct(conformance);
+    linker.module.trait_conformance.add_conformance_rule(conformance_rule.clone());
+    linker.global_variables.traits.add_conformance_rule(conformance_rule);
 
     let constructor = FunctionHead::new_static(
         Rc::new(FunctionInterface {
