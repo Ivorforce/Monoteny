@@ -67,7 +67,7 @@ def converse_0(lhs: Dog, rhs: Cat):
         lhs: TODO
         rhs: TODO
     """
-    print(talk_1(lhs) + (" " + talk_0(rhs)))
+    print("Conversation: \n    " + (talk_1(lhs) + (" \n    " + talk_0(rhs))))
 
 
 def converse_1(lhs: Cat, rhs: Dog):
@@ -78,7 +78,7 @@ def converse_1(lhs: Cat, rhs: Dog):
         lhs: TODO
         rhs: TODO
     """
-    print(talk_0(lhs) + (" " + talk_1(rhs)))
+    print("Conversation: \n    " + (talk_0(lhs) + (" \n    " + talk_1(rhs))))
 
 
 __all__ = [

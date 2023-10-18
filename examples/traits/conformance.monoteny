@@ -19,7 +19,7 @@ declare Dog is Animal {
 };
 
 def converse(lhs '$Animal#lhs, rhs '$Animal#rhs) :: {
-    write_line("\(lhs.talk()) \(rhs.talk())");
+    write_line("Conversation: \n    \(lhs.talk()) \n    \(rhs.talk())");
 };
 
 def main! :: {
