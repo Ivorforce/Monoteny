@@ -68,6 +68,9 @@ impl<'a> Refactor<'a> {
 
         self.implementation_by_head.insert(Rc::clone(&head), implementation);
         self.update_callees(&head);
+
+        // New function; it may call functions that were already inlined!
+        self.inline_calls(&head);
     }
 
     pub fn update_callees(&mut self, head: &Rc<FunctionHead>) {
@@ -177,7 +180,7 @@ impl<'a> Refactor<'a> {
         new_heads
     }
 
-    pub fn remove_locals(&mut self, function: &Rc<FunctionHead>, removed_locals: &HashSet<Rc<ObjectReference>>) -> Rc<FunctionHead> {
+    pub fn remove_locals(&mut self, function: &Rc<FunctionHead>, removed_locals: &HashSet<Rc<ObjectReference>>) -> HashSet<Rc<FunctionHead>> {
         assert!(function.function_type == FunctionType::Static);
 
         let mut old_implementation = self.implementation_by_head.get_mut(function).unwrap();
@@ -186,7 +189,7 @@ impl<'a> Refactor<'a> {
             // We can just change the function in-place!
             let param_swizzle = locals::remove_locals(old_implementation, removed_locals);
             assert!(param_swizzle.is_none());
-            return Rc::clone(&old_implementation.head)
+            return HashSet::new()
         }
 
         // We need to create a new function; the interface changes and thus does the FunctionHead.
@@ -206,7 +209,7 @@ impl<'a> Refactor<'a> {
         // This is especially important if we get new callers to the old function later. All information is retained.
         self.inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&new_head), param_swizzle.clone()));
 
-        new_head
+        self.apply_inline(function)
     }
 
     fn copy_quirks_source(&mut self, from: &Rc<FunctionHead>, to: &Rc<FunctionHead>) {

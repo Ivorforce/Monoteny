@@ -58,13 +58,7 @@ impl<'a, 'b> Simplify<'a, 'b> {
                 }
 
                 if !remove.is_empty() {
-                    let new_head = self.refactor.remove_locals(&current, &remove);
-
-                    if self.inline {
-                        self.refactor.inline_calls(&new_head);
-                        let set = self.refactor.apply_inline(&current);
-                        next.extend(set);
-                    }
+                    next.extend(self.refactor.remove_locals(&current, &remove));
                 }
             }
         }
