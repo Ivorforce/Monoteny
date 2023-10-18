@@ -14,6 +14,8 @@ pub mod structs;
 pub struct Config {
     pub should_constant_fold: bool,
     pub should_monomorphize: bool,
+    pub should_inline: bool,
+    pub should_trim_locals: bool,
 }
 
 pub enum TranspiledArtifact {
@@ -27,5 +29,5 @@ pub struct Transpiler {
 }
 
 pub trait LanguageContext {
-    fn make_files(&self, filename: &str, runtime: &Runtime, transpiler: Box<Transpiler>, config: &Config) -> RResult<HashMap<String, String>>;
+    fn make_files(&self, filename: &str, runtime: &mut Runtime, transpiler: Box<Transpiler>, config: &Config) -> RResult<HashMap<String, String>>;
 }

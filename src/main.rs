@@ -55,7 +55,10 @@ fn cli() -> Command<'static> {
                 .arg(arg!(<INPUT> "file to transpile").value_parser(clap::value_parser!(PathBuf)).long("input").short('i'))
                 .arg(arg!(<OUTPUT> "output file path").required(false).value_parser(clap::value_parser!(PathBuf)).long("output").short('o'))
                 .arg(arg!(<ALL> "use all available transpilers").required(false).takes_value(false).long("all"))
-                .arg(arg!(<NOFOLD> "don't use constant folding to shorten the code at compile time").required(false).takes_value(false).long("nofold"))
+                .arg(arg!(<NOREFACTOR> "don't use ANY refactoring").required(false).takes_value(false).long("norefactor"))
+                .arg(arg!(<NOFOLD> "don't use constant folding").required(false).takes_value(false).long("nofold"))
+                .arg(arg!(<NOINLINE> "don't use inlining").required(false).takes_value(false).long("noinline"))
+                .arg(arg!(<NOTRIMLOCALS> "don't trim unused locals code").required(false).takes_value(false).long("notrimlocals"))
         )
 }
 
@@ -130,9 +133,12 @@ fn main() -> ExitCode {
             let base_filename = output_path_proto.file_name().and_then(OsStr::to_str).unwrap();
             let base_output_path = output_path_proto.parent().unwrap();
 
+            let can_refactor = !sub_matches.is_present("NOREFACTOR");
             let config = transpiler::Config {
-                should_constant_fold: !sub_matches.is_present("NOFOLD"),
-                should_monomorphize: true,
+                should_constant_fold: can_refactor && !sub_matches.is_present("NOFOLD"),
+                should_monomorphize: true, // TODO Cannot do without it for now
+                should_inline: can_refactor && !sub_matches.is_present("NOINLINE"),
+                should_trim_locals: can_refactor && !sub_matches.is_present("NOTRIMLOCALS"),
             };
             let should_output_all = sub_matches.is_present("ALL");
 
@@ -190,7 +196,7 @@ fn transpile_target(base_filename: &str, base_output_path: &Path, config: &trans
 
     let transpiler = interpreter::run::transpile(&module, &mut runtime)?;
 
-    let file_map = context.make_files(base_filename, &runtime, transpiler, config)?;
+    let file_map = context.make_files(base_filename, runtime, transpiler, config)?;
     let output_files = file_map.into_iter().map(|(filename, content)| {
         let file_path = base_output_path.join(filename);
         let mut f = File::create(file_path.clone()).expect("Unable to create file");

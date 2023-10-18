@@ -1,16 +1,19 @@
-pub mod constant_folding;
+pub mod simplify;
 pub mod monomorphize;
 pub mod inline;
+pub mod locals;
 
 use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
+use uuid::Uuid;
 use crate::interpreter::Runtime;
-use crate::linker::interface::FunctionHead;
+use crate::linker::interface::{FunctionHead, FunctionInterface};
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::ExpressionOperation;
+use crate::program::functions::FunctionType;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
 use crate::refactor::inline::{inline_calls, try_inline};
@@ -26,7 +29,7 @@ pub enum InlineHint {
 }
 
 pub struct Refactor<'a> {
-    pub runtime: &'a Runtime,
+    pub runtime: &'a mut Runtime,
 
     pub explicit_functions: Vec<Rc<FunctionHead>>,
     pub invented_functions: Vec<Rc<FunctionHead>>,
@@ -41,7 +44,7 @@ pub struct Refactor<'a> {
 }
 
 impl<'a> Refactor<'a> {
-    pub fn new(runtime: &'a Runtime) -> Refactor<'a> {
+    pub fn new(runtime: &'a mut Runtime) -> Refactor<'a> {
         Refactor {
             runtime,
             implementation_by_head: Default::default(),
@@ -64,9 +67,6 @@ impl<'a> Refactor<'a> {
 
         self.implementation_by_head.insert(Rc::clone(&head), implementation);
         self.update_callees(&head);
-
-        // In case any calls have already been inlined before this implementation was added.
-        self.inline_calls(&head);
     }
 
     pub fn update_callees(&mut self, head: &Rc<FunctionHead>) {
@@ -95,15 +95,26 @@ impl<'a> Refactor<'a> {
             return Err(())
         });
 
-        self.inline_hints.insert(Rc::clone(head), hint);
+        self.inline_hints.insert(Rc::clone(head), hint);;
 
+        return Ok(self.apply_inline(head))
+    }
+
+    pub fn apply_inline(&mut self, head: &Rc<FunctionHead>) -> HashSet<Rc<FunctionHead>> {
         let affected = self.callers.get(head).cloned().unwrap_or(HashSet::new());
         for caller in affected.iter() {
             self.inline_calls(caller);
         }
+        // TODO We need to keep the function, in case any new ones come along that call it,
+        //  or if this function is referenced by a requirements fulfillment.
+        //  Whether those calls should be inlined too should be up to whoever owns us.
+        //  For now we know this won't be the case because generic transpilation doesn't exist yet,
+        //  and no functions are added after the initial charge. When this changes, we to
+        //  search the function tree down in the end to see which are actually used and thus need to
+        //  be exported too.
         self.invented_functions.retain(|f| f != head);
 
-        return Ok(affected)
+        affected
     }
 
     pub fn inline_calls(&mut self, head: &Rc<FunctionHead>) {
@@ -138,6 +149,9 @@ impl<'a> Refactor<'a> {
             }),
             should_monomorphize
         );
+        let new_head = Rc::clone(&implementation.head);
+        self.runtime.source.fn_implementations.insert(Rc::clone(&new_head), implementation.clone());
+        self.copy_quirks_source(&head, &new_head);
         self.update_callees(&head);
 
         while let Some(function_binding) = self.monomorphize.new_encountered_calls.pop() {
@@ -158,8 +172,34 @@ impl<'a> Refactor<'a> {
             };
 
             self.invented_functions.push(Rc::clone(&mono_implementation.head));
+            self.runtime.source.fn_implementations.insert(Rc::clone(&mono_implementation.head), mono_implementation.clone());
+            self.copy_quirks_source(&function_binding.function, &mono_implementation.head);
             self._add(mono_implementation);
         }
+    }
+
+    pub fn swizzle_parameters(&mut self, function: &Rc<FunctionHead>, new_order: &Vec<usize>) -> Rc<FunctionHead> {
+        assert!(function.function_type == FunctionType::Static);
+
+        let new_implementation = locals::swizzle_parameters(&self.implementation_by_head[function], new_order);
+        let new_head = Rc::clone(&new_implementation.head);
+
+        self.invented_functions.push(Rc::clone(&new_head));
+        self.runtime.source.fn_implementations.insert(Rc::clone(&new_head), new_implementation.clone());
+        self.implementation_by_head.insert(Rc::clone(&new_head), new_implementation);
+        self.copy_quirks_source(function, &new_head);
+
+        self.callees.insert(Rc::clone(&new_head), self.callees[function].clone());
+
+        // We do not remove the old function. The old function CAN be inlined to call the new one, but it doesn't have to.
+        // This is especially important if we get new callers to the old function later. All information is retained.
+        self.inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&new_head), new_order.clone()));
+        new_head
+    }
+
+    fn copy_quirks_source(&mut self, from: &Rc<FunctionHead>, to: &Rc<FunctionHead>) {
+        self.runtime.source.fn_representations.get(from).cloned().map(|rep| self.runtime.source.fn_representations.insert(Rc::clone(to), rep));
+        self.runtime.source.fn_builtin_hints.get(from).cloned().map(|hint| self.runtime.source.fn_builtin_hints.insert(Rc::clone(to), hint));
     }
 }
 
