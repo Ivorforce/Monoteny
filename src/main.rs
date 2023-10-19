@@ -14,6 +14,7 @@ pub mod error;
 pub mod repository;
 pub mod graphs;
 pub mod refactor;
+pub mod source;
 
 use std::env;
 use std::ffi::OsStr;

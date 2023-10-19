@@ -15,12 +15,12 @@ use crate::error::{RResult, RuntimeError};
 use crate::linker::{imports, referencible, scopes};
 use crate::parser::ast;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
-use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionType};
-use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
+use crate::program::global::FunctionImplementation;
 use crate::program::module::{Module, module_name, ModuleName};
 use crate::program::traits::{RequirementsFulfillment, Trait};
 use crate::repository::Repository;
+use crate::source::Source;
 
 
 pub type FunctionInterpreterImpl = Rc<dyn Fn(&mut FunctionInterpreter, ExpressionID, &RequirementsFulfillment) -> Option<Value>>;
@@ -47,28 +47,6 @@ pub struct Runtime {
     pub repository: Box<Repository>,
 }
 
-pub struct Source {
-    pub module_by_name: HashMap<ModuleName, Box<Module>>,
-
-    // Cache of aggregated module_by_name fields for quick reference.
-
-    /// For every getter, which trait it provides.
-    pub trait_references: HashMap<Rc<FunctionHead>, Rc<Trait>>,
-    /// For referencible functions, the trait for it as an object.
-    pub function_traits: HashMap<Rc<Trait>, Rc<FunctionHead>>,
-
-    /// For each function_id, its head.
-    pub fn_heads: HashMap<Uuid, Rc<FunctionHead>>,
-    /// For referencible functions, a way to load it. The getter itself does not get a getter.
-    pub fn_getters: HashMap<Rc<FunctionHead>, Rc<FunctionHead>>,
-    /// For referencible functions, its 'default' representation for syntax.
-    pub fn_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
-    /// For relevant functions, their implementation.
-    pub fn_implementations: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
-    /// For relevant functions, a hint what type of core it is.
-    pub fn_builtin_hints: HashMap<Rc<FunctionHead>, BuiltinFunctionHint>,
-}
-
 pub struct FunctionInterpreter<'a> {
     pub runtime: &'a mut Runtime,
     pub implementation: Rc<FunctionImplementation>,
@@ -87,16 +65,7 @@ impl Runtime {
             primitives: None,
             traits: None,
             function_evaluators: Default::default(),
-            source: Source {
-                module_by_name: Default::default(),
-                trait_references: Default::default(),
-                function_traits: Default::default(),
-                fn_heads: Default::default(),
-                fn_getters: Default::default(),
-                fn_representations: Default::default(),
-                fn_implementations: Default::default(),
-                fn_builtin_hints: Default::default(),
-            },
+            source: Source::new(),
             repository: Repository::new(),
         });
 
@@ -130,7 +99,7 @@ impl Runtime {
     pub fn load_file(&mut self, path: &PathBuf, name: ModuleName) -> RResult<Box<Module>> {
         let content = std::fs::read_to_string(&path)
             .map_err(|e| RuntimeError::new(format!("Error loading {:?}: {}", path, e)))?;
-        self.load_source(&content, name)
+        self.load_code(&content, name)
             .map_err(|errs| {
                 errs.into_iter().map(|e| {
                     e.in_file(path.clone())
@@ -138,7 +107,7 @@ impl Runtime {
             })
     }
 
-    pub fn load_source(&mut self, source: &str, name: ModuleName) -> RResult<Box<Module>> {
+    pub fn load_code(&mut self, source: &str, name: ModuleName) -> RResult<Box<Module>> {
         // We can ignore the errors. All errors are stored inside the AST too and will fail there.
         // TODO When JIT loading is implemented, we should still try to link all non-loaded
         //  functions / modules and warn if they fail. We can also then warn they're unused too.

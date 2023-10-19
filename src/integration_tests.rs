@@ -44,7 +44,7 @@ def transpile! :: {
         let mut runtime = Runtime::new()?;
         runtime.repository.add("common", PathBuf::from("monoteny"));
 
-        let module = runtime.load_source(SIMPLE_PROGRAM, module_name("main"))?;
+        let module = runtime.load_code(SIMPLE_PROGRAM, module_name("main"))?;
 
         assert_eq!(module.exposed_functions.len(), 2);
 
