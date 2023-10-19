@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use crate::error::{ErrInRange, RResult, RuntimeError};
-use crate::linker::interface::ParameterKey;
 use crate::parser::ast;
+use crate::program::functions::ParameterKey;
 use crate::util::position::Positioned;
 
 pub fn plain_parameter<'a>(cause: &str, args: &'a Vec<ast::StructArgument>) -> RResult<&'a ast::Expression> {

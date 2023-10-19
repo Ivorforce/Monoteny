@@ -5,8 +5,6 @@ use std::fmt::{Debug, Formatter};
 use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
 use crate::program::traits::{Trait};
-use crate::linker::precedence::PrecedenceGroup;
-use crate::program::functions::ParameterKey;
 use crate::program::generics::GenericAlias;
 use crate::util::fmt::write_comma_separated_list_debug;
 
@@ -34,21 +32,6 @@ pub enum TypeUnit {
 pub struct Generic {
     pub id: Uuid,
     pub name: String,
-}
-
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Pattern {
-    pub id: Uuid,
-    pub alias: String,
-    pub precedence_group: Rc<PrecedenceGroup>,
-
-    pub parts: Vec<Box<PatternPart>>,
-}
-
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub enum PatternPart {
-    Parameter { key: ParameterKey, internal_name: String },
-    Keyword(String),
 }
 
 impl Debug for TypeProto {

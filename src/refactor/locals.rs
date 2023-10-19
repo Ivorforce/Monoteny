@@ -2,9 +2,9 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
-use crate::linker::interface::{FunctionHead, FunctionInterface};
 use crate::program::allocation::ObjectReference;
 use crate::program::computation_tree::ExpressionOperation;
+use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::FunctionImplementation;
 
 pub fn swizzle_retaining_parameters(function: &FunctionImplementation, removed: &HashSet<Rc<ObjectReference>>) -> Vec<usize> {

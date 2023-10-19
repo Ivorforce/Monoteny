@@ -5,69 +5,14 @@ use itertools::Itertools;
 use strum::{Display, EnumIter};
 use uuid::Uuid;
 use crate::error::{ErrInRange, RResult, RuntimeError};
+use crate::linker::grammar::{OperatorAssociativity, Token};
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::scopes;
 use crate::linker::scopes::Environment;
 use crate::program::calls::FunctionBinding;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
-use crate::program::function_object::FunctionOverload;
 use crate::program::functions::ParameterKey;
-use crate::program::r#struct::Struct;
 use crate::util::position::{Positioned, positioned};
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Display, EnumIter)]
-pub enum OperatorAssociativity {
-    LeftUnary,  // Evaluated with the operator left of the expression.
-    RightUnary,  // Evaluated with the operator right of the expression.
-    Left,  // Left evaluated first.
-    Right, // Right evaluated first.
-    None,  // Fail parsing if more than one neighboring operator is found.
-    LeftConjunctivePairs, // Evaluated in pairs left first, joined by && operations.
-}
-
-#[derive(Eq, Debug)]
-pub struct PrecedenceGroup {
-    pub trait_id: Uuid,
-    pub name: String,
-    pub associativity: OperatorAssociativity,
-}
-
-#[derive(Clone, PartialEq, Eq)]
-pub struct OperatorPattern {
-    pub name: String,
-    pub precedence_group: Rc<PrecedenceGroup>,
-}
-
-impl PrecedenceGroup {
-    pub fn new(name: &str, associativity: OperatorAssociativity) -> PrecedenceGroup {
-        PrecedenceGroup {
-            trait_id: Uuid::new_v4(),
-            name: String::from(name),
-            associativity,
-        }
-    }
-}
-
-impl PartialEq for PrecedenceGroup {
-    fn eq(&self, other: &Self) -> bool {
-        self.trait_id == other.trait_id
-    }
-}
-
-impl Hash for PrecedenceGroup {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.trait_id.hash(state)
-    }
-}
-
-#[derive(Clone)]
-pub enum Token {
-    Keyword(String),
-    Expression(ExpressionID),
-    AnonymousStruct(Struct),
-    AnonymousArray { keys: Vec<Option<ExpressionID>>, values: Vec<ExpressionID> },
-    FunctionReference { overload: Rc<FunctionOverload>, target: Option<ExpressionID> },
-}
 
 pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, linker: &mut ImperativeLinker) -> RResult<ExpressionID> {
     // Resolve structs and array literals
@@ -183,7 +128,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
     }
 
     // Reduce all unary operators, and build interspersed arguments / operators list.
-    if let Some((group, left_unary_operators)) = &scope.precedence_groups.iter().next() {
+    if let Some((group, left_unary_operators)) = &scope.grammar.groups_and_keywords.iter().next() {
         if group.associativity != OperatorAssociativity::LeftUnary {
             todo!("Left Unary operators must be first for now.");
         }
@@ -238,7 +183,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
         ))
     };
 
-    for (group, group_operators) in &scope.precedence_groups {
+    for (group, group_operators) in scope.grammar.groups_and_keywords.iter() {
         match group.associativity {
             OperatorAssociativity::Left => {
                 // Iterate left to right

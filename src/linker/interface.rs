@@ -7,11 +7,12 @@ use crate::interpreter::Runtime;
 use crate::linker::type_factory::TypeFactory;
 use crate::linker::scopes;
 use crate::parser::ast;
+use crate::parser::ast::PatternPart;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
-pub use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
+use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
 use crate::program::module::{Module, module_name};
 use crate::program::traits::{Trait, TraitBinding};
-use crate::program::types::{PatternPart, TypeProto};
+use crate::program::types::TypeProto;
 
 
 pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
@@ -119,7 +120,7 @@ pub fn link_operator_interface(function: &ast::OperatorFunction, scope: &scopes:
     }
 
     // TODO Throw if multiple patterns match
-    for pattern in scope.patterns.iter() {
+    for pattern in scope.grammar.patterns.iter() {
         guard!(let Some(arguments) = match_patterns(&pattern.parts, &function.parts) else {
             continue;
         });

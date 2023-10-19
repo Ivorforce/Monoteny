@@ -4,8 +4,8 @@ use itertools::Itertools;
 use uuid::Uuid;
 use strum::IntoEnumIterator;
 use crate::error::{ErrInRange, RResult, RuntimeError};
+use crate::linker::grammar::{OperatorAssociativity, PrecedenceGroup};
 use crate::linker::interpreter_mock;
-use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
 use crate::parser::ast;
 use crate::parser::ast::Term;
 

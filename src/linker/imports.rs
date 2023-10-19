@@ -1,9 +1,9 @@
 use itertools::Itertools;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::linker::interface::ParameterKey;
 use crate::linker::{interpreter_mock, scopes};
 use crate::parser::ast;
+use crate::program::functions::ParameterKey;
 use crate::program::module::ModuleName;
 use crate::util::iter::omega;
 

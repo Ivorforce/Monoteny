@@ -5,13 +5,12 @@ use itertools::Itertools;
 use linked_hash_map::LinkedHashMap;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
+use crate::linker::grammar::{Grammar, Pattern, PrecedenceGroup};
 use crate::program::allocation::Reference;
 use crate::program::function_object::{FunctionForm, FunctionOverload, FunctionRepresentation};
 use crate::program::functions::FunctionHead;
 use crate::program::traits::TraitGraph;
 use crate::program::module::Module;
-use crate::program::types::{Pattern, PatternPart};
 
 // Note: While a single pool cannot own overloaded variables, multiple same-level pools (-> from imports) can.
 // When we have imports, this should be ignored until referenced, to avoid unnecessary import complications.
@@ -28,11 +27,7 @@ pub struct Scope<'a> {
     pub parent: Option<&'a Scope<'a>>,
 
     pub trait_conformance: TraitGraph,
-
-    pub patterns: HashSet<Rc<Pattern>>,
-
-    /// Contents: For each precedence groups, matched keywords and how they map to which function names
-    pub precedence_groups: LinkedHashMap<Rc<PrecedenceGroup>, HashMap<String, String>>,
+    pub grammar: Grammar,
 
     pub global: RefPool,
     pub member: RefPool,
@@ -44,9 +39,7 @@ impl <'a> Scope<'a> {
             parent: None,
 
             trait_conformance: TraitGraph::new(),
-            precedence_groups: LinkedHashMap::new(),
-
-            patterns: HashSet::new(),
+            grammar: Grammar::new(),
 
             global: HashMap::new(),
             member: HashMap::new(),
@@ -61,9 +54,7 @@ impl <'a> Scope<'a> {
             parent: Some(self),
 
             trait_conformance: self.trait_conformance.clone(),
-            precedence_groups: self.precedence_groups.clone(),
-
-            patterns: self.patterns.clone(),
+            grammar: self.grammar.clone(),
 
             global: HashMap::new(),
             member: HashMap::new(),
@@ -87,7 +78,7 @@ impl <'a> Scope<'a> {
     pub fn import(&mut self, module: &Module, runtime: &Runtime) -> RResult<()> {
         // This wipes any existing patterns, but I think that's what we want.
         if let Some(precedence) = &module.precedence_order {
-            self.set_precedence_order(precedence.clone());
+            self.grammar.set_precedence_order(precedence.clone());
         }
 
         for pattern in module.patterns.iter() {
@@ -102,12 +93,6 @@ impl <'a> Scope<'a> {
         self.trait_conformance.add_graph(&module.trait_conformance);
 
         Ok(())
-    }
-
-    pub fn set_precedence_order(&mut self, precedence: Vec<Rc<PrecedenceGroup>>) {
-        self.precedence_groups = precedence.into_iter()
-            .map(|p| (p, HashMap::new()))
-            .collect();
     }
 
     pub fn overload_function(&mut self, fun: &Rc<FunctionHead>, representation: FunctionRepresentation) -> RResult<()> {
@@ -167,6 +152,13 @@ impl <'a> Scope<'a> {
         }
     }
 
+    pub fn add_pattern(&mut self, pattern: Rc<Pattern>) -> RResult<()> {
+        for keyword in self.grammar.add_pattern(pattern)? {
+            self.insert_keyword(&keyword);
+        }
+        Ok(())
+    }
+
     pub fn override_reference(&mut self, environment: Environment, reference: Reference, name: &str) {
         let mut refs = self.references_mut(environment);
 
@@ -175,43 +167,6 @@ impl <'a> Scope<'a> {
 
     pub fn contains(&mut self, environment: Environment, name: &str) -> bool {
         self.references(environment).contains_key(name)
-    }
-
-    pub fn add_pattern(&mut self, pattern: Rc<Pattern>) -> RResult<()> {
-        guard!(let Some(keyword_map) = self.precedence_groups.get_mut(&pattern.precedence_group) else {
-            panic!("Cannot find precedence group {:?} in: {:?}", pattern.precedence_group, self.precedence_groups);
-        });
-
-        match &pattern.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
-            [_] => return Err(RuntimeError::new(format!("Pattern is too short: {}.", pattern.alias))),
-            [
-            PatternPart::Keyword(keyword),
-            PatternPart::Parameter { .. },
-            ] => {
-                assert_eq!(pattern.precedence_group.associativity, OperatorAssociativity::LeftUnary);
-                keyword_map.insert(keyword.clone(), pattern.alias.clone());
-                self.insert_keyword(keyword);
-            },
-            [
-            PatternPart::Parameter { .. },
-            PatternPart::Keyword(keyword),
-            ] => {
-                todo!("Right unary operators aren't supported yet.")
-            },
-            [
-            PatternPart::Parameter { .. },
-            PatternPart::Keyword(keyword),
-            PatternPart::Parameter { .. },
-            ] => {
-                assert_ne!(pattern.precedence_group.associativity, OperatorAssociativity::LeftUnary);
-                keyword_map.insert(keyword.clone(), pattern.alias.clone());
-                self.insert_keyword(keyword);
-            }
-            _ => return Err(RuntimeError::new(String::from("This pattern form is not supported; try using unary or binary patterns."))),
-        };
-
-        self.patterns.insert(pattern);
-        Ok(())
     }
 }
 
@@ -233,14 +188,14 @@ impl <'a> Scope<'a> {
         Err(RuntimeError::new(format!("Cannot find '{}{}' in this scope", env_part, name)))
     }
 
-    pub fn resolve_precedence_group(&self, name: &str) -> Rc<PrecedenceGroup> {
-        for (group, _) in self.precedence_groups.iter() {
+    pub fn resolve_precedence_group(&self, name: &str) -> RResult<Rc<PrecedenceGroup>> {
+        for group in self.grammar.groups_and_keywords.keys() {
             if &group.name == name {
-                return Rc::clone(group)
+                return Ok(Rc::clone(group))
             }
         }
 
-        panic!("Precedence group could not be resolved: {}", name)
+        return Err(RuntimeError::new(format!("Precedence group could not be resolved: {}", name)))
     }
 }
 

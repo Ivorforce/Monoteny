@@ -8,9 +8,10 @@ use try_map::FallibleMapExt;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::program::computation_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
-use crate::linker::{precedence, scopes};
 use crate::linker::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, LinkerAmbiguity};
-use crate::linker::precedence::link_patterns;
+use crate::linker::grammar::parse::link_patterns;
+use crate::linker::{grammar, scopes};
+use crate::linker::grammar::Struct;
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::{ObjectReference, Reference};
@@ -19,7 +20,6 @@ use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
-use crate::program::r#struct::Struct;
 use crate::program::traits::{RequirementsAssumption, Trait, TraitConformanceRule, TraitGraph};
 use crate::program::types::*;
 use crate::util::position::Positioned;
@@ -290,7 +290,7 @@ impl <'a> ImperativeLinker<'a> {
     }
 
     pub fn link_expression(&mut self, syntax: &ast::Expression, scope: &scopes::Scope) -> RResult<ExpressionID> {
-        let arguments: Vec<Positioned<precedence::Token>> = syntax.iter().map(|a| {
+        let arguments: Vec<Positioned<grammar::Token>> = syntax.iter().map(|a| {
             self.link_term(a, scope)
                 .err_in_range(&a.position)
         }).try_collect()?;
@@ -298,7 +298,7 @@ impl <'a> ImperativeLinker<'a> {
         link_patterns(arguments, scope, self)
     }
 
-    pub fn link_term(&mut self, syntax: &Positioned<ast::Term>, scope: &scopes::Scope) -> RResult<Positioned<precedence::Token>> {
+    pub fn link_term(&mut self, syntax: &Positioned<ast::Term>, scope: &scopes::Scope) -> RResult<Positioned<grammar::Token>> {
         let token = match &syntax.value {
             ast::Term::Error(err) => {
                 return Err(vec![err.clone()])
@@ -310,22 +310,22 @@ impl <'a> ImperativeLinker<'a> {
                     Reference::Local(ref_) => {
                         let ObjectReference { id, type_, mutability } = ref_.as_ref();
 
-                        precedence::Token::Expression(self.link_unambiguous_expression(
+                        grammar::Token::Expression(self.link_unambiguous_expression(
                             vec![],
                             type_,
                             ExpressionOperation::GetLocal(ref_.clone())
                         )?)
                     }
                     Reference::Keyword(keyword) => {
-                        precedence::Token::Keyword(keyword.clone())
+                        grammar::Token::Keyword(keyword.clone())
                     }
                     Reference::FunctionOverload(overload) => {
                         match overload.representation.form {
                             FunctionForm::GlobalFunction => {
-                                precedence::Token::FunctionReference { overload: Rc::clone(overload), target: None }
+                                grammar::Token::FunctionReference { overload: Rc::clone(overload), target: None }
                             }
                             FunctionForm::GlobalImplicit => {
-                                precedence::Token::Expression(
+                                grammar::Token::Expression(
                                     self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![], vec![], scope, syntax.position.clone())?
                                 )
                             }
@@ -341,7 +341,7 @@ impl <'a> ImperativeLinker<'a> {
             ast::Term::IntLiteral(string) => {
                 let string_expression_id = self.link_string_literal(string)?;
 
-                precedence::Token::Expression(self.link_abstract_function_call(
+                grammar::Token::Expression(self.link_abstract_function_call(
                     vec![string_expression_id],
                     Rc::clone(&self.runtime.traits.as_ref().unwrap().ConstructableByIntLiteral),
                     Rc::clone(&self.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
@@ -352,7 +352,7 @@ impl <'a> ImperativeLinker<'a> {
             ast::Term::RealLiteral(string) => {
                 let string_expression_id = self.link_string_literal(string)?;
 
-                precedence::Token::Expression(self.link_abstract_function_call(
+                grammar::Token::Expression(self.link_abstract_function_call(
                     vec![string_expression_id],
                     Rc::clone(&self.runtime.traits.as_ref().unwrap().ConstructableByRealLiteral),
                     Rc::clone(&self.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
@@ -364,7 +364,7 @@ impl <'a> ImperativeLinker<'a> {
                 let target = self.link_term(&access.target, scope)
                     .err_in_range(&access.target.position)?;
 
-                guard!(let precedence::Token::Expression(target) = &target.value else {
+                guard!(let grammar::Token::Expression(target) = &target.value else {
                     return Err(RuntimeError::new(format!("Dot notation is not supported in this context.")))
                 });
 
@@ -373,25 +373,25 @@ impl <'a> ImperativeLinker<'a> {
 
                 match overload.representation.form {
                     FunctionForm::MemberImplicit => {
-                        precedence::Token::Expression(
+                        grammar::Token::Expression(
                             self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional], vec![*target], scope, syntax.position.clone())?
                         )
                     }
                     FunctionForm::MemberFunction => {
-                        precedence::Token::FunctionReference { overload, target: Some(*target) }
+                        grammar::Token::FunctionReference { overload, target: Some(*target) }
                     }
                     _ => unreachable!()
                 }
             }
             ast::Term::Struct(s) => {
-                precedence::Token::AnonymousStruct(self.link_struct(scope, s)?)
+                grammar::Token::AnonymousStruct(self.link_struct(scope, s)?)
             }
             ast::Term::Array(a) => {
                 let values = a.iter().map(|x| {
                     self.link_expression_with_type(&x.value, &x.type_declaration, scope)
                 }).try_collect()?;
 
-                precedence::Token::AnonymousArray {
+                grammar::Token::AnonymousArray {
                     keys: a.iter()
                         .map(|x| x.key.as_ref().try_map(|x| self.link_expression(x, scope)))
                         .try_collect()?,
@@ -399,7 +399,7 @@ impl <'a> ImperativeLinker<'a> {
                 }
             }
             ast::Term::StringLiteral(parts) => {
-                precedence::Token::Expression(match &parts[..] {
+                grammar::Token::Expression(match &parts[..] {
                     // Simple case: Just one part means we can use it directly.
                     [] => self.link_string_part(
                         &syntax.with_value(ast::StringPart::Literal("".to_string())),
@@ -418,7 +418,7 @@ impl <'a> ImperativeLinker<'a> {
                 })
             }
             ast::Term::Block(statements) => {
-                precedence::Token::Expression(self.link_block(statements, &scope)?)
+                grammar::Token::Expression(self.link_block(statements, &scope)?)
             }
         };
 

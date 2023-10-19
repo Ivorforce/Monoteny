@@ -10,9 +10,10 @@ use crate::program::computation_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{imports, interpreter_mock, referencible, scopes};
 use crate::linker::conformance::ConformanceLinker;
+use crate::linker::grammar::Pattern;
+use crate::linker::grammar::precedence_order::link_precedence_order;
 use crate::linker::imports::link_imports;
 use crate::linker::interface::{link_function_interface, link_operator_interface};
-use crate::linker::precedence_order::link_precedence_order;
 use crate::linker::type_factory::TypeFactory;
 use crate::linker::traits::{TraitLinker, try_make_struct};
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
@@ -196,7 +197,7 @@ impl <'a> GlobalLinker<'a> {
 
                                         let precedence_order = link_precedence_order(body)?;
                                         self.module.precedence_order = Some(precedence_order.clone());
-                                        self.global_variables.set_precedence_order(precedence_order);
+                                        self.global_variables.grammar.set_precedence_order(precedence_order);
                                         return Ok(())
                                     }
                                     "use" => {
@@ -240,7 +241,7 @@ impl <'a> GlobalLinker<'a> {
     }
 
     pub fn link_pattern(&mut self, syntax: &ast::PatternDeclaration) -> RResult<Rc<Pattern>> {
-        let precedence_group = self.global_variables.resolve_precedence_group(&syntax.precedence);
+        let precedence_group = self.global_variables.resolve_precedence_group(&syntax.precedence)?;
 
         Ok(Rc::new(Pattern {
             id: Uuid::new_v4(),

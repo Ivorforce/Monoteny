@@ -4,7 +4,6 @@ use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::program::functions::ParameterKey;
 use crate::program::allocation::Mutability;
-use crate::program::types::PatternPart;
 use crate::util::fmt::{write_comma_separated_list, write_space_separated_list};
 use crate::util::position::Positioned;
 
@@ -59,6 +58,12 @@ pub struct PatternDeclaration {
 
     pub alias: String,
     pub parts: Vec<Box<PatternPart>>,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum PatternPart {
+    Parameter { key: ParameterKey, internal_name: String },
+    Keyword(String),
 }
 
 #[derive(Eq, PartialEq)]
