@@ -188,8 +188,9 @@ impl<'a> Refactor<'a> {
             // We can just change the function in-place!
             let param_swizzle = locals::remove_locals(old_implementation, removed_locals);
             assert!(param_swizzle.is_none());
+            self.update_callees(function);
             // We changed the function; it is dirty!
-            return HashSet::from([Rc::clone(&old_implementation.head)])
+            return HashSet::from([Rc::clone(function)])
         }
 
         // We need to create a new function; the interface changes and thus does the FunctionHead.
