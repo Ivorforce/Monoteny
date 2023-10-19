@@ -81,6 +81,7 @@ pub struct Traits {
     pub Real_functions: RealFunctions,
 
     pub Int: Rc<Trait>,
+    pub Natural: Rc<Trait>,
 }
 
 #[derive(Clone)]
@@ -311,6 +312,11 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     let Int = Rc::new(Int);
     referencible::add_trait(runtime, module, None, &Int).unwrap();
 
+    let mut Natural = Trait::new_with_self("Natural");
+    Natural.add_simple_parent_requirement(&Int);
+    let Natural = Rc::new(Natural);
+    referencible::add_trait(runtime, module, None, &Natural).unwrap();
+
     Traits {
         Function,
 
@@ -336,5 +342,6 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
         Real_functions: float_functions,
 
         Int,
+        Natural,
     }
 }

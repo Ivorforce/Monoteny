@@ -138,6 +138,13 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
                 traits.Int.create_generic_binding(vec![("Self", type_.clone())]),
                 vec![]
             ));
+
+            if !primitive_type.is_signed_number() {
+                module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
+                    traits.Natural.create_generic_binding(vec![("Self", type_.clone())]),
+                    vec![]
+                ));
+            }
         }
 
         if !(primitive_type.is_float()) {
