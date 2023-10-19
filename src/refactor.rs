@@ -2,6 +2,7 @@ pub mod simplify;
 pub mod monomorphize;
 pub mod inline;
 pub mod locals;
+pub mod analyze;
 
 use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;
@@ -12,7 +13,6 @@ use linked_hash_set::LinkedHashSet;
 use crate::interpreter::Runtime;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
-use crate::program::computation_tree::ExpressionOperation;
 use crate::program::functions::{FunctionHead, FunctionType};
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
@@ -78,7 +78,7 @@ impl<'a> Refactor<'a> {
                 remove_from_multimap(&mut self.callers, previous_callee, head);
             }
         }
-        let new_callees = gather_callees(&self.implementation_by_head[head]);
+        let new_callees = analyze::gather_callees(&self.implementation_by_head[head]);
         for callee in new_callees.iter() {
             insert_into_multimap(&mut self.callers, Rc::clone(callee), Rc::clone(head));
         }
@@ -231,25 +231,5 @@ impl<'a> Refactor<'a> {
         }
         gathered
     }
-}
-
-pub fn gather_callees(implementation: &FunctionImplementation) -> LinkedHashSet<Rc<FunctionHead>> {
-    let mut callees = LinkedHashSet::new();
-
-    // TODO Generic function calls would break this logic
-    for expression_id in implementation.expression_forest.deep_children(implementation.root_expression_id) {
-        let expression_op = &implementation.expression_forest.operations[&expression_id];
-        match expression_op {
-            ExpressionOperation::FunctionCall(f) => {
-                callees.insert(Rc::clone(&f.function));
-            }
-            ExpressionOperation::PairwiseOperations { .. } => {
-                todo!()
-            }
-            _ => {}
-        }
-    }
-
-    callees
 }
 
