@@ -79,6 +79,8 @@ pub fn inline_calls(implementation: &mut Box<FunctionImplementation>, hints: &Ha
                 continue 'expression;
             });
 
+            // TODO If any parameters do I/O, we need to group them together as part of a new block
+            //  and run them successively.
             match operation {
                 ExpressionOperation::FunctionCall(f) => {
                     if let Some(inline_hint) = hints.get(&f.function) {
