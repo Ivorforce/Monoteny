@@ -97,7 +97,7 @@ pub enum Statement {
         assignment: Option<Expression>
     },
     MemberAssignment { access: MemberAccess, new_value: Expression },
-    LocalAssignment { identifier: String, new_value: Expression },
+    VariableUpdate { identifier: String, new_value: Expression },
     Expression(Expression),
     Return(Option<Expression>),
     FunctionDeclaration(Box<Function>),
@@ -297,7 +297,7 @@ impl Display for Statement {
             Statement::MemberAssignment { access, new_value } => {
                 write!(fmt, "upd {} = {}", access, new_value)
             },
-            Statement::LocalAssignment { identifier, new_value } => {
+            Statement::VariableUpdate { identifier, new_value } => {
                 write!(fmt, "upd {} = {}", identifier, new_value)
             }
             Statement::Return(Some(expression)) => write!(fmt, "return {}", expression),

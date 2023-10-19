@@ -230,7 +230,7 @@ impl <'a> ImperativeLinker<'a> {
                     .as_function_overload()?;
                 self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
             }
-            ast::Statement::LocalAssignment { identifier, new_value } => {
+            ast::Statement::VariableUpdate { identifier, new_value } => {
                 let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
 
                 let object_ref = scope
