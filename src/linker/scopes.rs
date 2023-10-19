@@ -1,12 +1,11 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
 use guard::guard;
-use itertools::Itertools;
-use linked_hash_map::LinkedHashMap;
+use std::fmt::{Debug, Formatter};
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::linker::grammar::{Grammar, Pattern, PrecedenceGroup};
-use crate::program::allocation::Reference;
+use crate::program::allocation::ObjectReference;
 use crate::program::function_object::{FunctionForm, FunctionOverload, FunctionRepresentation};
 use crate::program::functions::FunctionHead;
 use crate::program::traits::TraitGraph;
@@ -211,6 +210,47 @@ impl Environment {
             FunctionForm::MemberImplicit => Environment::Member,
             FunctionForm::GlobalFunction => Environment::Global,
             FunctionForm::GlobalImplicit => Environment::Global,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum Reference {
+    Local(Rc<ObjectReference>),
+    // Keywords aren't really objects and can't be logically passed around.
+    // They aren't technically language keywords, but instead were defined in patterns.
+    // Yes, this implementation means they can be shadowed!
+    Keyword(String),
+    // This COULD be an object, but only if it 'inherits' the callable interfaces
+    //  from ALL included overloads. Overall, this is probably too confusing and thus not worth
+    //  the effort. Rather, as in other languages, we should expect the user to resolve the overload
+    //  - either immediately, or by context (e.g. `(should_add ? add : sub)(1, 2)`).
+    FunctionOverload(Rc<FunctionOverload>),
+}
+
+impl Reference {
+    pub fn as_local(&self, require_mutable: bool) -> RResult<&Rc<ObjectReference>> {
+        guard!(let Reference::Local(obj_ref) = self else {
+            return Err(RuntimeError::new(format!("Reference is not a local.")));
+        });
+
+        Ok(&obj_ref)
+    }
+
+    pub fn as_function_overload(&self) -> RResult<Rc<FunctionOverload>> {
+        match self {
+            Reference::FunctionOverload(overload) => Ok(Rc::clone(overload)),
+            _ => Err(RuntimeError::new(format!("Reference is not a function.")))
+        }
+    }
+}
+
+impl Debug for Reference {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Reference::Local(t) => write!(fmt, "{:?}", t.type_),
+            Reference::FunctionOverload(f) => write!(fmt, "{}", &f.representation.name),
+            Reference::Keyword(s) => write!(fmt, "{}", s),
         }
     }
 }

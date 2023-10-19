@@ -12,9 +12,10 @@ use crate::linker::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, Ambiguous
 use crate::linker::grammar::parse::link_patterns;
 use crate::linker::{grammar, scopes};
 use crate::linker::grammar::Struct;
+use crate::linker::scopes::Reference;
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
-use crate::program::allocation::{ObjectReference, Reference};
+use crate::program::allocation::ObjectReference;
 use crate::program::debug::MockFunctionInterface;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, ParameterKey};
