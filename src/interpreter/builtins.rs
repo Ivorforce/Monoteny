@@ -1,12 +1,13 @@
 use std::alloc::{alloc, Layout};
 use std::path::PathBuf;
 use std::rc::Rc;
-use monoteny_macro::{bin_op, parse_op, un_op, fun_op, to_string_op, load_constant};
+use monoteny_macro::{bin_op, fun_op, load_constant, parse_op, to_string_op, un_op};
 use std::str::FromStr;
 use guard::guard;
 use uuid::Uuid;
 use crate::error::RResult;
-use crate::interpreter::{FunctionInterpreterImpl, Runtime, Value};
+use crate::interpreter::{FunctionInterpreterImpl, Runtime};
+use crate::interpreter::allocation::Value;
 use crate::program::functions::FunctionHead;
 use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
 use crate::program::module::module_name;

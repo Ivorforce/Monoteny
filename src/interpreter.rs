@@ -1,8 +1,9 @@
 pub mod builtins;
 pub mod compiler;
 pub mod run;
+pub mod allocation;
 
-use std::alloc::{alloc, dealloc, Layout};
+use std::alloc::{alloc, Layout};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
@@ -10,6 +11,7 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
+use allocation::Value;
 use crate::{linker, parser, program};
 use crate::error::{RResult, RuntimeError};
 use crate::linker::{imports, referencible, scopes};
@@ -24,12 +26,6 @@ use crate::source::Source;
 
 
 pub type FunctionInterpreterImpl = Rc<dyn Fn(&mut FunctionInterpreter, ExpressionID, &RequirementsFulfillment) -> Option<Value>>;
-
-
-pub struct Value {
-    pub layout: Layout,
-    pub data: *mut u8,
-}
 
 pub struct Runtime {
     pub Metatype: Rc<Trait>,
@@ -243,23 +239,5 @@ impl FunctionInterpreter<'_> {
         self_implementation.expression_forest.arguments[&expression_id].iter()
             .map(|x| self.evaluate(*x).unwrap())
             .collect_vec()
-    }
-}
-
-impl Drop for Value {
-    fn drop(&mut self) {
-        unsafe {
-            dealloc(self.data, self.layout)
-        }
-    }
-}
-
-impl Clone for Value {
-    fn clone(&self) -> Self {
-        unsafe {
-            let ptr = alloc(self.layout);
-            std::ptr::copy_nonoverlapping(self.data, ptr, self.layout.size());
-            return Value { data: ptr, layout: self.layout }
-        }
     }
 }
