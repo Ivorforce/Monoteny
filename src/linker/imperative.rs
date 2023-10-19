@@ -219,7 +219,7 @@ impl <'a> ImperativeLinker<'a> {
                 self.types.bind(expression_id, &TypeProto::void())?;
                 expression_id
             },
-            ast::Statement::MemberAssignment { access, new_value } => {
+            ast::Statement::MemberUpdate { access, new_value } => {
                 let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
 
                 let target = self.link_term(&access.target, scope)

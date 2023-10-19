@@ -96,7 +96,7 @@ pub enum Statement {
         type_declaration: Option<Expression>,
         assignment: Option<Expression>
     },
-    MemberAssignment { access: MemberAccess, new_value: Expression },
+    MemberUpdate { access: MemberAccess, new_value: Expression },
     VariableUpdate { identifier: String, new_value: Expression },
     Expression(Expression),
     Return(Option<Expression>),
@@ -294,7 +294,7 @@ impl Display for Statement {
                 }
                 Ok(())
             },
-            Statement::MemberAssignment { access, new_value } => {
+            Statement::MemberUpdate { access, new_value } => {
                 write!(fmt, "upd {} = {}", access, new_value)
             },
             Statement::VariableUpdate { identifier, new_value } => {

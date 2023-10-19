@@ -137,7 +137,7 @@ Conformance: Box<TraitConformanceDeclaration> = {
 
 Statement: Statement = {
     <mutability: VariableDeclarationMutability> <identifier: Identifier> <type_declaration: ("'" <Expression>)?> <assignment: ("=" <Expression>)?> => Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment },
-    "upd" <access: MemberAccess> "=" <new_value: Expression> => Statement::MemberAssignment { <> },
+    "upd" <access: MemberAccess> "=" <new_value: Expression> => Statement::MemberUpdate { <> },
     "upd" <identifier: Identifier> "=" <new_value: Expression> => Statement::VariableUpdate { <> },
     "return" <Expression?> => Statement::Return(<>),
     Expression => Statement::Expression(<>),
