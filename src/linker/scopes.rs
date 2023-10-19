@@ -172,20 +172,25 @@ impl <'a> Scope<'a> {
 
 impl <'a> Scope<'a> {
     pub fn resolve(&'a self, environment: Environment, name: &str) -> RResult<&'a Reference> {
-        if let Some(matches) = self.references(environment).get(name) {
-            return Ok(matches)
-        }
+        let mut scope = self;
+        loop {
+            if let Some(reference) = scope.references(environment).get(name) {
+                return Ok(reference)
+            }
 
-        if let Some(parent) = self.parent {
-            return parent.resolve(environment, name);
-        }
+            if let Some(parent) = scope.parent {
+                scope = parent;
+            }
+            else {
+                // take that rust, i steal ur phrasings
+                let env_part = match environment {
+                    Environment::Global => "",
+                    Environment::Member => "."
+                };
 
-        // take that rust, i steal ur phrasings
-        let env_part = match environment {
-            Environment::Global => "",
-            Environment::Member => "."
-        };
-        Err(RuntimeError::new(format!("Cannot find '{}{}' in this scope", env_part, name)))
+                return Err(RuntimeError::new(format!("Cannot find '{}{}' in this scope", env_part, name)))
+            }
+        }
     }
 
     pub fn resolve_precedence_group(&self, name: &str) -> RResult<Rc<PrecedenceGroup>> {
