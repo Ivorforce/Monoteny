@@ -28,13 +28,13 @@ pub struct GlobalLinker<'a> {
     pub runtime: &'a mut Runtime,
     pub global_variables: scopes::Scope<'a>,
     pub function_bodies: HashMap<Rc<FunctionHead>, Positioned<&'a ast::Expression>>,
-    pub module: Module,
+    pub module: &'a mut Module,
 }
 
-pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runtime, name: ModuleName) -> RResult<Box<Module>> {
+pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runtime, module: &mut Module) -> RResult<()> {
     let mut global_linker = GlobalLinker {
         runtime,
-        module: Module::new(name),  // TODO Give it a name!
+        module,
         global_variables: scope.subscope(),
         function_bodies: Default::default(),
     };
@@ -71,7 +71,7 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runt
     }
 
     match errors.is_empty() {
-        true => Ok(Box::new(global_linker.module)),
+        true => Ok(()),
         false => Err(errors)
     }
 }

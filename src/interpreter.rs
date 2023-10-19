@@ -124,7 +124,9 @@ impl Runtime {
             imports::deep(self, core_name, &mut scope)?;
         }
 
-        linker::link_file(syntax, &scope, self, name)
+        let mut module = Box::new(Module::new(name));
+        linker::link_file(syntax, &scope, self, &mut module)?;
+        Ok(module)
     }
 }
 
