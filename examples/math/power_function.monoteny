@@ -1,5 +1,5 @@
 -- power functions are a great way to calculate compatible functions in O(log n)
-def power(initial_element: '#T, n: '$UInt, operator: 'Fn(#T, #T) -> #T) :: {
+def power(initial_element: '#T, n: '$Natural, operator: 'Fn(#T, #T) -> #T) :: {
     var n = n;
     var power_element = initial_element;
     var result = initial_element;
@@ -13,7 +13,7 @@ def power(initial_element: '#T, n: '$UInt, operator: 'Fn(#T, #T) -> #T) :: {
     return result;
 };
 
-def fibonacci(n '$UInt) -> $UInt :: power(
+def fibonacci(n '$Natural) -> $Natural :: power(
     initial_element: [[1, 1], [1, 0]],
     n: n - 1,
     operator: (*),
@@ -25,7 +25,7 @@ def {$Int} ** {$Int} -> $Int :: {
     if rhs > 0 :: {
         return power(
            initial_element: lhs,
-           n: IntNU(rhs - 1),
+           n: NaturalN(rhs - 1),
            operator: (*),
         );
     };
@@ -38,14 +38,14 @@ def {$Int} * {$Int} -> $Int :: {
     if rhs > 0 :: {
         return power(
            initial_element: lhs,
-           n: IntNU(rhs - 1),
+           n: NaturalN(rhs - 1),
            operator: (+),
         );
     };
     else :: {
         return -power(
            initial_element: lhs,
-           n: IntNU(-(rhs - 1)),
+           n: NaturalN(-(rhs - 1)),
            operator: (+),
         );
     };
