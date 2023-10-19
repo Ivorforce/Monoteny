@@ -145,8 +145,7 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
   - [x] Constant-Like function syntax (without `()`)
   - [x] `(a:)` syntax: 'argument keyed by its variable name' for consistent function definitions, -calls and deconstructions
   - [ ] 'transformation assignment' syntax: `a .= $0 + 5`; `b .= $0.union(c)`
-  - [x] Custom expression patterns with keywords (unary / binary operators)
-    - [x] Right-Unary Operators
+  - [x] Custom expression `patterns` with keywords (unary / binary operators)
   - [x] Comments
   - [x] String Interpolation
   - Style transpilation
@@ -174,6 +173,7 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
   - [ ] RationalF ($Real using `numerator 'IntF` and `denominator 'IntF`)
   - [ ] DecimalF (decimal of big int with auto-adjusting floating point position)
 - [ ] DecimalFixed (int number with a fixed floating point position)
+- [ ] `precedence_order!` should support full runtime defined grammar, where tokens are all either keywords or objects. This requires it to be joined again with `pattern` statements, but that's acceptable.
 - [ ] Generic Export: Allow the export of unspecialized functions through a trait conformance parameter.
 - [ ] `match x with [0: { ... }]`
 - [ ] Local functions and declarations

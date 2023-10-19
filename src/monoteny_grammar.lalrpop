@@ -76,7 +76,7 @@ pub Program: Module = {
 };
 
 Pattern: Box<PatternDeclaration> = {
-    "pattern" <alias: Identifier> "(" <precedence: Identifier> ")" "::" <parts: PatternPart+> => Box::new(PatternDeclaration { <> }),
+    "pattern" <parts: PatternPart+> "::" <alias: Identifier> "(" <precedence: Identifier> ")" => Box::new(PatternDeclaration { <> }),
 }
 
 PatternPart: Box<PatternPart> = {

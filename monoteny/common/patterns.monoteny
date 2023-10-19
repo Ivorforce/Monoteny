@@ -2,29 +2,29 @@ use!(
     module!("common.precedence"),
 );
 
-pattern positive(LeftUnaryPrecedence) :: + {arg};
-pattern negative(LeftUnaryPrecedence) :: - {arg};
+pattern + {arg} :: positive(LeftUnaryPrecedence);
+pattern - {arg} :: negative(LeftUnaryPrecedence);
 -- TODO Alias differently?
-pattern not_f(LeftUnaryPrecedence) :: not {arg};
+pattern not {arg} :: not_f(LeftUnaryPrecedence);
 
-pattern exponent(ExponentiationPrecedence) :: {lhs} ** {rhs};
+pattern {lhs} ** {rhs} :: exponent(ExponentiationPrecedence);
 
-pattern multiply(MultiplicationPrecedence) :: {lhs} * {rhs};
-pattern divide(MultiplicationPrecedence) :: {lhs} / {rhs};
-pattern modulo(MultiplicationPrecedence) :: {lhs} % {rhs};
+pattern {lhs} * {rhs} :: multiply(MultiplicationPrecedence);
+pattern {lhs} / {rhs} :: divide(MultiplicationPrecedence);
+pattern {lhs} % {rhs} :: modulo(MultiplicationPrecedence);
 
-pattern add(AdditionPrecedence) :: {lhs} + {rhs};
-pattern subtract(AdditionPrecedence) :: {lhs} - {rhs};
+pattern {lhs} + {rhs} :: add(AdditionPrecedence);
+pattern {lhs} - {rhs} :: subtract(AdditionPrecedence);
 
-pattern is_equal(ComparisonPrecedence) :: {lhs} == {rhs};
-pattern is_not_equal(ComparisonPrecedence) :: {lhs} != {rhs};
-pattern is_greater(ComparisonPrecedence) :: {lhs} > {rhs};
-pattern is_greater_or_equal(ComparisonPrecedence) :: {lhs} >= {rhs};
-pattern is_lesser(ComparisonPrecedence) :: {lhs} < {rhs};
-pattern is_lesser_or_equal(ComparisonPrecedence) :: {lhs} <= {rhs};
-
--- TODO Alias differently?
-pattern and_f(LogicalConjunctionPrecedence) :: {lhs} and {rhs};
+pattern {lhs} == {rhs} :: is_equal(ComparisonPrecedence);
+pattern {lhs} != {rhs} :: is_not_equal(ComparisonPrecedence);
+pattern {lhs} > {rhs} :: is_greater(ComparisonPrecedence);
+pattern {lhs} >= {rhs} :: is_greater_or_equal(ComparisonPrecedence);
+pattern {lhs} < {rhs} :: is_lesser(ComparisonPrecedence);
+pattern {lhs} <= {rhs} :: is_lesser_or_equal(ComparisonPrecedence);
 
 -- TODO Alias differently?
-pattern or_f(LogicalDisjunctionPrecedence) :: {lhs} or {rhs};
+pattern {lhs} and {rhs} :: and_f(LogicalConjunctionPrecedence);
+
+-- TODO Alias differently?
+pattern {lhs} or {rhs} :: or_f(LogicalDisjunctionPrecedence);
