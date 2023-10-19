@@ -87,7 +87,7 @@ pub fn inline_calls(implementation: &mut Box<FunctionImplementation>, hints: &Ha
                                 let operation = expression_forest.operations.get_mut(&expression_id).unwrap();
                                 *operation = ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                                     function: Rc::clone(&target_function),
-                                    // The requirements fulfillment can be empty because otherwise it wouldn't have been inlined.
+                                    // TODO If we're not monomorphized, this may not be empty.
                                     requirements_fulfillment: RequirementsFulfillment::empty(),
                                 }));
                                 expression_forest.swizzle_arguments(expression_id, idxs);
