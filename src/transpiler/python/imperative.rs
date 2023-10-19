@@ -12,6 +12,7 @@ use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionLogicDescriptor, FunctionImplementation, PrimitiveOperation};
 use crate::transpiler::python::{ast, types};
 use crate::transpiler::python::representations::{FunctionForm, Representations};
+use crate::util::strings;
 
 pub struct FunctionContext<'a> {
     pub names: &'a HashMap<Uuid, String>,
@@ -253,15 +254,17 @@ pub fn try_transpile_optimization(function: &Rc<FunctionHead>, expression_id: &E
 }
 
 pub fn escape_string(string: &str) -> String {
-    // This is kinda sad lol. There's gotta be a better way.
-    // FIXME This will also wreck something like \\n.
-    let string = string.replace("\\", "\\\\");
-    let string = string.replace("\n", "\\n");
-    let string = string.replace("\0", "\\0");
-    let string = string.replace("\t", "\\t");
-    let string = string.replace("\r", "\\r");
-    let string = string.replace("\"", "\\\"");
-    return string
+    strings::map_chars(string, |ch| {
+        Some(match ch {
+            '\\' => "\\\\",
+            '\n' => "\\n",
+            '\0' => "\\0",
+            '\t' => "\\t",
+            '\r' => "\\r",
+            '\"' => "\\\"",
+            _ => return None,
+        })
+    })
 }
 
 pub fn transpile_unary_operator(operator: &str, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Box<ast::Expression> {

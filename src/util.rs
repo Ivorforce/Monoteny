@@ -4,3 +4,4 @@ pub mod hash;
 pub mod position;
 pub mod iter;
 pub mod vec;
+pub mod strings;
