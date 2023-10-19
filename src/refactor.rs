@@ -74,7 +74,6 @@ impl<'a> Refactor<'a> {
     }
 
     pub fn update_callees(&mut self, head: &Rc<FunctionHead>) {
-        // TODO Generic function calls would break this logic
         if let Some(previous_callees) = self.callees.get(head) {
             for previous_callee in previous_callees.iter() {
                 remove_from_multimap(&mut self.callers, previous_callee, head);
@@ -189,7 +188,8 @@ impl<'a> Refactor<'a> {
             // We can just change the function in-place!
             let param_swizzle = locals::remove_locals(old_implementation, removed_locals);
             assert!(param_swizzle.is_none());
-            return HashSet::new()
+            // We changed the function; it is dirty!
+            return HashSet::from([Rc::clone(&old_implementation.head)])
         }
 
         // We need to create a new function; the interface changes and thus does the FunctionHead.
@@ -203,13 +203,14 @@ impl<'a> Refactor<'a> {
         self.implementation_by_head.insert(Rc::clone(&new_head), new_implementation);
         self.copy_quirks_source(function, &new_head);
 
-        self.callees.insert(Rc::clone(&new_head), self.callees[function].clone());
+        self.update_callees(&new_head);
 
         // We do not remove the old function. The old function CAN be inlined to call the new one, but it doesn't have to.
         // This is especially important if we get new callers to the old function later. All information is retained.
         self.inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&new_head), param_swizzle.clone()));
 
-        self.apply_inline(function)
+        // The new function is also dirty!
+        self.apply_inline(function).into_iter().chain([new_head].into_iter()).collect()
     }
 
     fn copy_quirks_source(&mut self, from: &Rc<FunctionHead>, to: &Rc<FunctionHead>) {
@@ -221,6 +222,7 @@ impl<'a> Refactor<'a> {
         let mut next = self.explicit_functions.iter().collect_vec();
         let mut gathered = LinkedHashSet::new();
         while let Some(current) = next.pop() {
+            assert!(!self.inline_hints.contains_key(current), "Internal error; forgot to inline a function call.");
             guard!(let Some(callees) = self.callees.get(current) else {
                 continue  // Probably an internal function
             });
@@ -234,6 +236,7 @@ impl<'a> Refactor<'a> {
 pub fn gather_callees(implementation: &FunctionImplementation) -> LinkedHashSet<Rc<FunctionHead>> {
     let mut callees = LinkedHashSet::new();
 
+    // TODO Generic function calls would break this logic
     for expression_id in implementation.expression_forest.deep_children(implementation.root_expression_id) {
         let expression_op = &implementation.expression_forest.operations[&expression_id];
         match expression_op {
