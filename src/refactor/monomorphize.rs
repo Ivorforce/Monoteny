@@ -132,9 +132,6 @@ impl Monomorphize {
         //  have some requirements.
         implementation.requirements_assumption = Box::new(RequirementsAssumption { conformance: Default::default() });
 
-        // Finalize: New identity and head
-        implementation.implementation_id = Uuid::new_v4();
-
         let monomorphized_binding = &self.resolved_call_to_mono_call.get(function_binding).unwrap_or(function_binding);
         implementation.head = Rc::clone(&monomorphized_binding.function);
     }

@@ -1,5 +1,4 @@
 use std::rc::Rc;
-use uuid::Uuid;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use crate::program::computation_tree::{ExpressionTree, ExpressionID};
@@ -11,7 +10,6 @@ use crate::program::traits::{RequirementsAssumption, Trait};
 
 #[derive(Clone)]
 pub struct FunctionImplementation {
-    pub implementation_id: Uuid,
     pub head: Rc<FunctionHead>,
 
     pub requirements_assumption: Box<RequirementsAssumption>,
@@ -46,18 +44,4 @@ pub enum PrimitiveOperation {
     ParseIntString,
     ParseRealString,
     ToString,
-}
-
-impl PartialEq for FunctionImplementation {
-    fn eq(&self, other: &Self) -> bool {
-        self.implementation_id == other.implementation_id
-    }
-}
-
-impl Eq for FunctionImplementation {}
-
-impl Hash for FunctionImplementation {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.implementation_id.hash(state);
-    }
 }
