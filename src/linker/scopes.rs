@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use guard::guard;
 use itertools::Itertools;
+use linked_hash_map::LinkedHashMap;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::linker::precedence::{OperatorAssociativity, PrecedenceGroup};
@@ -30,7 +32,7 @@ pub struct Scope<'a> {
     pub patterns: HashSet<Rc<Pattern>>,
 
     /// Contents: For each precedence groups, matched keywords and how they map to which function names
-    pub precedence_groups: Vec<(Rc<PrecedenceGroup>, HashMap<String, String>)>,
+    pub precedence_groups: LinkedHashMap<Rc<PrecedenceGroup>, HashMap<String, String>>,
 
     pub global: RefPool,
     pub member: RefPool,
@@ -42,7 +44,7 @@ impl <'a> Scope<'a> {
             parent: None,
 
             trait_conformance: TraitGraph::new(),
-            precedence_groups: vec![],
+            precedence_groups: LinkedHashMap::new(),
 
             patterns: HashSet::new(),
 
@@ -105,7 +107,7 @@ impl <'a> Scope<'a> {
     pub fn set_precedence_order(&mut self, precedence: Vec<Rc<PrecedenceGroup>>) {
         self.precedence_groups = precedence.into_iter()
             .map(|p| (p, HashMap::new()))
-            .collect_vec();
+            .collect();
     }
 
     pub fn overload_function(&mut self, fun: &Rc<FunctionHead>, representation: FunctionRepresentation) -> RResult<()> {
@@ -176,45 +178,40 @@ impl <'a> Scope<'a> {
     }
 
     pub fn add_pattern(&mut self, pattern: Rc<Pattern>) -> RResult<()> {
-        for (precedence_group, keyword_map) in self.precedence_groups.iter_mut() {
-            if precedence_group != &pattern.precedence_group {
-                continue;
+        guard!(let Some(keyword_map) = self.precedence_groups.get_mut(&pattern.precedence_group) else {
+            panic!("Cannot find precedence group {:?} in: {:?}", pattern.precedence_group, self.precedence_groups);
+        });
+
+        match &pattern.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
+            [_] => return Err(RuntimeError::new(format!("Pattern is too short: {}.", pattern.alias))),
+            [
+            PatternPart::Keyword(keyword),
+            PatternPart::Parameter { .. },
+            ] => {
+                assert_eq!(pattern.precedence_group.associativity, OperatorAssociativity::LeftUnary);
+                keyword_map.insert(keyword.clone(), pattern.alias.clone());
+                self.insert_keyword(keyword);
+            },
+            [
+            PatternPart::Parameter { .. },
+            PatternPart::Keyword(keyword),
+            ] => {
+                todo!("Right unary operators aren't supported yet.")
+            },
+            [
+            PatternPart::Parameter { .. },
+            PatternPart::Keyword(keyword),
+            PatternPart::Parameter { .. },
+            ] => {
+                assert_ne!(pattern.precedence_group.associativity, OperatorAssociativity::LeftUnary);
+                keyword_map.insert(keyword.clone(), pattern.alias.clone());
+                self.insert_keyword(keyword);
             }
+            _ => return Err(RuntimeError::new(String::from("This pattern form is not supported; try using unary or binary patterns."))),
+        };
 
-            match &pattern.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
-                [_] => return Err(RuntimeError::new(format!("Pattern is too short: {}.", pattern.alias))),
-                [
-                    PatternPart::Keyword(keyword),
-                    PatternPart::Parameter { .. },
-                ] => {
-                    assert_eq!(precedence_group.associativity, OperatorAssociativity::LeftUnary);
-                    keyword_map.insert(keyword.clone(), pattern.alias.clone());
-                    self.insert_keyword(keyword);
-                },
-                [
-                    PatternPart::Parameter { .. },
-                    PatternPart::Keyword(keyword),
-                ] => {
-                    todo!("Right unary operators aren't supported yet.")
-                },
-                [
-                    PatternPart::Parameter { .. },
-                    PatternPart::Keyword(keyword),
-                    PatternPart::Parameter { .. },
-                ] => {
-                    assert_ne!(precedence_group.associativity, OperatorAssociativity::LeftUnary);
-                    keyword_map.insert(keyword.clone(), pattern.alias.clone());
-                    self.insert_keyword(keyword);
-                }
-                _ => return Err(RuntimeError::new(String::from("This pattern form is not supported; try using unary or binary patterns."))),
-            };
-
-            self.patterns.insert(pattern);
-
-            return Ok(())
-        }
-
-        panic!("Cannot find precedence group {:?} in: {:?}", pattern.precedence_group, self.precedence_groups);
+        self.patterns.insert(pattern);
+        Ok(())
     }
 }
 

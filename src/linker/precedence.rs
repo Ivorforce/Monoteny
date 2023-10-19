@@ -183,7 +183,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
     }
 
     // Reduce all unary operators, and build interspersed arguments / operators list.
-    if let Some((group, left_unary_operators)) = &scope.precedence_groups.get(0) {
+    if let Some((group, left_unary_operators)) = &scope.precedence_groups.iter().next() {
         if group.associativity != OperatorAssociativity::LeftUnary {
             todo!("Left Unary operators must be first for now.");
         }
