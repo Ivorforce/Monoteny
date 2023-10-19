@@ -9,7 +9,7 @@ use crate::error::RResult;
 use crate::interpreter::{FunctionInterpreterImpl, Runtime};
 use crate::interpreter::allocation::Value;
 use crate::program::functions::FunctionHead;
-use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
+use crate::program::global::{FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::module_name;
 use crate::program::primitives;
 use crate::program::types::TypeUnit;
@@ -101,17 +101,17 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     // -------------------------------------- ------ --------------------------------------
 
     for function in runtime.source.module_by_name[&module_name("builtins")].explicit_functions(&runtime.source) {
-        guard!(let Some(builtin_hint) = runtime.source.fn_builtin_hints.get(function) else {
+        guard!(let Some(descriptor) = runtime.source.fn_logic_descriptors.get(function) else {
             continue;
         });
 
-        runtime.function_evaluators.insert(function.unwrap_id(), match builtin_hint {
-            BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
+        runtime.function_evaluators.insert(function.unwrap_id(), match descriptor {
+            FunctionLogicDescriptor::PrimitiveOperation { type_, operation } => {
                 create_primitive_op(type_.clone(), operation.clone())
             }
-            BuiltinFunctionHint::Constructor(_, _) => todo!(),
-            BuiltinFunctionHint::GetMemberField(_, _) => todo!(),
-            BuiltinFunctionHint::SetMemberField(_, _) => todo!(),
+            FunctionLogicDescriptor::Constructor(_, _) => todo!(),
+            FunctionLogicDescriptor::GetMemberField(_, _) => todo!(),
+            FunctionLogicDescriptor::SetMemberField(_, _) => todo!(),
         });
     }
 

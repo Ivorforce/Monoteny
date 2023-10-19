@@ -7,7 +7,7 @@ use crate::source::Source;
 use crate::program::allocation::ObjectReference;
 use crate::program::computation_tree::ExpressionOperation;
 use crate::program::functions::FunctionHead;
-use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
+use crate::program::global::{FunctionLogicDescriptor, FunctionImplementation};
 use crate::program::traits::Trait;
 use crate::program::types::TypeProto;
 
@@ -27,13 +27,12 @@ pub fn find(implementations: &Vec<Box<FunctionImplementation>>, source: &Source,
             let operation = &implementation.expression_forest.operations[&expression_id];
 
             if let ExpressionOperation::FunctionCall(binding) = operation {
-                guard!(let Some(hint) = source.fn_builtin_hints.get(&binding.function) else {
+                guard!(let Some(descriptor) = source.fn_logic_descriptors.get(&binding.function) else {
                     continue;
                 });
-                let hint: &BuiltinFunctionHint = hint;
 
-                match hint {
-                    BuiltinFunctionHint::Constructor(trait_, fields) => {
+                match descriptor {
+                    FunctionLogicDescriptor::Constructor(trait_, fields) => {
                         let type_ = &binding.function.interface.return_type;  // Fulfillment for Self
                         if let Entry::Vacant(entry) = map.entry(type_.clone()) {
                             // TODO If we have generics, we should include their bindings in the name somehow.
@@ -47,14 +46,14 @@ pub fn find(implementations: &Vec<Box<FunctionImplementation>>, source: &Source,
                             let mut getters = HashMap::new();
                             let mut setters = HashMap::new();
 
-                            for (head, hint) in source.fn_builtin_hints.iter() {
-                                match hint {
-                                    BuiltinFunctionHint::GetMemberField(trait_field, ref_) => {
+                            for (head, descriptor) in source.fn_logic_descriptors.iter() {
+                                match descriptor {
+                                    FunctionLogicDescriptor::GetMemberField(trait_field, ref_) => {
                                         if trait_field == trait_ && fields.contains(ref_) {
                                             getters.insert(Rc::clone(ref_), Rc::clone(head));
                                         }
                                     }
-                                    BuiltinFunctionHint::SetMemberField(trait_field, ref_) => {
+                                    FunctionLogicDescriptor::SetMemberField(trait_field, ref_) => {
                                         if trait_field == trait_ && fields.contains(ref_) {
                                             setters.insert(Rc::clone(ref_), Rc::clone(head));
                                         }

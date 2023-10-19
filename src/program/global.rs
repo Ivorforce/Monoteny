@@ -23,7 +23,7 @@ pub struct FunctionImplementation {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum BuiltinFunctionHint {
+pub enum FunctionLogicDescriptor {
     PrimitiveOperation { operation: PrimitiveOperation, type_: primitives::Type },
     Constructor(Rc<Trait>, Vec<Rc<ObjectReference>>),
     GetMemberField(Rc<Trait>, Rc<ObjectReference>),

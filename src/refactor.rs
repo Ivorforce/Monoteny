@@ -215,7 +215,7 @@ impl<'a> Refactor<'a> {
 
     fn copy_quirks_source(&mut self, from: &Rc<FunctionHead>, to: &Rc<FunctionHead>) {
         self.runtime.source.fn_representations.get(from).cloned().map(|rep| self.runtime.source.fn_representations.insert(Rc::clone(to), rep));
-        self.runtime.source.fn_builtin_hints.get(from).cloned().map(|hint| self.runtime.source.fn_builtin_hints.insert(Rc::clone(to), hint));
+        self.runtime.source.fn_logic_descriptors.get(from).cloned().map(|hint| self.runtime.source.fn_logic_descriptors.insert(Rc::clone(to), hint));
     }
 
     pub fn required_functions(&self) -> LinkedHashSet<Rc<FunctionHead>> {

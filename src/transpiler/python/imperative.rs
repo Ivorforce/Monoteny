@@ -9,7 +9,7 @@ use crate::interpreter::Runtime;
 use crate::program::computation_tree::*;
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::TypeForest;
-use crate::program::global::{BuiltinFunctionHint, FunctionImplementation, PrimitiveOperation};
+use crate::program::global::{FunctionLogicDescriptor, FunctionImplementation, PrimitiveOperation};
 use crate::transpiler::python::{ast, types};
 use crate::transpiler::python::representations::{FunctionForm, Representations};
 
@@ -235,13 +235,13 @@ fn transpile_function_call(context: &FunctionContext, function: &Rc<FunctionHead
 }
 
 pub fn try_transpile_optimization(function: &Rc<FunctionHead>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Option<Box<ast::Expression>> {
-    guard!(let Some(hint) = context.runtime.source.fn_builtin_hints.get(function) else {
+    guard!(let Some(descriptor) = context.runtime.source.fn_logic_descriptors.get(function) else {
         return None;
     });
 
     // TODO Monoteny should instead offer its own parser function, and we simply optimize calls that have python-parseable literals.
-    Some(match hint {
-        BuiltinFunctionHint::PrimitiveOperation { type_, operation } => {
+    Some(match descriptor {
+        FunctionLogicDescriptor::PrimitiveOperation { type_, operation } => {
             match operation {
                 PrimitiveOperation::ParseIntString => transpile_parse_function("^[0-9]+$", arguments, expression_id, context),
                 PrimitiveOperation::ParseRealString => transpile_parse_function("^[0-9]+\\.[0-9]*$", arguments, expression_id, context),

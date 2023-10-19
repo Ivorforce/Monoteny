@@ -3,7 +3,7 @@ use std::rc::Rc;
 use guard::guard;
 use strum::IntoEnumIterator;
 use crate::interpreter::Runtime;
-use crate::program::global::{BuiltinFunctionHint, PrimitiveOperation};
+use crate::program::global::{FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::module_name;
 use crate::program::primitives;
 use crate::program::types::TypeProto;
@@ -37,76 +37,76 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     // The operators can normally be referenced as operators (which the transpiler does do).
     // However, if a reference is required, we need to resort to another strategy.
     for function in runtime.source.module_by_name[&module_name("builtins")].explicit_functions(&runtime.source) {
-        guard!(let Some(builtin_hint) = runtime.source.fn_builtin_hints.get(function) else {
+        guard!(let Some(descriptor) = runtime.source.fn_logic_descriptors.get(function) else {
             continue;
         });
 
-        let (higher_order_ref_name, representation) = match builtin_hint {
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::EqualTo, type_ } => {
+        let (higher_order_ref_name, representation) = match descriptor {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::EqualTo, type_ } => {
                 ("op.eq", FunctionForm::Binary(KEYWORD_IDS["=="]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::NotEqualTo, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::NotEqualTo, type_ } => {
                 ("op.ne", FunctionForm::Binary(KEYWORD_IDS["!="]))
             }
 
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::GreaterThan, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::GreaterThan, type_ } => {
                 ("op.gt", FunctionForm::Binary(KEYWORD_IDS[">"]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::LesserThan, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::LesserThan, type_ } => {
                 ("op.lt", FunctionForm::Binary(KEYWORD_IDS["<"]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::GreaterThanOrEqual, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::GreaterThanOrEqual, type_ } => {
                 ("op.ge", FunctionForm::Binary(KEYWORD_IDS[">="]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::LesserThanOrEqual, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::LesserThanOrEqual, type_ } => {
                 ("op.le", FunctionForm::Binary(KEYWORD_IDS["<="]))
             }
 
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::And, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::And, type_ } => {
                 ("op.and_", FunctionForm::Binary(KEYWORD_IDS["and"]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Or, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::Or, type_ } => {
                 ("op.or_", FunctionForm::Binary(KEYWORD_IDS["or"]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Not, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::Not, type_ } => {
                 ("op.not_", FunctionForm::Unary(KEYWORD_IDS["not"]))
             }
 
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Negative, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::Negative, type_ } => {
                 ("op.neg", FunctionForm::Unary(KEYWORD_IDS["-"]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Add, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::Add, type_ } => {
                 ("op.add", FunctionForm::Binary(KEYWORD_IDS["+"]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Subtract, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::Subtract, type_ } => {
                 ("op.sub", FunctionForm::Binary(KEYWORD_IDS["-"]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Multiply, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::Multiply, type_ } => {
                 ("op.mul", FunctionForm::Binary(KEYWORD_IDS["*"]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Divide, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::Divide, type_ } => {
                 match type_.is_int() {
                     true => ("op.truediv", FunctionForm::Binary(KEYWORD_IDS["//"])),
                     false => ("op.div", FunctionForm::Binary(KEYWORD_IDS["//"])),
                 }
             }
 
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Modulo, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::Modulo, type_ } => {
                 ("op.mod", FunctionForm::Binary(KEYWORD_IDS["%"]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Exp, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::Exp, type_ } => {
                 ("op.pow", FunctionForm::Binary(KEYWORD_IDS["**"]))
             }
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::Log, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::Log, type_ } => {
                 ("math.log", FunctionForm::FunctionCall(PSEUDO_KEYWORD_IDS["math.log"]))
             }
 
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ToString, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::ToString, type_ } => {
                 ("str", FunctionForm::FunctionCall(PSEUDO_KEYWORD_IDS["str"]))
             }
 
-            BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ParseIntString, type_ }
-            | BuiltinFunctionHint::PrimitiveOperation { operation: PrimitiveOperation::ParseRealString, type_ } => {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::ParseIntString, type_ }
+            | FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::ParseRealString, type_ } => {
                 if let Some(builtin_name) = primitive_map.get(type_) {
                     (builtin_name.clone(), FunctionForm::FunctionCall(PSEUDO_KEYWORD_IDS[builtin_name]))
                 }
@@ -115,9 +115,9 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
                 }
             }
 
-            BuiltinFunctionHint::Constructor(_, _) => continue,
-            BuiltinFunctionHint::GetMemberField(_, _) => continue,
-            BuiltinFunctionHint::SetMemberField(_, _) => continue,
+            FunctionLogicDescriptor::Constructor(_, _) => continue,
+            FunctionLogicDescriptor::GetMemberField(_, _) => continue,
+            FunctionLogicDescriptor::SetMemberField(_, _) => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(function));

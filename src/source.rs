@@ -3,7 +3,7 @@ use std::rc::Rc;
 use uuid::Uuid;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
-use crate::program::global::{BuiltinFunctionHint, FunctionImplementation};
+use crate::program::global::{FunctionLogicDescriptor, FunctionImplementation};
 use crate::program::module::{Module, ModuleName};
 use crate::program::traits::Trait;
 
@@ -26,7 +26,7 @@ pub struct Source {
     /// For relevant functions, their implementation.
     pub fn_implementations: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
     /// For relevant functions, a hint what type of core it is.
-    pub fn_builtin_hints: HashMap<Rc<FunctionHead>, BuiltinFunctionHint>,
+    pub fn_logic_descriptors: HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>,
 }
 
 impl Source {
@@ -39,7 +39,7 @@ impl Source {
             fn_getters: Default::default(),
             fn_representations: Default::default(),
             fn_implementations: Default::default(),
-            fn_builtin_hints: Default::default(),
+            fn_logic_descriptors: Default::default(),
         }
     }
 }

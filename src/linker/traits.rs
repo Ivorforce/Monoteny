@@ -12,7 +12,7 @@ use crate::parser::ast;
 use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
-use crate::program::global::BuiltinFunctionHint;
+use crate::program::global::FunctionLogicDescriptor;
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::TypeProto;
 use crate::util::fmt::fmta;
@@ -112,9 +112,9 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         // TODO Once generic types are supported, the variable type should be mapped to actual types
         if let Some(abstract_getter) = &abstract_field.getter {
             let struct_getter = struct_field.getter.clone().unwrap();
-            linker.runtime.source.fn_builtin_hints.insert(
+            linker.runtime.source.fn_logic_descriptors.insert(
                 Rc::clone(&struct_getter),
-                BuiltinFunctionHint::GetMemberField(Rc::clone(trait_), Rc::clone(&variable_as_object))
+                FunctionLogicDescriptor::GetMemberField(Rc::clone(trait_), Rc::clone(&variable_as_object))
             );
             function_mapping.insert(Rc::clone(abstract_getter), Rc::clone(&struct_getter));
             linker.add_function_interface(
@@ -125,9 +125,9 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         }
         if let Some(abstract_setter) = &abstract_field.setter {
             let struct_setter = struct_field.setter.clone().unwrap();
-            linker.runtime.source.fn_builtin_hints.insert(
+            linker.runtime.source.fn_logic_descriptors.insert(
                 Rc::clone(&struct_setter),
-                BuiltinFunctionHint::SetMemberField(Rc::clone(trait_), Rc::clone(&variable_as_object))
+                FunctionLogicDescriptor::SetMemberField(Rc::clone(trait_), Rc::clone(&variable_as_object))
             );
             function_mapping.insert(Rc::clone(abstract_setter), Rc::clone(&struct_setter));
             linker.add_function_interface(
@@ -161,9 +161,9 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
             generics: Default::default(),
         }),
     );
-    linker.runtime.source.fn_builtin_hints.insert(
+    linker.runtime.source.fn_logic_descriptors.insert(
         Rc::clone(&constructor),
-        BuiltinFunctionHint::Constructor(Rc::clone(trait_), parameter_mapping)
+        FunctionLogicDescriptor::Constructor(Rc::clone(trait_), parameter_mapping)
     );
     linker.add_function_interface(
         constructor,
