@@ -136,7 +136,9 @@ pub fn create_ast(
     // Names for exported structs
     let mut structs = LinkedHashMap::new();
     // TODO We only need to export structs that are mentioned in the interfaces of exported functions.
-    structs::find(explicit_functions, internal_functions, &mut structs);
+    //  But the following function doesn't work for now.
+    // structs::find_in_interfaces(explicit_functions.iter().map(|i| &i.head), &mut structs);
+    structs::find_in_implementations(explicit_functions, internal_functions, &mut structs);
     let exported_structs = structs.keys().cloned().collect_vec();
     for struct_ in structs.values() {
         exports_namespace.insert_name(struct_.trait_.id, struct_.trait_.name.as_str());
@@ -155,7 +157,7 @@ pub fn create_ast(
     }
 
     // Internal struct names
-    structs::find(&implicit_functions, internal_functions, &mut structs);
+    structs::find_in_implementations(&implicit_functions, internal_functions, &mut structs);
     let internal_structs = structs.keys().filter(|s| !exported_structs.contains(s)).collect_vec();
     for type_ in internal_structs.iter() {
         let struct_ = &structs[*type_];

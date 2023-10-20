@@ -8,7 +8,15 @@ use crate::program::functions::FunctionHead;
 use crate::program::global::{FunctionLogicDescriptor, FunctionImplementation};
 use crate::program::types::TypeProto;
 
-pub fn find(implementations: &Vec<Box<FunctionImplementation>>, logic: &HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>, map: &mut LinkedHashMap<Box<TypeProto>, Rc<StructInfo>>) {
+pub fn find_in_interfaces(heads: impl Iterator<Item=Rc<FunctionHead>>, map: &mut LinkedHashMap<Box<TypeProto>, Rc<StructInfo>>) {
+    for head in heads {
+        for type_ in head.interface.parameters.iter().map(|p| &p.type_).chain(&head.interface.return_type) {
+            todo!("From the type we SHOULD be able to deduce the struct info, but we can't for now.")
+        }
+    }
+}
+
+pub fn find_in_implementations(implementations: &Vec<Box<FunctionImplementation>>, logic: &HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>, map: &mut LinkedHashMap<Box<TypeProto>, Rc<StructInfo>>) {
     for implementation in implementations {
         for expression_id in implementation.expression_tree.deep_children(implementation.expression_tree.root) {
             let operation = &implementation.expression_tree.values[&expression_id];
