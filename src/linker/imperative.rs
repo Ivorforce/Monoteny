@@ -7,7 +7,7 @@ use itertools::Itertools;
 use try_map::FallibleMapExt;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::program::computation_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
+use crate::program::expression_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
 use crate::linker::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, LinkerAmbiguity};
 use crate::linker::grammar::parse::link_patterns;
 use crate::linker::{grammar, scopes};
@@ -31,7 +31,7 @@ pub struct ImperativeLinker<'a> {
     pub runtime: &'a Runtime,
 
     pub types: Box<TypeForest>,
-    pub expressions: Box<ExpressionTree>,
+    pub expression_tree: Box<ExpressionTree>,
     pub ambiguities: Vec<Box<dyn LinkerAmbiguity>>,
 
     pub locals_names: HashMap<Rc<ObjectReference>, String>,
@@ -43,9 +43,9 @@ impl <'a> ImperativeLinker<'a> {
 
         self.types.register(id);
         for argument in arguments.iter() {
-            self.expressions.references.insert(*argument, id);
+            self.expression_tree.parents.insert(*argument, id);
         }
-        self.expressions.arguments.insert(id, arguments);
+        self.expression_tree.children.insert(id, arguments);
 
         id
     }
@@ -89,6 +89,7 @@ impl <'a> ImperativeLinker<'a> {
 
         let head_expression = self.link_expression(body, &scope)?;
         self.types.bind(head_expression, &self.function.interface.return_type)?;
+        self.expression_tree.root = head_expression;  // TODO This is kinda dumb; but we can't write into an existing head expression
 
         let mut has_changed = true;
         while !self.ambiguities.is_empty() {
@@ -113,8 +114,7 @@ impl <'a> ImperativeLinker<'a> {
         Ok(Box::new(FunctionImplementation {
             head: self.function,
             requirements_assumption: Box::new(RequirementsAssumption { conformance: HashMap::from_iter(granted_requirements.into_iter().map(|c| (Rc::clone(&c.binding), c))) }),
-            root_expression_id: head_expression,
-            expression_forest: self.expressions,
+            expression_tree: self.expression_tree,
             type_forest: self.types,
             parameter_locals: parameter_variables,
             locals_names: self.locals_names,
@@ -124,7 +124,7 @@ impl <'a> ImperativeLinker<'a> {
     pub fn link_unambiguous_expression(&mut self, arguments: Vec<ExpressionID>, return_type: &TypeProto, operation: ExpressionOperation) -> RResult<ExpressionID> {
         let id = self.register_new_expression(arguments);
 
-        self.expressions.operations.insert(id.clone(), operation);
+        self.expression_tree.values.insert(id.clone(), operation);
 
         self.types.bind(id, &return_type)
             .map(|_| id)
@@ -192,7 +192,7 @@ impl <'a> ImperativeLinker<'a> {
         }).try_collect()?;
 
         let expression_id = self.register_new_expression(statements);
-        self.expressions.operations.insert(expression_id, ExpressionOperation::Block);
+        self.expression_tree.values.insert(expression_id, ExpressionOperation::Block);
 
         Ok(expression_id)
     }
@@ -215,7 +215,7 @@ impl <'a> ImperativeLinker<'a> {
                 self.register_local(identifier, Rc::clone(&object_ref), scope);
 
                 let expression_id = self.register_new_expression(vec![assignment]);
-                self.expressions.operations.insert(expression_id, ExpressionOperation::SetLocal(object_ref));
+                self.expression_tree.values.insert(expression_id, ExpressionOperation::SetLocal(object_ref));
                 self.types.bind(expression_id, &TypeProto::void())?;
                 expression_id
             },
@@ -238,7 +238,7 @@ impl <'a> ImperativeLinker<'a> {
                     .as_local(true)?;
                 self.types.bind(new_value, &object_ref.type_)?;
                 let expression_id = self.register_new_expression(vec![new_value]);
-                self.expressions.operations.insert(expression_id, ExpressionOperation::SetLocal(Rc::clone(&object_ref)));
+                self.expression_tree.values.insert(expression_id, ExpressionOperation::SetLocal(Rc::clone(&object_ref)));
                 self.types.bind(expression_id, &TypeProto::void())?;
                 expression_id
             }
@@ -252,7 +252,7 @@ impl <'a> ImperativeLinker<'a> {
                     self.types.bind(result, &self.function.interface.return_type)?;
 
                     let expression_id = self.register_new_expression(vec![result]);
-                    self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
+                    self.expression_tree.values.insert(expression_id, ExpressionOperation::Return);
                     self.types.bind(expression_id, &TypeProto::void())?;
                     expression_id
                 } else {
@@ -261,7 +261,7 @@ impl <'a> ImperativeLinker<'a> {
                     }
 
                     let expression_id = self.register_new_expression(vec![]);
-                    self.expressions.operations.insert(expression_id, ExpressionOperation::Return);
+                    self.expression_tree.values.insert(expression_id, ExpressionOperation::Return);
                     self.types.bind(expression_id, &TypeProto::void())?;
                     expression_id
                 }

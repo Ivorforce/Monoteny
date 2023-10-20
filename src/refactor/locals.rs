@@ -3,7 +3,7 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use crate::program::allocation::ObjectReference;
-use crate::program::computation_tree::ExpressionOperation;
+use crate::program::expression_tree::ExpressionOperation;
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::FunctionImplementation;
 
@@ -16,7 +16,7 @@ pub fn swizzle_retaining_parameters(function: &FunctionImplementation, removed: 
 pub fn find_unused_locals(function: &FunctionImplementation) -> HashSet<Rc<ObjectReference>> {
     let mut unused = HashSet::from_iter(function.locals_names.keys().cloned());
 
-    for operation in function.expression_forest.operations.values() {
+    for operation in function.expression_tree.values.values() {
         match operation {
             ExpressionOperation::GetLocal(local) => _ = unused.remove(local),
             _ => {},
@@ -29,24 +29,24 @@ pub fn find_unused_locals(function: &FunctionImplementation) -> HashSet<Rc<Objec
 pub fn remove_locals(implementation: &mut FunctionImplementation, removed_locals: &HashSet<Rc<ObjectReference>>) -> Option<Vec<usize>> {
     let changes_interface = removed_locals.iter().any(|l| implementation.parameter_locals.contains(l));
 
-    let mut expression_forest = &mut implementation.expression_forest;
+    let mut expression_forest = &mut implementation.expression_tree;
     // TODO Also truncate removed from type forest
     let mut type_forest = &mut implementation.type_forest;
 
-    for expression_id in expression_forest.operations.keys().cloned().collect_vec() {
-        guard!(let Some(operation) = expression_forest.operations.get(&expression_id) else {
+    for expression_id in expression_forest.values.keys().cloned().collect_vec() {
+        guard!(let Some(operation) = expression_forest.values.get(&expression_id) else {
             continue  // Already trimmed
         });
 
         match operation {
             ExpressionOperation::GetLocal(local) => {
                 if removed_locals.contains(local) {
-                    expression_forest.truncate(vec![expression_id]);
+                    expression_forest.truncate_up_and_down(vec![expression_id], |op| op == &ExpressionOperation::Block);
                 }
             }
             ExpressionOperation::SetLocal(local) => {
                 if removed_locals.contains(local) {
-                    expression_forest.truncate(vec![expression_id]);
+                    expression_forest.truncate_up_and_down(vec![expression_id], |op| op == &ExpressionOperation::Block);
                 }
             }
             _ => {},

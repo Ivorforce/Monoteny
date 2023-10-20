@@ -6,7 +6,7 @@ use itertools::Either::{Left, Right};
 use uuid::Uuid;
 use regex;
 use crate::interpreter::Runtime;
-use crate::program::computation_tree::*;
+use crate::program::expression_tree::*;
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionLogicDescriptor, FunctionImplementation, PrimitiveOperation};
@@ -29,7 +29,7 @@ pub fn transpile_function(implementation: &FunctionImplementation, context: &Fun
         FunctionForm::Constant(id) => {
             Box::new(ast::Statement::VariableAssignment {
                 target: Box::new(ast::Expression::NamedReference(context.names[id].clone())),
-                value: Some(transpile_expression(implementation.root_expression_id, context)),
+                value: Some(transpile_expression(implementation.expression_tree.root, context)),
                 type_annotation: Some(types::transpile(&implementation.head.interface.return_type, context)),
             })
         }
@@ -86,12 +86,12 @@ pub fn transpile_plain_function(implementation: &FunctionImplementation, name: S
     //     };
     // }
 
-    syntax.statements = match &implementation.expression_forest.operations[&implementation.root_expression_id] {
+    syntax.statements = match &implementation.expression_tree.values[&implementation.expression_tree.root] {
         ExpressionOperation::Block => {
-            transpile_block(&implementation, context, &implementation.expression_forest.arguments[&implementation.root_expression_id])
+            transpile_block(&implementation, context, &implementation.expression_tree.children[&implementation.expression_tree.root])
         }
         _ => {
-            let expression = transpile_expression(implementation.root_expression_id, context);
+            let expression = transpile_expression(implementation.expression_tree.root, context);
 
             vec![Box::new(match implementation.head.interface.return_type.unit.is_void() {
                 true => ast::Statement::Expression(expression),
@@ -107,19 +107,19 @@ fn transpile_block(implementation: &&FunctionImplementation, context: &FunctionC
     let mut statements_ = vec![];
 
     for statement in statements.iter() {
-        let operation = &implementation.expression_forest.operations[&statement];
+        let operation = &implementation.expression_tree.values[&statement];
         statements_.push(match operation {
             ExpressionOperation::Block => todo!(),
             ExpressionOperation::SetLocal(variable) => {
                 Box::new(ast::Statement::VariableAssignment {
                     target: Box::new(ast::Expression::NamedReference(context.names[&variable.id].clone())),
-                    value: Some(transpile_expression(implementation.expression_forest.arguments[&statement][0], context)),
+                    value: Some(transpile_expression(implementation.expression_tree.children[&statement][0], context)),
                     // TODO We can omit the type annotation if we assign the variable a second time
                     type_annotation: Some(types::transpile(&variable.type_, context)),
                 })
             }
             ExpressionOperation::Return => {
-                let value = implementation.expression_forest.arguments[&statement].iter().exactly_one().ok();
+                let value = implementation.expression_tree.children[&statement].iter().exactly_one().ok();
                 Box::new(ast::Statement::Return(value.map(|value| transpile_expression(*value, context))))
             }
             ExpressionOperation::FunctionCall(call) => {
@@ -136,7 +136,7 @@ fn transpile_block(implementation: &&FunctionImplementation, context: &FunctionC
 }
 
 pub fn transpile_expression(expression_id: ExpressionID, context: &FunctionContext) -> Box<ast::Expression> {
-    match &context.expressions.operations.get(&expression_id).unwrap() {
+    match &context.expressions.values.get(&expression_id).unwrap() {
         ExpressionOperation::StringLiteral(string) => {
             Box::new(ast::Expression::StringLiteral(string.clone()))
         }
@@ -186,7 +186,7 @@ pub fn transpile_expression(expression_id: ExpressionID, context: &FunctionConte
 }
 
 fn transpile_function_call(context: &FunctionContext, function: &Rc<FunctionHead>, form: &FunctionForm, expression_id: ExpressionID) -> Either<Box<ast::Expression>, Box<ast::Statement>> {
-    let arguments = context.expressions.arguments.get(&expression_id).unwrap();
+    let arguments = context.expressions.children.get(&expression_id).unwrap();
 
     if let Some(s) = try_transpile_optimization(function, &expression_id, arguments, context) {
         return Left(s)
@@ -288,7 +288,7 @@ pub fn transpile_parse_function(supported_regex: &str, arguments: &Vec<Expressio
         panic!("Parse function got {} arguments", arguments.len());
     });
 
-    let value = match &context.expressions.operations[&argument_expression_id] {
+    let value = match &context.expressions.values[&argument_expression_id] {
         ExpressionOperation::StringLiteral(literal) => {
             let is_supported_literal = regex::Regex::new(supported_regex).unwrap();
             if is_supported_literal.is_match(literal) {

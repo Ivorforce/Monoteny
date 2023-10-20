@@ -204,7 +204,7 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
         for implementation in implementations.iter() {
             let context = FunctionContext {
                 names: &names,
-                expressions: &implementation.expression_forest,
+                expressions: &implementation.expression_tree,
                 types: &implementation.type_forest,
                 runtime,
                 representations: &representations,

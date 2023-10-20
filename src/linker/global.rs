@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::parser::ast;
-use crate::program::computation_tree::*;
+use crate::program::expression_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{imports, interpreter_mock, referencible, scopes};
 use crate::linker::conformance::ConformanceLinker;
@@ -20,7 +20,7 @@ use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::generics::TypeForest;
-use crate::program::module::{Module, ModuleName};
+use crate::program::module::Module;
 use crate::program::types::*;
 use crate::util::position::Positioned;
 
@@ -55,7 +55,7 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runt
             function: Rc::clone(&head),
             runtime,
             types: Box::new(TypeForest::new()),
-            expressions: Box::new(ExpressionTree::new()),
+            expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
             ambiguities: vec![],
             locals_names: Default::default(),
         });

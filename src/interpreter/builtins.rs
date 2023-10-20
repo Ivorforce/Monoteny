@@ -28,7 +28,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         runtime.function_evaluators.insert(function.unwrap_id(), match representation.name.as_str() {
             "_write_line" => Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
-                    let args = interpreter.implementation.expression_forest.arguments[&expression_id].clone();
+                    let args = interpreter.implementation.expression_tree.children[&expression_id].clone();
                     let arg = interpreter.evaluate(args[0]).unwrap();
                     println!("{}", *(arg.data as *const String));
 
@@ -37,7 +37,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
             }}),
             "_exit_with_error" => Rc::new(move |interpreter, expression_id, binding| {{
                 unsafe {{
-                    let args = interpreter.implementation.expression_forest.arguments[&expression_id].clone();
+                    let args = interpreter.implementation.expression_tree.children[&expression_id].clone();
                     let arg = interpreter.evaluate(args[0]).unwrap();
 
                     panic!("{}", *(arg.data as *const String));
@@ -61,7 +61,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
                     let transpiler_callback = *(arguments[0].data as *const &dyn Fn(Rc<FunctionHead>, &Runtime));
 
                     let arg = &arguments[1];
-                    let arg_id = &interpreter.implementation.expression_forest.arguments[&expression_id][1];
+                    let arg_id = &interpreter.implementation.expression_tree.children[&expression_id][1];
                     let arg_type = interpreter.implementation.type_forest.get_unit(arg_id).unwrap();
 
                     match arg_type {

@@ -7,7 +7,7 @@ use crate::error::{format_errors, RResult, RuntimeError};
 use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
 use crate::program::calls::FunctionBinding;
-use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
+use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::debug::MockFunctionInterface;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, ParameterKey};
@@ -100,7 +100,7 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
             // TODO We can just assign linker.types to the candidate's result; it was literally just copied.
             match self.attempt_with_candidate(&mut linker.types, &candidate)? {
                 AmbiguityResult::Ok(resolution) => {
-                    linker.expressions.operations.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
+                    linker.expression_tree.values.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                         function: Rc::clone(&candidate.function),
                         requirements_fulfillment: resolution
                     })));

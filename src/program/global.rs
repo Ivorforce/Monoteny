@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
-use crate::program::computation_tree::{ExpressionTree, ExpressionID};
+use std::hash::Hash;
+use crate::program::expression_tree::ExpressionTree;
 use crate::program::functions::FunctionHead;
 use crate::program::allocation::ObjectReference;
 use crate::program::generics::TypeForest;
@@ -14,8 +14,7 @@ pub struct FunctionImplementation {
 
     pub requirements_assumption: Box<RequirementsAssumption>,
 
-    pub root_expression_id: ExpressionID,
-    pub expression_forest: Box<ExpressionTree>,
+    pub expression_tree: Box<ExpressionTree>,
     pub type_forest: Box<TypeForest>,
 
     pub parameter_locals: Vec<Rc<ObjectReference>>,

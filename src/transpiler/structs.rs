@@ -5,7 +5,7 @@ use itertools::Itertools;
 use linked_hash_map::{Entry, LinkedHashMap};
 use crate::source::Source;
 use crate::program::allocation::ObjectReference;
-use crate::program::computation_tree::ExpressionOperation;
+use crate::program::expression_tree::ExpressionOperation;
 use crate::program::functions::FunctionHead;
 use crate::program::global::{FunctionLogicDescriptor, FunctionImplementation};
 use crate::program::traits::Trait;
@@ -23,8 +23,8 @@ pub struct Struct {
 
 pub fn find(implementations: &Vec<Box<FunctionImplementation>>, source: &Source, map: &mut LinkedHashMap<Box<TypeProto>, Struct>) {
     for implementation in implementations {
-        for expression_id in implementation.expression_forest.deep_children(implementation.root_expression_id) {
-            let operation = &implementation.expression_forest.operations[&expression_id];
+        for expression_id in implementation.expression_tree.deep_children(implementation.expression_tree.root) {
+            let operation = &implementation.expression_tree.values[&expression_id];
 
             if let ExpressionOperation::FunctionCall(binding) = operation {
                 guard!(let Some(descriptor) = source.fn_logic_descriptors.get(&binding.function) else {

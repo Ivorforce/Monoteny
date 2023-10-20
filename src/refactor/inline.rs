@@ -3,7 +3,7 @@ use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
 use crate::program::calls::FunctionBinding;
-use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
+use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
@@ -16,14 +16,14 @@ pub fn try_inline(implementation: &FunctionImplementation) -> Option<InlineHint>
         return None;
     }
 
-    match (&implementation.expression_forest.operations[&implementation.root_expression_id], &implementation.expression_forest.arguments[&implementation.root_expression_id].as_slice()) {
+    match (&implementation.expression_tree.values[&implementation.expression_tree.root], &implementation.expression_tree.children[&implementation.expression_tree.root].as_slice()) {
         (ExpressionOperation::Block, []) => Some(InlineHint::NoOp),
         // While this might result in a return where one wasn't expected,
         // any receiver that can handle a void return won't do anything with the return value.
         // Basically the receiver is guaranteed to be a block or a no-return function. So it's fine.
         (ExpressionOperation::Block, [arg]) => get_trivial_expression_call_target(arg, implementation),
         (ExpressionOperation::Return, [arg]) => get_trivial_expression_call_target(arg, implementation),
-        _ => get_trivial_expression_call_target(&implementation.root_expression_id, implementation),
+        _ => get_trivial_expression_call_target(&implementation.expression_tree.root, implementation),
     }
 }
 
@@ -32,14 +32,14 @@ pub fn get_trivial_expression_call_target(expression_id: &ExpressionID, implemen
     // --> It may be an explicit constant or function that makes the code more readable.
     // --> We are only concerned about readability. If folding is useful for performance, the target compiler shall do it.
     // If requested, the 'constant fold' part with run an interpreter to inline those functions anyway, replacing the calls with constant values.
-    match &implementation.expression_forest.operations[expression_id] {
+    match &implementation.expression_tree.values[expression_id] {
         ExpressionOperation::FunctionCall(f) => {
             if !f.requirements_fulfillment.is_empty() {
                 return None
             }
 
-            let replace_args: Vec<_> = implementation.expression_forest.arguments[expression_id].iter().map(|arg| {
-                match &implementation.expression_forest.operations[arg] {
+            let replace_args: Vec<_> = implementation.expression_tree.children[expression_id].iter().map(|arg| {
+                match &implementation.expression_tree.values[arg] {
                     ExpressionOperation::GetLocal(v) => {
                         if let Some(idx) = implementation.parameter_locals.iter().position(|ref_| ref_ == v) {
                             return Some(idx)
@@ -71,10 +71,10 @@ pub fn get_trivial_expression_call_target(expression_id: &ExpressionID, implemen
 }
 
 pub fn inline_calls(implementation: &mut Box<FunctionImplementation>, hints: &HashMap<Rc<FunctionHead>, InlineHint>) {
-    let expression_forest = &mut implementation.expression_forest;
-    'expression: for expression_id in expression_forest.deep_children(implementation.root_expression_id) {
+    let expression_forest = &mut implementation.expression_tree;
+    'expression: for expression_id in expression_forest.deep_children(expression_forest.root) {
         'inline: loop {
-            guard!(let Some(operation) = expression_forest.operations.get(&expression_id) else {
+            guard!(let Some(operation) = expression_forest.values.get(&expression_id) else {
                 // We have been truncated meanwhile!
                 continue 'expression;
             });
@@ -86,7 +86,7 @@ pub fn inline_calls(implementation: &mut Box<FunctionImplementation>, hints: &Ha
                     if let Some(inline_hint) = hints.get(&f.function) {
                         match inline_hint {
                             InlineHint::ReplaceCall(target_function, idxs) => {
-                                let operation = expression_forest.operations.get_mut(&expression_id).unwrap();
+                                let operation = expression_forest.values.get_mut(&expression_id).unwrap();
                                 *operation = ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                                     function: Rc::clone(&target_function),
                                     // TODO If we're not monomorphized, this may not be empty.

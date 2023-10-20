@@ -6,7 +6,7 @@ use crate::error::{ErrInRange, RResult};
 use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
 use crate::program::calls::FunctionBinding;
-use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
+use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
 use crate::program::traits::{RequirementsFulfillment, Trait, TraitGraph};
 
@@ -41,7 +41,7 @@ impl LinkerAmbiguity for AmbiguousAbstractCall {
             AmbiguityResult::Ok(trait_conformance) => {
                 let used_function = &trait_conformance.conformance.function_mapping[&self.abstract_function];
 
-                linker.expressions.operations.insert(
+                linker.expression_tree.values.insert(
                     self.expression_id.clone(),
                     ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                         function: Rc::clone(used_function),

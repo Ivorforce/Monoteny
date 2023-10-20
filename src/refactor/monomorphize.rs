@@ -5,7 +5,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
-use crate::program::computation_tree::{ExpressionOperation};
+use crate::program::expression_tree::{ExpressionOperation};
 use crate::program::functions::{FunctionHead, FunctionType, FunctionInterface, Parameter};
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
@@ -63,8 +63,8 @@ impl Monomorphize {
         }
 
         // Find function calls in the expression forest
-        for expression_id in implementation.expression_forest.deep_children(implementation.root_expression_id) {
-            let mut operation = implementation.expression_forest.operations.get_mut(&expression_id).unwrap();
+        for expression_id in implementation.expression_tree.deep_children(implementation.expression_tree.root) {
+            let mut operation = implementation.expression_tree.values.get_mut(&expression_id).unwrap();
 
             match operation {
                 ExpressionOperation::FunctionCall(call) => {

@@ -16,7 +16,7 @@ use crate::{linker, parser, program};
 use crate::error::{RResult, RuntimeError};
 use crate::linker::{imports, referencible, scopes};
 use crate::parser::ast;
-use crate::program::computation_tree::{ExpressionID, ExpressionOperation};
+use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionHead, FunctionType};
 use crate::program::global::FunctionImplementation;
 use crate::program::module::{Module, module_name, ModuleName};
@@ -139,7 +139,7 @@ impl FunctionInterpreter<'_> {
 
     pub unsafe fn run(&mut self) -> Option<Value> {
         // Avoid borrowing self.
-        self.evaluate(self.implementation.root_expression_id)
+        self.evaluate(self.implementation.expression_tree.root)
     }
 
     pub fn combine_bindings(lhs: &RequirementsFulfillment, rhs: &RequirementsFulfillment) -> Rc<RequirementsFulfillment> {
@@ -174,7 +174,7 @@ impl FunctionInterpreter<'_> {
         //  This would be managed by a global interpreter that is expandable dynamically. i.e. it can be re-used for interactive environments and so on.
         // Avoid borrowing self.
         let self_implementation = Rc::clone(&self.implementation);
-        match &self_implementation.expression_forest.operations[&expression_id] {
+        match &self_implementation.expression_tree.values[&expression_id] {
             ExpressionOperation::FunctionCall(call) => {
                 let function_id = self.resolve(&call.function);
 
@@ -197,7 +197,7 @@ impl FunctionInterpreter<'_> {
                 )
             }
             ExpressionOperation::SetLocal(target) => {
-                let arguments = &self_implementation.expression_forest.arguments[&expression_id];
+                let arguments = &self_implementation.expression_tree.children[&expression_id];
                 assert_eq!(arguments.len(), 1);
                 let new_value = self.evaluate(arguments[0]).unwrap();
                 self.locals.insert(target.id.clone(), new_value);
@@ -213,14 +213,14 @@ impl FunctionInterpreter<'_> {
                 Some(Value { data: ptr, layout: string_layout })
             }
             ExpressionOperation::Block => {
-                let statements = &self_implementation.expression_forest.arguments[&expression_id];
+                let statements = &self_implementation.expression_tree.children[&expression_id];
                 for statement in statements.iter() {
                     self.evaluate(*statement);
                 }
                 None  // Unusual, but a block might be just used inside a block, or a function that has no return value.
             }
             ExpressionOperation::Return => {
-                let arguments = &self_implementation.expression_forest.arguments[&expression_id];
+                let arguments = &self_implementation.expression_tree.children[&expression_id];
 
                 // TODO Need a way to somehow bubble up to a 'named block'.
                 match &arguments[..] {
@@ -238,7 +238,7 @@ impl FunctionInterpreter<'_> {
     pub unsafe fn evaluate_arguments(&mut self, expression_id: ExpressionID) -> Vec<Value> {
         // Avoid borrowing self.
         let self_implementation = Rc::clone(&self.implementation);
-        self_implementation.expression_forest.arguments[&expression_id].iter()
+        self_implementation.expression_tree.children[&expression_id].iter()
             .map(|x| self.evaluate(*x).unwrap())
             .collect_vec()
     }
