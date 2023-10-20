@@ -126,7 +126,7 @@ pub fn create_ast(
     // Names for exported functions
     for implementation in explicit_functions.iter() {
         representations::find_for_function(
-            &mut representations.function_representations,
+            &mut representations.function_forms,
             &mut exports_namespace,
             implementation,
             &fn_representations[&implementation.head]
@@ -168,12 +168,12 @@ pub fn create_ast(
         for (field, getter) in struct_.field_getters.iter() {
             let ptr = &fn_representations[getter];
             namespace.insert_name(field.id, ptr.name.as_str());
-            representations.function_representations.insert(Rc::clone(getter), FunctionForm::GetMemberField(field.id));
+            representations.function_forms.insert(Rc::clone(getter), FunctionForm::GetMemberField(field.id));
         }
         for (field, getter) in struct_.field_setters.iter() {
-            representations.function_representations.insert(Rc::clone(getter), FunctionForm::SetMemberField(field.id));
+            representations.function_forms.insert(Rc::clone(getter), FunctionForm::SetMemberField(field.id));
         }
-        representations.function_representations.insert(Rc::clone(&struct_.constructor), FunctionForm::CallAsFunction);
+        representations.function_forms.insert(Rc::clone(&struct_.constructor), FunctionForm::CallAsFunction);
         representations.type_ids.insert(type_.clone(), struct_.trait_.id);
     }
 
@@ -182,7 +182,7 @@ pub fn create_ast(
         let representation = &fn_representations[&implementation.head];
 
         representations::find_for_function(
-            &mut representations.function_representations,
+            &mut representations.function_forms,
             &mut internals_namespace,
             implementation, representation
         )

@@ -11,7 +11,7 @@ use crate::transpiler::namespaces;
 #[derive(Clone)]
 pub struct Representations {
     pub builtin_functions: HashSet<Rc<FunctionHead>>,
-    pub function_representations: HashMap<Rc<FunctionHead>, FunctionForm>,
+    pub function_forms: HashMap<Rc<FunctionHead>, FunctionForm>,
     pub type_ids: HashMap<Box<TypeProto>, Uuid>,
 }
 
@@ -19,7 +19,7 @@ impl Representations {
     pub fn new() -> Representations {
         Representations {
             builtin_functions: Default::default(),
-            function_representations: Default::default(),
+            function_forms: Default::default(),
             type_ids: Default::default(),
         }
     }
@@ -39,17 +39,17 @@ pub enum FunctionForm {
     Binary(Uuid),
 }
 
-pub fn find_for_function(function_representations: &mut HashMap<Rc<FunctionHead>, FunctionForm>, global_namespace: &mut namespaces::Level, implementation: &Box<FunctionImplementation>, representation: &FunctionRepresentation) {
+pub fn find_for_function(forms: &mut HashMap<Rc<FunctionHead>, FunctionForm>, global_namespace: &mut namespaces::Level, implementation: &Box<FunctionImplementation>, representation: &FunctionRepresentation) {
     if implementation.parameter_locals.is_empty() {
         // TODO We could make a helper function and still use a constant even if we use blocks.
         let has_blocks = implementation.expression_tree.values.values().any(|op| matches!(op, ExpressionOperation::Block));
         if !has_blocks {
             global_namespace.insert_name(implementation.head.function_id, representation.name.as_str());
-            function_representations.insert(Rc::clone(&implementation.head), FunctionForm::Constant(implementation.head.function_id));
+            forms.insert(Rc::clone(&implementation.head), FunctionForm::Constant(implementation.head.function_id));
             return
         }
     }
 
     global_namespace.insert_name(implementation.head.function_id, representation.name.as_str());
-    function_representations.insert(Rc::clone(&implementation.head), FunctionForm::FunctionCall(implementation.head.function_id));
+    forms.insert(Rc::clone(&implementation.head), FunctionForm::FunctionCall(implementation.head.function_id));
 }

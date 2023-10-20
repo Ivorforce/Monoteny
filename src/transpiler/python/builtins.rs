@@ -122,7 +122,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
         };
 
         representations.builtin_functions.insert(Rc::clone(function));
-        representations.function_representations.insert(Rc::clone(function), representation);
+        representations.function_forms.insert(Rc::clone(function), representation);
     }
 
     for (struct_, id) in [
@@ -165,7 +165,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
 
         representations.builtin_functions.insert(Rc::clone(function));
         // By the time we need other representations hopefully we can use object namespaces
-        representations.function_representations.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
+        representations.function_forms.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
     }
 
     for function in runtime.source.module_by_name[&module_name("core.debug")].explicit_functions(&runtime.source) {
@@ -178,7 +178,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
         };
 
         representations.builtin_functions.insert(Rc::clone(function));
-        representations.function_representations.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
+        representations.function_forms.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
     }
 
     for function in runtime.source.module_by_name[&module_name("core.strings")].explicit_functions(&runtime.source) {
@@ -190,7 +190,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
         };
 
         representations.builtin_functions.insert(Rc::clone(function));
-        representations.function_representations.insert(Rc::clone(function), id);
+        representations.function_forms.insert(Rc::clone(function), id);
     }
 
     for function in runtime.source.module_by_name[&module_name("core.bool")].explicit_functions(&runtime.source) {
@@ -203,6 +203,6 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
         };
 
         representations.builtin_functions.insert(Rc::clone(function));
-        representations.function_representations.insert(Rc::clone(function), id);
+        representations.function_forms.insert(Rc::clone(function), id);
     }
 }

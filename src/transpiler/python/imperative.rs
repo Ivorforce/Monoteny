@@ -24,7 +24,7 @@ pub struct FunctionContext<'a> {
 }
 
 pub fn transpile_function(implementation: &FunctionImplementation, context: &FunctionContext) -> Box<ast::Statement> {
-    match &context.representations.function_representations[&implementation.head] {
+    match &context.representations.function_forms[&implementation.head] {
         FunctionForm::Constant(id) => {
             Box::new(ast::Statement::VariableAssignment {
                 target: Box::new(ast::Expression::NamedReference(context.names[id].clone())),
@@ -122,7 +122,7 @@ fn transpile_block(implementation: &&FunctionImplementation, context: &FunctionC
                 Box::new(ast::Statement::Return(value.map(|value| transpile_expression(*value, context))))
             }
             ExpressionOperation::FunctionCall(call) => {
-                match transpile_function_call(context, &call.function, &context.representations.function_representations[&call.function], *statement) {
+                match transpile_function_call(context, &call.function, &context.representations.function_forms[&call.function], *statement) {
                     Left(e) => Box::new(ast::Statement::Expression(e)),
                     Right(s) => s,
                 }
@@ -143,7 +143,7 @@ pub fn transpile_expression(expression_id: ExpressionID, context: &FunctionConte
             Box::new(ast::Expression::NamedReference(context.names[&variable.id].clone()))
         }
         ExpressionOperation::FunctionCall(call) => {
-            match transpile_function_call(context, &call.function, &context.representations.function_representations[&call.function], expression_id) {
+            match transpile_function_call(context, &call.function, &context.representations.function_forms[&call.function], expression_id) {
                 Left(e) => e,
                 Right(s) => panic!("Statement not supported in expression context.")
             }
