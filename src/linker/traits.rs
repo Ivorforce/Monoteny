@@ -12,9 +12,10 @@ use crate::parser::ast;
 use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
-use crate::program::global::FunctionLogicDescriptor;
+use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::TypeProto;
+use crate::source::StructInfo;
 use crate::util::fmt::fmta;
 
 pub struct TraitLinker<'a> {
@@ -76,15 +77,19 @@ impl <'a> TraitLinker<'a> {
     }
 }
 
-pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult<()> {
+pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult<Option<Rc<StructInfo>>> {
     let mut unaccounted_for_abstract_functions: HashSet<_> = trait_.abstract_functions.keys().collect();
     trait_.field_hints.iter().for_each(|hint| {
         [&hint.getter, &hint.setter].into_iter().flatten().map(|g| unaccounted_for_abstract_functions.remove(g)).collect_vec();
     });
 
     if !unaccounted_for_abstract_functions.is_empty() {
-        return Ok(())
+        return Ok(None)
     }
+
+    let mut field_names = HashMap::new();
+    let mut field_getters = HashMap::new();
+    let mut field_setters = HashMap::new();
 
     // Can be instantiated as a struct!
 
@@ -97,7 +102,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
             type_: TypeProto::one_arg(&linker.runtime.Metatype, struct_type.clone()),
         }
     ];
-    let mut parameter_mapping = vec![];
+    let mut fields = vec![];
 
     for abstract_field in trait_.field_hints.iter() {
         let variable_as_object = ObjectReference::new_immutable(abstract_field.type_.clone());
@@ -112,29 +117,13 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         // TODO Once generic types are supported, the variable type should be mapped to actual types
         if let Some(abstract_getter) = &abstract_field.getter {
             let struct_getter = struct_field.getter.clone().unwrap();
-            linker.runtime.source.fn_logic_descriptors.insert(
-                Rc::clone(&struct_getter),
-                FunctionLogicDescriptor::GetMemberField(Rc::clone(trait_), Rc::clone(&variable_as_object))
-            );
             function_mapping.insert(Rc::clone(abstract_getter), Rc::clone(&struct_getter));
-            linker.add_function_interface(
-                struct_getter,
-                FunctionRepresentation::new(&struct_field.name, FunctionForm::MemberImplicit),
-                &vec![])?
-            ;
+            field_getters.insert(Rc::clone(&variable_as_object), struct_getter);
         }
         if let Some(abstract_setter) = &abstract_field.setter {
             let struct_setter = struct_field.setter.clone().unwrap();
-            linker.runtime.source.fn_logic_descriptors.insert(
-                Rc::clone(&struct_setter),
-                FunctionLogicDescriptor::SetMemberField(Rc::clone(trait_), Rc::clone(&variable_as_object))
-            );
             function_mapping.insert(Rc::clone(abstract_setter), Rc::clone(&struct_setter));
-            linker.add_function_interface(
-                struct_setter,
-                FunctionRepresentation::new(&struct_field.name, FunctionForm::MemberImplicit),
-                &vec![]
-            )?;
+            field_getters.insert(Rc::clone(&variable_as_object), struct_setter);
         }
 
         parameters.push(Parameter {
@@ -142,7 +131,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
             internal_name: abstract_field.name.clone(),
             type_: abstract_field.type_.clone(),
         });
-        parameter_mapping.push(variable_as_object);
+        fields.push(variable_as_object);
     }
 
     let conformance = TraitConformance::new(
@@ -153,23 +142,59 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
     linker.module.trait_conformance.add_conformance_rule(conformance_rule.clone());
     linker.global_variables.trait_conformance.add_conformance_rule(conformance_rule);
 
-    let constructor = FunctionHead::new_static(
-        Rc::new(FunctionInterface {
-            parameters,
-            return_type: struct_type,
-            requirements: Default::default(),
-            generics: Default::default(),
-        }),
-    );
-    linker.runtime.source.fn_logic_descriptors.insert(
-        Rc::clone(&constructor),
-        FunctionLogicDescriptor::Constructor(Rc::clone(trait_), parameter_mapping)
+    let struct_ = Rc::new(StructInfo {
+        trait_: Rc::clone(trait_),
+        constructor: FunctionHead::new_static(
+            Rc::new(FunctionInterface {
+                parameters,
+                return_type: struct_type,
+                requirements: Default::default(),
+                generics: Default::default(),
+            }),
+        ),
+        fields,
+        field_names,
+        field_getters,
+        field_setters,
+    });
+
+    linker.runtime.source.fn_logic.insert(
+        Rc::clone(&struct_.constructor),
+        FunctionLogic::Descriptor(FunctionLogicDescriptor::Constructor(Rc::clone(&struct_)))
     );
     linker.add_function_interface(
-        constructor,
+        Rc::clone(&struct_.constructor),
         FunctionRepresentation::new("call_as_function", FunctionForm::MemberFunction),
         &vec![],
     )?;
 
-    Ok(())
+    for (ref_, head) in struct_.field_getters.iter() {
+        let name = &struct_.field_names[ref_];
+
+        linker.runtime.source.fn_logic.insert(
+            Rc::clone(head),
+            FunctionLogic::Descriptor(FunctionLogicDescriptor::GetMemberField(Rc::clone(&struct_), Rc::clone(ref_)))
+        );
+        linker.add_function_interface(
+            Rc::clone(head),
+            FunctionRepresentation::new(name, FunctionForm::MemberImplicit),
+            &vec![])?
+        ;
+    }
+
+    for (ref_, head) in struct_.field_setters.iter() {
+        let name = &struct_.field_names[ref_];
+
+        linker.runtime.source.fn_logic.insert(
+            Rc::clone(&head),
+            FunctionLogic::Descriptor(FunctionLogicDescriptor::SetMemberField(Rc::clone(&struct_), Rc::clone(ref_)))
+        );
+        linker.add_function_interface(
+            Rc::clone(head),
+            FunctionRepresentation::new(name, FunctionForm::MemberImplicit),
+            &vec![]
+        )?;
+    }
+
+    Ok(Some(struct_))
 }

@@ -5,7 +5,7 @@ use crate::linker::referencible;
 use crate::program::builtins::traits;
 use crate::program::builtins::traits::{FunctionPointer, make_to_string_function};
 use crate::program::functions::FunctionInterface;
-use crate::program::global::{FunctionLogicDescriptor, PrimitiveOperation};
+use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::Module;
 use crate::program::primitives;
 use crate::program::traits::{Trait, TraitConformanceRule};
@@ -47,9 +47,9 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
 
     let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module, runtime: &mut Runtime| {
         referencible::add_function(runtime, module, None, Rc::clone(&function.target), function.representation.clone());
-        runtime.source.fn_logic_descriptors.insert(
+        runtime.source.fn_logic.insert(
             Rc::clone(&function.target),
-            FunctionLogicDescriptor::PrimitiveOperation { type_: primitive_type, operation }
+            FunctionLogic::Descriptor(FunctionLogicDescriptor::PrimitiveOperation { type_: primitive_type, operation })
         );
     };
 

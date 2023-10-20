@@ -9,6 +9,7 @@ use crate::error::RResult;
 use crate::interpreter::{FunctionInterpreter, Runtime, RuntimeError};
 use crate::interpreter::allocation::Value;
 use crate::program::functions::FunctionHead;
+use crate::program::global::FunctionLogic;
 use crate::program::module::Module;
 use crate::program::traits::RequirementsFulfillment;
 use crate::transpiler::{TranspiledArtifact, Transpiler};
@@ -26,8 +27,8 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
         return Err(RuntimeError::new(format!("@main function has a return value.")));
     }
 
-    guard!(let Some(implementation) = runtime.source.fn_implementations.get(entry_function) else {
-        return Err(RuntimeError::new(format!("Cannot run @main function because it does not have a body.")));
+    guard!(let FunctionLogic::Implementation(implementation) = &runtime.source.fn_logic[entry_function] else {
+        return Err(RuntimeError::new(format!("Cannot run @main function because it is not implemented.")));
     });
 
     let mut interpreter = FunctionInterpreter {
@@ -53,7 +54,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     };
     assert!(entry_function.interface.return_type.unit.is_void(), "@transpile function has a return value.");
 
-    guard!(let Some(implementation) = runtime.source.fn_implementations.get(entry_function) else {
+    guard!(let FunctionLogic::Implementation(implementation) = &runtime.source.fn_logic[entry_function] else {
         return Err(RuntimeError::new(format!("Cannot run @transpile function because it does not have a body.")));
     });
 
@@ -70,9 +71,15 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     let callback = |function_head, runtime: &Runtime| {
         let mut transpiler = transpiler.borrow_mut();
         let transpiler = transpiler.deref_mut();
-        let implementation = runtime.source.fn_implementations[&function_head].clone();
 
-        transpiler.exported_artifacts.push(TranspiledArtifact::Function(implementation));
+        match &runtime.source.fn_logic[&function_head] {
+            FunctionLogic::Implementation(implementation) => {
+                transpiler.exported_artifacts.push(TranspiledArtifact::Function(implementation.clone()));
+            }
+            FunctionLogic::Descriptor(_) => {
+                panic!("Cannot transpile a function for which whe don't know an implementation!")
+            }
+        }
     };
 
     // Set the transpiler object.

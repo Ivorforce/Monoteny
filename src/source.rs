@@ -1,11 +1,24 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 use uuid::Uuid;
+use crate::program::allocation::ObjectReference;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
-use crate::program::global::{FunctionLogicDescriptor, FunctionImplementation};
+use crate::program::global::FunctionLogic;
 use crate::program::module::{Module, ModuleName};
 use crate::program::traits::Trait;
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct StructInfo {
+    pub trait_: Rc<Trait>,
+
+    pub constructor: Rc<FunctionHead>,
+    pub fields: Vec<Rc<ObjectReference>>,
+
+    pub field_names: HashMap<Rc<ObjectReference>, String>,
+    pub field_getters: HashMap<Rc<ObjectReference>, Rc<FunctionHead>>,
+    pub field_setters: HashMap<Rc<ObjectReference>, Rc<FunctionHead>>,
+}
 
 pub struct Source {
     pub module_by_name: HashMap<ModuleName, Box<Module>>,
@@ -16,17 +29,18 @@ pub struct Source {
     pub trait_references: HashMap<Rc<FunctionHead>, Rc<Trait>>,
     /// For referencible functions, the trait for it as an object.
     pub function_traits: HashMap<Rc<Trait>, Rc<FunctionHead>>,
+    /// For instantiatable traits, their struct info
+    pub struct_by_trait: HashMap<Rc<Trait>, Rc<StructInfo>>,
 
     /// For each function_id, its head.
     pub fn_heads: HashMap<Uuid, Rc<FunctionHead>>,
     /// For referencible functions, a way to load it. The getter itself does not get a getter.
     pub fn_getters: HashMap<Rc<FunctionHead>, Rc<FunctionHead>>,
-    /// For referencible functions, its 'default' representation for syntax.
+    
+    /// For all functions, the 'default' representation for syntax.
     pub fn_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
-    /// For relevant functions, their implementation.
-    pub fn_implementations: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
-    /// For relevant functions, a hint what type of core it is.
-    pub fn_logic_descriptors: HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>,
+    /// For all functions, their logic.
+    pub fn_logic: HashMap<Rc<FunctionHead>, FunctionLogic>,
 }
 
 impl Source {
@@ -35,11 +49,11 @@ impl Source {
             module_by_name: Default::default(),
             trait_references: Default::default(),
             function_traits: Default::default(),
+            struct_by_trait: Default::default(),
             fn_heads: Default::default(),
             fn_getters: Default::default(),
             fn_representations: Default::default(),
-            fn_implementations: Default::default(),
-            fn_logic_descriptors: Default::default(),
+            fn_logic: Default::default(),
         }
     }
 }

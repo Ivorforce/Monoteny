@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use uuid::Uuid;
-use crate::interpreter::Runtime;
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::python::ast;
 use crate::transpiler::python::representations::Representations;
@@ -8,8 +7,6 @@ use crate::transpiler::python::representations::Representations;
 pub struct ClassContext<'a> {
     pub names: &'a HashMap<Uuid, String>,
     pub representations: &'a Representations,
-
-    pub runtime: &'a Runtime,
 }
 
 pub fn transpile_class(type_def: &TypeProto, context: &ClassContext) -> Box<ast::Class> {

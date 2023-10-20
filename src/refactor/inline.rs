@@ -7,7 +7,13 @@ use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
-use crate::refactor::InlineHint;
+
+#[derive(Clone, Debug)]
+pub enum InlineHint {
+    ReplaceCall(Rc<FunctionHead>, Vec<usize>),
+    YieldParameter(usize),
+    NoOp,
+}
 
 pub fn try_inline(implementation: &FunctionImplementation) -> Option<InlineHint> {
     if !implementation.requirements_assumption.conformance.is_empty() {

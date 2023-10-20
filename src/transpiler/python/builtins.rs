@@ -3,7 +3,7 @@ use std::rc::Rc;
 use guard::guard;
 use strum::IntoEnumIterator;
 use crate::interpreter::Runtime;
-use crate::program::global::{FunctionLogicDescriptor, PrimitiveOperation};
+use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::module_name;
 use crate::program::primitives;
 use crate::program::types::TypeProto;
@@ -37,7 +37,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     // The operators can normally be referenced as operators (which the transpiler does do).
     // However, if a reference is required, we need to resort to another strategy.
     for function in runtime.source.module_by_name[&module_name("builtins")].explicit_functions(&runtime.source) {
-        guard!(let Some(descriptor) = runtime.source.fn_logic_descriptors.get(function) else {
+        guard!(let Some(FunctionLogic::Descriptor(descriptor)) = runtime.source.fn_logic.get(function) else {
             continue;
         });
 
@@ -115,9 +115,10 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
                 }
             }
 
-            FunctionLogicDescriptor::Constructor(_, _) => continue,
+            FunctionLogicDescriptor::Constructor(_) => continue,
             FunctionLogicDescriptor::GetMemberField(_, _) => continue,
             FunctionLogicDescriptor::SetMemberField(_, _) => continue,
+            FunctionLogicDescriptor::Stub => continue,
         };
 
         representations.builtin_functions.insert(Rc::clone(function));

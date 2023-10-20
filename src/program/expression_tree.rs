@@ -8,7 +8,7 @@ use crate::program::generics::GenericAlias;
 pub type ExpressionID = GenericAlias;
 
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum ExpressionOperation {
     // TODO Blocks are a tough one to transpile as no language supports yields.
     //  They will probably have to be inlined as a variable, like e.g.:

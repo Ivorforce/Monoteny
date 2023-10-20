@@ -2,7 +2,7 @@ use std::rc::Rc;
 use crate::program::functions::FunctionHead;
 use crate::program::traits::RequirementsFulfillment;
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct FunctionBinding {
     pub function: Rc<FunctionHead>,
     pub requirements_fulfillment: Rc<RequirementsFulfillment>,

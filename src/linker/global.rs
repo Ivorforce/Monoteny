@@ -20,6 +20,7 @@ use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::generics::TypeForest;
+use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
 use crate::program::types::*;
 use crate::util::position::Positioned;
@@ -62,7 +63,7 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runt
 
         match resolver.link_function_body(&pbody.value, &global_variable_scope) {
             Ok(implementation) => {
-                runtime.source.fn_implementations.insert(Rc::clone(&head), implementation);
+                runtime.source.fn_logic.insert(Rc::clone(&head), FunctionLogic::Implementation(implementation));
             }
             Err(e) => {
                 errors.extend(e.iter().map(|e| e.in_range(pbody.position.clone())));
@@ -88,18 +89,14 @@ impl <'a> GlobalLinker<'a> {
                 let scope = &self.global_variables;
                 let (fun, representation) = link_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &HashMap::new())?;
 
-                if let Some(body) = &syntax.body {
-                    self.schedule_function_body(Rc::clone(&fun), body, pstatement.position.clone());
-                }
+                self.schedule_function_body(&fun, syntax.body.as_ref(), pstatement.position.clone());
                 self.add_function_interface(fun, representation, &vec![])?;
             }
             ast::Statement::Operator(syntax) => {
                 let scope = &self.global_variables;
                 let (fun, representation) = link_operator_interface(&syntax, &scope, &self.runtime, requirements)?;
 
-                if let Some(body) = &syntax.body {
-                    self.schedule_function_body(Rc::clone(&fun), body, pstatement.position.clone());
-                }
+                self.schedule_function_body(&fun, syntax.body.as_ref(), pstatement.position.clone());
                 self.add_function_interface(fun, representation, &vec![])?;
             }
             ast::Statement::Trait(syntax) => {
@@ -178,9 +175,7 @@ impl <'a> GlobalLinker<'a> {
                 self.global_variables.trait_conformance.add_conformance_rule(rule);
 
                 for fun in linker.functions {
-                    if let Some(body) = &fun.body {
-                        self.schedule_function_body(Rc::clone(&fun.function), body, pstatement.position.clone());
-                    }
+                    self.schedule_function_body(&fun.function, fun.body.as_ref(), pstatement.position.clone());
                     self.add_function_interface(fun.function, fun.representation.clone(), &fun.decorators)?;
                 }
             }
@@ -267,10 +262,15 @@ impl <'a> GlobalLinker<'a> {
         Ok(())
     }
 
-    pub fn schedule_function_body(&mut self, head: Rc<FunctionHead>, body: &'a ast::Expression, range: Range<usize>) {
-        self.function_bodies.insert(Rc::clone(&head), Positioned {
-            value: body,
-            position: range
-        });
+    pub fn schedule_function_body(&mut self, head: &Rc<FunctionHead>, body: Option<&'a ast::Expression>, range: Range<usize>) {
+        if let Some(body) = body {
+            self.function_bodies.insert(Rc::clone(head), Positioned {
+                value: body,
+                position: range
+            });
+        }
+        else {
+            self.runtime.source.fn_logic.insert(Rc::clone(head), FunctionLogic::Descriptor(FunctionLogicDescriptor::Stub));
+        }
     }
 }

@@ -1,5 +1,6 @@
 use std::collections::hash_map::RandomState;
 use linked_hash_set::LinkedHashSet;
+use crate::program::global::FunctionLogic;
 use crate::refactor::{Refactor, locals};
 use crate::transpiler::Config;
 
@@ -25,7 +26,7 @@ impl<'a, 'b> Simplify<'a, 'b> {
     }
 
     pub fn run(&mut self) {
-        let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(self.refactor.implementation_by_head.keys().cloned());
+        let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(self.refactor.fn_logic.keys().cloned());
         while let Some(current) = next.pop_front() {
             let is_explicit = self.refactor.explicit_functions.contains(&current);
 
@@ -45,21 +46,22 @@ impl<'a, 'b> Simplify<'a, 'b> {
 
             // Try to remove unused parameters for the function.
             if self.trim_locals {
-                let implementation = &self.refactor.implementation_by_head[&current];
-                // TODO What if the parameters' setters call I/O functions?
-                //  We should only remove those that aren't involved in I/O. We can actually
-                //  remove any as long as they're not involved in I/O.
-                let mut remove = locals::find_unused_locals(implementation);
+                if let FunctionLogic::Implementation(implementation) = &self.refactor.fn_logic[&current] {
+                    // TODO What if the parameters' setters call I/O functions?
+                    //  We should only remove those that aren't involved in I/O. We can actually
+                    //  remove any as long as they're not involved in I/O.
+                    let mut remove = locals::find_unused_locals(implementation);
 
-                if is_explicit {
-                    // TODO Cannot change interface for now because it replaces the function head,
-                    //  which may be in use elsewhere.
-                    implementation.parameter_locals.iter().for_each(|l| _ = remove.remove(l));
-                }
+                    if is_explicit {
+                        // TODO Cannot change interface for now because it replaces the function head,
+                        //  which may be in use elsewhere.
+                        implementation.parameter_locals.iter().for_each(|l| _ = remove.remove(l));
+                    }
 
-                if !remove.is_empty() {
-                    next.extend(self.refactor.remove_locals(&current, &remove));
-                }
+                    if !remove.is_empty() {
+                        next.extend(self.refactor.remove_locals(&current, &remove));
+                    }
+                };
             }
         }
     }

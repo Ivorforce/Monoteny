@@ -15,9 +15,10 @@ use linked_hash_map::LinkedHashMap;
 use crate::error::RResult;
 use crate::transpiler;
 use crate::interpreter::Runtime;
+use crate::program::function_object::FunctionRepresentation;
 
 use crate::program::functions::FunctionHead;
-use crate::program::global::FunctionImplementation;
+use crate::program::global::{FunctionImplementation, FunctionLogic, FunctionLogicDescriptor};
 use crate::refactor::simplify::Simplify;
 use crate::refactor::Refactor;
 use crate::transpiler::{Config, namespaces, structs, TranspiledArtifact, Transpiler};
@@ -40,7 +41,8 @@ impl transpiler::LanguageContext for Context {
         for artifact in transpiler.exported_artifacts {
             match artifact {
                 TranspiledArtifact::Function(implementation) => {
-                    refactor.add(implementation);
+                    let representation = refactor.runtime.source.fn_representations[&implementation.head].clone();
+                    refactor.add(implementation, representation);
                 }
             }
         }
@@ -58,14 +60,31 @@ impl transpiler::LanguageContext for Context {
         let mut simplify = Simplify::new(&mut refactor, config);
         simplify.run();
 
+        // --- Reclaim from Refactor and make the ast
+
+        let deep_calls = refactor.call_graph.deep_calls(refactor.explicit_functions.iter());
+        let fn_representations = refactor.fn_representations;
+        let mut fn_logic = refactor.fn_logic;
+
         let exported_functions = refactor.explicit_functions.iter()
-            .map(|head| refactor.implementation_by_head.remove(head).unwrap())
-            .collect_vec();
-        // TODO This could also tell us which internal functions are needed!
-        let internal_functions = refactor.call_graph.deep_calls(refactor.explicit_functions.iter()).iter()
-            .filter_map(|head| refactor.implementation_by_head.remove(head))
-            .collect_vec();
-        let ast = create_ast(transpiler.main_function, exported_functions, internal_functions, self, runtime)?;
+            .map(|head| fn_logic.remove(head).unwrap().to_implementation())
+            .try_collect()?;
+        let mut implicit_functions = vec![];
+        let mut internal_functions = HashMap::new();
+
+        for head in deep_calls {
+            // If it's an implementation, Refactor probably has it (although refactoring may have inlined to descriptors).
+            match fn_logic.remove(&head).unwrap() {
+                FunctionLogic::Implementation(i) => {
+                    implicit_functions.push(i);
+                }
+                FunctionLogic::Descriptor(d) => {
+                    internal_functions.insert(head, d);
+                }
+            }
+        }
+
+        let ast = create_ast(transpiler.main_function, &exported_functions, &implicit_functions, &internal_functions, &fn_representations, self)?;
 
         Ok(HashMap::from([
             (format!("{}.py", filename), ast.to_string())
@@ -83,7 +102,14 @@ pub fn create_context(runtime: &Runtime) -> Context {
     context
 }
 
-pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: Vec<Box<FunctionImplementation>>, internal_functions: Vec<Box<FunctionImplementation>>, context: &Context, runtime: &Runtime) -> RResult<Box<ast::Module>> {
+pub fn create_ast(
+    main_function: Option<Rc<FunctionHead>>,
+    explicit_functions: &Vec<Box<FunctionImplementation>>,
+    implicit_functions: &Vec<Box<FunctionImplementation>>,
+    internal_functions: &HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>,
+    fn_representations: &HashMap<Rc<FunctionHead>, FunctionRepresentation>,
+    context: &Context
+) -> RResult<Box<ast::Module>> {
     let mut representations = context.representations.clone();
     let builtin_structs: HashSet<_> = representations.type_ids.keys().cloned().collect();
 
@@ -98,36 +124,29 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
     // ================= Names ==================
 
     // Names for exported functions
-    for implementation in exported_functions.iter() {
-        let representation = &runtime.source.fn_representations[&implementation.head];
+    for implementation in explicit_functions.iter() {
         representations::find_for_function(
             &mut representations.function_representations,
             &mut exports_namespace,
-            implementation, representation.clone()
+            implementation,
+            &fn_representations[&implementation.head]
         )
     }
 
     // Names for exported structs
     let mut structs = LinkedHashMap::new();
     // TODO We only need to export structs that are mentioned in the interfaces of exported functions.
-    structs::find(&exported_functions, &runtime.source, &mut structs);
+    structs::find(explicit_functions, internal_functions, &mut structs);
     let exported_structs = structs.keys().cloned().collect_vec();
     for struct_ in structs.values() {
         exports_namespace.insert_name(struct_.trait_.id, struct_.trait_.name.as_str());
-    }
-
-    // Names for traits
-    // TODO This should not be used; instead we should monomorphize traits.
-    for (head, trait_) in runtime.source.trait_references.iter() {
-        exports_namespace.insert_name(trait_.id, trait_.name.as_str());
-        representations.function_representations.insert(Rc::clone(head), FunctionForm::Constant(trait_.id));
     }
 
     let mut internals_namespace = exports_namespace.add_sublevel();
 
     // We only really know from encountered calls which structs are left after monomorphization.
     // So let's just search the encountered calls.
-    for implementation in exported_functions.iter().chain(internal_functions.iter()) {
+    for implementation in explicit_functions.iter().chain(implicit_functions.iter()) {
         let function_namespace = internals_namespace.add_sublevel();
         // Map internal variable names
         for (ref_, name) in implementation.locals_names.iter() {
@@ -136,7 +155,7 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
     }
 
     // Internal struct names
-    structs::find(&internal_functions, &runtime.source, &mut structs);
+    structs::find(&implicit_functions, internal_functions, &mut structs);
     let internal_structs = structs.keys().filter(|s| !exported_structs.contains(s)).collect_vec();
     for type_ in internal_structs.iter() {
         let struct_ = &structs[*type_];
@@ -144,27 +163,28 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
     }
 
     // Other struct pertaining functions
-    for struct_ in structs.values() {
+    for (type_, struct_) in structs.iter() {
         let namespace = member_namespace.add_sublevel();
-        for (field, getter) in struct_.getters.iter() {
-            let ptr = &runtime.source.fn_representations[getter];
+        for (field, getter) in struct_.field_getters.iter() {
+            let ptr = &fn_representations[getter];
             namespace.insert_name(field.id, ptr.name.as_str());
             representations.function_representations.insert(Rc::clone(getter), FunctionForm::GetMemberField(field.id));
         }
-        for (field, getter) in struct_.setters.iter() {
+        for (field, getter) in struct_.field_setters.iter() {
             representations.function_representations.insert(Rc::clone(getter), FunctionForm::SetMemberField(field.id));
         }
         representations.function_representations.insert(Rc::clone(&struct_.constructor), FunctionForm::CallAsFunction);
-        representations.type_ids.insert(struct_.type_.clone(), struct_.trait_.id);
+        representations.type_ids.insert(type_.clone(), struct_.trait_.id);
     }
 
     // Internal / generated functions
-    for implementation in internal_functions.iter() {
-        let representation = &runtime.source.fn_representations[&implementation.head];
+    for implementation in implicit_functions.iter() {
+        let representation = &fn_representations[&implementation.head];
+
         representations::find_for_function(
             &mut representations.function_representations,
             &mut internals_namespace,
-            implementation, representation.clone()
+            implementation, representation
         )
     }
 
@@ -181,19 +201,18 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
         main_function: main_function.map(|head| names[&head.function_id].clone())
     });
 
-    for struct_ in structs.values() {
-        if builtin_structs.contains(&struct_.type_) {
+    for (type_, struct_) in structs.iter() {
+        if builtin_structs.contains(type_) {
             continue
         }
 
         let context = ClassContext {
             names: &names,
-            runtime,
             representations: &representations,
         };
 
-        let statement = Box::new(Statement::Class(transpile_class(&struct_.type_, &context)));
-        let id = &representations.type_ids[&struct_.type_];
+        let statement = Box::new(Statement::Class(transpile_class(type_, &context)));
+        let id = &representations.type_ids[type_];
 
         // TODO Only classes used in the interface of exported functions should be exported.
         //  Everything else is an internal class.
@@ -202,16 +221,16 @@ pub fn create_ast(main_function: Option<Rc<FunctionHead>>, exported_functions: V
     }
 
     for (implementations, is_exported) in [
-        (&exported_functions, true),
-        (&internal_functions, false),
+        (&explicit_functions, true),
+        (&implicit_functions, false),
     ] {
         for implementation in implementations.iter() {
             let context = FunctionContext {
                 names: &names,
                 expressions: &implementation.expression_tree,
                 types: &implementation.type_forest,
-                runtime,
                 representations: &representations,
+                logic: internal_functions,
             };
 
             let transpiled = transpile_function(implementation, &context);

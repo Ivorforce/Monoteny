@@ -5,7 +5,6 @@ use itertools::{Either, Itertools, zip_eq};
 use itertools::Either::{Left, Right};
 use uuid::Uuid;
 use regex;
-use crate::interpreter::Runtime;
 use crate::program::expression_tree::*;
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::TypeForest;
@@ -17,8 +16,8 @@ use crate::util::strings;
 pub struct FunctionContext<'a> {
     pub names: &'a HashMap<Uuid, String>,
 
-    pub runtime: &'a Runtime,
     pub representations: &'a Representations,
+    pub logic: &'a HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>,
 
     pub expressions: &'a ExpressionTree,
     pub types: &'a TypeForest,
@@ -236,7 +235,7 @@ fn transpile_function_call(context: &FunctionContext, function: &Rc<FunctionHead
 }
 
 pub fn try_transpile_optimization(function: &Rc<FunctionHead>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Option<Box<ast::Expression>> {
-    guard!(let Some(descriptor) = context.runtime.source.fn_logic_descriptors.get(function) else {
+    guard!(let Some(descriptor) = context.logic.get(function) else {
         return None;
     });
 
