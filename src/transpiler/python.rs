@@ -35,6 +35,16 @@ pub struct Context {
 }
 
 impl transpiler::LanguageContext for Context {
+    fn new(runtime: &Runtime) -> Self {
+        let mut context = Context {
+            representations: Representations::new(),
+            builtin_global_namespace: namespaces::Level::new(),
+            builtin_member_namespace: namespaces::Level::new(),
+        };
+        builtins::register_global(runtime, &mut context);
+        context
+    }
+
     fn make_files(&self, filename: &str, runtime: &mut Runtime, transpiler: Box<Transpiler>, config: &Config) -> RResult<HashMap<String, String>> {
         let mut refactor = Refactor::new(runtime);
 
@@ -90,16 +100,6 @@ impl transpiler::LanguageContext for Context {
             (format!("{}.py", filename), ast.to_string())
         ]))
     }
-}
-
-pub fn create_context(runtime: &Runtime) -> Context {
-    let mut context = Context {
-        representations: Representations::new(),
-        builtin_global_namespace: namespaces::Level::new(),
-        builtin_member_namespace: namespaces::Level::new(),
-    };
-    builtins::register_global(runtime, &mut context);
-    context
 }
 
 pub fn create_ast(

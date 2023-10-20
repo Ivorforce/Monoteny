@@ -189,11 +189,15 @@ fn main() -> ExitCode {
     }
 }
 
+fn create_context(runtime: &Runtime, extension: &str) -> Box<dyn LanguageContext> {
+    match extension {
+        "py" => Box::new(transpiler::python::Context::new(runtime)),
+        _ => panic!("File type not supported: {}", extension)
+    }
+}
+
 fn transpile_target(base_filename: &str, base_output_path: &Path, config: &transpiler::Config, mut runtime: &mut Box<Runtime>, module: &Box<Module>, output_extension: &str) -> RResult<Vec<PathBuf>> {
-    let mut context = match output_extension {
-        "py" => transpiler::python::create_context(&runtime),
-        output_extension => panic!("File type not supported: {}", output_extension)
-    };
+    let mut context = create_context(&runtime, output_extension);
 
     let transpiler = interpreter::run::transpile(&module, &mut runtime)?;
 

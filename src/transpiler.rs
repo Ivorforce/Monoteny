@@ -29,5 +29,6 @@ pub struct Transpiler {
 }
 
 pub trait LanguageContext {
+    fn new(runtime: &Runtime) -> Self where Self: Sized;
     fn make_files(&self, filename: &str, runtime: &mut Runtime, transpiler: Box<Transpiler>, config: &Config) -> RResult<HashMap<String, String>>;
 }
