@@ -29,6 +29,7 @@ use crate::error::{dump_failure, dump_named_failure, dump_result, dump_start, du
 use crate::interpreter::Runtime;
 use crate::program::module::{Module, module_name};
 use crate::transpiler::LanguageContext;
+use crate::util::file_writer::write_file_safe;
 
 
 fn cli() -> Command<'static> {
@@ -203,11 +204,7 @@ fn transpile_target(base_filename: &str, base_output_path: &Path, config: &trans
 
     let file_map = context.make_files(base_filename, runtime, transpiler, config)?;
     let output_files = file_map.into_iter().map(|(filename, content)| {
-        let file_path = base_output_path.join(filename);
-        let mut f = File::create(file_path.clone()).expect("Unable to create file");
-        let f: &mut (dyn Write) = &mut f;
-        write!(f, "{}", content).expect("Error writing file");
-        file_path
+        write_file_safe(base_output_path, &filename, &content)
     }).collect_vec();
     Ok(output_files)
 }
