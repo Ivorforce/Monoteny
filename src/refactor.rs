@@ -3,22 +3,22 @@ pub mod monomorphize;
 pub mod inline;
 pub mod locals;
 pub mod analyze;
+pub mod call_graph;
 
 use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
-use linked_hash_set::LinkedHashSet;
 use crate::interpreter::Runtime;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::functions::{FunctionHead, FunctionType};
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
+use crate::refactor::call_graph::CallGraph;
 use crate::refactor::inline::{inline_calls, try_inline};
 use crate::refactor::monomorphize::Monomorphize;
-use crate::util::multimap::{insert_into_multimap, remove_from_multimap};
 
 
 #[derive(Clone, Debug)]
@@ -35,8 +35,7 @@ pub struct Refactor<'a> {
     pub invented_functions: HashSet<Rc<FunctionHead>>,
 
     pub implementation_by_head: HashMap<Rc<FunctionHead>, Box<FunctionImplementation>>,
-    pub callers: HashMap<Rc<FunctionHead>, HashSet<Rc<FunctionHead>>>,
-    pub callees: HashMap<Rc<FunctionHead>, LinkedHashSet<Rc<FunctionHead>>>,
+    pub call_graph: CallGraph,
 
     pub inline_hints: HashMap<Rc<FunctionHead>, InlineHint>,
 
@@ -50,8 +49,7 @@ impl<'a> Refactor<'a> {
             implementation_by_head: Default::default(),
             explicit_functions: vec![],
             invented_functions: HashSet::new(),
-            callers: Default::default(),
-            callees: Default::default(),
+            call_graph: CallGraph::new(),
             inline_hints: Default::default(),
             monomorphize: Monomorphize::new(),
         }
@@ -73,16 +71,7 @@ impl<'a> Refactor<'a> {
     }
 
     pub fn update_callees(&mut self, head: &Rc<FunctionHead>) {
-        if let Some(previous_callees) = self.callees.get(head) {
-            for previous_callee in previous_callees.iter() {
-                remove_from_multimap(&mut self.callers, previous_callee, head);
-            }
-        }
-        let new_callees = analyze::gather_callees(&self.implementation_by_head[head]);
-        for callee in new_callees.iter() {
-            insert_into_multimap(&mut self.callers, Rc::clone(callee), Rc::clone(head));
-        }
-        self.callees.insert(Rc::clone(head), new_callees);
+        self.call_graph.change_callees(head, analyze::gather_callees(&self.implementation_by_head[head]));
     }
 
     pub fn try_inline(&mut self, head: &Rc<FunctionHead>) -> Result<HashSet<Rc<FunctionHead>>, ()> {
@@ -104,7 +93,7 @@ impl<'a> Refactor<'a> {
     }
 
     pub fn apply_inline(&mut self, head: &Rc<FunctionHead>) -> HashSet<Rc<FunctionHead>> {
-        let affected = self.callers.get(head).cloned().unwrap_or(HashSet::new());
+        let affected = self.call_graph.callers.get(head).cloned().unwrap_or(HashSet::new());
         for caller in affected.iter() {
             self.inline_calls(caller);
         }
@@ -216,20 +205,6 @@ impl<'a> Refactor<'a> {
     fn copy_quirks_source(&mut self, from: &Rc<FunctionHead>, to: &Rc<FunctionHead>) {
         self.runtime.source.fn_representations.get(from).cloned().map(|rep| self.runtime.source.fn_representations.insert(Rc::clone(to), rep));
         self.runtime.source.fn_logic_descriptors.get(from).cloned().map(|hint| self.runtime.source.fn_logic_descriptors.insert(Rc::clone(to), hint));
-    }
-
-    pub fn required_functions(&self) -> LinkedHashSet<Rc<FunctionHead>> {
-        let mut next = self.explicit_functions.iter().collect_vec();
-        let mut gathered = LinkedHashSet::new();
-        while let Some(current) = next.pop() {
-            assert!(!self.inline_hints.contains_key(current), "Internal error; forgot to inline a function call.");
-            guard!(let Some(callees) = self.callees.get(current) else {
-                continue  // Probably an internal function
-            });
-            gathered.extend(callees.iter().cloned());
-            next.extend(callees.iter())
-        }
-        gathered
     }
 }
 

@@ -58,9 +58,13 @@ impl transpiler::LanguageContext for Context {
         let mut simplify = Simplify::new(&mut refactor, config);
         simplify.run();
 
-        let exported_functions = refactor.explicit_functions.iter().map(|head| refactor.implementation_by_head.remove(head).unwrap()).collect_vec();
+        let exported_functions = refactor.explicit_functions.iter()
+            .map(|head| refactor.implementation_by_head.remove(head).unwrap())
+            .collect_vec();
         // TODO This could also tell us which internal functions are needed!
-        let internal_functions = refactor.required_functions().iter().filter_map(|head| refactor.implementation_by_head.remove(head)).collect_vec();
+        let internal_functions = refactor.call_graph.deep_calls(refactor.explicit_functions.iter()).iter()
+            .filter_map(|head| refactor.implementation_by_head.remove(head))
+            .collect_vec();
         let ast = create_ast(transpiler.main_function, exported_functions, internal_functions, self, runtime)?;
 
         Ok(HashMap::from([
