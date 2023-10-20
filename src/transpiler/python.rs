@@ -219,7 +219,7 @@ pub fn create_ast(
         // TODO Only classes used in the interface of exported functions should be exported.
         //  Everything else is an internal class.
         module.exported_statements.push(statement);
-        module.exported_names.insert(context.names[id].clone());
+        module.exported_names.insert(names[id].clone());
     }
 
     for (implementations, is_exported) in [
@@ -238,7 +238,7 @@ pub fn create_ast(
             let transpiled = transpile_function(implementation, &context);
 
             if is_exported {
-                module.exported_names.insert(context.names[&implementation.head.function_id].clone());
+                module.exported_names.insert(names[&implementation.head.function_id].clone());
                 module.exported_statements.push(transpiled);
             }
             else {
