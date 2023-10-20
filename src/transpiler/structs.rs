@@ -10,7 +10,7 @@ use crate::program::types::TypeProto;
 
 pub fn find_in_interfaces(heads: impl Iterator<Item=Rc<FunctionHead>>, map: &mut LinkedHashMap<Box<TypeProto>, Rc<StructInfo>>) {
     for head in heads {
-        for type_ in head.interface.parameters.iter().map(|p| &p.type_).chain(&head.interface.return_type) {
+        for type_ in head.interface.parameters.iter().map(|p| &p.type_).chain([&head.interface.return_type].into_iter()) {
             todo!("From the type we SHOULD be able to deduce the struct info, but we can't for now.")
         }
     }
