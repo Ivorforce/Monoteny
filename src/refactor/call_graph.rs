@@ -36,7 +36,7 @@ impl CallGraph {
         let mut gathered = LinkedHashSet::new();
         while let Some(current) = next.pop() {
             guard!(let Some(callees) = self.callees.get(current) else {
-                continue  // Probably an internal function
+                continue
             });
             gathered.extend(callees.iter().cloned());
             next.extend(callees.iter())

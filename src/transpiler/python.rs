@@ -51,20 +51,20 @@ impl transpiler::LanguageContext for Context {
         for artifact in transpiler.exported_artifacts {
             match artifact {
                 TranspiledArtifact::Function(implementation) => {
-                    let representation = refactor.runtime.source.fn_representations[&implementation.head].clone();
+                    let head = Rc::clone(&implementation.head);
+                    let representation = refactor.runtime.source.fn_representations[&head].clone();
+
                     refactor.add(implementation, representation);
+
+                    if config.should_monomorphize {
+                        refactor.monomorphize_calls(head, &|binding| !self.representations.builtin_functions.contains(&binding.function));
+                    }
+                    else {
+                        todo!("lots of reasons non-monomorphization doesn't work right now")
+                    }
+
                 }
             }
-        }
-
-        if config.should_monomorphize {
-            let builtin_functions = self.representations.builtin_functions.clone();
-            for head in refactor.explicit_functions.iter().cloned().collect_vec() {
-                _ = refactor.monomorphize(head, &|binding| !builtin_functions.contains(&binding.function))
-            }
-        }
-        else {
-            todo!()
         }
 
         let mut simplify = Simplify::new(&mut refactor, config);
@@ -72,6 +72,7 @@ impl transpiler::LanguageContext for Context {
 
         // --- Reclaim from Refactor and make the ast
 
+        // TODO The call_graph doesn't know about calls made outside the refactor. If there was no monomorphization, some functions may not even be caught by this.
         let deep_calls = refactor.call_graph.deep_calls(refactor.explicit_functions.iter());
         let fn_representations = refactor.fn_representations;
         let mut fn_logic = refactor.fn_logic;

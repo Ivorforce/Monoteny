@@ -123,7 +123,7 @@ impl<'a> Refactor<'a> {
         }
     }
 
-    pub fn monomorphize(&mut self, head: Rc<FunctionHead>, should_monomorphize: &impl Fn(&Rc<FunctionBinding>) -> bool) -> HashSet<Rc<FunctionHead>> {
+    pub fn monomorphize_calls(&mut self, head: Rc<FunctionHead>, should_monomorphize: &impl Fn(&Rc<FunctionBinding>) -> bool) -> HashSet<Rc<FunctionHead>> {
         guard!(let Some(FunctionLogic::Implementation(implementation)) = self.fn_logic.get_mut(&head) else {
             panic!();
         });
