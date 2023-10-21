@@ -152,14 +152,14 @@ impl Monomorphize {
     }
 }
 
-pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMap<Rc<Trait>, Box<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, (Rc<RequirementsFulfillment>, Rc<FunctionHead>)>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
+pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, (Rc<RequirementsFulfillment>, Rc<FunctionHead>)>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
     let default_pair = (RequirementsFulfillment::empty(), Rc::clone(&call.function));
     let (mapped_function_tail, mapped_function) = function_replacement_map.get(&call.function)
         .unwrap_or(&default_pair);
 
     let full_conformance = RequirementsFulfillment::merge(&call.requirements_fulfillment, mapped_function_tail);
 
-    let generic_replacement_map: HashMap<Rc<Trait>, Box<TypeProto>> = full_conformance.generic_mapping.iter().map(|(trait_, type_)| {
+    let generic_replacement_map: HashMap<Rc<Trait>, Rc<TypeProto>> = full_conformance.generic_mapping.iter().map(|(trait_, type_)| {
         (Rc::clone(trait_), type_forest.resolve_type(type_).unwrap().replacing_structs(generic_replacement_map))
     }).collect();
 
@@ -209,7 +209,7 @@ pub fn monomorphize_call(call: &Rc<FunctionBinding>) -> Rc<FunctionBinding> {
     })
 }
 
-pub fn map_variable(variable: &ObjectReference, type_forest: &TypeForest, type_replacement_map: &HashMap<Rc<Trait>, Box<TypeProto>>) -> Rc<ObjectReference> {
+pub fn map_variable(variable: &ObjectReference, type_forest: &TypeForest, type_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>) -> Rc<ObjectReference> {
     Rc::new(ObjectReference {
         id: variable.id.clone(),
         type_: type_forest.resolve_type(&variable.type_).unwrap().replacing_structs(type_replacement_map),
@@ -217,7 +217,7 @@ pub fn map_variable(variable: &ObjectReference, type_forest: &TypeForest, type_r
     })
 }
 
-pub fn map_interface_types(interface: &FunctionInterface, mapping: &HashMap<Rc<Trait>, Box<TypeProto>>) -> FunctionInterface {
+pub fn map_interface_types(interface: &FunctionInterface, mapping: &HashMap<Rc<Trait>, Rc<TypeProto>>) -> FunctionInterface {
     FunctionInterface {
         parameters: interface.parameters.iter().map(|x| Parameter {
             external_key: x.external_key.clone(),

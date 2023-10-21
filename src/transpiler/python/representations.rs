@@ -12,7 +12,7 @@ use crate::transpiler::namespaces;
 pub struct Representations {
     pub builtin_functions: HashSet<Rc<FunctionHead>>,
     pub function_forms: HashMap<Rc<FunctionHead>, FunctionForm>,
-    pub type_ids: HashMap<Box<TypeProto>, Uuid>,
+    pub type_ids: HashMap<Rc<TypeProto>, Uuid>,
 }
 
 impl Representations {

@@ -11,7 +11,7 @@ use crate::util::fmt::write_comma_separated_list_debug;
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TypeProto {
     pub unit: TypeUnit,
-    pub arguments: Vec<Box<TypeProto>>
+    pub arguments: Vec<Rc<TypeProto>>
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -57,50 +57,50 @@ impl Debug for TypeUnit {
 }
 
 impl TypeProto {
-    pub fn void() -> Box<TypeProto> {
+    pub fn void() -> Rc<TypeProto> {
         TypeProto::unit(TypeUnit::Void)
     }
 
-    pub fn unit(unit: TypeUnit) -> Box<TypeProto> {
-        Box::new(TypeProto { unit, arguments: vec![] })
+    pub fn unit(unit: TypeUnit) -> Rc<TypeProto> {
+        Rc::new(TypeProto { unit, arguments: vec![] })
     }
 
-    pub fn one_arg(trait_: &Rc<Trait>, subtype: Box<TypeProto>) -> Box<TypeProto> {
-        Box::new(TypeProto {
+    pub fn one_arg(trait_: &Rc<Trait>, subtype: Rc<TypeProto>) -> Rc<TypeProto> {
+        Rc::new(TypeProto {
             unit: TypeUnit::Struct(Rc::clone(trait_)),
             arguments: vec![subtype]
         })
     }
 
-    pub fn unit_struct(trait_: &Rc<Trait>) -> Box<TypeProto> {
+    pub fn unit_struct(trait_: &Rc<Trait>) -> Rc<TypeProto> {
         TypeProto::unit(TypeUnit::Struct(Rc::clone(trait_)))
     }
 
-    pub fn replacing_generics(&self, map: &HashMap<Uuid, Box<TypeProto>>) -> Box<TypeProto> {
+    pub fn replacing_generics(self: &Rc<TypeProto>, map: &HashMap<Uuid, Rc<TypeProto>>) -> Rc<TypeProto> {
         match &self.unit {
             TypeUnit::Generic(id) => map.get(id)
-                .map(|x| x.clone())
-                .unwrap_or_else(|| Box::new(self.clone())),
-            _ => Box::new(TypeProto {
+                .cloned()
+                .unwrap_or_else(|| self.clone()),
+            _ => Rc::new(TypeProto {
                 unit: self.unit.clone(),
                 arguments: self.arguments.iter().map(|x| x.replacing_generics(map)).collect()
             }),
         }
     }
 
-    pub fn replacing_structs(&self, map: &HashMap<Rc<Trait>, Box<TypeProto>>) -> Box<TypeProto> {
+    pub fn replacing_structs(self: &Rc<TypeProto>, map: &HashMap<Rc<Trait>, Rc<TypeProto>>) -> Rc<TypeProto> {
         match &self.unit {
             TypeUnit::Struct(struct_) => map.get(struct_)
-                .map(|x| x.clone())
-                .unwrap_or_else(|| Box::new(self.clone())),
-            _ => Box::new(TypeProto {
+                .cloned()
+                .unwrap_or_else(|| self.clone()),
+            _ => Rc::new(TypeProto {
                 unit: self.unit.clone(),
                 arguments: self.arguments.iter().map(|x| x.replacing_structs(map)).collect()
             }),
         }
     }
 
-    pub fn collect_generics<'a, C>(collection: C) -> HashSet<Uuid> where C: Iterator<Item=&'a Box<TypeProto>> {
+    pub fn collect_generics<'a, C>(collection: C) -> HashSet<Uuid> where C: Iterator<Item=&'a Rc<TypeProto>> {
         let mut anys = HashSet::new();
         let mut todo = collection.collect_vec();
 
@@ -115,7 +115,7 @@ impl TypeProto {
         anys
     }
 
-    pub fn contains_generics<'a, C>(collection: C) -> bool where C: Iterator<Item=&'a Box<TypeProto>> {
+    pub fn contains_generics<'a, C>(collection: C) -> bool where C: Iterator<Item=&'a Rc<TypeProto>> {
         let mut todo = collection.collect_vec();
 
         while let Some(next) = todo.pop() {

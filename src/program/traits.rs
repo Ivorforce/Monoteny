@@ -37,7 +37,7 @@ pub struct Trait {
 #[derive(Clone)]
 pub struct FieldHint {
     pub name: String,
-    pub type_: Box<TypeProto>,
+    pub type_: Rc<TypeProto>,
     pub setter: Option<Rc<FunctionHead>>,
     pub getter: Option<Rc<FunctionHead>>,
 }
@@ -49,7 +49,7 @@ pub struct TraitBinding {
     pub trait_: Rc<Trait>,
 
     /// A mapping from each of the trait's generics to some type.
-    pub generic_to_type: HashMap<Rc<Trait>, Box<TypeProto>>,
+    pub generic_to_type: HashMap<Rc<Trait>, Rc<TypeProto>>,
 }
 
 /// How a trait binding is fulfilled.
@@ -112,7 +112,7 @@ pub struct RequirementsAssumption {
 pub struct RequirementsFulfillment {
     // Requirement: (tail, conformance)
     pub conformance: HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>,
-    pub generic_mapping: HashMap<Rc<Trait>, Box<TypeProto>>,
+    pub generic_mapping: HashMap<Rc<Trait>, Rc<TypeProto>>,
 }
 
 impl TraitGraph {
@@ -256,7 +256,7 @@ impl TraitGraph {
         }
     }
 
-    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, generics_map: &HashMap<Rc<Trait>, Box<TypeProto>>, mapping: &TypeForest) -> RResult<AmbiguityResult<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>>> {
+    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, generics_map: &HashMap<Rc<Trait>, Rc<TypeProto>>, mapping: &TypeForest) -> RResult<AmbiguityResult<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>>> {
         let mut conformance = HashMap::new();
 
         for requirement in self.gather_deep_requirements(requirements.iter().cloned()) {
@@ -354,11 +354,11 @@ impl Trait {
         }
     }
 
-    pub fn create_generic_type(self: &Trait, generic_name: &str) -> Box<TypeProto> {
+    pub fn create_generic_type(self: &Trait, generic_name: &str) -> Rc<TypeProto> {
         TypeProto::unit_struct(&self.generics[generic_name])
     }
 
-    pub fn create_generic_binding(self: &Rc<Trait>, generic_to_type: Vec<(&str, Box<TypeProto>)>) -> Rc<TraitBinding> {
+    pub fn create_generic_binding(self: &Rc<Trait>, generic_to_type: Vec<(&str, Rc<TypeProto>)>) -> Rc<TraitBinding> {
         Rc::new(TraitBinding {
             trait_: Rc::clone(self),
             generic_to_type: HashMap::from_iter(
@@ -380,14 +380,14 @@ impl Trait {
 }
 
 impl TraitBinding {
-    pub fn mapping_types(&self, map: &dyn Fn(&Box<TypeProto>) -> Box<TypeProto>) -> Rc<TraitBinding> {
+    pub fn mapping_types(&self, map: &dyn Fn(&Rc<TypeProto>) -> Rc<TypeProto>) -> Rc<TraitBinding> {
         Rc::new(TraitBinding {
             trait_: Rc::clone(&self.trait_),
             generic_to_type: self.generic_to_type.iter().map(|(generic, type_) | (Rc::clone(generic), map(type_))).collect()
         })
     }
 
-    pub fn try_mapping_types<B>(&self, map: &dyn Fn(&Box<TypeProto>) -> Result<Box<TypeProto>, B>) -> Result<Rc<TraitBinding>, B> {
+    pub fn try_mapping_types<B>(&self, map: &dyn Fn(&Rc<TypeProto>) -> Result<Rc<TypeProto>, B>) -> Result<Rc<TraitBinding>, B> {
         Ok(Rc::new(TraitBinding {
             trait_: Rc::clone(&self.trait_),
             generic_to_type: self.generic_to_type.iter().map(|(generic, type_) | Ok((Rc::clone(generic), map(type_)?))).try_collect()?

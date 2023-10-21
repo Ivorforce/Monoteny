@@ -52,26 +52,26 @@ impl TypeForest {
         self.identity_to_type.get(identity)
     }
 
-    pub fn resolve_type(&self, type_: &TypeProto) -> RResult<Box<TypeProto>> {
+    pub fn resolve_type(&self, type_: &TypeProto) -> RResult<Rc<TypeProto>> {
         match &type_.unit {
             TypeUnit::Generic(alias) => self.resolve_binding_alias(alias).map(|x| x.clone()),
-            _ => Ok(Box::new(TypeProto {
+            _ => Ok(Rc::new(TypeProto {
                 unit: type_.unit.clone(),
                 arguments: type_.arguments.iter().map(|x| self.resolve_type(x)).try_collect()?
             }))
         }
     }
 
-    pub fn resolve_binding_alias(&self, alias: &GenericAlias) -> RResult<Box<TypeProto>> {
+    pub fn resolve_binding_alias(&self, alias: &GenericAlias) -> RResult<Rc<TypeProto>> {
         guard!(let Some(identity) = self.alias_to_identity.get(alias) else {
             return Err(RuntimeError::new(format!("Unknown generic: {}", alias)))
         });
 
         guard!(let Some(binding) = self.identity_to_type.get(identity) else {
-            return Ok(Box::new(*TypeProto::unit(TypeUnit::Generic(*alias))))
+            return Ok(TypeProto::unit(TypeUnit::Generic(*alias)))
         });
 
-        return Ok(Box::new(TypeProto {
+        return Ok(Rc::new(TypeProto {
             unit: binding.clone(),
             arguments: self.identity_to_arguments.get(&identity).unwrap().iter()
                 .map(|x| self.resolve_binding_alias(x))
@@ -79,7 +79,7 @@ impl TypeForest {
         }))
     }
 
-    pub fn prototype_binding_alias(&self, alias: &GenericAlias) -> Box<TypeProto> {
+    pub fn prototype_binding_alias(&self, alias: &GenericAlias) -> Rc<TypeProto> {
         guard!(let Some(identity) = self.alias_to_identity.get(alias) else {
             return TypeProto::unit(TypeUnit::Generic(*alias));
         });
@@ -88,7 +88,7 @@ impl TypeForest {
             return TypeProto::unit(TypeUnit::Generic(*alias));
         });
 
-        return Box::new(TypeProto {
+        return Rc::new(TypeProto {
             unit: binding.clone(),
             arguments: self.identity_to_arguments.get(&identity).unwrap().iter()
                 .map(|x| self.prototype_binding_alias(x))
@@ -121,7 +121,7 @@ impl TypeForest {
         self.bind_identity(*identity, t)
     }
 
-    pub fn rebind_structs_as_generic(&mut self, structs: &HashMap<Rc<Trait>, Box<TypeProto>>) -> RResult<()>{
+    pub fn rebind_structs_as_generic(&mut self, structs: &HashMap<Rc<Trait>, Rc<TypeProto>>) -> RResult<()>{
         let map: HashMap<_, _> = structs.into_iter().map(|(struct_, type_)| {
             let identity = self._register(struct_.id);
             self.bind_identity(identity, type_)?;

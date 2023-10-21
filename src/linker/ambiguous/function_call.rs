@@ -17,10 +17,10 @@ use crate::program::types::TypeProto;
 
 pub struct AmbiguousFunctionCandidate {
     pub function: Rc<FunctionHead>,
-    pub generic_map: HashMap<Rc<Trait>, Box<TypeProto>>,
+    pub generic_map: HashMap<Rc<Trait>, Rc<TypeProto>>,
     // All these are seeded already
-    pub param_types: Vec<Box<TypeProto>>,
-    pub return_type: Box<TypeProto>,
+    pub param_types: Vec<Rc<TypeProto>>,
+    pub return_type: Rc<TypeProto>,
     pub requirements: Vec<Rc<TraitBinding>>,
 }
 

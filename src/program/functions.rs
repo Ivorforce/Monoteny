@@ -36,7 +36,7 @@ pub struct FunctionHead {
 pub struct Parameter {
     pub external_key: ParameterKey,
     pub internal_name: String,
-    pub type_: Box<TypeProto>,
+    pub type_: Rc<TypeProto>,
 }
 
 /// Machine interface of the function. Everything needed to call it.
@@ -45,7 +45,7 @@ pub struct FunctionInterface {
     /// Parameters to the function
     pub parameters: Vec<Parameter>,
     /// Type of what the function returns
-    pub return_type: Box<TypeProto>,
+    pub return_type: Rc<TypeProto>,
 
     /// Requirements for parameters and the return type.
     pub requirements: HashSet<Rc<TraitBinding>>,
@@ -55,7 +55,7 @@ pub struct FunctionInterface {
 }
 
 impl FunctionInterface {
-    pub fn new_provider<'a>(return_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitBinding>>) -> Rc<FunctionInterface> {
+    pub fn new_provider<'a>(return_type: &Rc<TypeProto>, requirements: Vec<&Rc<TraitBinding>>) -> Rc<FunctionInterface> {
         Rc::new(FunctionInterface {
             parameters: vec![],
             return_type: return_type.clone(),
@@ -64,7 +64,7 @@ impl FunctionInterface {
         })
     }
 
-    pub fn new_consumer<'a>(parameter_type: &Box<TypeProto>, requirements: Vec<&Rc<TraitBinding>>) -> Rc<FunctionInterface> {
+    pub fn new_consumer<'a>(parameter_type: &Rc<TypeProto>, requirements: Vec<&Rc<TraitBinding>>) -> Rc<FunctionInterface> {
         Rc::new(FunctionInterface {
             parameters: vec![Parameter {
                 external_key: ParameterKey::Positional,
@@ -77,7 +77,7 @@ impl FunctionInterface {
         })
     }
 
-    pub fn new_operator<'a>(count: usize, parameter_type: &Box<TypeProto>, return_type: &Box<TypeProto>) -> Rc<FunctionInterface> {
+    pub fn new_operator<'a>(count: usize, parameter_type: &Rc<TypeProto>, return_type: &Rc<TypeProto>) -> Rc<FunctionInterface> {
         let parameters: Vec<Parameter> = (0..count)
             .map(|x| { Parameter {
                 external_key: ParameterKey::Positional,
@@ -94,7 +94,7 @@ impl FunctionInterface {
         })
     }
 
-    pub fn new_simple<'a, I>(parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Box<TypeProto>> {
+    pub fn new_simple<'a, I>(parameter_types: I, return_type: Rc<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Rc<TypeProto>> {
         let parameters: Vec<Parameter> = parameter_types
             .enumerate()
             .map(|(i, x)| Parameter {
@@ -112,7 +112,7 @@ impl FunctionInterface {
         })
     }
 
-    pub fn new_member<'a, I>(self_type: Box<TypeProto>, parameter_types: I, return_type: Box<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Box<TypeProto>> {
+    pub fn new_member<'a, I>(self_type: Rc<TypeProto>, parameter_types: I, return_type: Rc<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Rc<TypeProto>> {
         let parameters: Vec<Parameter> = [Parameter {
                 external_key: ParameterKey::Positional,
                 internal_name: "self".to_string(),
@@ -217,7 +217,7 @@ impl FunctionHead {
 }
 
 impl Parameter {
-    pub fn mapping_type(&self,  map: &dyn Fn(&Box<TypeProto>) -> Box<TypeProto>) -> Parameter {
+    pub fn mapping_type(&self,  map: &dyn Fn(&Rc<TypeProto>) -> Rc<TypeProto>) -> Parameter {
         Parameter {
             external_key: self.external_key.clone(),
             internal_name: self.internal_name.clone(),

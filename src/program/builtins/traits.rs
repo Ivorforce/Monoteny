@@ -90,7 +90,7 @@ pub struct EqFunctions {
     pub not_equal_to: Rc<FunctionPointer>,
 }
 
-pub fn make_eq_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>) -> EqFunctions {
+pub fn make_eq_functions(type_: &Rc<TypeProto>, bool_type: &Rc<TypeProto>) -> EqFunctions {
     EqFunctions {
         equal_to: FunctionPointer::new_global_function(
             "is_equal",
@@ -111,7 +111,7 @@ pub struct OrdFunctions {
     pub lesser_than_or_equal_to: Rc<FunctionPointer>,
 }
 
-pub fn make_ord_functions(type_: &Box<TypeProto>, bool_type: &Box<TypeProto>) -> OrdFunctions {
+pub fn make_ord_functions(type_: &Rc<TypeProto>, bool_type: &Rc<TypeProto>) -> OrdFunctions {
     OrdFunctions {
         greater_than: FunctionPointer::new_global_function(
             "is_greater",
@@ -144,7 +144,7 @@ pub struct NumberFunctions {
     pub negative: Rc<FunctionPointer>,
 }
 
-pub fn make_number_functions(type_: &Box<TypeProto>) -> NumberFunctions {
+pub fn make_number_functions(type_: &Rc<TypeProto>) -> NumberFunctions {
     NumberFunctions {
         add: FunctionPointer::new_global_function(
             "add",
@@ -181,7 +181,7 @@ pub struct RealFunctions {
     pub logarithm: Rc<FunctionPointer>,
 }
 
-pub fn make_real_functions(type_: &Box<TypeProto>) -> RealFunctions {
+pub fn make_real_functions(type_: &Rc<TypeProto>) -> RealFunctions {
     RealFunctions {
         exponent: FunctionPointer::new_global_function(
             "exponent",

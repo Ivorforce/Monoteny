@@ -13,12 +13,12 @@ pub enum Mutability {
 #[derive(Clone, Eq)]
 pub struct ObjectReference {
     pub id: Uuid,
-    pub type_: Box<TypeProto>,
+    pub type_: Rc<TypeProto>,
     pub mutability: Mutability,
 }
 
 impl ObjectReference {
-    pub fn new_immutable(type_: Box<TypeProto>) -> Rc<ObjectReference> {
+    pub fn new_immutable(type_: Rc<TypeProto>) -> Rc<ObjectReference> {
         Rc::new(ObjectReference {
             id: Uuid::new_v4(),
             type_,

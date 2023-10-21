@@ -4,7 +4,7 @@ use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, Para
 use crate::program::traits::{FieldHint, Trait};
 use crate::program::types::TypeProto;
 
-pub fn make(name: &str, self_type: &Box<TypeProto>, field_type: &Box<TypeProto>, add_getter: bool, add_setter: bool) -> FieldHint {
+pub fn make(name: &str, self_type: &Rc<TypeProto>, field_type: &Rc<TypeProto>, add_getter: bool, add_setter: bool) -> FieldHint {
     let getter = add_getter.then_some({
         let head = FunctionHead::new_static(
             Rc::new(FunctionInterface {

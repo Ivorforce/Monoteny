@@ -21,7 +21,7 @@ use crate::util::fmt::fmta;
 pub struct TraitLinker<'a> {
     pub runtime: &'a Runtime,
     pub trait_: &'a mut Trait,
-    pub generic_self_type: Box<TypeProto>,
+    pub generic_self_type: Rc<TypeProto>,
 }
 
 impl <'a> TraitLinker<'a> {

@@ -52,7 +52,7 @@ impl <'a> TypeFactory<'a> {
         self.requirements.insert(requirement);
     }
 
-    pub fn link_type(&mut self, syntax: &ast::Expression, allow_anonymous_generics: bool) -> RResult<Box<TypeProto>> {
+    pub fn link_type(&mut self, syntax: &ast::Expression, allow_anonymous_generics: bool) -> RResult<Rc<TypeProto>> {
         guard!(let Ok(pterm) = syntax.iter().exactly_one() else {
             return Err(RuntimeError::new("Interpreted types aren't supported yet; please use an explicit type for now. 2 ".to_string()));
         });
@@ -72,7 +72,7 @@ impl <'a> TypeFactory<'a> {
                     return Ok(TypeProto::unit_struct(&trait_));
                 }
 
-                let type_ = Box::new(TypeProto {
+                let type_ = Rc::new(TypeProto {
                     unit: TypeUnit::Struct(self.register_generic(type_name).clone()),
                     arguments
                 });
