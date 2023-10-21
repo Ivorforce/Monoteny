@@ -10,12 +10,6 @@ pub struct Simplify<'a, 'b> {
     pub trim_locals: bool,
 }
 
-/// For now, the constant folder is only capable of inlining trivial functions:
-/// - those that return a parameter
-/// - those that call another function with one argument
-/// - those that lookup a global variable (eg function reference)
-/// - those that do nothing
-///
 impl<'a, 'b> Simplify<'a, 'b> {
     pub fn new(refactor: &'a mut Refactor<'b>, config: &Config) -> Simplify<'a, 'b> {
         Simplify {
