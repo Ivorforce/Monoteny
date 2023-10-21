@@ -46,6 +46,16 @@ impl transpiler::LanguageContext for Context {
     }
 
     fn make_files(&self, filename: &str, runtime: &mut Runtime, transpiler: Box<Transpiler>, config: &Config) -> RResult<HashMap<String, String>> {
+        let ast = self.create_ast(runtime, transpiler, config)?;
+
+        Ok(HashMap::from([
+            (format!("{}.py", filename), ast.to_string())
+        ]))
+    }
+}
+
+impl Context {
+    pub fn create_ast(&self, runtime: &mut Runtime, transpiler: Box<Transpiler>, config: &Config) -> RResult<Box<ast::Module>> {
         let mut refactor = Refactor::new(runtime);
 
         for artifact in transpiler.exported_artifacts {
@@ -95,11 +105,7 @@ impl transpiler::LanguageContext for Context {
             }
         }
 
-        let ast = create_ast(transpiler.main_function, &exported_functions, &implicit_functions, &internal_functions, &fn_representations, self)?;
-
-        Ok(HashMap::from([
-            (format!("{}.py", filename), ast.to_string())
-        ]))
+        create_ast(transpiler.main_function, &exported_functions, &implicit_functions, &internal_functions, &fn_representations, self)
     }
 }
 
