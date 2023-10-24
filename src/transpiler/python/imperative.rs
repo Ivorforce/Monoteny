@@ -48,12 +48,12 @@ pub fn transpile_plain_function(implementation: &FunctionImplementation, name: S
         parameters: implementation.parameter_locals.iter().map(|parameter| {
             Box::new(ast::Parameter {
                 name: context.names[&parameter.id].clone(),
-                type_: types::transpile(&parameter.type_, context),
+                type_: types::transpile(&implementation.type_forest.resolve_type(&parameter.type_).unwrap(), context),
             })
         }).collect(),
         return_type: match implementation.head.interface.return_type.unit.is_void() {
             true => None,
-            false => Some(types::transpile(&implementation.head.interface.return_type, context))
+            false => Some(types::transpile(&implementation.type_forest.resolve_type(&implementation.head.interface.return_type).unwrap(), context))
         },
         statements: vec![],
     });
@@ -114,7 +114,7 @@ fn transpile_block(implementation: &&FunctionImplementation, context: &FunctionC
                     target: Box::new(ast::Expression::NamedReference(context.names[&variable.id].clone())),
                     value: Some(transpile_expression(implementation.expression_tree.children[&statement][0], context)),
                     // TODO We can omit the type annotation if we assign the variable a second time
-                    type_annotation: Some(types::transpile(&variable.type_, context)),
+                    type_annotation: Some(types::transpile(&implementation.type_forest.resolve_type(&variable.type_).unwrap(), context)),
                 })
             }
             ExpressionOperation::Return => {

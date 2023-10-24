@@ -8,7 +8,7 @@ use crate::program::global::FunctionLogic;
 use crate::program::module::{Module, ModuleName};
 use crate::program::traits::Trait;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct StructInfo {
     pub trait_: Rc<Trait>,
 

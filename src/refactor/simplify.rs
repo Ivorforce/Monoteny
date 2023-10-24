@@ -8,18 +8,41 @@ pub struct Simplify<'a, 'b> {
     pub refactor: &'a mut Refactor<'b>,
     pub inline: bool,
     pub trim_locals: bool,
+    pub monomorphize: bool,
 }
 
 impl<'a, 'b> Simplify<'a, 'b> {
     pub fn new(refactor: &'a mut Refactor<'b>, config: &Config) -> Simplify<'a, 'b> {
+        if !config.should_monomorphize {
+            todo!();  // Lots of reasons monomorphization doesn't work right now.
+        }
+
         Simplify {
             refactor,
             inline: config.should_inline,
             trim_locals: config.should_trim_locals,
+            monomorphize: config.should_monomorphize,
         }
     }
 
     pub fn run(&mut self) {
+        if self.monomorphize {
+            // First, monomorphize everything we call
+            let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(
+                self.refactor.explicit_functions.iter()
+                    .flat_map(|head| self.refactor.call_graph.callees[head].iter().cloned())
+            );
+            while let Some(current) = next.pop_front() {
+                if let Some(monomorphized) = self.refactor.try_monomorphize(&current) {
+                    next.extend(self.refactor.call_graph.callees.get(&monomorphized).unwrap().iter().cloned());
+                }
+            }
+        }
+
+        // Make sure refactor has everything that's needed so we can simplify it.
+        self.refactor.gather_needed_functions();
+
+        // Now, let's simplify!
         let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(self.refactor.fn_logic.keys().cloned());
         while let Some(current) = next.pop_front() {
             let is_explicit = self.refactor.explicit_functions.contains(&current);

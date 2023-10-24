@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
-use crate::program::calls::FunctionBinding;
+use crate::program::calls::{FunctionBinding, resolve_binding};
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
 use crate::program::global::FunctionImplementation;
@@ -76,9 +76,16 @@ pub fn get_trivial_expression_call_target(expression_id: &ExpressionID, implemen
     None
 }
 
-pub fn inline_calls(implementation: &mut Box<FunctionImplementation>, hints: &HashMap<Rc<FunctionHead>, InlineHint>) {
+pub fn inline_calls(
+    implementation: &mut Box<FunctionImplementation>,
+    optimizations: &HashMap<Rc<FunctionBinding>, Rc<FunctionHead>>,
+    hints: &HashMap<Rc<FunctionHead>, InlineHint>,
+) {
     let expression_forest = &mut implementation.expression_tree;
+
     'expression: for expression_id in expression_forest.deep_children(expression_forest.root) {
+        // Essentially, we run through the expression tree. When we change an operation,
+        //  we run through it again because there may be more mappings.
         'inline: loop {
             guard!(let Some(operation) = expression_forest.values.get(&expression_id) else {
                 // We have been truncated meanwhile!
@@ -89,6 +96,16 @@ pub fn inline_calls(implementation: &mut Box<FunctionImplementation>, hints: &Ha
             //  and run them successively.
             match operation {
                 ExpressionOperation::FunctionCall(f) => {
+                    if let Some(optimized_head) = optimizations.get(&resolve_binding(f, &implementation.type_forest)) {
+                        let operation = expression_forest.values.get_mut(&expression_id).unwrap();
+                        *operation = ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
+                            function: Rc::clone(&optimized_head),
+                            // TODO If we're not fully monomorphized, this may not be empty.
+                            requirements_fulfillment: RequirementsFulfillment::empty(),
+                        }));
+                        continue 'inline
+                    }
+
                     if let Some(inline_hint) = hints.get(&f.function) {
                         match inline_hint {
                             InlineHint::ReplaceCall(target_function, idxs) => {

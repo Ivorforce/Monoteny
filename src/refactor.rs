@@ -11,16 +11,16 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 use guard::guard;
 use itertools::Itertools;
+use linked_hash_set::LinkedHashSet;
 use crate::interpreter::Runtime;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionType};
-use crate::program::global::{FunctionImplementation, FunctionLogic};
-use crate::program::traits::RequirementsFulfillment;
+use crate::program::global::{FunctionImplementation, FunctionLogic, FunctionLogicDescriptor};
 use crate::refactor::call_graph::CallGraph;
 use crate::refactor::inline::{inline_calls, InlineHint, try_inline};
-use crate::refactor::monomorphize::Monomorphize;
+use crate::refactor::monomorphize::monomorphize_implementation;
 
 
 pub struct Refactor<'a> {
@@ -32,10 +32,9 @@ pub struct Refactor<'a> {
     pub fn_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
     pub fn_logic: HashMap<Rc<FunctionHead>, FunctionLogic>,
     pub fn_inline_hints: HashMap<Rc<FunctionHead>, InlineHint>,
+    pub fn_optimizations: HashMap<Rc<FunctionBinding>, Rc<FunctionHead>>,
 
     pub call_graph: CallGraph,
-
-    pub monomorphize: Monomorphize,
 }
 
 impl<'a> Refactor<'a> {
@@ -47,8 +46,8 @@ impl<'a> Refactor<'a> {
             fn_representations: Default::default(),
             fn_logic: Default::default(),
             fn_inline_hints: Default::default(),
+            fn_optimizations: Default::default(),
             call_graph: CallGraph::new(),
-            monomorphize: Monomorphize::new(),
         }
     }
 
@@ -68,12 +67,22 @@ impl<'a> Refactor<'a> {
         self.inline_calls(&head);
     }
 
+    /// Place or replace a function with a stub.
+    ///  This can be useful to 'mark' the function as the compiler intending to inject it itself.
+    pub fn replace_with_stub(&mut self, head: &Rc<FunctionHead>) {
+        self.call_graph.change_callees(head, LinkedHashSet::new());
+        self.fn_logic.insert(Rc::clone(head), FunctionLogic::Descriptor(FunctionLogicDescriptor::Stub));
+    }
+
     pub fn update_callees(&mut self, head: &Rc<FunctionHead>) {
         match &self.fn_logic[head] {
             FunctionLogic::Implementation(i) => {
                 self.call_graph.change_callees(head, analyze::gather_callees(i))
             },
-            FunctionLogic::Descriptor(_) => {},  // For now, descriptors are disallowed from calling monoteny functions anyway
+            FunctionLogic::Descriptor(_) => {
+                // For now, descriptors are disallowed from calling monoteny functions anyway
+                self.call_graph.change_callees(head, LinkedHashSet::new())
+            },
         }
     }
 
@@ -101,7 +110,7 @@ impl<'a> Refactor<'a> {
     }
 
     pub fn apply_inline(&mut self, head: &Rc<FunctionHead>) -> HashSet<Rc<FunctionHead>> {
-        let affected = self.call_graph.callers.get(head).cloned().unwrap_or(HashSet::new());
+        let affected: HashSet<_> = self.call_graph.get_callers(head).cloned().collect();
         for caller in affected.iter() {
             self.inline_calls(caller);
         }
@@ -110,76 +119,45 @@ impl<'a> Refactor<'a> {
     }
 
     pub fn inline_calls(&mut self, head: &Rc<FunctionHead>) {
-        if self.fn_inline_hints.is_empty() {
-            return
-        }
-
         match self.fn_logic.get_mut(head).unwrap() {
             FunctionLogic::Implementation(imp) => {
-                inline_calls(imp, &self.fn_inline_hints);
+                inline_calls(imp, &self.fn_optimizations, &self.fn_inline_hints);
                 self.update_callees(head);
             }
+            // 'Internal' functions don't need to be inlined.
             _ => {}
         }
     }
 
-    pub fn monomorphize_calls(&mut self, head: Rc<FunctionHead>, should_monomorphize: &impl Fn(&Rc<FunctionBinding>) -> bool) -> HashSet<Rc<FunctionHead>> {
-        guard!(let Some(FunctionLogic::Implementation(implementation)) = self.fn_logic.get_mut(&head) else {
-            panic!();
+    pub fn try_monomorphize(&mut self, binding: &Rc<FunctionBinding>) -> Option<Rc<FunctionHead>> {
+        if self.fn_optimizations.contains_key(binding) {
+            return None  // We already have an optimization; we need not monomorphize.
+        }
+
+        guard!(let Some(logic) = self.fn_logic.get(&binding.function).or_else(|| self.runtime.source.fn_logic.get(&binding.function)) else {
+            panic!("Cannot find logic for function {:?}", binding.function);
         });
 
-        let mut new_heads = HashSet::new();
+        guard!(let FunctionLogic::Implementation(implementation) = logic else {
+            return None
+        });
 
-        if !implementation.head.interface.generics.is_empty() {
-            // We'll need to somehow transpile requirements as protocols and generics as generics.
-            // That's for later!
-            panic!("Transpiling generic functions is not supported yet: {:?}", implementation.head);
+        let mut new_implementation = implementation.clone();
+        monomorphize_implementation(&mut new_implementation, binding);
+        let mono_head = Rc::clone(&new_implementation.head);
+
+        self.fn_optimizations.insert(Rc::clone(binding), Rc::clone(&mono_head));
+
+        self.fn_logic.insert(Rc::clone(&mono_head), FunctionLogic::Implementation(new_implementation));
+        self.fn_representations.insert(Rc::clone(&mono_head), self.runtime.source.fn_representations[&binding.function].clone());
+
+        self.update_callees(&mono_head);
+
+        for caller in self.call_graph.get_binding_callers(binding).cloned().collect_vec() {
+            self.inline_calls(&caller);
         }
 
-        self.monomorphize.monomorphize_function(
-            implementation,
-            &Rc::new(FunctionBinding {
-                // The implementation's pointer is fine.
-                function: Rc::clone(&head),
-                // The resolution SHOULD be empty: The function is transpiled WITH its generics.
-                // Unless generics are bound in the transpile directive, which is TODO
-                requirements_fulfillment: RequirementsFulfillment::empty(),
-            }),
-            should_monomorphize
-        );
-        let new_head = Rc::clone(&implementation.head);
-        new_heads.insert(Rc::clone(&new_head));
-        self.update_callees(&head);
-
-        while let Some(function_binding) = self.monomorphize.new_encountered_calls.pop() {
-            // We may not create a new one through monomorphization, but we still need to take ownership.
-            let logic = self.runtime.source.fn_logic.get(&function_binding.function).unwrap().clone();
-            let representation = self.runtime.source.fn_representations[&function_binding.function].clone();
-
-            match logic {
-                FunctionLogic::Implementation(mut imp) => {
-                    // If the call had an empty fulfillment, it wasn't monomorphized. We can just use the implementation itself!
-                    if self.monomorphize.resolved_call_to_mono_call.contains_key(&function_binding) {
-                        self.monomorphize.monomorphize_function(
-                            &mut imp,
-                            &function_binding,
-                            should_monomorphize
-                        );
-                    };
-
-                    new_heads.insert(Rc::clone(&imp.head));
-                    self.invented_functions.insert(Rc::clone(&imp.head));
-                    self._add(imp, representation);
-                }
-                FunctionLogic::Descriptor(d) => {
-                    // It's internal logic! Can't monomorphize but we should still grab it.
-                    self.fn_logic.insert(Rc::clone(&function_binding.function), FunctionLogic::Descriptor(d));
-                    self.fn_representations.insert(Rc::clone(&function_binding.function), representation);
-                }
-            }
-        }
-
-        new_heads
+        Some(mono_head)
     }
 
     pub fn remove_locals(&mut self, function: &Rc<FunctionHead>, removed_locals: &HashSet<Rc<ObjectReference>>) -> HashSet<Rc<FunctionHead>> {
@@ -208,12 +186,22 @@ impl<'a> Refactor<'a> {
         self.fn_inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&new_head), param_swizzle.clone()));
         self.fn_logic.insert(Rc::clone(&new_head), FunctionLogic::Implementation(implementation));
 
-        self.call_graph.callers.remove(function);
-        self.call_graph.callees.remove(function);
+        self.call_graph.remove(function);
         self.update_callees(&new_head);
 
         // The new function is also dirty!
         self.apply_inline(function).into_iter().chain([new_head].into_iter()).collect()
+    }
+
+    pub fn gather_needed_functions(&mut self) -> LinkedHashSet<Rc<FunctionHead>> {
+        let callees = self.call_graph.deep_callees(self.explicit_functions.iter());
+        for callee in callees.iter() {
+            if !self.fn_logic.contains_key(callee) {
+                self.fn_logic.insert(Rc::clone(callee), self.runtime.source.fn_logic[callee].clone());
+                self.fn_representations.insert(Rc::clone(callee), self.runtime.source.fn_representations[callee].clone());
+            }
+        }
+        callees
     }
 }
 

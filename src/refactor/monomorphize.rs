@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::rc::Rc;
 use itertools::Itertools;
+use linked_hash_set::LinkedHashSet;
 use uuid::Uuid;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
@@ -12,144 +13,91 @@ use crate::program::global::FunctionImplementation;
 use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, Trait, TraitConformance, TraitConformanceWithTail};
 use crate::program::types::TypeProto;
 
+pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, function_binding: &FunctionBinding) -> LinkedHashSet<Rc<FunctionBinding>> {
+    let mut encountered_calls = LinkedHashSet::new();
 
-pub struct Monomorphize {
-    pub new_encountered_calls: Vec<Rc<FunctionBinding>>,
-    pub encountered_calls: HashSet<Rc<FunctionBinding>>,
-    // Not every call that is mapped is actually encountered.
-    // The primary reason is that for polymorphic function calls, EVERY function in the
-    //  fulfillment needs to be mapped upon call, but isn't necessarily actually called.
-    pub resolved_call_to_mono_call: HashMap<Rc<FunctionBinding>, Rc<FunctionBinding>>,
-}
+    // Map types.
+    let generic_replacement_map = &function_binding.requirements_fulfillment.generic_mapping;
 
-impl Monomorphize {
-    pub fn new() -> Monomorphize {
-        Monomorphize {
-            new_encountered_calls: Default::default(),
-            encountered_calls: Default::default(),
-            resolved_call_to_mono_call: Default::default(),
+    // Change Anys to Generics in the type forest.
+    implementation.type_forest.rebind_structs_as_generic(generic_replacement_map).unwrap();
+
+    // Map variables.
+    // TODO For fully internal variables, it would be enough to set the type to the Any's corresponding Generic,
+    //  because those have been bound in the type forest. For variables featured in the interface, however, the
+    //  type must be properly resolved. So we might as well map all variables to resolved types.
+    let locals_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = implementation.locals_names.keys()
+        .map(|v| {
+            (Rc::clone(v), map_variable(v, &implementation.type_forest, &generic_replacement_map))
+        })
+        .collect();
+
+    // The implementation self-injected assmumption functions based on requirements.
+    // Now it's time we replace them depending on the actual requirements fulfillment.
+    let mut function_replacement_map = HashMap::new();
+    for assumption in implementation.requirements_assumption.conformance.values() {
+        // TODO Use tail..?
+        let mapped_assumption = &assumption.binding;
+        let conformance = &function_binding.requirements_fulfillment.conformance[mapped_assumption];
+
+        for (abstract_fun, fun_assumption) in assumption.function_mapping.iter() {
+            let fun_fulfillment = &conformance.conformance.function_mapping[abstract_fun];
+            function_replacement_map.insert(Rc::clone(fun_assumption), (conformance.tail.clone(), Rc::clone(fun_fulfillment)));
         }
     }
 
-    pub fn monomorphize_function(&mut self, implementation: &mut FunctionImplementation, function_binding: &Rc<FunctionBinding>, should_monomorphize: impl Fn(&Rc<FunctionBinding>) -> bool) {
-        // Map types.
-        let generic_replacement_map = &function_binding.requirements_fulfillment.generic_mapping;
+    // Find function calls in the expression forest
+    for expression_id in implementation.expression_tree.deep_children(implementation.expression_tree.root) {
+        let mut operation = implementation.expression_tree.values.get_mut(&expression_id).unwrap();
 
-        // Change Anys to Generics in the type forest.
-        implementation.type_forest.rebind_structs_as_generic(generic_replacement_map).unwrap();
-
-        // Map variables.
-        // TODO For fully internal variables, it would be enough to set the type to the Any's corresponding Generic,
-        //  because those have been bound in the type forest. For variables featured in the interface, however, the
-        //  type must be properly resolved. So we might as well map all variables to resolved types.
-        let locals_map: HashMap<Rc<ObjectReference>, Rc<ObjectReference>> = implementation.locals_names.keys()
-            .map(|v| {
-                (Rc::clone(v), map_variable(v, &implementation.type_forest, &generic_replacement_map))
-            })
-            .collect();
-
-        // The implementation self-injected assmumption functions based on requirements.
-        // Now it's time we replace them depending on the actual requirements fulfillment.
-        let mut function_replacement_map = HashMap::new();
-        for assumption in implementation.requirements_assumption.conformance.values() {
-            // TODO Use tail..?
-            let mapped_assumption = &assumption.binding;
-            let conformance = &function_binding.requirements_fulfillment.conformance[mapped_assumption];
-
-            for (abstract_fun, fun_assumption) in assumption.function_mapping.iter() {
-                let fun_fulfillment = &conformance.conformance.function_mapping[abstract_fun];
-                function_replacement_map.insert(Rc::clone(fun_assumption), (conformance.tail.clone(), Rc::clone(fun_fulfillment)));
+        match operation {
+            ExpressionOperation::FunctionCall(call) => {
+                let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &implementation.type_forest);
+                encountered_calls.insert_if_absent(Rc::clone(&resolved_call));
+                *operation = ExpressionOperation::FunctionCall(resolved_call)
             }
-        }
+            ExpressionOperation::PairwiseOperations { calls } => {
+                *operation = ExpressionOperation::PairwiseOperations {
+                    calls: calls.iter()
+                        .map(|call| {
+                            let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &implementation.type_forest);
 
-        // Find function calls in the expression forest
-        for expression_id in implementation.expression_tree.deep_children(implementation.expression_tree.root) {
-            let mut operation = implementation.expression_tree.values.get_mut(&expression_id).unwrap();
+                            encountered_calls.insert_if_absent(Rc::clone(&resolved_call));
 
-            match operation {
-                ExpressionOperation::FunctionCall(call) => {
-                    let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &implementation.type_forest);
-
-                    if self.encountered_calls.insert(Rc::clone(&resolved_call)) {
-                        self.new_encountered_calls.push(Rc::clone(&resolved_call));
-                    }
-
-                    let mono_call: Rc<FunctionBinding> = if !resolved_call.requirements_fulfillment.is_empty() && should_monomorphize(&resolved_call) {
-                        self.monomorphize_call(&resolved_call)
-                    }
-                    else {
-                        resolved_call
-                    };
-
-                    *operation = ExpressionOperation::FunctionCall(mono_call)
+                            resolved_call
+                        }).collect_vec()
                 }
-                ExpressionOperation::PairwiseOperations { calls } => {
-                    *operation = ExpressionOperation::PairwiseOperations {
-                        calls: calls.iter()
-                            .map(|call| {
-                                let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &implementation.type_forest);
-
-                                if self.encountered_calls.insert(Rc::clone(&resolved_call)) {
-                                    self.new_encountered_calls.push(Rc::clone(&resolved_call));
-                                }
-
-                                let mono_call: Rc<FunctionBinding> = if !resolved_call.requirements_fulfillment.is_empty() && should_monomorphize(&resolved_call) {
-                                    self.monomorphize_call(&resolved_call)
-                                }
-                                else {
-                                    resolved_call
-                                };
-
-                                mono_call
-                            }).collect_vec()
-                    }
-                }
-                ExpressionOperation::GetLocal(v) => {
-                    // If we cannot find a replacement, it's a static variable. Unless we have a bug.
-                    *operation = ExpressionOperation::GetLocal(Rc::clone(locals_map.get(v).unwrap_or(v)))
-                }
-                ExpressionOperation::SetLocal(v) => {
-                    *operation = ExpressionOperation::SetLocal(Rc::clone(locals_map.get(v).unwrap_or(v)))
-                }
-                ExpressionOperation::ArrayLiteral => {},
-                ExpressionOperation::StringLiteral(_) => {},
-                ExpressionOperation::Block => {},
-                ExpressionOperation::Return => {}
-            };
-        }
-
-        // Update parameter variables
-        for param_variable in implementation.parameter_locals.iter_mut() {
-            *param_variable = Rc::clone(&locals_map[param_variable])
-        }
-        implementation.locals_names = implementation.locals_names.drain().map(|(key, value)| {
-            (Rc::clone(&locals_map[&key]), value)
-        }).collect();
-
-        // Requirements
-        // TODO This is correct only if all requirements have been fulfilled.
-        //  If monomorphize was requested on a partially generic function, we continue to
-        //  have some requirements.
-        implementation.requirements_assumption = Box::new(RequirementsAssumption { conformance: Default::default() });
-
-        let monomorphized_binding = &self.resolved_call_to_mono_call.get(function_binding).unwrap_or(function_binding);
-        implementation.head = Rc::clone(&monomorphized_binding.function);
+            }
+            ExpressionOperation::GetLocal(v) => {
+                // If we cannot find a replacement, it's a static variable. Unless we have a bug.
+                *operation = ExpressionOperation::GetLocal(Rc::clone(locals_map.get(v).unwrap_or(v)))
+            }
+            ExpressionOperation::SetLocal(v) => {
+                *operation = ExpressionOperation::SetLocal(Rc::clone(locals_map.get(v).unwrap_or(v)))
+            }
+            ExpressionOperation::ArrayLiteral => {},
+            ExpressionOperation::StringLiteral(_) => {},
+            ExpressionOperation::Block => {},
+            ExpressionOperation::Return => {}
+        };
     }
 
-    fn monomorphize_call(&mut self, resolved_call: &Rc<FunctionBinding>) -> Rc<FunctionBinding> {
-        match self.resolved_call_to_mono_call.entry(Rc::clone(&resolved_call)) {
-            Entry::Occupied(o) => Rc::clone(o.get()),
-            Entry::Vacant(v) => {
-                Rc::clone(v.insert(monomorphize_call(&resolved_call)))
-            },
-        }
+    // Update parameter variables
+    for param_variable in implementation.parameter_locals.iter_mut() {
+        *param_variable = Rc::clone(&locals_map[param_variable])
     }
+    implementation.locals_names = implementation.locals_names.drain().map(|(key, value)| {
+        (Rc::clone(&locals_map[&key]), value)
+    }).collect();
 
-    pub fn get_mono_call_to_original_call(&self) -> HashMap<Rc<FunctionHead>, Rc<FunctionHead>> {
-        self.resolved_call_to_mono_call.iter()
-            .map(|(x, y)| (Rc::clone(&y.function), Rc::clone(&x.function)))
-            .collect()
-    }
+    // Requirements
+    // TODO This is correct only if all requirements have been fulfilled.
+    //  If monomorphize was requested on a partially generic function, we continue to
+    //  have some requirements.
+    implementation.requirements_assumption = Box::new(RequirementsAssumption { conformance: Default::default() });
+    implementation.head = monomorphize_head(function_binding);
+
+    encountered_calls
 }
 
 pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, (Rc<RequirementsFulfillment>, Rc<FunctionHead>)>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
@@ -168,7 +116,7 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMa
         requirements_fulfillment: Rc::new(RequirementsFulfillment {
             conformance: full_conformance.conformance.iter()
                 .map(|(requirement, conformance)| {
-                    // TODO Use tail?
+                    // TODO Use / map tail?
                     (Rc::clone(requirement), Rc::new(TraitConformanceWithTail {
                         tail: conformance.tail.clone(),
                         conformance: TraitConformance::new(
@@ -193,20 +141,11 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMa
     })
 }
 
-pub fn monomorphize_call(call: &Rc<FunctionBinding>) -> Rc<FunctionBinding> {
-    // TODO If we're not fully monomorphized, which might be the case if we're transpiling a generic function, we
-    //   - are not yet static
-    //   - still require a requirements fulfillment
-    Rc::new(FunctionBinding {
-        function: Rc::new(FunctionHead {
-            function_id: Uuid::new_v4(),
-            // We're now a static call!
-            function_type: FunctionType::Static,
-            interface: Rc::new(map_interface_types(&call.function.interface, &call.requirements_fulfillment.generic_mapping)),
-        }),
-        // We are finally empty now!
-        requirements_fulfillment: RequirementsFulfillment::empty(),
-    })
+pub fn monomorphize_head(binding: &FunctionBinding) -> Rc<FunctionHead> {
+    FunctionHead::new(
+        Rc::new(map_interface_types(&binding.function.interface, &binding.requirements_fulfillment.generic_mapping)),
+        binding.function.function_type.clone(),
+    )
 }
 
 pub fn map_variable(variable: &ObjectReference, type_forest: &TypeForest, type_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>) -> Rc<ObjectReference> {

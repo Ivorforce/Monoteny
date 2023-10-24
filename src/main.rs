@@ -198,11 +198,9 @@ fn create_context(runtime: &Runtime, extension: &str) -> Box<dyn LanguageContext
 }
 
 fn transpile_target(base_filename: &str, base_output_path: &Path, config: &transpiler::Config, mut runtime: &mut Box<Runtime>, module: &Box<Module>, output_extension: &str) -> RResult<Vec<PathBuf>> {
-    let mut context = create_context(&runtime, output_extension);
+    let context = create_context(&runtime, output_extension);
+    let file_map = transpiler::transpile(module, runtime, context.as_ref(), config, base_filename)?;
 
-    let transpiler = interpreter::run::transpile(&module, &mut runtime)?;
-
-    let file_map = context.make_files(base_filename, runtime, transpiler, config)?;
     let output_files = file_map.into_iter().map(|(filename, content)| {
         write_file_safe(base_output_path, &filename, &content)
     }).collect_vec();

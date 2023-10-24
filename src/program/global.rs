@@ -29,7 +29,7 @@ pub struct FunctionImplementation {
     pub locals_names: HashMap<Rc<ObjectReference>, String>,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum FunctionLogicDescriptor {
     /// This function was not described by the implementer and is excpected not to be called,
     ///  or to be injected by a transpiler.
@@ -57,7 +57,21 @@ pub enum PrimitiveOperation {
 }
 
 impl FunctionLogic {
+    pub fn is_implementation(&self) -> bool {
+        match self {
+            FunctionLogic::Implementation(_) => true,
+            FunctionLogic::Descriptor(_) => false,
+        }
+    }
+
     pub fn to_implementation(self) -> RResult<Box<FunctionImplementation>> {
+        match self {
+            FunctionLogic::Implementation(i) => Ok(i),
+            FunctionLogic::Descriptor(_) => Err(RuntimeError::new(format!("Cannot use a function with described logic as an implementation."))),
+        }
+    }
+
+    pub fn as_implementation(&self) -> RResult<&FunctionImplementation> {
         match self {
             FunctionLogic::Implementation(i) => Ok(i),
             FunctionLogic::Descriptor(_) => Err(RuntimeError::new(format!("Cannot use a function with described logic as an implementation."))),
