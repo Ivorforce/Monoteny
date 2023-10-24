@@ -1,13 +1,11 @@
-use std::collections::{HashMap, HashSet};
-use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::rc::Rc;
 use itertools::Itertools;
 use linked_hash_set::LinkedHashSet;
-use uuid::Uuid;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::expression_tree::{ExpressionOperation};
-use crate::program::functions::{FunctionHead, FunctionType, FunctionInterface, Parameter};
+use crate::program::functions::{FunctionHead, FunctionInterface, Parameter};
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, Trait, TraitConformance, TraitConformanceWithTail};

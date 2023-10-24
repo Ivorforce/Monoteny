@@ -1,9 +1,7 @@
 use std::collections::hash_map::RandomState;
-use std::rc::Rc;
 use linked_hash_set::LinkedHashSet;
 use crate::program::global::FunctionLogic;
 use crate::refactor::{Refactor, locals};
-use crate::refactor::inline::InlineHint;
 use crate::transpiler::Config;
 
 pub struct Simplify<'a, 'b> {
