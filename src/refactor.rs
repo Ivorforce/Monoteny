@@ -13,7 +13,6 @@ use guard::guard;
 use itertools::Itertools;
 use linked_hash_set::LinkedHashSet;
 use crate::interpreter::Runtime;
-use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionType};
@@ -160,37 +159,38 @@ impl<'a> Refactor<'a> {
         Some(mono_head)
     }
 
-    pub fn remove_locals(&mut self, function: &Rc<FunctionHead>, removed_locals: &HashSet<Rc<ObjectReference>>) -> HashSet<Rc<FunctionHead>> {
+    /// Map an implementation. If the implementation's head is changed, the mapper must provide an inline hint.
+    pub fn swizzle_implementation(&mut self, function: &Rc<FunctionHead>, map: impl Fn(&mut FunctionImplementation) -> Option<Vec<usize>>) -> HashSet<Rc<FunctionHead>> {
         assert!(function.function_type == FunctionType::Static);
 
         guard!(let Some(FunctionLogic::Implementation(mut implementation)) = self.fn_logic.remove(function) else {
             panic!();
         });
-        let changes_interface = removed_locals.iter().any(|l| implementation.parameter_locals.contains(l));
-        if !changes_interface {
-            // We can just change the function in-place!
-            let param_swizzle = locals::remove_locals(&mut implementation, removed_locals);
-            assert!(param_swizzle.is_none());
+
+        if let Some(swizzle) = map(&mut implementation) {
+            // The mapper changed the interface / function ID!
+            assert_ne!(function, &implementation.head);
+            let new_head = Rc::clone(&implementation.head);
+
+            self.invented_functions.insert(Rc::clone(&new_head));
+            self.fn_inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&implementation.head), swizzle));
+            self.fn_logic.insert(Rc::clone(&new_head), FunctionLogic::Implementation(implementation));
+
+            self.call_graph.remove(function);
+            self.update_callees(&new_head);
+
+            // The new function is also dirty!
+            self.apply_inline(function).into_iter().chain([new_head].into_iter()).collect()
+        }
+        else {
+            // The function kept its interface!
+            assert_eq!(function, &implementation.head);
+
             self.fn_logic.insert(Rc::clone(function), FunctionLogic::Implementation(implementation));
             self.update_callees(function);
             // We changed the function; it is dirty!
             return HashSet::from([Rc::clone(function)])
         }
-
-        // We need to create a new function; the interface changes and thus does the FunctionHead.
-
-        let param_swizzle = locals::remove_locals(&mut implementation, removed_locals).unwrap();
-        let new_head = Rc::clone(&implementation.head);
-
-        self.invented_functions.insert(Rc::clone(&new_head));
-        self.fn_inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&new_head), param_swizzle.clone()));
-        self.fn_logic.insert(Rc::clone(&new_head), FunctionLogic::Implementation(implementation));
-
-        self.call_graph.remove(function);
-        self.update_callees(&new_head);
-
-        // The new function is also dirty!
-        self.apply_inline(function).into_iter().chain([new_head].into_iter()).collect()
     }
 
     pub fn gather_needed_functions(&mut self) -> LinkedHashSet<Rc<FunctionHead>> {

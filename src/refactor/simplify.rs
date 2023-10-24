@@ -1,7 +1,9 @@
 use std::collections::hash_map::RandomState;
+use std::rc::Rc;
 use linked_hash_set::LinkedHashSet;
 use crate::program::global::FunctionLogic;
 use crate::refactor::{Refactor, locals};
+use crate::refactor::inline::InlineHint;
 use crate::transpiler::Config;
 
 pub struct Simplify<'a, 'b> {
@@ -76,7 +78,9 @@ impl<'a, 'b> Simplify<'a, 'b> {
                     }
 
                     if !remove.is_empty() {
-                        next.extend(self.refactor.remove_locals(&current, &remove));
+                        next.extend(self.refactor.swizzle_implementation(&current, |imp| {
+                            locals::remove_locals(imp, &remove)
+                        }));
                     }
                 };
             }
