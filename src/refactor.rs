@@ -148,7 +148,8 @@ impl<'a> Refactor<'a> {
         self.fn_optimizations.insert(Rc::clone(binding), Rc::clone(&mono_head));
 
         self.fn_logic.insert(Rc::clone(&mono_head), FunctionLogic::Implementation(new_implementation));
-        self.fn_representations.insert(Rc::clone(&mono_head), self.runtime.source.fn_representations[&binding.function].clone());
+        let representation = self.fn_representations.get(&binding.function).or_else(|| self.runtime.source.fn_representations.get(&binding.function)).unwrap().clone();
+        self.fn_representations.insert(Rc::clone(&mono_head), representation);
 
         self.update_callees(&mono_head);
 
