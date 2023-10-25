@@ -10,7 +10,6 @@ use crate::transpiler::namespaces;
 
 #[derive(Clone)]
 pub struct Representations {
-    pub builtin_functions: HashSet<Rc<FunctionHead>>,
     pub function_forms: HashMap<Rc<FunctionHead>, FunctionForm>,
     pub type_ids: HashMap<Rc<TypeProto>, Uuid>,
 }
@@ -18,7 +17,6 @@ pub struct Representations {
 impl Representations {
     pub fn new() -> Representations {
         Representations {
-            builtin_functions: Default::default(),
             function_forms: Default::default(),
             type_ids: Default::default(),
         }

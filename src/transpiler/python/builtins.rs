@@ -121,7 +121,6 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
             FunctionLogicDescriptor::Stub => continue,
         };
 
-        representations.builtin_functions.insert(Rc::clone(function));
         representations.function_forms.insert(Rc::clone(function), representation);
     }
 
@@ -163,7 +162,6 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
             _ => continue,
         };
 
-        representations.builtin_functions.insert(Rc::clone(function));
         // By the time we need other representations hopefully we can use object namespaces
         representations.function_forms.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
     }
@@ -177,7 +175,6 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
             _ => continue,
         };
 
-        representations.builtin_functions.insert(Rc::clone(function));
         representations.function_forms.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
     }
 
@@ -189,7 +186,6 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
             _ => continue,
         };
 
-        representations.builtin_functions.insert(Rc::clone(function));
         representations.function_forms.insert(Rc::clone(function), id);
     }
 
@@ -202,7 +198,6 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
             _ => continue,
         };
 
-        representations.builtin_functions.insert(Rc::clone(function));
         representations.function_forms.insert(Rc::clone(function), id);
     }
 }
