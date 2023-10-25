@@ -153,7 +153,7 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
     - [ ] Newline Separator transpilation
 - [x] Simple Constant Folding
   - [x] Inline trivial calls (calls that are at most one call)
-  - [ ] Auto-Delete objects without variables (e.g. for Console.write_line())
+  - [x] Truncate unused objects
 
 ### Monoteny 1.0
 
