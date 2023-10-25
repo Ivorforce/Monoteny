@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::rc::Rc;
-use crate::graphs::node_tree::NodeTree;
+use crate::util::graphs::node_tree::NodeTree;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::generics::GenericAlias;

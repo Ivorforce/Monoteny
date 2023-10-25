@@ -6,3 +6,4 @@ pub mod iter;
 pub mod vec;
 pub mod strings;
 pub mod file_writer;
+pub mod graphs;

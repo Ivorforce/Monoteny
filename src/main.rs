@@ -12,7 +12,6 @@ pub mod util;
 pub mod integration_tests;
 pub mod error;
 pub mod repository;
-pub mod graphs;
 pub mod refactor;
 pub mod source;
 pub mod cli;
