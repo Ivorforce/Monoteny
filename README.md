@@ -153,7 +153,7 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
   - [ ] DecimalFixed (int number with a fixed floating point position)
   - [ ] Monads
     - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
-    - [ ] Defaults (`a: $Real[Default]` for parameters to be omittable)
+    - [ ] Defaults (`a: $Real[Default]` for parameters to be omittable on call)
     - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
     - [ ] Open Int Range Dimension Index, array start / end handle syntax (|>, <|)
     - [ ] Auto Broadcast
