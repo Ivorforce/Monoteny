@@ -96,7 +96,6 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
 ### Monoteny 0.2 (Proof of Concept Stage)
 
 - [x] Generics
-  - [x] Monomorphization: Specialize functions and types at compile-time.
   - [x] Reverse generic type checking (output types determined from inputs)
   - [x] Implicit generics (`#A`)
     - [x] ... in imperative code
@@ -152,6 +151,7 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
     - [ ] Comment & Documentation
     - [ ] Newline Separator transpilation
 - [x] Simple Constant Folding
+  - [x] Function Monomorphization
   - [x] Inline trivial calls (calls that are at most one call)
   - [x] Truncate unused objects
 
