@@ -1,6 +1,6 @@
 def sin#math(x 'FloatX<64>) -> FloatX<64>;
 
-def sin#math_iso(x '$Iso<FloatX<64>>) -> $Iso :: $Iso(sin#math(FloatX<64>(x)));
+def sin#math_iso(x '$Iso<FloatX<64>>) -> $Iso :: sin#math(x.convert).convert;
 
 def optimize!(sin) :: {
     if x == FloatX<64> :: return sin#math;
