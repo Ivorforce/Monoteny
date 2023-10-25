@@ -8,4 +8,4 @@ def sin#math_iso(x '$Iso<FloatX<64>>) -> $Iso :: sin#math(x.convert).convert;
 --     else :: return sin;
 -- };
 
-def optimize!(sin) :: optimize_best_of(x, [sin#math, sin#math_iso, sin]);
+def optimize!(sin) :: [sin#math, sin#math_iso, sin]@.first :: $0.with(x);
