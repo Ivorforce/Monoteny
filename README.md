@@ -80,7 +80,7 @@ The following targets will be officially supported:
 In addition, the transpilation API will allow 3rd parties to target more ecosystems as plugins.
 
 
-### Monoteny 0.1 (Toy Language Stage)
+### Monoteny 0.1 (Toy Language)
 
 - [x] Project Skeleton
   - [x] Number, String, Array Literals
@@ -92,70 +92,97 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
 - [x] Binary operators: + - * / || && > < >= <= == != % **
   - [x] Unary operators: + - !
   - [x] "Conjunctive Pairs" comparison syntax, ex.: a > b >= c
+- Locals
+  - [x] `let` / `var`: Assign new variables
+  - [x] `upd`: Change existing variables
 
-### Monoteny 0.2 (Proof of Concept Stage)
+### Monoteny 0.2 (Generics, Objects & Modules)
 
 - [x] Generics
-  - [x] Reverse generic type checking (output types determined from inputs)
+  - [x] Forward Type Inferral (infer types based on previous information)
+    - [x] Backward Type Inferral (infer types based on later information)
   - [x] Implicit generics (`#A`)
-    - [x] ... in imperative code
-    - [x] ... with implicit trait conformance requirements (`$Number` -> `if $Number: Number {}`)
-    - [ ] ... recursive (`$$Number: $Number`)
-    - [ ] ... anonymous (e.g. `#(a: a, b: b)` or `#.a`)
+    - [x] ... with implicit trait conformance requirements (`$Number` / `$Number#A`)
 - [x] `trait`: Objects that functions can be associated with.
   - [x] `trait` `inherit`: Require trait conformance to another trait
-  - [x] Abstract Functions, Conformance Declarations
+  - [x] Abstract Functions
+  - [x] Conformance Declarations
+    - [x] Conformance Rule Declarations (declare conformance if requirements are met)
   - [x] Stored Properties (for traits with associated Self)
-    - [x] Structs from traits (`SomeTrait(a: a, b: b)`) for traits with no abstract functions
-    - [ ] Anonymous Structs: `... -> (a: Int32, b: Float32) ... return (a: a, b: b)`
-    - [ ] Delegation (`delegate!(Eq) var ...`) (implement all / selected trait offered by the property by calling it on the property)
-    - [ ] Deconstruction assignment (`let (x, y, z) = vec`)
-      - [x] `let`: Assign new variables
-      - [x] `upd`: Change existing variables
-    - [ ] Generic: Any used generics will automatically generify the object
-  - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
-- Running
-  - [x] `main!` decorates functions that can be run from the cli.
-  - [x] `transpile!` decorates functions that can transpile the code.
-  - [ ] Pass parameters to `main!` and `transpile!` from the cli (array of strings).
+    - [x] Traits without abstract functions can be instantiated as structs
 - [x] Modules
+  - [x] `module!` macros: Load and return the module.
   - [x] `use!` statements: Make the module's contents directly referrable in the scope.
   - [x] `include!` statements: When importing this module, also import the others.
-  - [ ] Namespaces
-  - [ ] `private` decorators: Functions or traits that can only be referenced using qualified syntax.
-  - [ ] `inherit` statements: Use and expose another module within your module, allowing additions and overrides.
-- [ ] Control Callbacks (e.g. `def if(expression 'Bool, onTrue 'fun, onFalse 'Fun[Option]) { ... }`))
-  - [ ] `if ... :: { } else :: { }`
-  - [ ] `guard ... else :: { }`
-- [x] Anonymous Blocks
-  - [ ] Yield Statements (`let a = { ... yield b; };`)
-- [ ] Type Alias, aka `String = Character[Int...]` (defining functions on alias doesn't define them for the equal type)
-  - [ ] Enums / Enum type inheritance (achieved through type alias)
-- [ ] Monads
-  - [ ] Tuple Dimension Index
-  - [ ] Defaults (`a: $Real[Default]` for parameters to be omittable)
-  - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
-  - [ ] Open Int Range Dimension Index, array start / end handle syntax (|>, <|)
-  - [ ] Auto Broadcast
-  - [ ] Optionals
-  - [ ] Sets
-  - [ ] Iterators
-- Syntax
-  - [x] Constant-Like function syntax (without `()`)
-  - [x] `(a:)` syntax: 'argument keyed by its variable name' for consistent function definitions, -calls and deconstructions
-  - [ ] 'transformation assignment' syntax: `a .= $0 + 5`; `b .= $0.union(c)`
-  - [x] Custom expression `patterns` with keywords (unary / binary operators)
-  - [x] Comments
-  - [x] String Interpolation
-  - Style transpilation
-    - [ ] Comment & Documentation
-    - [ ] Newline Separator transpilation
 - [x] Simple Constant Folding
   - [x] Function Monomorphization
   - [x] Inline trivial calls (calls that are at most one call)
   - [x] Truncate unused objects
+- Running
+  - [x] `main!` decorates functions that can be run from the cli.
+  - [x] `transpile!` decorates functions that can transpile the code.
+    - [x] Higher order function providers.
+- Syntax
+  - [x] Anonymous Blocks
+  - [x] Constant-Like function syntax (without `()`)
+  - [x] `(a:)` syntax: 'argument keyed by its variable name' for consistent function definitions, -calls and deconstructions
+  - [x] `precedence_order!` statements
+  - [x] `pattern` declarations
+  - [x] Comments
+  - [x] String Interpolation
 
-### Monoteny 1.0
+### Monoteny 0.3 (Link-Time Interpretation)
+
+- [ ] Bytecode Compilation / Interpreter
+  - [ ] Yield Statements (`let a = { ... yield b; };`)
+  - [ ] Return Path Checks
+  - [ ] Generics
+- [ ] Link Scheduler: Make order of imports / global statements unimportant
+- [ ] Link-Time Interpreter
+  - [ ] Computational (return-) types
+  - [ ] Value Types (objects are carried in the type information)
+    - [ ] Meta Traits (traits whose instantiations can act as traits)
+      - [ ] Generic Traits
+      - [ ] IntX (ints with specified bit count)
+        - [ ] FloatX (float with specified bit count)
+        - [ ] PositX (posit with specified bit count)
+        - [ ] Demote existing fixed-width ints and floats (e.g. Int32) to optimizations of IntX
+  - [ ] IntF ($Int of auto-adjusting width)
+    - [ ] RationalF ($Real using `numerator 'IntF` and `denominator 'IntF`)
+    - [ ] DecimalF (decimal of big int with auto-adjusting floating point position)
+  - [ ] DecimalFixed (int number with a fixed floating point position)
+  - [ ] Monads
+    - [ ] Tuples (`tuple Vec3(x, y, z)`, of monadic type with struct-like initializer)
+    - [ ] Defaults (`a: $Real[Default]` for parameters to be omittable)
+    - [ ] Object Dimension Index ("Dictionaries"), Dictionary Literals
+    - [ ] Open Int Range Dimension Index, array start / end handle syntax (|>, <|)
+    - [ ] Auto Broadcast
+    - [ ] Optionals
+    - [ ] Sets
+    - [ ] Iterators
+- Modules
+  - [ ] Namespaces
+  - [ ] `private` decorators: Functions or traits that can only be referenced using qualified syntax.
+  - [ ] `inherit` statements: Use and expose another module within your module, allowing additions and overrides.
+- Syntax: 
+  - [ ] 'transformation assignment' syntax: `a .= $0 + 5`; `b .= $0.union(c)`
+- Style transpilation
+  - [ ] Comment & Documentation
+  - [ ] Newline Separator transpilation
+- [ ] Control Callbacks (e.g. `def if(expression 'Bool, onTrue 'fun, onFalse 'Fun[Option]) { ... }`))
+  - [ ] `if ... :: { } else :: { }`
+  - [ ] `guard ... else :: { }`
+- Running
+  - [ ] Pass parameters to `main!` and `transpile!` from the cli (array of strings).
+- Traits
+  - [ ] Type Alias, aka `String = Character[Int...]` (defining functions on alias doesn't define them for the equal type)
+    - [ ] Enums / Enum type inheritance (achieved through type alias)
+  - [ ] Anonymous Structs: `... -> (a: Int32, b: Float32) ... return (a: a, b: b)`
+  - [ ] Delegation (`delegate!(Eq) var ...`) (implement all / selected trait offered by the property by calling it on the property)
+  - [ ] Deconstruction assignment (`let (x, y, z) = vec`)
+  - [ ] Generic function providers (all scope entries are implicitly called providers of some kind)
+
+### Monoteny 1.0 (Release Ready)
 
 - [ ] Exceptions (as monads)
   - [ ] Early return syntax
@@ -163,16 +190,6 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
     - [ ] `cnf`: Refutably assert equality to existing variables
     - [ ] `if let Some(a) = a :: { }`
     - [ ] `guard let Some(a) = a else { }`
-- [ ] Meta Traits (traits whose instantiations can act as traits)
-  - [ ] This replaces the current trait generics implementation: Generics are arguments that can be resolved by the linker.
-  - [ ] IntX (ints with specified bit count) 
-    - [ ] FloatX (float with specified bit count) 
-    - [ ] PositX (posit with specified bit count) 
-    - [ ] Demote existing fixed-width ints and floats (e.g. Int32) to optimizations of IntX
-- [ ] IntF ($Int of auto-adjusting width)
-  - [ ] RationalF ($Real using `numerator 'IntF` and `denominator 'IntF`)
-  - [ ] DecimalF (decimal of big int with auto-adjusting floating point position)
-- [ ] DecimalFixed (int number with a fixed floating point position)
 - [ ] `precedence_order!` should support full runtime defined grammar, where tokens are all either keywords or objects. This requires it to be joined again with `pattern` statements, but that's acceptable.
 - [ ] Generic Export: Allow the export of unspecialized functions through a trait conformance parameter.
 - [ ] `match x with [0: { ... }]`
@@ -193,16 +210,14 @@ In addition, the transpilation API will allow 3rd parties to target more ecosyst
 
 - [ ] Staggered Dimensions
   - [ ] Implicit Tensors
-- [ ] Link-Time Interpreter
-  - [ ] Computational (return-) types
-  - [ ] Automatic shape tests for dimensions
-    - [ ] Array Dimension Index (i.e. 'anonymous enum')
-    - [ ] Closed Int Range Dimension Index
 - [ ] Custom precedence steps (with associativity)
 - [ ] Optimization Definitions (e.g. an alternative implementation for sort() if all objects are ints)
 - [ ] System I/O API / Permission Contexts
 - [ ] Pointer Monad (-> shared object reference, mutable or immutable)
 - [ ] String-Indexing of members of structs (reflection)
+- [ ] Automatic shape tests for dimensions
+    - [ ] Array Dimension Index (i.e. 'anonymous enum')
+    - [ ] Closed Int Range Dimension Index
 
 ### Standard Library
 
