@@ -11,13 +11,12 @@ Monoteny specializes in reusability, runtime safety and readability. Why not che
 Let's quick-fire some language design decisions:
 
 - **Many transpilation targets:** Writing your code in Monoteny ensures it can be used by everyone.
-- **Simplicity:** Many good general purpose programming languages already exist. Monoteny aims to double down on its strengths, rather than supporting use-cases it's not well suited for.
-- **Implicit Safety:** Monoteny code cannot do anything bad to you except crash or freeze the program. There are no (general purpose) syscalls!
-- **Flexible Runtime:** You can generate new code from text, tokens or specialization on the fly.
-- **Monomorphization:** Transpilation will result in code that doesn't use dynamic dispatch, even when using generics. This makes it fast!
-- **Monads:** Monoteny loves monads. Monads make your code short and easy to read!
-- **Vectorization:** Writing Monoteny code means writing vectorized code. This can be compiled to be _very_ fast.
-- **Infinite Re-Usability:** All interface types are generic and thus replaceable. You can finally stop worrying about writing the same function _again_.
+- **Simplicity:** Monoteny is all about *your* logic. You can keep it simple; the compiler will figure out how to make it fast.
+- **Implicit Safety:** Code compiled from Monoteny cannot do anything bad to you except crash or freeze the program.
+- **Flexible Runtime:** Monoteny bends to your will. Change grammar, decorate classes, generate code - it supports it all.
+- **Monomorphization:** Compiled monoteny code doesn't use dynamic dispatch. This makes it fast and safe!
+- **Monads:** Monoteny loves monads. Monads make your code short, easy to read, and fast!
+- **Infinite Re-Usability:** All types are composable, inheritable and constructable. Define a concept once; use it forever!
 
 ## Code
 
