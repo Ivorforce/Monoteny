@@ -126,7 +126,7 @@ pub fn make_ord_functions(type_: &Rc<TypeProto>, bool_type: &Rc<TypeProto>) -> O
             FunctionInterface::new_operator(2, type_, bool_type)
         ),
         lesser_than_or_equal_to: FunctionPointer::new_global_function(
-            "is_greater_or_equal",
+            "is_lesser_or_equal",
             FunctionInterface::new_operator(2, type_, bool_type)
         ),
     }
