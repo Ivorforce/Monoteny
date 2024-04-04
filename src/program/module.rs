@@ -26,7 +26,6 @@ pub struct Module {
 
     /// Functions that are directly referencible.
     /// Usually, these are just getters for traits, function objects etc.
-    /// Use iter_inner_functions() to get explicit functions.
     pub exposed_functions: HashSet<Rc<FunctionHead>>,
 
     /// These come from decorators.
