@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::collections::hash_map::Entry;
 use std::rc::Rc;
 use guard::guard;
 use itertools::{Itertools, zip_eq};
@@ -157,7 +158,8 @@ impl TypeForest {
     }
 
     fn bind_identity(&mut self, identity: GenericIdentity, t: &TypeProto) -> RResult<()> {
-        // TODO This could be done faster by not creating a new ID, but for now this approach saves us boilerplate / duplicate code
+        // TODO This could be done faster by not creating a new ID,
+        //  but for now this approach saves us boilerplate / duplicate code.
         let new_id = self.insert_new_identity(t);
         self.merge_identities(identity, new_id)?;
         Ok(())
@@ -166,8 +168,7 @@ impl TypeForest {
     fn insert_new_identity(&mut self, t: &TypeProto) -> GenericIdentity {
         match &t.unit {
             TypeUnit::Generic(alias) => {
-                // May already exist, but since the proto has no bind for it, we need not try to further bind.
-                // Either way whatever the register returns is already correct.
+                // If the generic already has an identity, return that. Otherwise, make one.
                 self._register(alias.clone())
             },
             _ => {
@@ -212,40 +213,40 @@ impl TypeForest {
     }
 
     fn merge_identities(&mut self, lhs: GenericIdentity, rhs: GenericIdentity) -> RResult<GenericIdentity> {
+        if (lhs == rhs) {
+            return Ok(lhs)
+        }
+
+        // TODO We default to "into lhs" out of convenience, but it may be faster to use rhs sometimes
         // Merge rhs aliases / arguments into lhs
         self.relink_identity(rhs, lhs);
 
         // Merge types
-        // TODO This might be faster if we first check whether it's better to merge into lhs or into rhs.
-        match (self.identity_to_type.remove(&lhs), self.identity_to_type.remove(&rhs)) {
-            (Some(lhs_type), Some(rhs_type)) => {
-                if lhs_type != rhs_type {
-                    return Err(RuntimeError::new(format!("Cannot merge types: {:?} and {:?}", lhs_type, rhs_type)))
+        let rhs_type = self.identity_to_type.remove(&rhs);
+        match (self.identity_to_type.entry(lhs), rhs_type) {
+            (Entry::Occupied(lhs_entry), Some(rhs_type)) => {
+                // Need to merge.
+                if lhs_entry.get() != &rhs_type {
+                    return Err(RuntimeError::new(format!("Cannot merge types: {:?} and {:?}", lhs_entry.get(), rhs_type)))
                 }
-                self.identity_to_type.insert(lhs.clone(), lhs_type);
-
-                let lhs_args: Vec<GenericIdentity> = self.identity_to_arguments.get(&lhs).unwrap().iter().cloned().collect();
 
                 // TODO This might fall into a trap of recursion circles
-                // Merge arguments
+                // Merge arguments one by one.
                 for (arg, r_arg) in zip_eq(
-                    lhs_args,
+                    self.identity_to_arguments.get(&lhs).unwrap().clone(),
                     self.identity_to_arguments.remove(&rhs).unwrap()
                 ) {
                     self.merge_identities(arg, r_arg)?;
                 }
             }
-            (Some(lhs_type), None) => {
-                self.identity_to_type.insert(lhs.clone(), lhs_type);
-            }
-            (None, Some(rhs_type)) => {
-                self.identity_to_type.insert(lhs.clone(), rhs_type);
+            (Entry::Vacant(lhs_entry), Some(rhs_type)) => {
+                // No left entry; we can just move right into left.
+                lhs_entry.insert(rhs_type);
                 let rhs_args = self.identity_to_arguments.remove(&rhs).unwrap();
                 self.identity_to_arguments.insert(lhs, rhs_args);
             }
-            (None, None) => {}  // Nothing to bind
+            (_, None) => {}  // Nothing to merge, right is empty.
         }
-
 
         Ok(lhs)
     }
@@ -258,10 +259,10 @@ impl TypeForest {
             }
         }
 
-        let rhs_aliases = self.identity_to_alias.remove(&source).unwrap();
-        for alias in rhs_aliases.iter() {
+        let source_aliases = self.identity_to_alias.remove(&source).unwrap();
+        for alias in source_aliases.iter() {
             self.alias_to_identity.insert(alias.clone(), target);
         }
-        self.identity_to_alias.get_mut(&target).unwrap().extend(rhs_aliases);
+        self.identity_to_alias.get_mut(&target).unwrap().extend(source_aliases);
     }
 }
