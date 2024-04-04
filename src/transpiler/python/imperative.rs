@@ -143,7 +143,8 @@ pub fn transpile_expression(expression_id: ExpressionID, context: &FunctionConte
             Box::new(ast::Expression::NamedReference(context.names[&variable.id].clone()))
         }
         ExpressionOperation::FunctionCall(call) => {
-            match transpile_function_call(context, &call.function, &context.representations.function_forms[&call.function], expression_id) {
+            let form = &context.representations.function_forms.get(&call.function).unwrap_or_else(|| panic!("Unable to get function form for {:?}", call.function));
+            match transpile_function_call(context, &call.function, form, expression_id) {
                 Left(e) => e,
                 Right(s) => panic!("Statement not supported in expression context.")
             }
