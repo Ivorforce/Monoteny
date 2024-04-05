@@ -221,7 +221,7 @@ impl<'i> Iterator for Lexer<'i> {
 
                     if match len {
                         2 => matches!(slice, "->"),
-                        1 => matches!(ch, '=' | '.'),
+                        1 => matches!(ch, '=' | '.' | '!'),
                         _ => false,
                     } {
                         return Some(Ok((start, Token::Symbol(slice), end)));
