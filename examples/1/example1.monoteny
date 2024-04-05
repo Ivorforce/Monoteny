@@ -4,10 +4,10 @@ use!(module!("common"));
 pattern {lhs} /_ {rhs} :: floor_div(MultiplicationPrecedence);
 
 -- Define a function floor_div(lhs '$Real, rhs: $Real) using the pattern we set before.
-def {$Real} /_ {$Real} -> $Real :: floor(lhs / rhs);
+def floor_div(lhs '$Real, rhs '$Real) -> $Real :: floor(lhs / rhs);
 
 -- Define a function on numbers.
-def {$Number}.square() -> $Number :: self * self;
+def (self '$Number).square() -> $Number :: self * self;
 
 -- Define a 'static' function on numbers.
 def square(value: '$Number) -> $Number :: value.square();

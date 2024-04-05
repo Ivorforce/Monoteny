@@ -6,7 +6,7 @@ use!(
 def format(object '$ToString) -> String :: object.to_string();
 
 declare String is ToString {
-    def {Self}.to_string() -> String :: self;
+    def (self 'Self).to_string() -> String :: self;
 };
 
 -- Provided by the transpiler.

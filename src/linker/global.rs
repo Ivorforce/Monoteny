@@ -13,12 +13,12 @@ use crate::linker::conformance::ConformanceLinker;
 use crate::linker::grammar::Pattern;
 use crate::linker::grammar::precedence_order::link_precedence_order;
 use crate::linker::imports::link_imports;
-use crate::linker::interface::{link_function_interface, link_operator_interface};
+use crate::linker::interface::link_function_interface;
 use crate::linker::type_factory::TypeFactory;
 use crate::linker::traits::{TraitLinker, try_make_struct};
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
-use crate::program::functions::{FunctionHead, FunctionInterface};
+use crate::program::functions::{FunctionHead, FunctionInterface, Parameter};
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
@@ -43,7 +43,7 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runt
     // Resolve global types / interfaces
     for statement in &syntax.global_statements {
         global_linker.link_global_statement(statement, &HashSet::new())
-            .err_in_range(&statement.position)?;
+            .err_in_range(&statement.value.position)?;
     }
 
     let global_variable_scope = global_linker.global_variables;
@@ -78,28 +78,27 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runt
 }
 
 impl <'a> GlobalLinker<'a> {
-    pub fn link_global_statement(&mut self, pstatement: &'a Positioned<ast::Statement>, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<()> {
-        match &pstatement.value {
+    pub fn link_global_statement(&mut self, pstatement: &'a ast::Decorated<Positioned<ast::Statement>>, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<()> {
+        match &pstatement.value.value {
             ast::Statement::Pattern(pattern) => {
+                pstatement.no_decorations()?;
+
                 let pattern = self.link_pattern(pattern)?;
                 self.module.patterns.insert(Rc::clone(&pattern));
                 self.global_variables.add_pattern(pattern)?;
             }
             ast::Statement::FunctionDeclaration(syntax) => {
+                pstatement.no_decorations()?;
+
                 let scope = &self.global_variables;
                 let (fun, representation) = link_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &HashMap::new())?;
 
-                self.schedule_function_body(&fun, syntax.body.as_ref(), pstatement.position.clone());
-                self.add_function_interface(fun, representation, &vec![])?;
-            }
-            ast::Statement::Operator(syntax) => {
-                let scope = &self.global_variables;
-                let (fun, representation) = link_operator_interface(&syntax, &scope, &self.runtime, requirements)?;
-
-                self.schedule_function_body(&fun, syntax.body.as_ref(), pstatement.position.clone());
+                self.schedule_function_body(&fun, syntax.body.as_ref(), pstatement.value.position.clone());
                 self.add_function_interface(fun, representation, &vec![])?;
             }
             ast::Statement::Trait(syntax) => {
+                pstatement.no_decorations()?;
+
                 let mut trait_ = Trait::new_with_self(&syntax.name);
 
                 let generic_self_type = trait_.create_generic_type("Self");
@@ -127,6 +126,8 @@ impl <'a> GlobalLinker<'a> {
                 self.add_trait(&Rc::new(trait_))?;
             }
             ast::Statement::Conformance(syntax) => {
+                pstatement.no_decorations()?;
+
                 let mut type_factory = TypeFactory::new(&self.global_variables, &mut self.runtime);
                 let self_type = type_factory.link_type(&syntax.declared_for, true)?;
                 let declared = type_factory.resolve_trait(&syntax.declared)?;
@@ -175,11 +176,12 @@ impl <'a> GlobalLinker<'a> {
                 self.global_variables.trait_conformance.add_conformance_rule(rule);
 
                 for fun in linker.functions {
-                    self.schedule_function_body(&fun.function, fun.body.as_ref(), pstatement.position.clone());
+                    self.schedule_function_body(&fun.function, fun.body.as_ref(), pstatement.value.position.clone());
                     self.add_function_interface(fun.function, fun.representation.clone(), &fun.decorators)?;
                 }
             }
             ast::Statement::Expression(e) => {
+                pstatement.no_decorations()?;
                 e.no_errors()?;
 
                 match &e[..] {

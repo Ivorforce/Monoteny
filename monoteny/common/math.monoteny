@@ -9,13 +9,13 @@ def tau -> $Real :: 6.283185307179586;
 
 def e -> $Real :: 2.718281828459045;
 
-def +{$Number} -> $Number :: arg;
+def positive(arg '$Number) -> $Number :: arg;
 
 -- The following functions are provided for ease of use in new number formats.
 -- Those that have no implementation will receive one eventually.
 -- For primitives, transpilers will usually insert a hardware implementation instead.
 
-def {$Real}.factorial() -> $Real;
+def (self '$Real).factorial() -> $Real;
 
 -- TODO Use CORDIC for sin and cos
 def sin(x '$Real) -> $Real;

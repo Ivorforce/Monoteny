@@ -1,5 +1,5 @@
 use std::fmt::{Display, Error, Formatter};
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Range};
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::program::functions::ParameterKey;
@@ -9,50 +9,31 @@ use crate::util::position::Positioned;
 
 // =============================== Global =====================================
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct Module {
-    pub global_statements: Vec<Box<Positioned<Statement>>>
+    pub global_statements: Vec<Box<Decorated<Positioned<Statement>>>>
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct Function {
     pub interface: FunctionInterface,
     pub body: Option<Expression>,
 }
 
-#[derive(Eq, PartialEq)]
-pub enum FunctionInterface {
-    Macro(String),
-    Explicit {
-        identifier: String,
-        target_type: Option<Box<Expression>>,
-        parameters: Vec<Box<KeyedParameter>>,
-        return_type: Option<Expression>,
-    }
+#[derive(Eq, PartialEq, Clone)]
+pub struct FunctionInterface {
+    pub expression: Expression,
+    pub return_type: Option<Expression>,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct KeyedParameter {
     pub key: ParameterKey,
     pub internal_name: String,
     pub param_type: Expression,
 }
 
-#[derive(Eq, PartialEq)]
-pub struct OperatorFunction {
-    pub parts: Vec<Box<OperatorArgument>>,
-
-    pub body: Option<Expression>,
-    pub return_type: Option<Expression>,
-}
-
-#[derive(Eq, PartialEq)]
-pub enum OperatorArgument {
-    Parameter(Box<Expression>),
-    Keyword(String)
-}
-
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct PatternDeclaration {
     pub precedence: String,
 
@@ -66,20 +47,20 @@ pub enum PatternPart {
     Keyword(String),
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct TraitDefinition {
     pub name: String,
     pub statements: Vec<Box<Positioned<Statement>>>,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct TraitConformanceDeclaration {
     pub declared_for: Expression,
     pub declared: String,
     pub statements: Vec<Box<Positioned<Statement>>>,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct MemberAccess {
     pub target: Box<Positioned<Term>>,
     pub member: String,
@@ -88,7 +69,7 @@ pub struct MemberAccess {
 
 // =============================== Code =====================================
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub enum Statement {
     VariableDeclaration {
         mutability: Mutability,
@@ -101,13 +82,12 @@ pub enum Statement {
     Expression(Expression),
     Return(Option<Expression>),
     FunctionDeclaration(Box<Function>),
-    Operator(Box<OperatorFunction>),
     Pattern(Box<PatternDeclaration>),
     Trait(Box<TraitDefinition>),
     Conformance(Box<TraitConformanceDeclaration>),
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct Expression(Vec<Box<Positioned<Term>>>);
 
 impl Expression {
@@ -148,7 +128,7 @@ impl From<Vec<Box<Positioned<Term>>>> for Expression {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub enum Term {
     Error(RuntimeError),
     Identifier(String),
@@ -162,14 +142,14 @@ pub enum Term {
     Block(Vec<Box<Positioned<Statement>>>),
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct StructArgument {
     pub key: ParameterKey,
     pub value: Expression,
     pub type_declaration: Option<Expression>,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct ArrayArgument {
     pub key: Option<Expression>,
     pub value: Expression,
@@ -182,10 +162,16 @@ pub enum FunctionCallType {
     Subscript,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum StringPart {
     Literal(String),
     Object(Vec<StructArgument>),
+}
+
+#[derive(PartialEq, Eq, Clone)]
+pub struct Decorated<T> {
+    pub decorations: Vec<ArrayArgument>,
+    pub value: T,
 }
 
 // =============================== String =====================================
@@ -219,40 +205,14 @@ impl Display for Function {
     }
 }
 
-impl Display for OperatorFunction {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "def ")?;
-        for argument in self.parts.iter() {
-            write!(fmt, "{} ", argument)?;
-        }
-        if let Some(return_type) = &self.return_type {
-            write!(fmt, "-> {}", return_type)?;
-        }
-        if let Some(body) = &self.body {
-            write!(fmt, " :: {}", body)?;
-        }
-        return Ok(())
-    }
-}
-
 impl Display for FunctionInterface {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            FunctionInterface::Macro(m) => write!(fmt, "@{}", m)?,
-            FunctionInterface::Explicit { identifier, target_type, parameters, return_type } => {
-                if let Some(target_type) = &target_type {
-                    write!(fmt, "{{{}}}.", target_type)?;
-                }
+        write!(fmt, "{}", &self.expression)?;
 
-                write!(fmt, "{}(", identifier)?;
-                for item in parameters.iter() { write!(fmt, "{},", item)? };
-                write!(fmt, ")")?;
-
-                if let Some(return_type) = &return_type {
-                    write!(fmt, " -> {}", return_type)?;
-                }
-            }
+        if let Some(return_type) = &self.return_type {
+            write!(fmt, " -> {}", return_type)?;
         }
+
         Ok(())
     }
 }
@@ -306,7 +266,6 @@ impl Display for Statement {
 
             Statement::FunctionDeclaration(function) => write!(fmt, "{}", function),
             Statement::Pattern(pattern) => write!(fmt, "{}", pattern),
-            Statement::Operator(operator) => write!(fmt, "{}", operator),
             Statement::Trait(trait_) => write!(fmt, "{}", trait_),
             Statement::Conformance(conformance) => write!(fmt, "{}", conformance),
         }
@@ -412,11 +371,33 @@ impl Display for StringPart {
     }
 }
 
-impl Display for OperatorArgument {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OperatorArgument::Parameter(param) => write!(f, "{{{}}}", param),
-            OperatorArgument::Keyword(keyword) => write!(f, "{}", keyword),
+impl<V: Display> Display for Decorated<V> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(fmt, "![")?;
+        write_comma_separated_list(fmt, &self.decorations)?;
+        write!(fmt, "]\n{}", self.value)
+    }
+}
+
+impl<V> Decorated<V> {
+    pub fn decorations_as_vec(&self) -> RResult<Vec<&Expression>> {
+        return self.decorations.iter().map(|d| {
+            if d.key.is_some() {
+                return Err(RuntimeError::new("Decorations cannot have keys.".to_string()))
+            }
+            if d.type_declaration.is_some() {
+                return Err(RuntimeError::new("Decorations cannot have type declarations.".to_string()))
+            }
+
+            Ok(&d.value)
+        }).try_collect()
+    }
+
+    pub fn no_decorations(&self) -> RResult<()> {
+        if !self.decorations.is_empty() {
+            return Err(RuntimeError::new("Decorations are not supported in this context.".to_string()))
         }
+
+        return Ok(())
     }
 }
