@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::rc::Rc;
-use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use allocation::Value;
@@ -75,9 +74,9 @@ impl Runtime {
     }
 
     pub fn get_or_load_module(&mut self, name: &ModuleName) -> RResult<&Module> {
-        guard!(let Some(first_part) = name.first() else {
+        let Some(first_part) = name.first() else {
             return Err(RuntimeError::new(format!("{:?} is not a valid module name.", name)))
-        });
+        };
 
         // FIXME this should be if let Some( ... but the compiler bugs out
         if self.source.module_by_name.contains_key(name) {
@@ -178,9 +177,9 @@ impl FunctionInterpreter<'_> {
             ExpressionOperation::FunctionCall(call) => {
                 let function_id = self.resolve(&call.function);
 
-                guard!(let Some(implementation) = self.runtime.function_evaluators.get(&function_id) else {
+                let Some(implementation) = self.runtime.function_evaluators.get(&function_id) else {
                     panic!("Interpreter cannot find function ({}) with interface: {:?}", function_id, &call.function);
-                });
+                };
 
                 // Copy it to release the borrow on self.
                 let implementation: FunctionInterpreterImpl = Rc::clone(&implementation);

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::rc::Rc;
-use guard::guard;
 use linked_hash_map::{Entry, LinkedHashMap};
 use crate::source::StructInfo;
 use crate::program::expression_tree::ExpressionOperation;
@@ -22,9 +21,9 @@ pub fn find_in_implementations(implementations: &Vec<&FunctionImplementation>, l
             let operation = &implementation.expression_tree.values[&expression_id];
 
             if let ExpressionOperation::FunctionCall(binding) = operation {
-                guard!(let Some(FunctionLogicDescriptor::Constructor(struct_info)) = logic.get(&binding.function) else {
+                let Some(FunctionLogicDescriptor::Constructor(struct_info)) = logic.get(&binding.function) else {
                     continue;
-                });
+                };
 
                 let type_ = &binding.function.interface.return_type;  // Fulfillment for Self
                 if let Entry::Vacant(entry) = map.entry(type_.clone()) {

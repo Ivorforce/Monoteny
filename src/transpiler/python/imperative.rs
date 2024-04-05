@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::rc::Rc;
-use guard::guard;
 use itertools::{Either, Itertools, zip_eq};
 use itertools::Either::{Left, Right};
 use uuid::Uuid;
@@ -236,9 +235,9 @@ fn transpile_function_call(context: &FunctionContext, function: &Rc<FunctionHead
 }
 
 pub fn try_transpile_optimization(function: &Rc<FunctionHead>, expression_id: &ExpressionID, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Option<Box<ast::Expression>> {
-    guard!(let Some(descriptor) = context.logic.get(function) else {
+    let Some(descriptor) = context.logic.get(function) else {
         return None;
-    });
+    };
 
     // TODO Monoteny should instead offer its own parser function, and we simply optimize calls that have python-parseable literals.
     Some(match descriptor {
@@ -268,25 +267,25 @@ pub fn escape_string(string: &str) -> String {
 }
 
 pub fn transpile_unary_operator(operator: &str, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Box<ast::Expression> {
-    guard!(let [expression] = arguments[..] else {
+    let [expression] = arguments[..] else {
         panic!("Unary operator got {} arguments: {}", arguments.len(), operator);
-    });
+    };
 
     Box::new(ast::Expression::UnaryOperation(operator.to_string(), transpile_expression(expression, context)))
 }
 
 pub fn transpile_binary_operator(operator: &str, arguments: &Vec<ExpressionID>, context: &FunctionContext) -> Box<ast::Expression> {
-    guard!(let [lhs, rhs] = arguments[..] else {
+    let [lhs, rhs] = arguments[..] else {
         panic!("Binary operator got {} arguments: {}", arguments.len(), operator);
-    });
+    };
 
     Box::new(ast::Expression::BinaryOperation(transpile_expression(lhs, context), operator.to_string(), transpile_expression(rhs, context)))
 }
 
 pub fn transpile_parse_function(supported_regex: &str, arguments: &Vec<ExpressionID>, expression_id: &ExpressionID, context: &FunctionContext) -> Box<ast::Expression> {
-    guard!(let [argument_expression_id] = arguments[..] else {
+    let [argument_expression_id] = arguments[..] else {
         panic!("Parse function got {} arguments", arguments.len());
-    });
+    };
 
     let value = match &context.expressions.values[&argument_expression_id] {
         ExpressionOperation::StringLiteral(literal) => {

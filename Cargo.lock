@@ -204,12 +204,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "guard"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d7402bc4451b9f3cc9a2467bb2faf3ad01b129ae9f47f9943a24ad7a2064d84"
-
-[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -359,7 +353,6 @@ dependencies = [
  "clap",
  "colored",
  "custom_error",
- "guard",
  "itertools",
  "lalrpop",
  "lalrpop-util",

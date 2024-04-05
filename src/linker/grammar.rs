@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use linked_hash_map::LinkedHashMap;
 use strum::{Display, EnumIter};
@@ -79,9 +78,9 @@ impl Grammar {
     }
 
     pub fn add_pattern(&mut self, pattern: Rc<Pattern>) -> RResult<Vec<String>> {
-        guard!(let Some(keyword_map) = self.groups_and_keywords.get_mut(&pattern.precedence_group) else {
+        let Some(keyword_map) = self.groups_and_keywords.get_mut(&pattern.precedence_group) else {
             panic!("Cannot find precedence group {:?} in: {:?}", pattern.precedence_group, self.groups_and_keywords);
-        });
+        };
 
         let keywords = match &pattern.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
             [_] => return Err(RuntimeError::new(format!("Pattern is too short: {}.", pattern.alias))),

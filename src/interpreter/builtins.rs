@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use monoteny_macro::{bin_op, fun_op, load_constant, parse_op, to_string_op, un_op};
 use std::str::FromStr;
-use guard::guard;
 use uuid::Uuid;
 use crate::error::RResult;
 use crate::interpreter::{FunctionInterpreterImpl, Runtime};
@@ -74,9 +73,9 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
                     }
 
                     let implementation_id = *(arg.data as *const Uuid);
-                    guard!(let implementation = &interpreter.runtime.source.fn_heads[&implementation_id] else {
+                    let Some(implementation) = interpreter.runtime.source.fn_heads.get(&implementation_id) else {
                         panic!("Couldn't find function head: {}", implementation_id)
-                    });
+                    };
 
                     transpiler_callback(Rc::clone(implementation), &interpreter.runtime);
 
@@ -101,9 +100,9 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     // -------------------------------------- ------ --------------------------------------
 
     for function in runtime.source.module_by_name[&module_name("builtins")].explicit_functions(&runtime.source) {
-        guard!(let Some(FunctionLogic::Descriptor(descriptor)) = runtime.source.fn_logic.get(function) else {
+        let Some(FunctionLogic::Descriptor(descriptor)) = runtime.source.fn_logic.get(function) else {
             continue;
-        });
+        };
 
         runtime.function_evaluators.insert(function.unwrap_id(), match descriptor {
             FunctionLogicDescriptor::Stub => todo!(),

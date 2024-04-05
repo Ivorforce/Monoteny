@@ -3,7 +3,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::DerefMut;
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use crate::error::RResult;
 use crate::interpreter::{FunctionInterpreter, Runtime, RuntimeError};
@@ -27,9 +26,9 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
         return Err(RuntimeError::new(format!("@main function has a return value.")));
     }
 
-    guard!(let FunctionLogic::Implementation(implementation) = &runtime.source.fn_logic[entry_function] else {
+    let FunctionLogic::Implementation(implementation) = &runtime.source.fn_logic[entry_function] else {
         return Err(RuntimeError::new(format!("Cannot run @main function because it is not implemented.")));
-    });
+    };
 
     let mut interpreter = FunctionInterpreter {
         implementation: Rc::new(*implementation.clone()),
@@ -54,9 +53,9 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     };
     assert!(entry_function.interface.return_type.unit.is_void(), "@transpile function has a return value.");
 
-    guard!(let FunctionLogic::Implementation(implementation) = &runtime.source.fn_logic[entry_function] else {
+    let FunctionLogic::Implementation(implementation) = &runtime.source.fn_logic[entry_function] else {
         return Err(RuntimeError::new(format!("Cannot run @transpile function because it does not have a body.")));
-    });
+    };
 
     let mut assignments = HashMap::new();
     let mut transpiler = Rc::new(RefCell::new(Box::new(Transpiler {

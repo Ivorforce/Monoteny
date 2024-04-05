@@ -2,7 +2,6 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
-use guard::guard;
 use itertools::Itertools;
 use crate::util::iter::omega;
 use crate::util::vec;
@@ -36,9 +35,9 @@ impl<Key: Hash + Eq + Clone, Value> NodeTree<Key, Value> {
 
     pub fn truncate_up_and_down(&mut self, mut trim: Vec<Key>, up_until: impl Fn(&Value) -> bool) {
         while let Some(current) = trim.pop() {
-            guard!(let Entry::Occupied(o) = self.values.entry(current) else {
+            let Entry::Occupied(o) = self.values.entry(current) else {
                 continue // TODO This shouldn't happen but it does rn for some reason. Maybe because of the other truncations?
-            });
+            };
 
             if up_until(o.get()) {
                 self.children.get_mut(o.key()).unwrap().retain(|a| self.values.contains_key(a))

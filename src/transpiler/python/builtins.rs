@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::rc::Rc;
-use guard::guard;
 use strum::IntoEnumIterator;
 use crate::interpreter::Runtime;
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
@@ -37,9 +36,9 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     // The operators can normally be referenced as operators (which the transpiler does do).
     // However, if a reference is required, we need to resort to another strategy.
     for function in runtime.source.module_by_name[&module_name("builtins")].explicit_functions(&runtime.source) {
-        guard!(let Some(FunctionLogic::Descriptor(descriptor)) = runtime.source.fn_logic.get(function) else {
+        let Some(FunctionLogic::Descriptor(descriptor)) = runtime.source.fn_logic.get(function) else {
             continue;
-        });
+        };
 
         let (higher_order_ref_name, representation) = match descriptor {
             FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::EqualTo, type_ } => {

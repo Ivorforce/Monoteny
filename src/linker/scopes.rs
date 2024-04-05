@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::rc::Rc;
-use guard::guard;
 use std::fmt::{Debug, Formatter};
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
@@ -230,9 +229,9 @@ pub enum Reference {
 
 impl Reference {
     pub fn as_local(&self, require_mutable: bool) -> RResult<&Rc<ObjectReference>> {
-        guard!(let Reference::Local(obj_ref) = self else {
+        let Reference::Local(obj_ref) = self else {
             return Err(RuntimeError::new(format!("Reference is not a local.")));
-        });
+        };
 
         Ok(&obj_ref)
     }

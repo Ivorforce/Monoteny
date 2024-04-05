@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::ExpressionOperation;
@@ -34,9 +33,9 @@ pub fn remove_locals(implementation: &mut FunctionImplementation, removed_locals
     let mut type_forest = &mut implementation.type_forest;
 
     for expression_id in expression_forest.values.keys().cloned().collect_vec() {
-        guard!(let Some(operation) = expression_forest.values.get(&expression_id) else {
+        let Some(operation) = expression_forest.values.get(&expression_id) else {
             continue  // Already trimmed
-        });
+        };
 
         match operation {
             ExpressionOperation::GetLocal(local) => {

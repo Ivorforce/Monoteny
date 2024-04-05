@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::rc::Rc;
-use guard::guard;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
@@ -64,13 +63,13 @@ impl TypeForest {
     }
 
     pub fn resolve_binding_alias(&self, alias: &GenericAlias) -> RResult<Rc<TypeProto>> {
-        guard!(let Some(identity) = self.alias_to_identity.get(alias) else {
+        let Some(identity) = self.alias_to_identity.get(alias) else {
             return Err(RuntimeError::new(format!("Unknown generic: {}", alias)))
-        });
+        };
 
-        guard!(let Some(binding) = self.identity_to_type.get(identity) else {
+        let Some(binding) = self.identity_to_type.get(identity) else {
             return Ok(TypeProto::unit(TypeUnit::Generic(*alias)))
-        });
+        };
 
         return Ok(Rc::new(TypeProto {
             unit: binding.clone(),
@@ -81,13 +80,13 @@ impl TypeForest {
     }
 
     pub fn prototype_binding_alias(&self, alias: &GenericAlias) -> Rc<TypeProto> {
-        guard!(let Some(identity) = self.alias_to_identity.get(alias) else {
+        let Some(identity) = self.alias_to_identity.get(alias) else {
             return TypeProto::unit(TypeUnit::Generic(*alias));
-        });
+        };
 
-        guard!(let Some(binding) = self.identity_to_type.get(identity) else {
+        let Some(binding) = self.identity_to_type.get(identity) else {
             return TypeProto::unit(TypeUnit::Generic(*alias));
-        });
+        };
 
         return Rc::new(TypeProto {
             unit: binding.clone(),
@@ -114,9 +113,9 @@ impl TypeForest {
     }
 
     pub fn rebind(&mut self, generic: GenericAlias, t: &TypeProto) -> RResult<()> {
-        guard!(let Some(identity) = self.alias_to_identity.get(&generic) else {
+        let Some(identity) = self.alias_to_identity.get(&generic) else {
             panic!("Internal Error: Cannot rebind non existing generic ({}), aborting.", generic);
-        });
+        };
 
         self.identity_to_type.remove(identity);
         self.bind_identity(*identity, t)

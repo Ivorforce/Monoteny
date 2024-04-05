@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use guard::guard;
 use itertools::{Itertools, zip_eq};
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
@@ -121,9 +120,9 @@ pub fn link_operator_interface(function: &ast::OperatorFunction, scope: &scopes:
 
     // TODO Throw if multiple patterns match
     for pattern in scope.grammar.patterns.iter() {
-        guard!(let Some(arguments) = match_patterns(&pattern.parts, &function.parts) else {
+        let Some(arguments) = match_patterns(&pattern.parts, &function.parts) else {
             continue;
-        });
+        };
 
         let mut parameters: Vec<Parameter> = vec![];
 

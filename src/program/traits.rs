@@ -3,7 +3,6 @@ use std::collections::hash_map::{DefaultHasher, Entry};
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::{format_errors, RResult, RuntimeError};
@@ -167,9 +166,9 @@ impl TraitGraph {
             };
         }
 
-        guard!(let Some(relevant_declarations) = self.conformance_rules.get(&resolved_binding.trait_) else {
+        let Some(relevant_declarations) = self.conformance_rules.get(&resolved_binding.trait_) else {
             return Err(RuntimeError::new(String::from(format!("No declarations found for trait: {:?}", resolved_binding.trait_))));
-        });
+        };
 
         let mut compatible_conformances = vec![];
         let mut bind_errors = vec![];

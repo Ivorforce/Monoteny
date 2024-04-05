@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use linked_hash_set::LinkedHashSet;
 use crate::program::calls::FunctionBinding;
@@ -70,9 +69,9 @@ impl CallGraph {
         let mut next = from.collect_vec();
         let mut gathered = LinkedHashSet::new();
         while let Some(current) = next.pop() {
-            guard!(let Some(callees) = self.callees.get(current) else {
+            let Some(callees) = self.callees.get(current) else {
                 continue
-            });
+            };
             gathered.extend(callees.iter().map(|f| &f.function).cloned());
             next.extend(callees.iter().map(|f| &f.function))
         }

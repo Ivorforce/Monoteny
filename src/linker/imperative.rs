@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::rc::Rc;
 use uuid::Uuid;
-use guard::guard;
 use itertools::Itertools;
 use try_map::FallibleMapExt;
 use crate::error::{ErrInRange, RResult, RuntimeError};
@@ -202,9 +201,9 @@ impl <'a> ImperativeLinker<'a> {
             ast::Statement::VariableDeclaration {
                 mutability, identifier, type_declaration, assignment
             } => {
-                guard!(let Some(assignment) = assignment else {
+                let Some(assignment) = assignment else {
                     return Err(RuntimeError::new(format!("Value {} must be assigned on declaration.", identifier)))
-                });
+                };
                 let assignment: ExpressionID = self.link_expression(&assignment, &scope)?;
 
                 if let Some(type_declaration) = type_declaration {
@@ -364,9 +363,9 @@ impl <'a> ImperativeLinker<'a> {
                 let target = self.link_term(&access.target, scope)
                     .err_in_range(&access.target.position)?;
 
-                guard!(let grammar::Token::Expression(target) = &target.value else {
+                let grammar::Token::Expression(target) = &target.value else {
                     return Err(RuntimeError::new(format!("Dot notation is not supported in this context.")))
-                });
+                };
 
                 let overload = scope.resolve(scopes::Environment::Member, &access.member)?
                     .as_function_overload()?;

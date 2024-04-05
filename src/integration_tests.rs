@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
-    use guard::guard;
     use itertools::Itertools;
     use crate::{interpreter, parser, transpiler};
     use crate::error::RResult;
@@ -29,9 +28,9 @@ def transpile! :: {
 
         assert_eq!(parsed.global_statements.len(), 3);
 
-        guard!(let Statement::FunctionDeclaration(function) = &parsed.global_statements[1].as_ref().value else {
+        let Statement::FunctionDeclaration(function) = &parsed.global_statements[1].as_ref().value else {
             panic!();
-        });
+        };
 
         assert!(function.interface == FunctionInterface::Macro("main".to_string()));
 

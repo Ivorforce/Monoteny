@@ -1,6 +1,5 @@
 use std::hash::Hash;
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::linker::grammar::{OperatorAssociativity, Token};
@@ -133,9 +132,9 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
 
         while !tokens.is_empty() {
             let ptoken = tokens.remove(tokens.len() - 1);
-            guard!(let Token::Keyword(keyword) = ptoken.value else {
+            let Token::Keyword(keyword) = ptoken.value else {
                 return Err(RuntimeError::new(String::from("Expecting an operator but got an expression.")))
-            });
+            };
 
             if let Some(ptoken) = tokens.get(tokens.len() - 1) {
                 if let Token::Expression(expression) = &ptoken.value {

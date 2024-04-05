@@ -1,5 +1,4 @@
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use uuid::Uuid;
 use strum::IntoEnumIterator;
@@ -65,14 +64,14 @@ pub fn link_associativity(body: &ast::Expression) -> RResult<OperatorAssociativi
     let error = RuntimeError::new(format!("Operator associativity needs to be one of {:?}.", OperatorAssociativity::iter().collect_vec()));
     match &body[..] {
         [arg] => {
-            guard!(let Term::Identifier(name) = &arg.value else {
+            let Term::Identifier(name) = &arg.value else {
                 return Err(error)
-            });
+            };
 
             let associativity = OperatorAssociativity::iter().filter(|a| &a.to_string() == name).exactly_one();
-            guard!(let Ok(associativity) = associativity else {
+            let Ok(associativity) = associativity else {
                 return Err(error)
-            });
+            };
 
             Ok(associativity)
         }

@@ -9,7 +9,6 @@ use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::ops::DerefMut;
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use linked_hash_set::LinkedHashSet;
 use crate::interpreter::Runtime;
@@ -92,12 +91,12 @@ impl<'a> Refactor<'a> {
 
         match self.fn_logic.entry(Rc::clone(head)) {
             Entry::Occupied(o) => {
-                guard!(let FunctionLogic::Implementation(imp) = o.get() else {
+                let FunctionLogic::Implementation(imp) = o.get() else {
                     return Err(())
-                });
-                guard!(let Some(inline) = try_inline(imp) else {
+                };
+                let Some(inline) = try_inline(imp) else {
                     return Err(())
-                });
+                };
 
                 o.remove();
                 self.fn_inline_hints.insert(Rc::clone(head), inline);
@@ -133,13 +132,13 @@ impl<'a> Refactor<'a> {
             return None  // We already have an optimization; we need not monomorphize.
         }
 
-        guard!(let Some(logic) = self.fn_logic.get(&binding.function).or_else(|| self.runtime.source.fn_logic.get(&binding.function)) else {
+        let Some(logic) = self.fn_logic.get(&binding.function).or_else(|| self.runtime.source.fn_logic.get(&binding.function)) else {
             panic!("Cannot find logic for function {:?}", binding.function);
-        });
+        };
 
-        guard!(let FunctionLogic::Implementation(implementation) = logic else {
+        let FunctionLogic::Implementation(implementation) = logic else {
             return None
-        });
+        };
 
         let mut new_implementation = implementation.clone();
         monomorphize_implementation(&mut new_implementation, binding);
@@ -164,9 +163,9 @@ impl<'a> Refactor<'a> {
     pub fn swizzle_implementation(&mut self, function: &Rc<FunctionHead>, map: impl Fn(&mut FunctionImplementation) -> Option<Vec<usize>>) -> HashSet<Rc<FunctionHead>> {
         assert!(function.function_type == FunctionType::Static);
 
-        guard!(let Some(FunctionLogic::Implementation(mut implementation)) = self.fn_logic.remove(function) else {
+        let Some(FunctionLogic::Implementation(mut implementation)) = self.fn_logic.remove(function) else {
             panic!();
-        });
+        };
 
         if let Some(swizzle) = map(&mut implementation) {
             // The mapper changed the interface / function ID!

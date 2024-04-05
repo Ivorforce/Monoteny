@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
@@ -53,9 +52,9 @@ impl <'a> TypeFactory<'a> {
     }
 
     pub fn link_type(&mut self, syntax: &ast::Expression, allow_anonymous_generics: bool) -> RResult<Rc<TypeProto>> {
-        guard!(let Ok(pterm) = syntax.iter().exactly_one() else {
+        let Ok(pterm) = syntax.iter().exactly_one() else {
             return Err(RuntimeError::new("Interpreted types aren't supported yet; please use an explicit type for now. 2 ".to_string()));
-        });
+        };
         let term: &ast::Term = &pterm.value;
         let arguments = vec![];
 

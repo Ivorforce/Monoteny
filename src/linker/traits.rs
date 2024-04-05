@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
@@ -43,9 +42,9 @@ impl <'a> TraitLinker<'a> {
                     return Err(RuntimeError::new(format!("Trait variables cannot have requirements.")));
                 }
 
-                guard!(let Some(type_declaration) = type_declaration else {
+                let Some(type_declaration) = type_declaration else {
                     return Err(RuntimeError::new(format!("Trait variables must have explicit types.")));
-                });
+                };
 
                 let mut type_factory = TypeFactory::new(scope, &self.runtime);
 

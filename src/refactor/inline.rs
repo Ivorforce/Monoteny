@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::rc::Rc;
-use guard::guard;
 use itertools::Itertools;
 use crate::program::calls::{FunctionBinding, resolve_binding};
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
@@ -87,10 +86,10 @@ pub fn inline_calls(
         // Essentially, we run through the expression tree. When we change an operation,
         //  we run through it again because there may be more mappings.
         'inline: loop {
-            guard!(let Some(operation) = expression_forest.values.get(&expression_id) else {
+            let Some(operation) = expression_forest.values.get(&expression_id) else {
                 // We have been truncated meanwhile!
                 continue 'expression;
-            });
+            };
 
             // TODO If any parameters do I/O, we need to group them together as part of a new block
             //  and run them successively.
