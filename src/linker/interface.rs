@@ -49,8 +49,11 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
             }, args.iter(), &interface.return_type, type_factory, requirements, generics)
         }
         [
-        // Member-constant like
-        Positioned { position: p1, value: ast::Term::MemberAccess(ast::MemberAccess { target, member, })},
+            // Member-constant like
+            Positioned { position: p1, value: ast::Term::MemberAccess(ast::MemberAccess {
+                target,
+                member,
+            })},
         ] => {
             let target = get_as_target_parameter(&target.value)?;
             _link_function_interface(FunctionRepresentation {
@@ -60,7 +63,10 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
         }
         [
             // Member-function like
-            Positioned { position: p1, value: ast::Term::MemberAccess(ast::MemberAccess { target, member, })},
+            Positioned { position: p1, value: ast::Term::MemberAccess(ast::MemberAccess {
+                target,
+                member,
+            })},
             Positioned { position: p2, value: ast::Term::Struct(args)}
         ] => {
             let target = get_as_target_parameter(&target.value)?;
@@ -141,7 +147,7 @@ pub fn link_function_parameter(parameter: &ast::StructArgument, type_factory: &m
     };
 
     let [
-    Positioned { position, value: ast::Term::Identifier(internal_name) }
+        Positioned { position, value: ast::Term::Identifier(internal_name) }
     ] = parameter.value.iter().map(|a| a.as_ref()).collect_vec()[..] else {
         return Err(RuntimeError::new("Cannot have non-identifier internal name.".to_string()))
     };
