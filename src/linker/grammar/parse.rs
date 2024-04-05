@@ -14,6 +14,13 @@ use crate::program::functions::ParameterKey;
 use crate::util::position::{Positioned, positioned};
 
 pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<Vec<Positioned<Token>>> {
+    // Here's what this function does:
+    // We go left to right through all the terms.
+    // Many terms can just be evaluated to a token, like int literals or local references.
+    // Some terms do something to the previous term. For example, () will either create an empty
+    //  struct, or it will call the previous object as function (if any).
+    // Some terms also do something to the next term. Mostly, a . will interpret the next term as a
+    //  member reference rather than a global.
     let mut tokens = vec![];
 
     let mut i = 0;
