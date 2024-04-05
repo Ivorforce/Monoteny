@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::error::RResult;
 use crate::program::functions::FunctionHead;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum FunctionForm {
     GlobalFunction,
     GlobalImplicit,
@@ -11,7 +11,7 @@ pub enum FunctionForm {
     MemberImplicit,
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct FunctionRepresentation {
     /// Name of the function.
     pub name: String,

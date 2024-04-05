@@ -39,10 +39,6 @@ pub fn get_trivial_expression_call_target(expression_id: &ExpressionID, implemen
     // If requested, the 'constant fold' part with run an interpreter to inline those functions anyway, replacing the calls with constant values.
     match &implementation.expression_tree.values[expression_id] {
         ExpressionOperation::FunctionCall(f) => {
-            if !f.requirements_fulfillment.is_empty() {
-                return None
-            }
-
             let replace_args: Vec<_> = implementation.expression_tree.children[expression_id].iter().map(|arg| {
                 match &implementation.expression_tree.values[arg] {
                     ExpressionOperation::GetLocal(v) => {
@@ -59,6 +55,11 @@ pub fn get_trivial_expression_call_target(expression_id: &ExpressionID, implemen
                 // If we use the same argument twice, we cannot trivially be inlined because arguments
                 //  would have to be copied to variables first - otherwise, we reference the same
                 //  expression twice in the expression forest.
+                return None
+            }
+
+            if !f.requirements_fulfillment.is_empty() {
+                // TODO We just need to lift the requirements fulfillment upwards, it may still be possible!
                 return None
             }
 

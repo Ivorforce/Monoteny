@@ -89,20 +89,20 @@ impl<'a> Refactor<'a> {
             return Err(())
         }
 
-        match self.fn_logic.entry(Rc::clone(head)) {
-            Entry::Occupied(o) => {
-                let FunctionLogic::Implementation(imp) = o.get() else {
-                    return Err(())
-                };
-                let Some(inline) = try_inline(imp) else {
-                    return Err(())
-                };
+        let Entry::Occupied(o) = self.fn_logic.entry(Rc::clone(head)) else {
+            panic!("(Internal Error) Tried to inline an unknown function: {:?}", head);
+        };
 
-                o.remove();
-                self.fn_inline_hints.insert(Rc::clone(head), inline);
-            }
-            Entry::Vacant(_) => panic!(),
-        }
+        let FunctionLogic::Implementation(imp) = o.get() else {
+            return Err(())
+        };
+
+        let Some(inline) = try_inline(imp) else {
+            return Err(())
+        };
+
+        o.remove();
+        self.fn_inline_hints.insert(Rc::clone(head), inline);
 
         return Ok(self.apply_inline(head))
     }
