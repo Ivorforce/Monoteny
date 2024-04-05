@@ -218,28 +218,31 @@ impl <'a> ImperativeLinker<'a> {
                 self.types.bind(expression_id, &TypeProto::void())?;
                 expression_id
             },
-            ast::Statement::MemberUpdate { access, new_value } => {
+            ast::Statement::VariableUpdate { target, new_value } => {
                 let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
 
-                let target = self.link_term(&access.target, scope)
-                    .err_in_range(&access.target.position)?;
-                let target = link_patterns(vec![target], scope, self)?;
-                let overload = scope
-                    .resolve(scopes::Environment::Member, &access.member)?
-                    .as_function_overload()?;
-                self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
-            }
-            ast::Statement::VariableUpdate { identifier, new_value } => {
-                let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
-
-                let object_ref = scope
-                    .resolve(scopes::Environment::Global, identifier)?
-                    .as_local(true)?;
-                self.types.bind(new_value, &object_ref.type_)?;
-                let expression_id = self.register_new_expression(vec![new_value]);
-                self.expression_tree.values.insert(expression_id, ExpressionOperation::SetLocal(Rc::clone(&object_ref)));
-                self.types.bind(expression_id, &TypeProto::void())?;
-                expression_id
+                match &target.iter().map(|a| a.as_ref()).collect_vec()[..] {
+                    [Positioned { position, value: ast::Term::Identifier(identifier) }] => {
+                        let object_ref = scope
+                            .resolve(scopes::Environment::Global, identifier)?
+                            .as_local(true)?;
+                        self.types.bind(new_value, &object_ref.type_)?;
+                        let expression_id = self.register_new_expression(vec![new_value]);
+                        self.expression_tree.values.insert(expression_id, ExpressionOperation::SetLocal(Rc::clone(&object_ref)));
+                        self.types.bind(expression_id, &TypeProto::void())?;
+                        expression_id
+                    }
+                    [Positioned { position, value: ast::Term::MemberAccess(access) }] => {
+                        let target = self.link_term(&access.target, scope)
+                            .err_in_range(&access.target.position)?;
+                        let target = link_patterns(vec![target], scope, self)?;
+                        let overload = scope
+                            .resolve(scopes::Environment::Member, &access.member)?
+                            .as_function_overload()?;
+                        self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
+                    }
+                    _ => return Err(RuntimeError::new("upd keyword must be followed by an identifier or a single member.".to_string()))
+                }
             }
             ast::Statement::Return(expression) => {
                 if let Some(expression) = expression {
