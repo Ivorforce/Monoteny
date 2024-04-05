@@ -20,8 +20,8 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
 
     match interface.expression.iter().map(|a| a.as_ref()).collect_vec()[..] {
         [
-        // Macro
-        Positioned { position, value: ast::Term::MacroIdentifier(m)}
+            // Macro
+            Positioned { position, value: ast::Term::MacroIdentifier(m)}
         ] => {
             if !requirements.is_empty() || !generics.is_empty() {
                 panic!();
@@ -30,8 +30,8 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
             link_macro_function_interface(module, runtime, m)
         }
         [
-        // Constant-like
-        Positioned { position: p1, value: ast::Term::Identifier(i)},
+            // Constant-like
+            Positioned { position: p1, value: ast::Term::Identifier(i)},
         ] => {
             _link_function_interface(FunctionRepresentation {
                 name: i.clone(),
@@ -39,9 +39,9 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
             }, [].into_iter(), &interface.return_type, type_factory, requirements, generics)
         }
         [
-        // Function-like
-        Positioned { position: p1, value: ast::Term::Identifier(i)},
-        Positioned { position: p2, value: ast::Term::Struct(args)}
+            // Function-like
+            Positioned { position: p1, value: ast::Term::Identifier(i)},
+            Positioned { position: p2, value: ast::Term::Struct(args)}
         ] => {
             _link_function_interface(FunctionRepresentation {
                 name: i.clone(),
@@ -50,10 +50,7 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
         }
         [
         // Member-constant like
-        Positioned { position: p1, value: ast::Term::MemberAccess(ast::MemberAccess {
-                                                                      target,
-                                                                      member,
-                                                                  })},
+        Positioned { position: p1, value: ast::Term::MemberAccess(ast::MemberAccess { target, member, })},
         ] => {
             let target = get_as_target_parameter(&target.value)?;
             _link_function_interface(FunctionRepresentation {
@@ -62,12 +59,9 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
             }, Some(target).into_iter(), &interface.return_type, type_factory, requirements, generics)
         }
         [
-        // Member-function like
-        Positioned { position: p1, value: ast::Term::MemberAccess(ast::MemberAccess {
-                                                                      target,
-                                                                      member,
-                                                                  })},
-        Positioned { position: p2, value: ast::Term::Struct(args)}
+            // Member-function like
+            Positioned { position: p1, value: ast::Term::MemberAccess(ast::MemberAccess { target, member, })},
+            Positioned { position: p2, value: ast::Term::Struct(args)}
         ] => {
             let target = get_as_target_parameter(&target.value)?;
             _link_function_interface(FunctionRepresentation {
