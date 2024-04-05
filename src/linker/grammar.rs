@@ -38,13 +38,10 @@ pub struct Struct {
     pub values: Vec<ExpressionID>
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Token {
     Keyword(String),
     Expression(ExpressionID),
-    AnonymousStruct(Struct),
-    AnonymousArray { keys: Vec<Option<ExpressionID>>, values: Vec<ExpressionID> },
-    FunctionReference { overload: Rc<FunctionOverload>, target: Option<ExpressionID> },
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]

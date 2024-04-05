@@ -3,20 +3,19 @@ use std::ops::Range;
 use std::rc::Rc;
 use uuid::Uuid;
 use itertools::Itertools;
-use try_map::FallibleMapExt;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
 use crate::linker::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, LinkerAmbiguity};
-use crate::linker::grammar::parse::link_patterns;
+use crate::linker::grammar::parse::{link_expression_to_tokens, link_patterns};
 use crate::linker::{grammar, scopes};
 use crate::linker::grammar::Struct;
-use crate::linker::scopes::Reference;
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::ObjectReference;
+use crate::program::calls::FunctionBinding;
 use crate::program::debug::MockFunctionInterface;
-use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::function_object::{FunctionForm, FunctionOverload, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
@@ -153,14 +152,6 @@ impl <'a> ImperativeLinker<'a> {
         return Ok(expression_id);
     }
 
-    pub fn link_string_literal(&mut self, value: &str) -> RResult<ExpressionID> {
-        self.link_unambiguous_expression(
-            vec![],
-            &TypeProto::unit_struct(&self.runtime.traits.as_ref().unwrap().String),
-            ExpressionOperation::StringLiteral(value.to_string())
-        )
-    }
-
     pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &ast::Expression, scope: &scopes::Scope) -> RResult<()> {
         let mut type_factory = TypeFactory::new(&scope, &self.runtime);
 
@@ -232,12 +223,14 @@ impl <'a> ImperativeLinker<'a> {
                         self.types.bind(expression_id, &TypeProto::void())?;
                         expression_id
                     }
-                    [Positioned { position, value: ast::Term::MemberAccess(access) }] => {
-                        let target = self.link_term(&access.target, scope)
-                            .err_in_range(&access.target.position)?;
-                        let target = link_patterns(vec![target], scope, self)?;
+                    [
+                        ..,
+                        Positioned { value: ast::Term::Dot, .. },
+                        Positioned { value: ast::Term::Identifier(access), .. }
+                    ] => {
+                        let target = self.link_expression(&target[..target.len() - 2], scope)?;
                         let overload = scope
-                            .resolve(scopes::Environment::Member, &access.member)?
+                            .resolve(scopes::Environment::Member, &access)?
                             .as_function_overload()?;
                         self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
                     }
@@ -280,10 +273,10 @@ impl <'a> ImperativeLinker<'a> {
 
     fn register_local(&mut self, identifier: &str, reference: Rc<ObjectReference>, scope: &mut scopes::Scope) {
         self.locals_names.insert(Rc::clone(&reference), identifier.to_string());
-        scope.override_reference(scopes::Environment::Global, Reference::Local(reference), identifier);
+        scope.override_reference(scopes::Environment::Global, scopes::Reference::Local(reference), identifier);
     }
 
-    fn link_expression_with_type(&mut self, syntax: &ast::Expression, type_declaration: &Option<ast::Expression>, scope: &scopes::Scope) -> RResult<ExpressionID> {
+    pub fn link_expression_with_type(&mut self, syntax: &ast::Expression, type_declaration: &Option<ast::Expression>, scope: &scopes::Scope) -> RResult<ExpressionID> {
         let value = self.link_expression(syntax, scope)?;
         if let Some(type_declaration) = type_declaration {
             self.hint_type(value, type_declaration, scope)?
@@ -291,143 +284,64 @@ impl <'a> ImperativeLinker<'a> {
         Ok(value)
     }
 
-    pub fn link_expression(&mut self, syntax: &ast::Expression, scope: &scopes::Scope) -> RResult<ExpressionID> {
-        let arguments: Vec<Positioned<grammar::Token>> = syntax.iter().map(|a| {
-            self.link_term(a, scope)
-                .err_in_range(&a.position)
-        }).try_collect()?;
-
-        link_patterns(arguments, scope, self)
+    pub fn link_expression(&mut self, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<ExpressionID> {
+        // First, link core grammar.
+        let tokens = link_expression_to_tokens(self, syntax, scope)?;
+        // Then, link configurable user grammar.
+        link_patterns(tokens, scope, self)
     }
 
-    pub fn link_term(&mut self, syntax: &Positioned<ast::Term>, scope: &scopes::Scope) -> RResult<Positioned<grammar::Token>> {
-        let token = match &syntax.value {
-            ast::Term::Error(err) => {
-                return Err(vec![err.clone()])
-            }
-            ast::Term::Identifier(s) => {
-                let variable = scope.resolve(scopes::Environment::Global, s)?;
-
-                match variable {
-                    Reference::Local(ref_) => {
-                        let ObjectReference { id, type_, mutability } = ref_.as_ref();
-
-                        grammar::Token::Expression(self.link_unambiguous_expression(
-                            vec![],
-                            type_,
-                            ExpressionOperation::GetLocal(ref_.clone())
-                        )?)
-                    }
-                    Reference::Keyword(keyword) => {
-                        grammar::Token::Keyword(keyword.clone())
-                    }
-                    Reference::FunctionOverload(overload) => {
-                        match overload.representation.form {
-                            FunctionForm::GlobalFunction => {
-                                grammar::Token::FunctionReference { overload: Rc::clone(overload), target: None }
-                            }
-                            FunctionForm::GlobalImplicit => {
-                                grammar::Token::Expression(
-                                    self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![], vec![], scope, syntax.position.clone())?
-                                )
-                            }
-                            FunctionForm::MemberFunction => panic!(),
-                            FunctionForm::MemberImplicit => panic!(),
-                        }
-                    }
-                }
-            }
-            ast::Term::MacroIdentifier(s) => {
-                todo!()
-            }
-            ast::Term::IntLiteral(string) => {
-                let string_expression_id = self.link_string_literal(string)?;
-
-                grammar::Token::Expression(self.link_abstract_function_call(
-                    vec![string_expression_id],
-                    Rc::clone(&self.runtime.traits.as_ref().unwrap().ConstructableByIntLiteral),
-                    Rc::clone(&self.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
-                    scope.trait_conformance.clone(),
-                    syntax.position.clone(),
-                )?)
-            }
-            ast::Term::RealLiteral(string) => {
-                let string_expression_id = self.link_string_literal(string)?;
-
-                grammar::Token::Expression(self.link_abstract_function_call(
-                    vec![string_expression_id],
-                    Rc::clone(&self.runtime.traits.as_ref().unwrap().ConstructableByRealLiteral),
-                    Rc::clone(&self.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
-                    scope.trait_conformance.clone(),
-                    syntax.position.clone(),
-                )?)
-            }
-            ast::Term::MemberAccess(access) => {
-                let target = self.link_term(&access.target, scope)
-                    .err_in_range(&access.target.position)?;
-
-                let grammar::Token::Expression(target) = &target.value else {
-                    return Err(RuntimeError::new(format!("Dot notation is not supported in this context.")))
-                };
-
-                let overload = scope.resolve(scopes::Environment::Member, &access.member)?
-                    .as_function_overload()?;
-
-                match overload.representation.form {
-                    FunctionForm::MemberImplicit => {
-                        grammar::Token::Expression(
-                            self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional], vec![*target], scope, syntax.position.clone())?
-                        )
-                    }
-                    FunctionForm::MemberFunction => {
-                        grammar::Token::FunctionReference { overload, target: Some(*target) }
-                    }
-                    _ => unreachable!()
-                }
-            }
-            ast::Term::Struct(s) => {
-                grammar::Token::AnonymousStruct(self.link_struct(scope, s)?)
-            }
-            ast::Term::Array(a) => {
-                let values = a.iter().map(|x| {
-                    self.link_expression_with_type(&x.value, &x.type_declaration, scope)
-                }).try_collect()?;
-
-                grammar::Token::AnonymousArray {
-                    keys: a.iter()
-                        .map(|x| x.key.as_ref().try_map(|x| self.link_expression(x, scope)))
-                        .try_collect()?,
-                    values,
-                }
-            }
-            ast::Term::StringLiteral(parts) => {
-                grammar::Token::Expression(match &parts[..] {
-                    // Simple case: Just one part means we can use it directly.
-                    [] => self.link_string_part(
-                        &syntax.with_value(ast::StringPart::Literal("".to_string())),
-                        scope
-                    )?,
-                    [part] => self.link_string_part(part, scope)?,
-                    _ => {
-                        let mut parts: Vec<_> = parts.iter().map(|part| self.link_string_part(part, scope)).try_collect()?;
-                        // TODO We should call concat() with an array instead.
-                        let last = parts.pop().unwrap();
-                        parts.into_iter().try_rfold(last, |rstring, lstring| {
-                            // Call format(<args>)
-                            self.link_simple_function_call("add", vec![ParameterKey::Positional, ParameterKey::Positional], vec![lstring, rstring], scope, syntax.position.clone())
-                        })?
-                    }
-                })
-            }
-            ast::Term::Block(statements) => {
-                grammar::Token::Expression(self.link_block(statements, &scope)?)
-            }
-        };
-
-        Ok(syntax.with_value(token))
+    pub fn link_string_primitive(&mut self, value: &str) -> RResult<ExpressionID> {
+        self.link_unambiguous_expression(
+            vec![],
+            &TypeProto::unit_struct(&self.runtime.traits.as_ref().unwrap().String),
+            ExpressionOperation::StringLiteral(value.to_string())
+        )
     }
 
-    fn link_struct(&mut self, scope: &scopes::Scope, args: &Vec<ast::StructArgument>) -> RResult<Struct> {
+    pub fn link_string_part(&mut self, part: &Positioned<ast::StringPart>, scope: &scopes::Scope) -> RResult<ExpressionID> {
+        match &part.value {
+            ast::StringPart::Literal(literal) => {
+                self.link_string_primitive(literal)
+            },
+            ast::StringPart::Object(o) => {
+                let struct_ = self.link_struct(scope, o)?;
+                // Call format(<args>)
+                self.link_simple_function_call("format", struct_.keys, struct_.values, scope, part.position.clone())
+            }
+        }
+    }
+
+    pub fn link_string_literal(&mut self, scope: &scopes::Scope, ast_token: &Box<Positioned<ast::Term>>, parts: &Vec<Box<Positioned<ast::StringPart>>>) -> Result<ExpressionID, Vec<RuntimeError>> {
+        Ok(match &parts[..] {
+            // Simple case: Just one part means we can use it directly.
+            [] => self.link_string_part(
+                &ast_token.with_value(ast::StringPart::Literal("".to_string())),
+                scope
+            )?,
+            [part] => self.link_string_part(part, scope)?,
+            _ => {
+                let mut parts: Vec<_> = parts.iter()
+                    .map(|part| self.link_string_part(part, scope))
+                    .try_collect()?;
+
+                // TODO We should call concat() with an array instead.
+                let last = parts.pop().unwrap();
+                parts.into_iter().try_rfold(last, |rstring, lstring| {
+                    // Call format(<args>)
+                    self.link_simple_function_call(
+                        "add",
+                        vec![ParameterKey::Positional, ParameterKey::Positional],
+                        vec![lstring, rstring],
+                        scope,
+                        ast_token.position.clone()
+                    )
+                })?
+            }
+        })
+    }
+
+    pub fn link_struct(&mut self, scope: &scopes::Scope, args: &Vec<ast::StructArgument>) -> RResult<Struct> {
         let values = args.iter().map(|x| {
             self.link_expression_with_type(&x.value, &x.type_declaration, scope)
         }).try_collect()?;
@@ -440,24 +354,11 @@ impl <'a> ImperativeLinker<'a> {
         })
     }
 
-    pub fn link_string_part(&mut self, part: &Positioned<ast::StringPart>, scope: &scopes::Scope) -> RResult<ExpressionID> {
-        match &part.value {
-            ast::StringPart::Literal(literal) => {
-                self.link_string_literal(literal)
-            },
-            ast::StringPart::Object(o) => {
-                let struct_ = self.link_struct(scope, o)?;
-                // Call format(<args>)
-                self.link_simple_function_call("format", struct_.keys, struct_.values, scope, part.position.clone())
-            }
-        }
-    }
-
-    fn link_simple_function_call(&mut self, name: &str, keys: Vec<ParameterKey>, args: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> RResult<ExpressionID> {
+    pub fn link_simple_function_call(&mut self, name: &str, keys: Vec<ParameterKey>, args: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> RResult<ExpressionID> {
         let variable = scope.resolve(scopes::Environment::Global, name)?;
 
         match variable {
-            Reference::FunctionOverload(overload) => {
+            scopes::Reference::FunctionOverload(overload) => {
                 match overload.representation.form {
                     FunctionForm::GlobalFunction => {
                         let expression_id = self.link_function_call(overload.functions.iter(), overload.representation.clone(), keys, args, scope, range)?;
@@ -542,6 +443,25 @@ impl <'a> ImperativeLinker<'a> {
             candidates => {
                 Err(RuntimeError::new(format!("function {} could not be resolved.\n{} candidates have mismatching signatures.", signature, candidates.len())))
             }
+        }
+    }
+
+    pub fn link_function_reference(&mut self, overload: &Rc<FunctionOverload>) -> RResult<ExpressionID> {
+        match overload.functions.iter().exactly_one() {
+            Ok(function) => {
+                let getter = &self.runtime.source.fn_getters[function];
+                let expression_id = self.link_unambiguous_expression(
+                    vec![],
+                    &getter.interface.return_type,
+                    // Call the getter of the function 'object' instead of the function itself.
+                    ExpressionOperation::FunctionCall(FunctionBinding::pure(Rc::clone(getter)))
+                )?;
+
+                Ok(expression_id)
+            }
+            _ => return Err(RuntimeError::new(
+                String::from("References to overloaded functions are not yet supported (need syntax to distinguish which to choose).")
+            ))?,
         }
     }
 }

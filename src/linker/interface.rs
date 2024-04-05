@@ -50,12 +50,11 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
         }
         [
             // Member-constant like
-            Positioned { position: p1, value: ast::Term::MemberAccess(ast::MemberAccess {
-                target,
-                member,
-            })},
+            Positioned { position: p1, value: ast::Term::Struct(target) },
+            Positioned { position: p2, value: ast::Term::Dot },
+            Positioned { position: p3, value: ast::Term::Identifier(member) },
         ] => {
-            let target = get_as_target_parameter(&target.value)?;
+            let target = get_as_target_parameter(&target)?;
             _link_function_interface(FunctionRepresentation {
                 name: member.clone(),
                 form: FunctionForm::MemberImplicit,
@@ -63,13 +62,12 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
         }
         [
             // Member-function like
-            Positioned { position: p1, value: ast::Term::MemberAccess(ast::MemberAccess {
-                target,
-                member,
-            })},
-            Positioned { position: p2, value: ast::Term::Struct(args)}
+            Positioned { position: p1, value: ast::Term::Struct(target) },
+            Positioned { position: p2, value: ast::Term::Dot },
+            Positioned { position: p3, value: ast::Term::Identifier(member) },
+            Positioned { position: p4, value: ast::Term::Struct(args)}
         ] => {
-            let target = get_as_target_parameter(&target.value)?;
+            let target = get_as_target_parameter(&target)?;
             _link_function_interface(FunctionRepresentation {
                 name: member.clone(),
                 form: FunctionForm::MemberFunction,
@@ -159,12 +157,8 @@ pub fn link_function_parameter(parameter: &ast::StructArgument, type_factory: &m
     })
 }
 
-pub fn get_as_target_parameter(term: &ast::Term) -> RResult<&ast::StructArgument> {
-    let ast::Term::Struct(target) = term else {
-        return Err(RuntimeError::new("Target of member function must be one-element struct.".to_string()))
-    };
-
-    let [target] = &target[..] else {
+pub fn get_as_target_parameter(term: &Vec<ast::StructArgument>) -> RResult<&ast::StructArgument> {
+    let [target] = &term[..] else {
         return Err(RuntimeError::new("Target of member function must be one-element struct.".to_string()))
     };
 

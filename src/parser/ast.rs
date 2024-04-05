@@ -60,12 +60,6 @@ pub struct TraitConformanceDeclaration {
     pub statements: Vec<Box<Positioned<Statement>>>,
 }
 
-#[derive(Eq, PartialEq, Clone)]
-pub struct MemberAccess {
-    pub target: Box<Positioned<Term>>,
-    pub member: String,
-}
-
 
 // =============================== Code =====================================
 
@@ -132,9 +126,9 @@ pub enum Term {
     Error(RuntimeError),
     Identifier(String),
     MacroIdentifier(String),
+    Dot,
     IntLiteral(String),
     RealLiteral(String),
-    MemberAccess(MemberAccess),
     Struct(Vec<StructArgument>),
     Array(Vec<ArrayArgument>),
     StringLiteral(Vec<Box<Positioned<StringPart>>>),
@@ -289,7 +283,6 @@ impl Display for Term {
                 }
                 write!(fmt, "\"")
             },
-            Term::MemberAccess(access) =>  write!(fmt, "{}", access),
             Term::Struct(arguments) => {
                 write!(fmt, "(")?;
                 write_comma_separated_list(fmt, arguments)?;
@@ -305,13 +298,8 @@ impl Display for Term {
                 for item in statements.iter() { write!(fmt, "    {};\n", item)? };
                 write!(fmt, "}}")
             }
+            Term::Dot => write!(fmt, "."),
         }
-    }
-}
-
-impl Display for MemberAccess {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{}.{}", self.target, self.member)
     }
 }
 

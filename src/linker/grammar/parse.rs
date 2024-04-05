@@ -4,40 +4,186 @@ use itertools::Itertools;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::linker::grammar::{OperatorAssociativity, Token};
 use crate::linker::imperative::ImperativeLinker;
-use crate::linker::scopes;
-use crate::linker::scopes::Environment;
+use crate::linker::{grammar, scopes};
+use crate::parser::ast;
+use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
+use crate::program::function_object::{FunctionForm, FunctionOverload};
 use crate::program::functions::ParameterKey;
 use crate::util::position::{Positioned, positioned};
 
-pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, linker: &mut ImperativeLinker) -> RResult<ExpressionID> {
-    // Resolve structs and array literals
+pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<Vec<Positioned<Token>>> {
+    let mut tokens = vec![];
+
     let mut i = 0;
-    for _ in 0 .. tokens.len() {
-        let ptoken = &tokens[i];
+    while i < syntax.len() {
+        let ast_token = &syntax[i];
+        i += 1;
 
-        match &ptoken.value {
-            Token::AnonymousStruct(struct_) => {
-                let previous = tokens.get(i - 1);
-                match previous.map(|v| &v.value) {
-                    Some(Token::FunctionReference { overload, target }) => {
-                        let expression_id = linker.link_function_call(
-                            overload.functions.iter(),
-                            overload.representation.clone(),
-                            target.iter().map(|_| &ParameterKey::Positional).chain(&struct_.keys).cloned().collect(),
-                            target.iter().chain(&struct_.values).cloned().collect(),
-                            scope,
-                            ptoken.position.clone(),
-                        )?;
-
-                        tokens[i] = positioned(Token::Expression(expression_id), previous.unwrap().position.start, ptoken.position.end);
-                        tokens.remove(i - 1);
+        match &ast_token.value {
+            ast::Term::Error(err) => return Err(vec![err.clone()]),
+            ast::Term::Identifier(identifier) => {
+                match scope.resolve(scopes::Environment::Global, identifier)? {
+                    scopes::Reference::Keyword(keyword) => {
+                        tokens.push(ast_token.with_value(
+                            Token::Keyword(keyword.clone())
+                        ));
                     }
+                    scopes::Reference::Local(local) => {
+                        let ObjectReference { id, type_, mutability } = local.as_ref();
+
+                        tokens.push(ast_token.with_value(
+                            Token::Expression(linker.link_unambiguous_expression(
+                                vec![],
+                                type_,
+                                ExpressionOperation::GetLocal(local.clone())
+                            )?)
+                        ));
+                    }
+                    scopes::Reference::FunctionOverload(overload) => {
+                        tokens.push(ast_token.with_value(
+                            match overload.representation.form {
+                                FunctionForm::GlobalFunction => {
+                                    let next_token = syntax.get(i);
+
+                                    match next_token.map(|t| &t.value) {
+                                        Some(ast::Term::Struct(s)) => {
+                                            i += 1;
+
+                                            // The next token is a struct; we can immediately call it!
+                                            let struct_ = linker.link_struct(scope, s)?;
+
+                                            let expression_id = linker.link_function_call(
+                                                overload.functions.iter(),
+                                                overload.representation.clone(),
+                                                struct_.keys.clone(),
+                                                struct_.values.clone(),
+                                                scope,
+                                                ast_token.position.clone(),
+                                            )?;
+
+                                            Token::Expression(expression_id)
+                                        },
+                                        _ => Token::Expression(linker.link_function_reference(overload)?),
+                                    }
+                                }
+                                FunctionForm::GlobalImplicit => {
+                                    Token::Expression(
+                                        linker.link_function_call(
+                                            overload.functions.iter(),
+                                            overload.representation.clone(),
+                                            vec![],
+                                            vec![],
+                                            scope,
+                                            ast_token.position.clone()
+                                        )?
+                                    )
+                                }
+                                _ => unreachable!(),
+                            }
+                        ));
+                    }
+                }
+            }
+            ast::Term::MacroIdentifier(_) => {
+                return Err(RuntimeError::new(format!("Macro not supported here.")))
+            }
+            ast::Term::Dot => {
+                let previous = tokens.last();
+                let Some(Token::Expression(target)) = previous.map(|v| &v.value) else {
+                    return Err(RuntimeError::new(format!("Dot notation requires a preceding object.")))
+                };
+                let next = syntax.get(i);
+                i += 1;
+                let Some(ast::Term::Identifier(member)) = next.map(|v| &v.value) else {
+                    return Err(RuntimeError::new(format!("Dot notation requires a following identifier.")))
+                };
+
+                let overload = scope.resolve(scopes::Environment::Member, member)?
+                    .as_function_overload()?;
+
+                // TODO This is almost duplicated code from normal function calls above.
+                *tokens.last_mut().unwrap() = ast_token.with_value(match overload.representation.form {
+                    FunctionForm::MemberFunction => {
+                        let next_token = syntax.get(i);
+                        i += 1;
+
+                        match next_token.map(|t| &t.value) {
+                            Some(ast::Term::Struct(s)) => {
+                                // The next token is a struct; we can immediately call it!
+                                let struct_ = linker.link_struct(scope, s)?;
+
+                                let expression_id = linker.link_function_call(
+                                    overload.functions.iter(),
+                                    overload.representation.clone(),
+                                    [ParameterKey::Positional].into_iter().chain(struct_.keys.clone()).collect_vec(),
+                                    [target.clone()].into_iter().chain(struct_.values.clone()).collect_vec(),
+                                    scope,
+                                    ast_token.position.clone(),
+                                )?;
+
+                                Token::Expression(expression_id)
+                            },
+                            _ => return Err(RuntimeError::new(format!("Member function references are not yet supported."))),
+                        }
+                    }
+                    FunctionForm::MemberImplicit => {
+                        Token::Expression(
+                            linker.link_function_call(
+                                overload.functions.iter(),
+                                overload.representation.clone(),
+                                vec![ParameterKey::Positional],
+                                vec![target.clone()],
+                                scope,
+                                ast_token.position.clone()
+                            )?
+                        )
+                    }
+                    _ => unreachable!(),
+                });
+            }
+            ast::Term::IntLiteral(string) => {
+                let string_expression_id = linker.link_string_primitive(string)?;
+
+                tokens.push(ast_token.with_value(
+                    Token::Expression(linker.link_abstract_function_call(
+                        vec![string_expression_id],
+                        Rc::clone(&linker.runtime.traits.as_ref().unwrap().ConstructableByIntLiteral),
+                        Rc::clone(&linker.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
+                        scope.trait_conformance.clone(),
+                        ast_token.position.clone(),
+                    )?)
+                ));
+            }
+            ast::Term::RealLiteral(string) => {
+                let string_expression_id = linker.link_string_primitive(string)?;
+
+                tokens.push(ast_token.with_value(
+                    Token::Expression(linker.link_abstract_function_call(
+                        vec![string_expression_id],
+                        Rc::clone(&linker.runtime.traits.as_ref().unwrap().ConstructableByRealLiteral),
+                        Rc::clone(&linker.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
+                        scope.trait_conformance.clone(),
+                        ast_token.position.clone(),
+                    )?)
+                ));
+            }
+            ast::Term::StringLiteral(parts) => {
+                tokens.push(ast_token.with_value(
+                    Token::Expression(linker.link_string_literal(scope, ast_token, parts)?)
+                ))
+            }
+            ast::Term::Struct(s) => {
+                let struct_ = linker.link_struct(scope, s)?;
+
+                let previous = tokens.last();
+                match previous.map(|v| &v.value) {
                     Some(Token::Expression(expression)) => {
+                        // Call previous token
                         let overload = scope
-                            .resolve(Environment::Member, "call_as_function").err_in_range(&ptoken.position)?
-                            .as_function_overload().err_in_range(&ptoken.position)?;
+                            .resolve(scopes::Environment::Member, "call_as_function").err_in_range(&ast_token.position)?
+                            .as_function_overload().err_in_range(&ast_token.position)?;
 
                         let expression_id = linker.link_function_call(
                             overload.functions.iter(),
@@ -45,74 +191,61 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                             [&ParameterKey::Positional].into_iter().chain(&struct_.keys).cloned().collect(),
                             [expression].into_iter().chain(&struct_.values).cloned().collect(),
                             scope,
-                            ptoken.position.clone(),
+                            ast_token.position.clone(),
                         )?;
 
-                        tokens[i] = ptoken.with_value(Token::Expression(expression_id));
-                        tokens.remove(i - 1);
+                        *tokens.last_mut().unwrap() = ast_token.with_value(Token::Expression(expression_id));
                     }
                     _ => {
+                        // No previous token; Use struct as value.
                         if &struct_.keys[..] == &[ParameterKey::Positional] {
                             let expression_id = *struct_.values.iter().exactly_one().unwrap();
-                            tokens[i] = ptoken.with_value(Token::Expression(expression_id));
-                        }
-                        else {
-                            return Err(RuntimeError::new(String ::from("Anonymous struct literals are not yet supported.")))
+                            tokens.push(ast_token.with_value(
+                                Token::Expression(expression_id)
+                            ));
+                        } else {
+                            return Err(RuntimeError::new(String::from("Anonymous struct literals are not yet supported.")))
                         }
                     }
                 }
             }
-            Token::AnonymousArray { keys, values } => {
-                let previous = tokens.get(i - 1);
+            ast::Term::Array(a) => {
+                let values = a.iter().map(|x| {
+                    linker.link_expression_with_type(&x.value, &x.type_declaration, scope)
+                }).try_collect()?;
+
+                let previous = tokens.last();
                 match previous.map(|v| &v.value) {
-                    Some(Token::FunctionReference { overload, target }) => {
-                        return Err(RuntimeError::new(String::from("Functions with subscript form are not yet supported.")))
-                    }
                     Some(Token::Expression(expression)) => {
                         return Err(RuntimeError::new(String::from("Object subscript is not yet supported.")))
                     }
                     _ => {
+                        let supertype = linker.types.merge_all(&values)?.clone();
                         return Err(RuntimeError::new(String::from("Array literals are not yet supported.")))
 
-                        // let supertype = linker.expressions.type_forest.merge_all(values)?.clone();
-                        //
-                        // tokens[i] = Token::Expression(linker.link_unambiguous_expression(
-                        //     vec![],
-                        //     &TypeProto::monad(TypeProto::unit(TypeUnit::Generic(supertype))),
-                        //     ExpressionOperation::ArrayLiteral
-                        // )?)
+                        // tokens.push(ast_token.with_value(
+                        //     Token::Expression(linker.link_unambiguous_expression(
+                        //         vec![],
+                        //         &TypeProto::monad(TypeProto::unit(TypeUnit::Generic(supertype))),
+                        //         ExpressionOperation::ArrayLiteral
+                        //     )?)
+                        // ));
                     }
                 }
             }
-            _ => {
-                i += 1;
+            ast::Term::Block(statements) => {
+                tokens.push(ast_token.with_value(
+                    Token::Expression(linker.link_block(statements, &scope)?)
+                ))
             }
         }
     }
 
-    // Resolve function references as curried functions
-    for i in 0 .. tokens.len() {
-        let ptoken = &tokens[i];
-        if let Token::FunctionReference { overload, target } = &ptoken.value {
-            match overload.functions.iter().exactly_one() {
-                Ok(function) => {
-                    let getter = &linker.runtime.source.fn_getters[function];
-                    let expression_id = linker.link_unambiguous_expression(
-                        vec![],
-                        &getter.interface.return_type,
-                        // Call the getter of the function 'object' instead of the function itself.
-                        ExpressionOperation::FunctionCall(FunctionBinding::pure(Rc::clone(getter)))
-                    )?;
+    Ok(tokens)
+}
 
-                    tokens[i] = ptoken.with_value(Token::Expression(expression_id));
-                }
-                _ => return Err(RuntimeError::new(
-                    String::from("References to overloaded functions are not yet supported (need syntax to distinguish which to choose).")
-                ))?,
-            }
-        }
-    }
-
+pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, linker: &mut ImperativeLinker) -> RResult<ExpressionID> {
+    println!("{:?}", tokens);
     let mut arguments: Vec<Positioned<ExpressionID>> = vec![];
     let mut keywords: Vec<String> = vec![];
 
@@ -147,7 +280,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                 }
             }
 
-            let overload = scope.resolve(Environment::Global, &left_unary_operators[&keyword])?.as_function_overload()?;
+            let overload = scope.resolve(scopes::Environment::Global, &left_unary_operators[&keyword])?.as_function_overload()?;
 
             // Unary operator, because left of operator is an operator!
             let argument = arguments.remove(0);
@@ -166,8 +299,8 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
     let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<Positioned<ExpressionID>>, alias: &str, i: usize| -> RResult<()> {
         let lhs = arguments.remove(i);
         let rhs = arguments.remove(i);
-        let operator = scope.resolve(Environment::Global, &alias)?;
-        let overload = scope.resolve(Environment::Global, alias)?.as_function_overload()?;
+        let operator = scope.resolve(scopes::Environment::Global, &alias)?;
+        let overload = scope.resolve(scopes::Environment::Global, alias)?.as_function_overload()?;
 
         let range = lhs.position.start..rhs.position.end;
 

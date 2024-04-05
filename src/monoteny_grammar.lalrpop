@@ -132,10 +132,6 @@ VariableDeclarationMutability: Mutability = {
     "var" => Mutability::Mutable,
 }
 
-MemberAccess: MemberAccess = {
-    <target: Box<Positioned<Term>>> "." <member: Identifier> => MemberAccess { <> },
-}
-
 // =============================== Expression =====================================
 
 Expression: Expression = {
@@ -147,9 +143,9 @@ Term: Term = {
     MacroIdentifier => Term::MacroIdentifier(<>),
     IntLiteral => Term::IntLiteral(<>),
     RealLiteral => Term::RealLiteral(<>),
+    "." => Term::Dot,
     "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Term::Array(<>),
     "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Term::Struct(<>),
-    MemberAccess => Term::MemberAccess(<>),
     "\"" <Box<Positioned<StringPart>>*> "\"" => Term::StringLiteral(<>),
     "{" <(<Box<Positioned<Statement>>> ";")*> "}" => Term::Block(<>),
     <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Term::Error(derive_error(&e, start, end)) },
