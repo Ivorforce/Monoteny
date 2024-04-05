@@ -245,7 +245,6 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
 }
 
 pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, linker: &mut ImperativeLinker) -> RResult<ExpressionID> {
-    println!("{:?}", tokens);
     let mut arguments: Vec<Positioned<ExpressionID>> = vec![];
     let mut keywords: Vec<String> = vec![];
 
