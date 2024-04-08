@@ -12,10 +12,12 @@ use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, Tr
 use crate::program::types::TypeProto;
 
 pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, function_binding: &FunctionBinding) -> LinkedHashSet<Rc<FunctionBinding>> {
+    println!("In {:?}", implementation.head);
     let mut encountered_calls = LinkedHashSet::new();
 
     // Map types.
     let generic_replacement_map = &function_binding.requirements_fulfillment.generic_mapping;
+    println!("generics {:?}", generic_replacement_map);
 
     // Change Anys to Generics in the type forest.
     implementation.type_forest.rebind_structs_as_generic(generic_replacement_map).unwrap();
@@ -29,6 +31,7 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
             (Rc::clone(v), map_variable(v, &implementation.type_forest, &generic_replacement_map))
         })
         .collect();
+    println!("locals {:?}", locals_map);
 
     // The implementation self-injected assmumption functions based on requirements.
     // Now it's time we replace them depending on the actual requirements fulfillment.
@@ -43,6 +46,7 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
             function_replacement_map.insert(Rc::clone(fun_assumption), (conformance.tail.clone(), Rc::clone(fun_fulfillment)));
         }
     }
+    println!("functions {:?}", function_replacement_map);
 
     // Find function calls in the expression forest
     for expression_id in implementation.expression_tree.deep_children(implementation.expression_tree.root) {
@@ -50,7 +54,9 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
 
         match operation {
             ExpressionOperation::FunctionCall(call) => {
+                println!("Resolve call {:?}", call);
                 let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &implementation.type_forest);
+                println!("Resolved call to {:?}", resolved_call);
                 encountered_calls.insert_if_absent(Rc::clone(&resolved_call));
                 *operation = ExpressionOperation::FunctionCall(resolved_call)
             }
@@ -102,6 +108,7 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMa
     let default_pair = (RequirementsFulfillment::empty(), Rc::clone(&call.function));
     let (mapped_function_tail, mapped_function) = function_replacement_map.get(&call.function)
         .unwrap_or(&default_pair);
+    println!("Mapped call to {:?}", mapped_function);
 
     let full_conformance = RequirementsFulfillment::merge(&call.requirements_fulfillment, mapped_function_tail);
 
@@ -120,9 +127,9 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMa
                         conformance: TraitConformance::new(
                             // Don't map the requirements
                             //  - there MIGHT be two different requirements like "A is Float" and "B is Float",
-                            //  which map to map to A 'Float32 and B 'Float32, but are fulfilled differently.
+                            //  which map  to A 'Float32 and B 'Float32, but are fulfilled differently.
                             //  Granted, this is a rare use-case, but it's #valid nonetheless.
-                            //  So, the requirements must be mapped as-is.
+                            //  So, the requirements must be used as-is.
                             Rc::clone(requirement),
                             conformance.conformance.function_mapping.iter()
                                 .map(

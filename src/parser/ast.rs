@@ -34,20 +34,6 @@ pub struct KeyedParameter {
 }
 
 #[derive(Eq, PartialEq, Clone)]
-pub struct PatternDeclaration {
-    pub precedence: String,
-
-    pub alias: String,
-    pub parts: Vec<Box<PatternPart>>,
-}
-
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub enum PatternPart {
-    Parameter { key: ParameterKey, internal_name: String },
-    Keyword(String),
-}
-
-#[derive(Eq, PartialEq, Clone)]
 pub struct TraitDefinition {
     pub name: String,
     pub statements: Vec<Box<Positioned<Statement>>>,
@@ -75,7 +61,6 @@ pub enum Statement {
     Expression(Expression),
     Return(Option<Expression>),
     FunctionDeclaration(Box<Function>),
-    Pattern(Box<PatternDeclaration>),
     Trait(Box<TraitDefinition>),
     Conformance(Box<TraitConformanceDeclaration>),
 }
@@ -210,14 +195,6 @@ impl Display for FunctionInterface {
     }
 }
 
-impl Display for PatternDeclaration {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "pattern {}({}) :: ", &self.alias, self.precedence)?;
-        write_space_separated_list(fmt, &self.parts)?;
-        Ok(())
-    }
-}
-
 impl Display for TraitDefinition {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         write!(fmt, "trait {} {{", self.name)?;
@@ -255,7 +232,6 @@ impl Display for Statement {
             Statement::Expression(ref expression) => write!(fmt, "{}", expression),
 
             Statement::FunctionDeclaration(function) => write!(fmt, "{}", function),
-            Statement::Pattern(pattern) => write!(fmt, "{}", pattern),
             Statement::Trait(trait_) => write!(fmt, "{}", trait_),
             Statement::Conformance(conformance) => write!(fmt, "{}", conformance),
         }
@@ -315,15 +291,6 @@ impl Display for ArrayArgument {
             write!(fmt, "{}: ", key)?;
         }
         write!(fmt, "{}", self.value)
-    }
-}
-
-impl Display for PatternPart {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        match self {
-            PatternPart::Parameter { key, internal_name } => write!(fmt, "({}{})", key, internal_name),
-            PatternPart::Keyword(keyword) => write!(fmt, "{}", keyword),
-        }
     }
 }
 

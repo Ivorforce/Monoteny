@@ -33,6 +33,8 @@ pub struct Trait {
     pub field_hints: Vec<FieldHint>,
 }
 
+/// For traits, information about certain fields that have been declared.
+///  This is useful mostly if somebody wants to instantiate the trait without sub-traiting it.
 #[derive(Clone)]
 pub struct FieldHint {
     pub name: String,
@@ -54,28 +56,39 @@ pub struct TraitBinding {
 /// How a trait binding is fulfilled.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct TraitConformance {
-    // The binding that is being fulfilled.
+    /// The binding that is being fulfilled.
     pub binding: Rc<TraitBinding>,
-    // abstract function of the trait to the function that implements it.
+    /// abstract function of the trait to the function that implements it.
     pub function_mapping: HashMap<Rc<FunctionHead>, Rc<FunctionHead>>,
 }
 
 #[derive(Clone, Eq, Hash, PartialEq, Debug)]
 pub struct TraitConformanceWithTail {
+    /// The actual conformance.
     pub conformance: Rc<TraitConformance>,
+    /// How the conformance was achieved (through dynamic rules).
+    /// While the dynamic function call itself does not need this information, the dynamic dispatch (/monomorphization)
+    ///  later needs to know more because the conformance's functions might call the tail's functions.
+    /// You can imagine it like so: Suppose a function is called that has a requirement.
+    /// Not only need the requirement be resolved - but if the conformance was achieved through rules, the implementations
+    ///  of the requirements' functions might (will!) call functions from any of the rule's requirements!
+    ///  e.g. Animal is required, the implementation is for any $Cat, so animal.talk() will call self.purr() - a function
+    ///  declared only on Cats.
+    /// So when we use this conformance, we must also bring along the tail
+    /// which must be pre-resolved w.r.t. the conformance's requirements itself.
     pub tail: Rc<RequirementsFulfillment>,
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct TraitConformanceRule {
-    // Generics declared for this conformance, by name (via its declaration).
-    // Used in requirements and the conformance itself (collect_generics on those would yield the same GenericAliases).
+    /// Generics declared for this conformance, by name (via its declaration).
+    /// Used in requirements and the conformance itself (collect_generics on those would yield the same GenericAliases).
     pub generics: HashMap<String, Rc<Trait>>,
 
-    // To use this conformance, these other conformances are required.
+    /// To use this conformance, these other conformances are required.
     pub requirements: HashSet<Rc<TraitBinding>>,
 
-    // The conformance (w.r.t. generics) defined by this rule.
+    /// The conformance (w.r.t. generics) defined by this rule.
     pub conformance: Rc<TraitConformance>,
 }
 
@@ -85,15 +98,7 @@ pub struct TraitConformanceRule {
 #[derive(Clone, Eq, PartialEq)]
 pub struct TraitGraph {
     /// All known conformances.
-    /// For each conformance, we also know its tail - aka HOW the conformance was achieved (through dynamic rules).
-    /// While the dynamic function call itself does not need this information, the dynamic dispatch (/monomorphization)
-    ///  later needs to know more because the conformance's functions might call the tail's functions.
-    /// You can imagine it like so: Suppose a function is called that has a requirement.
-    /// Not only need the requirement be resolved - but if the requirement was achieved through rules, the implementations
-    ///  of the requirements' functions might (will!) call functions from any of the rule's requirements!
-    ///  e.g. Animal is required, the implementation is for any $Cat, so animal.talk() will call self.purr() - a function
-    ///  declared only on Cats. So when we use this conformance, we must also bring along the tail, which must be pre-resolved
-    ///  w.r.t. the conformance's requirements itself.
+    /// For each conformance, we also know its tail, aka how it was achieved.
     pub conformance_cache: HashMap<Rc<TraitBinding>, Option<Rc<TraitConformanceWithTail>>>,
 
     /// A list of conformance declarations that allow for dynamic conformance.
@@ -485,7 +490,7 @@ impl Hash for TraitBinding {
 
 impl Debug for Trait {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "{}", self.name)?;
+        write!(fmt, "{}<{}>", self.name, self.id)?;
         if !self.generics.is_empty() {
             write!(fmt, "<")?;
             write_comma_separated_list(fmt, &self.generics.keys().collect_vec())?;

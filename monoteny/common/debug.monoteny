@@ -1,6 +1,5 @@
 use!(
     module!("common.precedence"),
-    module!("common.patterns"),
 );
 
 def exit_with_error(error '$ToString) -> # :: {

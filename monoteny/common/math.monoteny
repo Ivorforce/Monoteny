@@ -1,6 +1,5 @@
 use!(
     module!("common.precedence"),
-    module!("common.patterns"),
     module!("common.debug"),
 );
 
@@ -9,7 +8,58 @@ def tau -> $Real :: 6.283185307179586;
 
 def e -> $Real :: 2.718281828459045;
 
+-- Common mathematical patterns we can expect most people to understand.
+
+![pattern(+ arg, LeftUnaryPrecedence)]
 def positive(arg '$Number) -> $Number :: arg;
+
+![pattern(- arg, LeftUnaryPrecedence)]
+def _negative(arg '$Number) -> $Number :: negative(arg);
+
+![pattern(not arg, LeftUnaryPrecedence)]
+def _not(arg 'Bool) -> Bool :: not_f(arg);
+
+![pattern(lhs ** rhs, ExponentiationPrecedence)]
+def _exponent(lhs '$Real, rhs '$Real) -> $Real :: exponent(lhs, rhs);
+
+![pattern(lhs * rhs, MultiplicationPrecedence)]
+def _multiply(lhs '$Number, rhs '$Number) -> $Number :: multiply(lhs, rhs);
+
+![pattern(lhs / rhs, MultiplicationPrecedence)]
+def _divide(lhs '$Number, rhs '$Number) -> $Number :: divide(lhs, rhs);
+
+![pattern(lhs % rhs, MultiplicationPrecedence)]
+def _modulo(lhs '$Number, rhs '$Number) -> $Number :: modulo(lhs, rhs);
+
+![pattern(lhs + rhs, AdditionPrecedence)]
+def _add(lhs '$Number, rhs '$Number) -> $Number :: add(lhs, rhs);
+
+![pattern(lhs - rhs, AdditionPrecedence)]
+def _subtract(lhs '$Number, rhs '$Number) -> $Number :: subtract(lhs, rhs);
+
+![pattern(lhs == rhs, ComparisonPrecedence)]
+def _is_equal(lhs '$Eq, rhs '$Eq) -> Bool :: is_equal(lhs, rhs);
+
+![pattern(lhs != rhs, ComparisonPrecedence)]
+def _is_not_equal(lhs '$Eq, rhs '$Eq) -> Bool :: is_not_equal(lhs, rhs);
+
+![pattern(lhs > rhs, ComparisonPrecedence)]
+def _is_greater(lhs '$Number, rhs '$Number) -> Bool :: is_greater(lhs, rhs);
+
+![pattern(lhs >= rhs, ComparisonPrecedence)]
+def _is_greater_or_equal(lhs '$Number, rhs '$Number) -> Bool :: is_greater_or_equal(lhs, rhs);
+
+![pattern(lhs < rhs, ComparisonPrecedence)]
+def _is_lesser(lhs '$Number, rhs '$Number) -> Bool :: is_lesser(lhs, rhs);
+
+![pattern(lhs <= rhs, ComparisonPrecedence)]
+def _is_lesser_or_equal(lhs '$Number, rhs '$Number) -> Bool :: is_lesser_or_equal(lhs, rhs);
+
+![pattern(lhs and rhs, LogicalConjunctionPrecedence)]
+def _and(lhs 'Bool, rhs 'Bool) -> Bool :: and_f(lhs, rhs);
+
+![pattern(lhs or rhs, LogicalDisjunctionPrecedence)]
+def _or(lhs 'Bool, rhs 'Bool) -> Bool :: or_f(lhs, rhs);
 
 -- The following functions are provided for ease of use in new number formats.
 -- Those that have no implementation will receive one eventually.

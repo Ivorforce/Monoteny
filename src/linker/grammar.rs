@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Error, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use itertools::Itertools;
@@ -6,10 +7,9 @@ use linked_hash_map::LinkedHashMap;
 use strum::{Display, EnumIter};
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
-use crate::parser::ast::PatternPart;
 use crate::program::expression_tree::ExpressionID;
 use crate::program::function_object::FunctionOverload;
-use crate::program::functions::ParameterKey;
+use crate::program::functions::{FunctionHead, ParameterKey};
 
 pub mod parse;
 pub mod precedence_order;
@@ -47,16 +47,22 @@ pub enum Token {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Pattern {
     pub id: Uuid,
-    pub alias: String,
     pub precedence_group: Rc<PrecedenceGroup>,
 
     pub parts: Vec<Box<PatternPart>>,
+    pub head: Rc<FunctionHead>,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum PatternPart {
+    Parameter(usize),
+    Keyword(String),
 }
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Grammar {
     pub patterns: HashSet<Rc<Pattern>>,
-    pub groups_and_keywords: LinkedHashMap<Rc<PrecedenceGroup>, HashMap<String, String>>,
+    pub groups_and_keywords: LinkedHashMap<Rc<PrecedenceGroup>, HashMap<String, Rc<FunctionHead>>>,
 }
 
 impl Grammar {
@@ -80,13 +86,13 @@ impl Grammar {
         };
 
         let keywords = match &pattern.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
-            [_] => return Err(RuntimeError::new(format!("Pattern is too short: {}.", pattern.alias))),
+            [_] => return Err(RuntimeError::new("Pattern is too short.".to_string())),
             [
                 PatternPart::Keyword(keyword),
                 PatternPart::Parameter { .. },
             ] => {
                 assert_eq!(pattern.precedence_group.associativity, OperatorAssociativity::LeftUnary);
-                keyword_map.insert(keyword.clone(), pattern.alias.clone());
+                keyword_map.insert(keyword.clone(), Rc::clone(&pattern.head));
                 vec![keyword.clone()]
             },
             [
@@ -101,7 +107,7 @@ impl Grammar {
                 PatternPart::Parameter { .. },
             ] => {
                 assert_ne!(pattern.precedence_group.associativity, OperatorAssociativity::LeftUnary);
-                keyword_map.insert(keyword.clone(), pattern.alias.clone());
+                keyword_map.insert(keyword.clone(), Rc::clone(&pattern.head));
                 vec![keyword.clone()]
             }
             _ => return Err(RuntimeError::new(String::from("This pattern form is not supported; try using unary or binary patterns."))),
@@ -134,3 +140,12 @@ impl Hash for PrecedenceGroup {
     }
 }
 
+
+impl Display for PatternPart {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        match self {
+            PatternPart::Parameter(p) => write!(fmt, "({})", p),
+            PatternPart::Keyword(keyword) => write!(fmt, "{}", keyword),
+        }
+    }
+}

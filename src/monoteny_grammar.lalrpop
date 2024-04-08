@@ -24,7 +24,6 @@ extern {
         StringLiteral => Token::StringLiteral(_),
 
         "def" => Token::Symbol("def"),
-        "pattern" => Token::Symbol("pattern"),
         "trait" => Token::Symbol("trait"),
         "declare" => Token::Symbol("declare"),
 
@@ -76,15 +75,6 @@ pub Program: Module = {
     <global_statements: Box<Decorated<Positioned<(<Statement> ";")>>>*> => Module { <> }
 };
 
-Pattern: Box<PatternDeclaration> = {
-    "pattern" <parts: PatternPart+> "::" <alias: Identifier> "(" <precedence: Identifier> ")" => Box::new(PatternDeclaration { <> }),
-}
-
-PatternPart: Box<PatternPart> = {
-    AnyIdentifier => Box::new(PatternPart::Keyword(<>)),
-    "{" <name_value: NameValuePair> "}" => Box::new(PatternPart::Parameter { key: name_value.0, internal_name: name_value.1 }),
-}
-
 Function: Box<Function> = {
     "def" <interface: FunctionInterface> <body: ("::" <FunctionBody>)?> => Box::new(Function { <> }),
 }
@@ -95,12 +85,6 @@ FunctionInterface: FunctionInterface = {
 
 FunctionBody: Expression = {
     <Expression>,
-}
-
-NameValuePair: (ParameterKey, String) = {
-    <name: Identifier> ":" <value: Identifier> => (ParameterKey::Name(name), value),
-    <name: Identifier> ":" => (ParameterKey::Name(name.clone()), name),
-    <value: Identifier> => (ParameterKey::Positional, value),
 }
 
 // =============================== Trait =====================================
@@ -122,7 +106,6 @@ Statement: Statement = {
     "return" <Expression?> => Statement::Return(<>),
     Expression => Statement::Expression(<>),
     Function => Statement::FunctionDeclaration(<>),
-    Pattern => Statement::Pattern(<>),
     Trait => Statement::Trait(<>),
     Conformance => Statement::Conformance(<>),
 }

@@ -38,6 +38,7 @@ pub enum FunctionForm {
 }
 
 pub fn find_for_function(forms: &mut HashMap<Rc<FunctionHead>, FunctionForm>, global_namespace: &mut namespaces::Level, implementation: &FunctionImplementation, representation: &FunctionRepresentation) {
+    println!("Reg {}", representation.name);
     if implementation.parameter_locals.is_empty() {
         // TODO We could make a helper function and still use a constant even if we use blocks.
         let has_blocks = implementation.expression_tree.values.values().any(|op| matches!(op, ExpressionOperation::Block));

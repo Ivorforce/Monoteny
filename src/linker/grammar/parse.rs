@@ -9,8 +9,8 @@ use crate::parser::ast;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::function_object::{FunctionForm, FunctionOverload};
-use crate::program::functions::ParameterKey;
+use crate::program::function_object::{FunctionForm, FunctionOverload, FunctionRepresentation};
+use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::util::position::{Positioned, positioned};
 
 pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<Vec<Positioned<Token>>> {
@@ -286,11 +286,18 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                 }
             }
 
-            let overload = scope.resolve(scopes::Environment::Global, &left_unary_operators[&keyword])?.as_function_overload()?;
+            let function_head = &left_unary_operators[&keyword];
 
             // Unary operator, because left of operator is an operator!
             let argument = arguments.remove(0);
-            let expression_id = linker.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional], vec![argument.value], scope, ptoken.position)?;
+            let expression_id = linker.link_function_call(
+                [function_head].into_iter(),
+                FunctionRepresentation { name: "fn".to_string(), form: FunctionForm::GlobalFunction },
+                vec![ParameterKey::Positional],
+                vec![argument.value],
+                scope,
+                ptoken.position
+            )?;
             arguments.insert(0, argument.with_value(expression_id));
         }
     }
@@ -302,11 +309,9 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
 
     // Resolve binary operators. At this point, we have only expressions interspersed with operators.
 
-    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<Positioned<ExpressionID>>, alias: &str, i: usize| -> RResult<()> {
+    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<Positioned<ExpressionID>>, function_head: &Rc<FunctionHead>, i: usize| -> RResult<()> {
         let lhs = arguments.remove(i);
         let rhs = arguments.remove(i);
-        let operator = scope.resolve(scopes::Environment::Global, &alias)?;
-        let overload = scope.resolve(scopes::Environment::Global, alias)?.as_function_overload()?;
 
         let range = lhs.position.start..rhs.position.end;
 
@@ -314,7 +319,14 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
             i,
             Positioned {
                 position: range.clone(),
-                value: linker.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional, ParameterKey::Positional], vec![lhs.value, rhs.value], scope, range)?,
+                value: linker.link_function_call(
+                    [function_head].into_iter(),
+                    FunctionRepresentation { name: "fn".to_string(), form: FunctionForm::GlobalFunction },
+                    vec![ParameterKey::Positional, ParameterKey::Positional],
+                    vec![lhs.value, rhs.value],
+                    scope,
+                    range
+                )?,
             }
         ))
     };
@@ -325,9 +337,9 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                 // Iterate left to right
                 let mut i = 0;
                 while i < keywords.len() {
-                    if let Some(alias) = group_operators.get(&keywords[i]) {
+                    if let Some(function_head) = group_operators.get(&keywords[i]) {
                         keywords.remove(i);
-                        join_binary_at(linker, &mut arguments, alias, i)?;
+                        join_binary_at(linker, &mut arguments, function_head, i)?;
                     }
                     else {
                         i += 1;  // Skip

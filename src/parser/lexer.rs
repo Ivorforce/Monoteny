@@ -199,7 +199,7 @@ impl<'i> Iterator for Lexer<'i> {
                     let slice = unsafe { self.source.get_unchecked(start..end) };
 
                     if match len {
-                        7 => matches!(slice, "declare" | "pattern"),
+                        7 => matches!(slice, "declare"),
                         6 => matches!(slice, "return"),
                         5 => matches!(slice, "trait"),
                         3 => matches!(slice, "let" | "var" | "upd" | "def"),

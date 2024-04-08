@@ -10,7 +10,7 @@ use crate::program::expression_tree::*;
 use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{imports, interpreter_mock, referencible, scopes};
 use crate::linker::conformance::ConformanceLinker;
-use crate::linker::grammar::Pattern;
+use crate::linker::decorations::try_parse_pattern;
 use crate::linker::grammar::precedence_order::link_precedence_order;
 use crate::linker::imports::link_imports;
 use crate::linker::interface::link_function_interface;
@@ -80,19 +80,15 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runt
 impl <'a> GlobalLinker<'a> {
     pub fn link_global_statement(&mut self, pstatement: &'a ast::Decorated<Positioned<ast::Statement>>, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<()> {
         match &pstatement.value.value {
-            ast::Statement::Pattern(pattern) => {
-                pstatement.no_decorations()?;
-
-                let pattern = self.link_pattern(pattern)?;
-                self.module.patterns.insert(Rc::clone(&pattern));
-                self.global_variables.add_pattern(pattern)?;
-            }
             ast::Statement::FunctionDeclaration(syntax) => {
-                pstatement.no_decorations()?;
-
                 let scope = &self.global_variables;
                 let (fun, representation) = link_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &HashMap::new())?;
 
+                for decoration in pstatement.decorations_as_vec()? {
+                    let pattern = try_parse_pattern(decoration, Rc::clone(&fun), &self.global_variables)?;
+                    self.module.patterns.insert(Rc::clone(&pattern));
+                    self.global_variables.add_pattern(pattern)?;
+                }
                 self.schedule_function_body(&fun, syntax.body.as_ref(), pstatement.value.position.clone());
                 self.add_function_interface(fun, representation, &vec![])?;
             }
@@ -235,17 +231,6 @@ impl <'a> GlobalLinker<'a> {
         let root_module_name = root_module.name.clone();
         imports::deep(&mut self.runtime, root_module_name, &mut self.global_variables)?;
         Ok(())
-    }
-
-    pub fn link_pattern(&mut self, syntax: &ast::PatternDeclaration) -> RResult<Rc<Pattern>> {
-        let precedence_group = self.global_variables.resolve_precedence_group(&syntax.precedence)?;
-
-        Ok(Rc::new(Pattern {
-            id: Uuid::new_v4(),
-            alias: syntax.alias.clone(),
-            precedence_group,
-            parts: syntax.parts.clone(),
-        }))
     }
 
     fn add_trait(&mut self, trait_: &Rc<Trait>) -> RResult<()> {
