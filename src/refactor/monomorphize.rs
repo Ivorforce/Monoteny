@@ -133,8 +133,12 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMa
                             Rc::clone(requirement),
                             conformance.conformance.function_mapping.iter()
                                 .map(
-                                    |(abstract_fun, fulfillment_fun)|
-                                    (Rc::clone(abstract_fun), Rc::clone(function_replacement_map.get(fulfillment_fun).map(|x| &x.1).unwrap_or_else(|| fulfillment_fun)))
+                                    |(abstract_fun, fulfillment_fun)| (
+                                        Rc::clone(abstract_fun),
+                                        Rc::clone(function_replacement_map.get(fulfillment_fun)
+                                            .map(|x| &x.1)
+                                            .unwrap_or_else(|| fulfillment_fun))
+                                    )
                                 )
                                 .collect()
                         )
