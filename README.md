@@ -26,7 +26,7 @@ tuple Cartesian(x, y, z);
 tuple Spherical(l, e, a);
 
 -- Define a function with a monadic input and a monadic output.
-def {'$Real[Cartesian]}.to_spherical() -> $Real[Spherical] :: {
+def (self '$Real[Cartesian]).to_spherical() -> $Real[Spherical] :: {
   -- Destructure to x, y, z arrays, each '$Real
   let #(x, y, z) = self;
 
