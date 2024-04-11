@@ -36,4 +36,40 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn custom_grammar() -> RResult<()> {
+        let (parsed, errors) = parser::parse_program("
+    use!(module!(\"common\"));
+
+    ![pattern(lhs /_ rhs, MultiplicationPrecedence)]
+    def floor_div(lhs '$Real, rhs '$Real) -> $Real :: floor(lhs / rhs);
+
+    def main! :: {
+        write_line(1 /_ 2 'Float32);
+    };
+
+    def transpile! :: {
+        transpiler.add(main);
+    };
+    ")?;
+        assert!(errors.is_empty());
+
+        assert_eq!(parsed.global_statements.len(), 4);
+
+        let Statement::FunctionDeclaration(floor_div) = &parsed.global_statements[1].as_ref().value.value else {
+            panic!();
+        };
+
+        match floor_div.interface.expression.iter().map(|t| &t.value).collect_vec()[..] {
+            [Term::Identifier(i), Term::Struct(s)] => {
+                assert_eq!(i, "floor_div");
+                assert_eq!(s.len(), 2);
+            }
+            _ => panic!()
+        }
+        assert_eq!(parsed.global_statements[1].decorations.len(), 1);
+
+        Ok(())
+    }
 }
