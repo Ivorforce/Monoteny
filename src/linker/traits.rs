@@ -122,7 +122,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         if let Some(abstract_setter) = &abstract_field.setter {
             let struct_setter = struct_field.setter.clone().unwrap();
             function_mapping.insert(Rc::clone(abstract_setter), Rc::clone(&struct_setter));
-            field_getters.insert(Rc::clone(&variable_as_object), struct_setter);
+            field_setters.insert(Rc::clone(&variable_as_object), struct_setter);
         }
 
         parameters.push(Parameter {
