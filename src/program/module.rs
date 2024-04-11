@@ -30,7 +30,7 @@ pub struct Module {
 
     /// These come from decorators.
     /// Collecting all decorated functions allows us to fail late - the rest of the code is still
-    ///  valid even if multiple @main functions are declared! We just cannot run them as 'main'.
+    ///  valid even if multiple main! functions are declared! We just cannot run them as 'main'.
     pub main_functions: Vec<Rc<FunctionHead>>,
     pub transpile_functions: Vec<Rc<FunctionHead>>,
 }

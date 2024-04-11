@@ -54,7 +54,7 @@ pub fn run(args: &ArgMatches) -> RResult<ExitCode> {
     let mut error_count = 0;
 
     for output_extension in output_extensions {
-        let start = dump_start(format!("{}:@transpile using {}", input_path.as_os_str().to_string_lossy(), output_extension).as_str());
+        let start = dump_start(format!("{}:transpile! using {}", input_path.as_os_str().to_string_lossy(), output_extension).as_str());
         match transpile_target(base_filename, base_output_path, &config, &mut runtime, &module, output_extension) {
             Ok(paths) => {
                 for path in paths {

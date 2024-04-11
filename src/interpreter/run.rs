@@ -15,19 +15,19 @@ use crate::transpiler::{TranspiledArtifact, Transpiler};
 
 pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
     let entry_function = match &module.main_functions[..] {
-        [] => return Err(RuntimeError::new(format!("No @main function declared."))),
+        [] => return Err(RuntimeError::new(format!("No main! function declared."))),
         [f] => f,
         functions => return Err(RuntimeError::new(format!("Too many @main functions declared: {:?}", functions))),
     };
     if !entry_function.interface.parameters.is_empty() {
-        return Err(RuntimeError::new(format!("@main function has parameters.")));
+        return Err(RuntimeError::new(format!("main! function has parameters.")));
     }
     if !entry_function.interface.return_type.unit.is_void() {
-        return Err(RuntimeError::new(format!("@main function has a return value.")));
+        return Err(RuntimeError::new(format!("main! function has a return value.")));
     }
 
     let FunctionLogic::Implementation(implementation) = &runtime.source.fn_logic[entry_function] else {
-        return Err(RuntimeError::new(format!("Cannot run @main function because it is not implemented.")));
+        return Err(RuntimeError::new(format!("Cannot run main! function because it is not implemented.")));
     };
 
     let mut interpreter = FunctionInterpreter {
