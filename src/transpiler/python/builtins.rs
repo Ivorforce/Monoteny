@@ -135,34 +135,36 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     }
 
     // TODO Some of these sneakily convert the type - especially float to int and vice versa.
-    for function in runtime.source.module_by_name[&module_name("common.math")].explicit_functions(&runtime.source) {
-        let representation = &runtime.source.fn_representations[function];
+    if let Some(common) = runtime.source.module_by_name.get(&module_name("common.math")) {
+        for function in common.explicit_functions(&runtime.source) {
+            let representation = &runtime.source.fn_representations[function];
 
-        let id = match representation.name.as_str() {
-            "factorial" => PSEUDO_KEYWORD_IDS["math.factorial"],
-            "sin" => PSEUDO_KEYWORD_IDS["math.sin"],
-            "cos" => PSEUDO_KEYWORD_IDS["math.cos"],
-            "tan" => PSEUDO_KEYWORD_IDS["math.tan"],
-            "sinh" => PSEUDO_KEYWORD_IDS["math.sinh"],
-            "cosh" => PSEUDO_KEYWORD_IDS["math.cosh"],
-            "tanh" => PSEUDO_KEYWORD_IDS["math.tanh"],
-            "arcsin" => PSEUDO_KEYWORD_IDS["math.asin"],
-            "arccos" => PSEUDO_KEYWORD_IDS["math.acos"],
-            "arctan" => PSEUDO_KEYWORD_IDS["math.atan"],
-            "arcsinh" => PSEUDO_KEYWORD_IDS["math.asinh"],
-            "arccosh" => PSEUDO_KEYWORD_IDS["math.acosh"],
-            "arctanh" => PSEUDO_KEYWORD_IDS["math.atanh"],
+            let id = match representation.name.as_str() {
+                "factorial" => PSEUDO_KEYWORD_IDS["math.factorial"],
+                "sin" => PSEUDO_KEYWORD_IDS["math.sin"],
+                "cos" => PSEUDO_KEYWORD_IDS["math.cos"],
+                "tan" => PSEUDO_KEYWORD_IDS["math.tan"],
+                "sinh" => PSEUDO_KEYWORD_IDS["math.sinh"],
+                "cosh" => PSEUDO_KEYWORD_IDS["math.cosh"],
+                "tanh" => PSEUDO_KEYWORD_IDS["math.tanh"],
+                "arcsin" => PSEUDO_KEYWORD_IDS["math.asin"],
+                "arccos" => PSEUDO_KEYWORD_IDS["math.acos"],
+                "arctan" => PSEUDO_KEYWORD_IDS["math.atan"],
+                "arcsinh" => PSEUDO_KEYWORD_IDS["math.asinh"],
+                "arccosh" => PSEUDO_KEYWORD_IDS["math.acosh"],
+                "arctanh" => PSEUDO_KEYWORD_IDS["math.atanh"],
 
-            "ceil" => PSEUDO_KEYWORD_IDS["math.ceil"],
-            "floor" => PSEUDO_KEYWORD_IDS["math.floor"],
-            "round" => PSEUDO_KEYWORD_IDS["round"],
+                "ceil" => PSEUDO_KEYWORD_IDS["math.ceil"],
+                "floor" => PSEUDO_KEYWORD_IDS["math.floor"],
+                "round" => PSEUDO_KEYWORD_IDS["round"],
 
-            "abs" => PSEUDO_KEYWORD_IDS["abs"],
-            _ => continue,
-        };
+                "abs" => PSEUDO_KEYWORD_IDS["abs"],
+                _ => continue,
+            };
 
-        // By the time we need other representations hopefully we can use object namespaces
-        representations.function_forms.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
+            // By the time we need other representations hopefully we can use object namespaces
+            representations.function_forms.insert(Rc::clone(function), FunctionForm::FunctionCall(id));
+        }
     }
 
     for function in runtime.source.module_by_name[&module_name("core.debug")].explicit_functions(&runtime.source) {

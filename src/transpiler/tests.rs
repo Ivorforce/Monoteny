@@ -35,10 +35,21 @@ mod tests {
     #[test]
     fn simple_math() -> RResult<()> {
         test_transpiles("
-use!(module!(\"common\"));
+precedence_order!([
+    LeftUnaryPrecedence(LeftUnary),
+    ExponentiationPrecedence(Right),
+    MultiplicationPrecedence(Left),
+    AdditionPrecedence(Left),
+    ComparisonPrecedence(LeftConjunctivePairs),
+    LogicalConjunctionPrecedence(Left),
+    LogicalDisjunctionPrecedence(Left),
+]);
+
+![pattern(lhs + rhs, AdditionPrecedence)]
+def _add(lhs '$Number, rhs '$Number) -> $Number :: add(lhs, rhs);
 
 def main! :: {
-    write_line(1 + 2 'Float32);
+    let a 'Float32 = 1 + 2;
 };
 
 def transpile! :: {
@@ -51,8 +62,6 @@ def transpile! :: {
     #[test]
     fn eq0() -> RResult<()> {
         test_transpiles("
-use!(module!(\"common\"));
-
 def main! :: {
     is_equal(1, 1 'Int32);
 };
@@ -67,8 +76,6 @@ def transpile! :: {
     #[test]
     fn eq1() -> RResult<()> {
         test_transpiles("
-use!(module!(\"common\"));
-
 def is_equal_1(lhs '$Eq, rhs '$Eq) -> Bool :: is_equal(lhs, rhs);
 
 def main! :: {
@@ -85,8 +92,6 @@ def transpile! :: {
     #[test]
     fn eq2() -> RResult<()> {
         test_transpiles("
-use!(module!(\"common\"));
-
 def is_equal_1(lhs '$Eq, rhs '$Eq) -> Bool :: is_equal(lhs, rhs);
 def is_equal_2(lhs '$Eq, rhs '$Eq) -> Bool :: is_equal_1(lhs, rhs);
 

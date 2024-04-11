@@ -41,7 +41,13 @@ mod tests {
     fn custom_grammar() -> RResult<()> {
         let (parsed, errors) = parser::parse_program("
     precedence_order!([
+        LeftUnaryPrecedence(LeftUnary),
+        ExponentiationPrecedence(Right),
         MultiplicationPrecedence(Left),
+        AdditionPrecedence(Left),
+        ComparisonPrecedence(LeftConjunctivePairs),
+        LogicalConjunctionPrecedence(Left),
+        LogicalDisjunctionPrecedence(Left),
     ]);
 
     ![pattern(lhs /_ rhs, MultiplicationPrecedence)]
