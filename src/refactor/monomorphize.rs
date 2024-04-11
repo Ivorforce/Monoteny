@@ -95,12 +95,6 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, context: &RequirementsFulfillmen
     // 1) The caller has already fulfilled the requirement, and it is passed here in the function replacement map as its tail.
     // 2) The requirement was exposed to our function in an abstract way, and we had to fulfill it.
 
-    let requirements_fulfillment = RequirementsFulfillment {
-        conformance: Default::default(),
-        generic_mapping: Default::default(),
-    };
-
-
     let requirements_fulfillment = map_requirements_fulfillment(
         &call.requirements_fulfillment,
         context,
