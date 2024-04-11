@@ -1,5 +1,5 @@
 def test(a: $Real) -> $Real :: {
-    match a [
+    match a with [
         0: 5,
         1: 2,
         else: 5,
