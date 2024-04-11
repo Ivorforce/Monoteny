@@ -150,7 +150,11 @@ impl<'a> Refactor<'a> {
         let representation = self.fn_representations.get(&binding.function).or_else(|| self.runtime.source.fn_representations.get(&binding.function)).unwrap().clone();
         self.fn_representations.insert(Rc::clone(&mono_head), representation);
 
+        // Set the initial callees (none if it's a stub)
         self.update_callees(&mono_head);
+        // After monomorphizing, we may call functions that have been monomorphized already.
+        // Let's change that now!
+        self.inline_calls(&mono_head);
 
         for caller in self.call_graph.get_binding_callers(binding).cloned().collect_vec() {
             self.inline_calls(&caller);

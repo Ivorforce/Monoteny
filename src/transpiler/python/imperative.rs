@@ -42,7 +42,6 @@ pub fn transpile_function(implementation: &FunctionImplementation, context: &Fun
 }
 
 pub fn transpile_plain_function(implementation: &FunctionImplementation, name: String, context: &FunctionContext) -> Box<ast::Function> {
-    println!("transpile {} {:?}", name, implementation.head);
     let mut syntax = Box::new(ast::Function {
         name,
         parameters: implementation.parameter_locals.iter().map(|parameter| {

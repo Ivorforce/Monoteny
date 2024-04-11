@@ -12,12 +12,10 @@ use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, Tr
 use crate::program::types::TypeProto;
 
 pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, function_binding: &FunctionBinding) -> LinkedHashSet<Rc<FunctionBinding>> {
-    println!("In {:?}", implementation.head);
     let mut encountered_calls = LinkedHashSet::new();
 
     // Map types.
     let generic_replacement_map = &function_binding.requirements_fulfillment.generic_mapping;
-    println!("generics {:?}", generic_replacement_map);
 
     // Change Anys to Generics in the type forest.
     implementation.type_forest.rebind_structs_as_generic(generic_replacement_map).unwrap();
@@ -31,7 +29,6 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
             (Rc::clone(v), map_variable(v, &implementation.type_forest, &generic_replacement_map))
         })
         .collect();
-    println!("locals {:?}", locals_map);
 
     // Find function calls in the expression forest
     for expression_id in implementation.expression_tree.deep_children(implementation.expression_tree.root) {
@@ -39,9 +36,7 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
 
         match operation {
             ExpressionOperation::FunctionCall(call) => {
-                println!("Resolve call {:?}", call);
                 let resolved_call = resolve_call(call, &function_binding.requirements_fulfillment, &generic_replacement_map, &implementation.type_forest);
-                println!("Resolved call to {:?}", resolved_call);
                 encountered_calls.insert_if_absent(Rc::clone(&resolved_call));
                 *operation = ExpressionOperation::FunctionCall(resolved_call)
             }
@@ -130,10 +125,12 @@ fn map_requirements_fulfillment(rc: &Rc<RequirementsFulfillment>, context: &Requ
                         // Conformance was abstract / has been mapped by the caller.
                         Rc::clone(replacement)
                     } else {
-                        // Conformance is static / good as-is.
                         if conformance.tail.is_empty() {
+                            // Conformance is static / good as-is.
                             Rc::clone(conformance)
                         } else {
+                            // Conformance is static.
+                            // We still need to map its tail because it may use requirements assumptions.
                             Rc::new(TraitConformanceWithTail {
                                 conformance: Rc::clone(&conformance.conformance),
                                 tail: Rc::new(
