@@ -5,7 +5,7 @@ use linked_hash_set::LinkedHashSet;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::expression_tree::{ExpressionOperation};
-use crate::program::functions::{FunctionHead, FunctionInterface, Parameter};
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType, Parameter};
 use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, Trait, TraitConformance, TraitConformanceWithTail};
@@ -33,21 +33,6 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
         .collect();
     println!("locals {:?}", locals_map);
 
-    // The implementation self-injected assmumption functions based on requirements.
-    // Now it's time we replace them depending on the actual requirements fulfillment.
-    let mut function_replacement_map = HashMap::new();
-    for assumption in implementation.requirements_assumption.conformance.values() {
-        // TODO Use tail..?
-        let mapped_assumption = &assumption.binding;
-        let conformance = &function_binding.requirements_fulfillment.conformance[mapped_assumption];
-
-        for (abstract_fun, fun_assumption) in assumption.function_mapping.iter() {
-            let fun_fulfillment = &conformance.conformance.function_mapping[abstract_fun];
-            function_replacement_map.insert(Rc::clone(fun_assumption), (conformance.tail.clone(), Rc::clone(fun_fulfillment)));
-        }
-    }
-    println!("functions {:?}", function_replacement_map);
-
     // Find function calls in the expression forest
     for expression_id in implementation.expression_tree.deep_children(implementation.expression_tree.root) {
         let mut operation = implementation.expression_tree.values.get_mut(&expression_id).unwrap();
@@ -55,7 +40,7 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
         match operation {
             ExpressionOperation::FunctionCall(call) => {
                 println!("Resolve call {:?}", call);
-                let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &implementation.type_forest);
+                let resolved_call = resolve_call(call, &function_binding.requirements_fulfillment, &generic_replacement_map, &implementation.type_forest);
                 println!("Resolved call to {:?}", resolved_call);
                 encountered_calls.insert_if_absent(Rc::clone(&resolved_call));
                 *operation = ExpressionOperation::FunctionCall(resolved_call)
@@ -64,7 +49,7 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
                 *operation = ExpressionOperation::PairwiseOperations {
                     calls: calls.iter()
                         .map(|call| {
-                            let resolved_call = resolve_call(call, &generic_replacement_map, &function_replacement_map, &implementation.type_forest);
+                            let resolved_call = resolve_call(call, &function_binding.requirements_fulfillment, &generic_replacement_map, &implementation.type_forest);
 
                             encountered_calls.insert_if_absent(Rc::clone(&resolved_call));
 
@@ -104,49 +89,69 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
     encountered_calls
 }
 
-pub fn resolve_call(call: &Rc<FunctionBinding>, generic_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>, function_replacement_map: &HashMap<Rc<FunctionHead>, (Rc<RequirementsFulfillment>, Rc<FunctionHead>)>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
-    let default_pair = (RequirementsFulfillment::empty(), Rc::clone(&call.function));
-    let (mapped_function_tail, mapped_function) = function_replacement_map.get(&call.function)
-        .unwrap_or(&default_pair);
-    println!("Mapped call to {:?}", mapped_function);
+pub fn resolve_call(call: &Rc<FunctionBinding>, context: &RequirementsFulfillment, generic_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
+    // A function can have multiple requirements. They must be fully fulfilled after monomorphization.
+    // Each requirement has two routes it can be fulfilled from:
+    // 1) The caller has already fulfilled the requirement, and it is passed here in the function replacement map as its tail.
+    // 2) The requirement was exposed to our function in an abstract way, and we had to fulfill it.
 
-    let full_conformance = RequirementsFulfillment::merge(&call.requirements_fulfillment, mapped_function_tail);
+    let requirements_fulfillment = RequirementsFulfillment {
+        conformance: Default::default(),
+        generic_mapping: Default::default(),
+    };
 
-    let generic_replacement_map: HashMap<Rc<Trait>, Rc<TypeProto>> = full_conformance.generic_mapping.iter().map(|(trait_, type_)| {
-        (Rc::clone(trait_), type_forest.resolve_type(type_).unwrap().replacing_structs(generic_replacement_map))
-    }).collect();
 
-    Rc::new(FunctionBinding {
-        function: Rc::clone(mapped_function),
-        requirements_fulfillment: Rc::new(RequirementsFulfillment {
-            conformance: full_conformance.conformance.iter()
-                .map(|(requirement, conformance)| {
-                    // TODO Use / map tail?
-                    (Rc::clone(requirement), Rc::new(TraitConformanceWithTail {
-                        tail: conformance.tail.clone(),
-                        conformance: TraitConformance::new(
-                            // Don't map the requirements
-                            //  - there MIGHT be two different requirements like "A is Float" and "B is Float",
-                            //  which map  to A 'Float32 and B 'Float32, but are fulfilled differently.
-                            //  Granted, this is a rare use-case, but it's #valid nonetheless.
-                            //  So, the requirements must be used as-is.
-                            Rc::clone(requirement),
-                            conformance.conformance.function_mapping.iter()
-                                .map(
-                                    |(abstract_fun, fulfillment_fun)| (
-                                        Rc::clone(abstract_fun),
-                                        Rc::clone(function_replacement_map.get(fulfillment_fun)
-                                            .map(|x| &x.1)
-                                            .unwrap_or_else(|| fulfillment_fun))
-                                    )
-                                )
-                                .collect()
-                        )
-                    }))
-                })
-                .collect(),
-            generic_mapping: generic_replacement_map,
-        }),
+    let requirements_fulfillment = RequirementsFulfillment {
+        conformance: call.requirements_fulfillment.conformance.iter()
+            .map(|(requirement, conformance)| {
+                (Rc::clone(requirement), Rc::new(TraitConformanceWithTail {
+                    tail: Rc::new(RequirementsFulfillment {
+                        conformance: conformance.tail.conformance.iter().map(|c| {
+                            todo!()
+                        }).collect(),
+                        generic_mapping: conformance.tail.generic_mapping.iter().map(|c| {
+                            todo!()
+                        }).collect(),
+                    }),
+                    conformance: TraitConformance::new(
+                        Rc::clone(requirement),
+                        conformance.conformance.function_mapping.iter()
+                            .map(|(abstract_fun, fulfillment_fun)| {
+                                (Rc::clone(abstract_fun), match &fulfillment_fun.function_type {
+                                    FunctionType::Static => Rc::clone(fulfillment_fun),
+                                    FunctionType::Polymorphic { assumed_requirement, abstract_function } => {
+                                        // TODO What's with the tail?
+                                        todo!("{:?} {:?}", assumed_requirement, abstract_function)
+                                        // let TraitConformanceWithTail {conformance, tail} = context.conformance[assumed_requirement].as_ref();
+                                        // Rc::clone(&conformance.function_mapping[abstract_function])
+                                    }
+                                })
+                            })
+                            .collect()
+                    )
+                }))
+            })
+            .collect(),
+        generic_mapping: call.requirements_fulfillment.generic_mapping.iter().map(|(trait_, type_)| {
+            (Rc::clone(trait_), type_forest.resolve_type(type_).unwrap().replacing_structs(generic_replacement_map))
+        }).collect(),
+    };
+
+    let function: Rc<FunctionHead>;
+    if let FunctionType::Polymorphic { assumed_requirement, abstract_function } = &call.function.function_type {
+        let TraitConformanceWithTail {conformance, tail} = context.conformance[assumed_requirement].as_ref();
+
+        function = Rc::clone(&conformance.function_mapping[abstract_function]);
+
+        if !tail.is_empty() { todo!() }
+    }
+    else {
+        function = Rc::clone(&call.function)
+    }
+
+    return Rc::new(FunctionBinding {
+        function,
+        requirements_fulfillment: Rc::new(requirements_fulfillment),
     })
 }
 

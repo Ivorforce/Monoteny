@@ -15,6 +15,7 @@ use crate::refactor::simplify::Simplify;
 pub mod python;
 pub mod namespaces;
 pub mod structs;
+mod tests;
 
 pub struct Config {
     pub should_constant_fold: bool,

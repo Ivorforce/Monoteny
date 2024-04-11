@@ -14,7 +14,7 @@ pub struct Simplify<'a, 'b> {
 impl<'a, 'b> Simplify<'a, 'b> {
     pub fn new(refactor: &'a mut Refactor<'b>, config: &Config) -> Simplify<'a, 'b> {
         if !config.should_monomorphize {
-            todo!();  // Lots of reasons monomorphization doesn't work right now.
+            todo!();  // Lots of reasons non-monomorphization doesn't work right now.
         }
 
         Simplify {

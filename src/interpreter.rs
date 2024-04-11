@@ -2,6 +2,7 @@ pub mod builtins;
 pub mod compiler;
 pub mod run;
 pub mod allocation;
+mod tests;
 
 use std::alloc::{alloc, Layout};
 use std::collections::HashMap;
@@ -154,7 +155,7 @@ impl FunctionInterpreter<'_> {
     pub fn resolve(&self, pointer: &FunctionHead) -> Uuid {
         match &pointer.function_type {
             FunctionType::Static => pointer.function_id.clone(),
-            FunctionType::Polymorphic { provided_by_assumption, abstract_function } => {
+            FunctionType::Polymorphic { assumed_requirement: provided_by_assumption, abstract_function } => {
                 todo!();
                 // if let Some(result) = self.resolution.requirement_bindings.get(requirement).and_then(|x| x.function_binding.get(abstract_function)) {
                 //     return self.resolve(&result)

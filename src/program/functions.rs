@@ -15,9 +15,10 @@ pub enum ParameterKey {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum FunctionType {
+    /// A normal function.
     Static,
-    /// Not a real function call, rather to be delegated through the requirement's resolution.
-    Polymorphic { provided_by_assumption: Rc<TraitBinding>, abstract_function: Rc<FunctionHead> },
+    /// Not a real function; instead, it refers to a function of some requirement.
+    Polymorphic { assumed_requirement: Rc<TraitBinding>, abstract_function: Rc<FunctionHead> },
 }
 
 /// The 'head' of a function. It is identifiable by its ID and has an interface.

@@ -58,7 +58,9 @@ pub struct TraitBinding {
 pub struct TraitConformance {
     /// The binding that is being fulfilled.
     pub binding: Rc<TraitBinding>,
-    /// abstract function of the trait to the function that implements it.
+    /// Mapping of: abstract function of the trait => the function that implements it.
+    /// The functions have the same interfaces as the requirement (trait_.abstract_functions),
+    ///  except with the generics replaced (binding.generic_to_type).
     pub function_mapping: HashMap<Rc<FunctionHead>, Rc<FunctionHead>>,
 }
 
@@ -79,6 +81,12 @@ pub struct TraitConformanceWithTail {
     pub tail: Rc<RequirementsFulfillment>,
 }
 
+/// Declares conformance of a trait to another trait.
+///  For example, a rule may declare:
+///     Generic #A
+///     Requirement Float32<self: #A>
+///     Conformance Number<self: #A>
+/// The conformance object then holds what functions fulfill the requirements of Number<self>.
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct TraitConformanceRule {
     /// Generics declared for this conformance, by name (via its declaration).
@@ -216,7 +224,8 @@ impl TraitGraph {
                     panic!("Got an ambiguity in deep trait resolving.")
                 }
                 Ok(AmbiguityResult::Ok(fulfilled_requirements)) => {
-                    //
+                    // We can use this candidate! Let's clean it up for use.
+
                     // Find out how the rule's generics were mapped. This will be our tail.
                     let generic_mapping = rule_generics_map.into_iter().map(|(interface_generic, tmp_generic)| {
                         (interface_generic, rule_mapping.resolve_type(&tmp_generic).unwrap())
@@ -279,6 +288,8 @@ impl TraitGraph {
         Ok(AmbiguityResult::Ok(conformance))
     }
 
+    /// This function takes in some 'explicit' requirements,
+    ///  and returns a vector of all requirements these imply, explicit or implicit.
     pub fn gather_deep_requirements<C>(&self, bindings: C) -> Vec<Rc<TraitBinding>> where C: Iterator<Item=Rc<TraitBinding>> {
         let mut all = HashSet::new();
         let mut ordered = vec![];
@@ -295,31 +306,35 @@ impl TraitGraph {
         ordered
     }
 
+    /// This function takes in a bunch of 'explicit' requirements, and creates a conformance
+    ///  for all requirements implied by those implicit requirements.
+    /// To do this, it invents function stubs that will later have to be replaced by the actual
+    ///  functions that the caller provides.
     pub fn assume_granted(&self, bindings: impl Iterator<Item=Rc<TraitBinding>>) -> Vec<Rc<TraitConformance>> {
         let deep_requirements = self.gather_deep_requirements(bindings);
         let mut resolutions = vec![];
 
-        for trait_binding in deep_requirements.iter() {
+        for requirement in deep_requirements.iter() {
             let mut binding_resolution = HashMap::new();
 
-            for abstract_fun in trait_binding.trait_.abstract_functions.keys() {
+            for abstract_fun in requirement.trait_.abstract_functions.keys() {
                 let mapped_head = FunctionHead::new(
                     Rc::new(FunctionInterface {
                         parameters: abstract_fun.interface.parameters.iter().map(|x| {
-                            x.mapping_type(&|type_| type_.replacing_structs(&trait_binding.generic_to_type))
+                            x.mapping_type(&|type_| type_.replacing_structs(&requirement.generic_to_type))
                         }).collect(),
-                        return_type: abstract_fun.interface.return_type.replacing_structs(&trait_binding.generic_to_type),
+                        return_type: abstract_fun.interface.return_type.replacing_structs(&requirement.generic_to_type),
                         requirements: abstract_fun.interface.requirements.iter().map(|req| {
-                            req.mapping_types(&|type_| type_.replacing_structs(&trait_binding.generic_to_type))
+                            req.mapping_types(&|type_| type_.replacing_structs(&requirement.generic_to_type))
                         }).collect(),
                         // the function's own generics aren't mapped; we're only binding those from the trait itself.
                         generics: abstract_fun.interface.generics.clone(),
                     }),
                     FunctionType::Polymorphic {
-                        provided_by_assumption: Rc::clone(&trait_binding),
+                        assumed_requirement: Rc::clone(&requirement),
                         abstract_function: Rc::clone(abstract_fun)
                     }
-                );;
+                );
                 binding_resolution.insert(
                     Rc::clone(&abstract_fun),
                     mapped_head
@@ -327,7 +342,7 @@ impl TraitGraph {
             }
 
             resolutions.push(
-                TraitConformance::new(Rc::clone(trait_binding), binding_resolution)
+                TraitConformance::new(Rc::clone(requirement), binding_resolution)
             );
         }
 
@@ -454,13 +469,6 @@ impl RequirementsFulfillment {
 
     pub fn is_empty(&self) -> bool {
         self.conformance.is_empty() && self.generic_mapping.is_empty()
-    }
-
-    pub fn merge(a: &RequirementsFulfillment, b: &RequirementsFulfillment) -> Rc<RequirementsFulfillment> {
-        Rc::new(RequirementsFulfillment {
-            conformance: a.conformance.clone().into_iter().chain(b.conformance.clone().into_iter()).collect(),
-            generic_mapping: a.generic_mapping.clone().into_iter().chain(b.generic_mapping.clone().into_iter()).collect(),
-        })
     }
 }
 

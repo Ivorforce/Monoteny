@@ -9,7 +9,6 @@ pub mod parser;
 pub mod program;
 pub mod transpiler;
 pub mod util;
-pub mod integration_tests;
 pub mod error;
 pub mod repository;
 pub mod refactor;
