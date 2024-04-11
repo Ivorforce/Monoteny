@@ -123,6 +123,18 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, context: &RequirementsFulfillmen
 }
 
 fn map_requirements_fulfillment(rc: &Rc<RequirementsFulfillment>, context: &RequirementsFulfillment, generic_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>, type_forest: &TypeForest) -> RequirementsFulfillment {
+    // A requirements fulfillment (for a function call) consists of many conformances to requirements.
+    // Every conformance either:
+    // 1) Uses some global conformance declaration. In this case, it's already correct - except for
+    //     its tail, which needs to be checked for replacements too.
+    // 2) Uses a conformances that was created by the assumption of this function's requirement.
+    //     In this case, we merely need to use whatever is being injected into us. Since it's coming
+    //     from outside, it's already correct and does not need to be mapped.
+    //
+    // Luckily, it is easy to find out which category each conformance belongs to. We simply need to
+    //  check if the fulfillment we're being provided contains the conformance we're using.
+    //  For example, if we're using Animal<Human>in this call, and the context is providing a
+    //  fulfillment for Animal<Human>, we can simply copy the fulfillment's version.
     RequirementsFulfillment {
         conformance: rc.conformance.iter()
             .map(|(requirement, conformance)| {
