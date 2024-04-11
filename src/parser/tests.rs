@@ -40,22 +40,20 @@ mod tests {
     #[test]
     fn custom_grammar() -> RResult<()> {
         let (parsed, errors) = parser::parse_program("
-    use!(module!(\"common\"));
+    precedence_order!([
+        MultiplicationPrecedence(Left),
+    ]);
 
     ![pattern(lhs /_ rhs, MultiplicationPrecedence)]
-    def floor_div(lhs '$Real, rhs '$Real) -> $Real :: floor(lhs / rhs);
+    def floor_div(lhs '$Real, rhs '$Real) -> $Real :: floor(divide(lhs, rhs));
 
     def main! :: {
-        write_line(1 /_ 2 'Float32);
-    };
-
-    def transpile! :: {
-        transpiler.add(main);
+        let a 'Float32 = 1 /_ 2;
     };
     ")?;
         assert!(errors.is_empty());
 
-        assert_eq!(parsed.global_statements.len(), 4);
+        assert_eq!(parsed.global_statements.len(), 3);
 
         let Statement::FunctionDeclaration(floor_div) = &parsed.global_statements[1].as_ref().value.value else {
             panic!();
