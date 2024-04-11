@@ -90,7 +90,8 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, context: &RequirementsFulfillmen
     // 1) The caller has already fulfilled the requirement, and it is passed here in the function replacement map as its tail.
     // 2) The requirement was exposed to our function in an abstract way, and we had to fulfill it.
 
-    let requirements_fulfillment = map_requirements_fulfillment(
+    // Source 2)
+    let mut requirements_fulfillment = map_requirements_fulfillment(
         &call.requirements_fulfillment,
         context,
         generic_replacement_map,
@@ -103,7 +104,13 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, context: &RequirementsFulfillmen
 
         function = Rc::clone(&conformance.function_mapping[abstract_function]);
 
-        if !tail.is_empty() { todo!() }
+        if !tail.is_empty() {
+            // TODO I think this is correct?
+            // The caller's requirements fulfillment needs to bring along a tail.
+            // We'll attach this tail to our requirements fulfillment as source 1).
+            requirements_fulfillment.conformance.extend(tail.conformance.clone());
+            requirements_fulfillment.generic_mapping.extend(tail.generic_mapping.clone());
+        }
     }
     else {
         function = Rc::clone(&call.function)
