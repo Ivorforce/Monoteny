@@ -101,41 +101,12 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, context: &RequirementsFulfillmen
     };
 
 
-    let requirements_fulfillment = RequirementsFulfillment {
-        conformance: call.requirements_fulfillment.conformance.iter()
-            .map(|(requirement, conformance)| {
-                (Rc::clone(requirement), Rc::new(TraitConformanceWithTail {
-                    tail: Rc::new(RequirementsFulfillment {
-                        conformance: conformance.tail.conformance.iter().map(|c| {
-                            todo!()
-                        }).collect(),
-                        generic_mapping: conformance.tail.generic_mapping.iter().map(|c| {
-                            todo!()
-                        }).collect(),
-                    }),
-                    conformance: TraitConformance::new(
-                        Rc::clone(requirement),
-                        conformance.conformance.function_mapping.iter()
-                            .map(|(abstract_fun, fulfillment_fun)| {
-                                (Rc::clone(abstract_fun), match &fulfillment_fun.function_type {
-                                    FunctionType::Static => Rc::clone(fulfillment_fun),
-                                    FunctionType::Polymorphic { assumed_requirement, abstract_function } => {
-                                        // TODO What's with the tail?
-                                        todo!("{:?} {:?}", assumed_requirement, abstract_function)
-                                        // let TraitConformanceWithTail {conformance, tail} = context.conformance[assumed_requirement].as_ref();
-                                        // Rc::clone(&conformance.function_mapping[abstract_function])
-                                    }
-                                })
-                            })
-                            .collect()
-                    )
-                }))
-            })
-            .collect(),
-        generic_mapping: call.requirements_fulfillment.generic_mapping.iter().map(|(trait_, type_)| {
-            (Rc::clone(trait_), type_forest.resolve_type(type_).unwrap().replacing_structs(generic_replacement_map))
-        }).collect(),
-    };
+    let requirements_fulfillment = map_requirements_fulfillment(
+        &call.requirements_fulfillment,
+        context,
+        generic_replacement_map,
+        type_forest
+    );
 
     let function: Rc<FunctionHead>;
     if let FunctionType::Polymorphic { assumed_requirement, abstract_function } = &call.function.function_type {
@@ -153,6 +124,37 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, context: &RequirementsFulfillmen
         function,
         requirements_fulfillment: Rc::new(requirements_fulfillment),
     })
+}
+
+fn map_requirements_fulfillment(rc: &Rc<RequirementsFulfillment>, context: &RequirementsFulfillment, generic_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>, type_forest: &TypeForest) -> RequirementsFulfillment {
+    RequirementsFulfillment {
+        conformance: rc.conformance.iter()
+            .map(|(requirement, conformance)| {
+                return (
+                    Rc::clone(requirement),
+                    if let Some(replacement) = context.conformance.get(&conformance.conformance.binding) {
+                        // Conformance was abstract / has been mapped by the caller.
+                        Rc::clone(replacement)
+                    } else {
+                        // Conformance is static / good as-is.
+                        if conformance.tail.is_empty() {
+                            Rc::clone(conformance)
+                        } else {
+                            Rc::new(TraitConformanceWithTail {
+                                conformance: Rc::clone(&conformance.conformance),
+                                tail: Rc::new(
+                                    map_requirements_fulfillment(&conformance.tail, context, generic_replacement_map, type_forest)
+                                ),
+                            })
+                        }
+                    }
+                )
+            })
+            .collect(),
+        generic_mapping: rc.generic_mapping.iter().map(|(trait_, type_)| {
+            (Rc::clone(trait_), type_forest.resolve_type(type_).unwrap().replacing_structs(generic_replacement_map))
+        }).collect(),
+    }
 }
 
 pub fn monomorphize_head(binding: &FunctionBinding) -> Rc<FunctionHead> {
