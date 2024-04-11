@@ -31,6 +31,21 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn hello_world() -> RResult<()> {
+        test_transpiles("
+    use!(module!(\"common\"));
+
+    def main! :: {
+        write_line(\"Hello World!\");
+    };
+
+    def transpile! :: {
+        transpiler.add(main);
+    };
+")
+    }
+
     /// This tests generics, algebra and printing.
     #[test]
     fn simple_math() -> RResult<()> {
