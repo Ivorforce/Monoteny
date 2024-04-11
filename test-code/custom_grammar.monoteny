@@ -1,0 +1,20 @@
+precedence_order!([
+    LeftUnaryPrecedence(LeftUnary),
+    ExponentiationPrecedence(Right),
+    MultiplicationPrecedence(Left),
+    AdditionPrecedence(Left),
+    ComparisonPrecedence(LeftConjunctivePairs),
+    LogicalConjunctionPrecedence(Left),
+    LogicalDisjunctionPrecedence(Left),
+]);
+
+![pattern(lhs + rhs, AdditionPrecedence)]
+def _add(lhs '$Number, rhs '$Number) -> $Number :: add(lhs, rhs);
+
+def main! :: {
+    let a 'Float32 = 1 + 2;
+};
+
+def transpile! :: {
+    transpiler.add(main);
+};

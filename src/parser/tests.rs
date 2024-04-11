@@ -1,27 +1,17 @@
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::fs;
     use itertools::Itertools;
     use crate::{interpreter, parser, transpiler};
     use crate::error::RResult;
-    use crate::interpreter::Runtime;
     use crate::parser::ast::*;
-    use crate::program::module::module_name;
-    use crate::transpiler::LanguageContext;
 
     #[test]
     fn hello_world() -> RResult<()> {
-        let (parsed, errors) = parser::parse_program("
-    use!(module!(\"common\"));
-
-    def main! :: {
-        write_line(\"Hello World!\");
-    };
-
-    def transpile! :: {
-        transpiler.add(main);
-    };
-    ")?;
+        let file_contents = fs::read_to_string("test-code/hello_world.monoteny").unwrap();
+        let (parsed, errors) = parser::parse_program(
+            file_contents.as_str()
+        )?;
         assert!(errors.is_empty());
 
         assert_eq!(parsed.statements.len(), 3);
@@ -39,27 +29,11 @@ mod tests {
 
     #[test]
     fn custom_grammar() -> RResult<()> {
-        let (parsed, errors) = parser::parse_program("
-    precedence_order!([
-        LeftUnaryPrecedence(LeftUnary),
-        ExponentiationPrecedence(Right),
-        MultiplicationPrecedence(Left),
-        AdditionPrecedence(Left),
-        ComparisonPrecedence(LeftConjunctivePairs),
-        LogicalConjunctionPrecedence(Left),
-        LogicalDisjunctionPrecedence(Left),
-    ]);
-
-    ![pattern(lhs /_ rhs, MultiplicationPrecedence)]
-    def floor_div(lhs '$Real, rhs '$Real) -> $Real :: floor(divide(lhs, rhs));
-
-    def main! :: {
-        let a 'Float32 = 1 /_ 2;
-    };
-    ")?;
+        let file_contents = fs::read_to_string("test-code/custom_grammar.monoteny").unwrap();
+        let (parsed, errors) = parser::parse_program(file_contents.as_str())?;
         assert!(errors.is_empty());
 
-        assert_eq!(parsed.statements.len(), 3);
+        assert_eq!(parsed.statements.len(), 4);
 
         let Statement::FunctionDeclaration(floor_div) = &parsed.statements[1].as_ref().value.value else {
             panic!();
@@ -67,7 +41,7 @@ mod tests {
 
         match floor_div.interface.expression.iter().map(|t| &t.value).collect_vec()[..] {
             [Term::Identifier(i), Term::Struct(s)] => {
-                assert_eq!(i, "floor_div");
+                assert_eq!(i, "_add");
                 assert_eq!(s.len(), 2);
             }
             _ => panic!()

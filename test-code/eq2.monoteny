@@ -1,0 +1,10 @@
+def is_equal_1(lhs '$Eq, rhs '$Eq) -> Bool :: is_equal(lhs, rhs);
+def is_equal_2(lhs '$Eq, rhs '$Eq) -> Bool :: is_equal_1(lhs, rhs);
+
+def main! :: {
+    is_equal_2(1, 1 'Int32);
+};
+
+def transpile! :: {
+    transpiler.add(main);
+};

@@ -1,7 +1,0 @@
-def test(a: $Real) -> $Real :: {
-    match a with [
-        0: 5,
-        1: 2,
-        else: 5,
-    ];
-}

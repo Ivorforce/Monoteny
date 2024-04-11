@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use std::path::PathBuf;
     use itertools::Itertools;
     use crate::{interpreter, parser, transpiler};
@@ -16,17 +17,10 @@ mod tests {
     //     let mut runtime = Runtime::new()?;
     //     runtime.repository.add("common", PathBuf::from("monoteny"));
     //
-    //     let module = runtime.load_code("
-    // use!(module!(\"common\"));
-    //
-    // def main! :: {
-    //     write_line(\"Hello World!\");
-    // };
-    //
-    // def transpile! :: {
-    //     transpiler.add(main);
-    // };
-    // ", module_name("main"))?;
+    //     let module = runtime.load_code(
+    //         fs::read_to_string("test-code/hello_world.monoteny").unwrap().as_str(),
+    //         module_name("main")
+    //     )?;
     //
     //     assert_eq!(module.exposed_functions.len(), 2);
     //
