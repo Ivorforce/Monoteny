@@ -21,9 +21,9 @@ mod tests {
         let transpiler = interpreter::run::transpile(&module, &mut runtime)?;
         let file_map = transpiler::transpile(&module, &mut runtime, &context, &transpiler::Config {
             should_monomorphize: true,
-            should_constant_fold: false,
-            should_inline: false,
-            should_trim_locals: false,
+            should_constant_fold: true,
+            should_inline: true,
+            should_trim_locals: true,
         }, "main")?;
 
         let python_string = file_map["main.py"].to_string();

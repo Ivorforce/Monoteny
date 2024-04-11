@@ -39,7 +39,7 @@ pub struct TranspilePackage<'a> {
     pub main_function: Option<Rc<FunctionHead>>,
     pub explicit_functions: Vec<&'a FunctionImplementation>,
     pub implicit_functions: Vec<&'a FunctionImplementation>,
-    pub used_internal_functions: HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>,
+    pub used_native_functions: HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>,
     pub fn_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>
 }
 
@@ -86,7 +86,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime, context: &dyn LanguageC
         .map(|head| fn_logic.get(head).unwrap().as_implementation())
         .try_collect()?;
     let mut implicit_functions = vec![];
-    let mut internal_functions = HashMap::new();
+    let mut native_functions = HashMap::new();
 
     for head in deep_calls {
         // Either Refactor has it (because it invented it) or it's unchanged from source.
@@ -95,7 +95,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime, context: &dyn LanguageC
                 implicit_functions.push(i.as_ref());
             }
             FunctionLogic::Descriptor(d) => {
-                internal_functions.insert(head, d.clone());
+                native_functions.insert(head, d.clone());
             }
         }
     }
@@ -104,7 +104,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime, context: &dyn LanguageC
         main_function: transpiler.main_function,
         explicit_functions: exported_functions,
         implicit_functions,
-        used_internal_functions: internal_functions,
+        used_native_functions: native_functions,
         fn_representations,
     })
 }

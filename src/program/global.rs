@@ -7,7 +7,7 @@ use crate::program::functions::FunctionHead;
 use crate::program::allocation::ObjectReference;
 use crate::program::generics::TypeForest;
 use crate::program::primitives;
-use crate::program::traits::RequirementsAssumption;
+use crate::program::traits::{RequirementsAssumption, Trait};
 use crate::source::StructInfo;
 
 #[derive(Clone)]
@@ -34,6 +34,8 @@ pub enum FunctionLogicDescriptor {
     /// This function was not described by the implementer and is expected not to be called,
     ///  or to be injected by a transpiler.
     Stub,
+    TraitProvider(Rc<Trait>),
+    FunctionProvider(Rc<FunctionHead>),
     PrimitiveOperation { operation: PrimitiveOperation, type_: primitives::Type },
     Constructor(Rc<StructInfo>),
     GetMemberField(Rc<StructInfo>, Rc<ObjectReference>),

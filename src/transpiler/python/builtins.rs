@@ -118,6 +118,8 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
             FunctionLogicDescriptor::GetMemberField(_, _) => continue,
             FunctionLogicDescriptor::SetMemberField(_, _) => continue,
             FunctionLogicDescriptor::Stub => continue,
+            FunctionLogicDescriptor::TraitProvider(_) => continue,
+            FunctionLogicDescriptor::FunctionProvider(_) => continue,
         };
 
         representations.function_forms.insert(Rc::clone(function), representation);

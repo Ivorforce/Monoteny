@@ -62,7 +62,7 @@ impl<'a> Refactor<'a> {
         self.update_callees(&head);
 
         // New function; it may call functions that were already inlined!
-        self.inline_calls(&head);
+        self.inline_calls_from(&head);
     }
 
     /// Place or replace a function with a stub.
@@ -104,26 +104,27 @@ impl<'a> Refactor<'a> {
         o.remove();
         self.fn_inline_hints.insert(Rc::clone(head), inline);
 
-        return Ok(self.apply_inline(head))
+        return Ok(self.inline_calls_to(head))
     }
 
-    pub fn apply_inline(&mut self, head: &Rc<FunctionHead>) -> HashSet<Rc<FunctionHead>> {
+    pub fn inline_calls_to(&mut self, head: &Rc<FunctionHead>) -> HashSet<Rc<FunctionHead>> {
         let affected: HashSet<_> = self.call_graph.get_callers(head).cloned().collect();
         for caller in affected.iter() {
-            self.inline_calls(caller);
+            self.inline_calls_from(caller);
         }
+        self.call_graph.remove(head);
 
         affected
     }
 
-    pub fn inline_calls(&mut self, head: &Rc<FunctionHead>) {
+    pub fn inline_calls_from(&mut self, head: &Rc<FunctionHead>) {
         match self.fn_logic.get_mut(head).unwrap() {
             FunctionLogic::Implementation(imp) => {
                 inline_calls(imp, &self.fn_optimizations, &self.fn_inline_hints);
                 self.update_callees(head);
             }
-            // 'Internal' functions don't need to be inlined.
-            _ => {}
+            // 'Native' functions can't be inlined.
+            FunctionLogic::Descriptor(_) => {}
         }
     }
 
@@ -152,12 +153,13 @@ impl<'a> Refactor<'a> {
 
         // Set the initial callees (none if it's a stub)
         self.update_callees(&mono_head);
-        // After monomorphizing, we may call functions that have been monomorphized already.
+        // After monomorphizing, we may call functions that have been inlined already.
         // Let's change that now!
-        self.inline_calls(&mono_head);
+        self.inline_calls_from(&mono_head);
 
+        // Find all callers we can optimize and make them call us instead.
         for caller in self.call_graph.get_binding_callers(binding).cloned().collect_vec() {
-            self.inline_calls(&caller);
+            self.inline_calls_from(&caller);
         }
 
         Some(mono_head)
@@ -179,12 +181,19 @@ impl<'a> Refactor<'a> {
             self.invented_functions.insert(Rc::clone(&new_head));
             self.fn_inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&implementation.head), swizzle));
             self.fn_logic.insert(Rc::clone(&new_head), FunctionLogic::Implementation(implementation));
+            self.fn_representations.insert(Rc::clone(&new_head), self.fn_representations[function].clone());
 
-            self.call_graph.remove(function);
+            // Find the initial callees.
             self.update_callees(&new_head);
 
-            // The new function is also dirty!
-            self.apply_inline(function).into_iter().chain([new_head].into_iter()).collect()
+            // Gather everyone that's dirty! That includes the new function!
+            let changed_functions = self.inline_calls_to(function).into_iter().chain([new_head].into_iter()).collect();
+
+            // Remove the last function from the call graph. After apply_inline has been called,
+            // we don't need this anymore, since we're inlined.
+            self.call_graph.remove(function);
+
+            changed_functions
         }
         else {
             // The function kept its interface!

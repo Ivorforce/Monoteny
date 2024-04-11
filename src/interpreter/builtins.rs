@@ -106,6 +106,8 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
 
         runtime.function_evaluators.insert(function.unwrap_id(), match descriptor {
             FunctionLogicDescriptor::Stub => todo!(),
+            FunctionLogicDescriptor::TraitProvider(_) => continue,
+            FunctionLogicDescriptor::FunctionProvider(_) => continue,
             FunctionLogicDescriptor::PrimitiveOperation { type_, operation } => {
                 create_primitive_op(type_.clone(), operation.clone())
             }
