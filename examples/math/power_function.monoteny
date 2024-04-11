@@ -19,20 +19,20 @@ def fibonacci(n '$Natural) -> $Natural :: power(
     operator: (*),
  )@[0, 0];
 
-def {$Int} ** {$Int} -> $Int :: {
-    if rhs == 0 :: return 1;
+def pow(base '$Int, exponent '$Int) -> $Int :: {
+    if exponent == 0 :: return 1;
 
-    if rhs > 0 :: {
+    if base > 0 :: {
         return power(
-           initial_element: lhs,
-           n: NaturalN(rhs - 1),
+           initial_element: base,
+           n: NaturalN(exponent - 1),
            operator: (*),
         );
     };
     else :: return 0;  -- As is custom, integers round down.
 };
 
-def {$Int} * {$Int} -> $Int :: {
+def multiply(lhs '$Int, rhs '$Int) -> $Int :: {
     if rhs == 0 :: return 0;
 
     if rhs > 0 :: {

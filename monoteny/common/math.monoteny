@@ -20,7 +20,7 @@ def _negative(arg '$Number) -> $Number :: negative(arg);
 def _not(arg 'Bool) -> Bool :: not_f(arg);
 
 ![pattern(lhs ** rhs, ExponentiationPrecedence)]
-def _exponent(lhs '$Real, rhs '$Real) -> $Real :: exponent(lhs, rhs);
+def _pow(lhs '$Real, rhs '$Real) -> $Real :: pow(lhs, rhs);
 
 ![pattern(lhs * rhs, MultiplicationPrecedence)]
 def _multiply(lhs '$Number, rhs '$Number) -> $Number :: multiply(lhs, rhs);
