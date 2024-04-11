@@ -32,7 +32,7 @@ pub struct GlobalLinker<'a> {
     pub module: &'a mut Module,
 }
 
-pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runtime, module: &mut Module) -> RResult<()> {
+pub fn link_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Runtime, module: &mut Module) -> RResult<()> {
     let mut global_linker = GlobalLinker {
         runtime,
         module,
@@ -41,7 +41,7 @@ pub fn link_file(syntax: &ast::Module, scope: &scopes::Scope, runtime: &mut Runt
     };
 
     // Resolve global types / interfaces
-    for statement in &syntax.global_statements {
+    for statement in &syntax.statements {
         global_linker.link_global_statement(statement, &HashSet::new())
             .err_in_range(&statement.value.position)?;
     }

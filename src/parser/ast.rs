@@ -10,8 +10,8 @@ use crate::util::position::Positioned;
 // =============================== Global =====================================
 
 #[derive(Eq, PartialEq, Clone)]
-pub struct Module {
-    pub global_statements: Vec<Box<Decorated<Positioned<Statement>>>>
+pub struct Block {
+    pub statements: Vec<Box<Decorated<Positioned<Statement>>>>
 }
 
 #[derive(Eq, PartialEq, Clone)]
@@ -117,7 +117,7 @@ pub enum Term {
     Struct(Vec<StructArgument>),
     Array(Vec<ArrayArgument>),
     StringLiteral(Vec<Box<Positioned<StringPart>>>),
-    Block(Vec<Box<Positioned<Statement>>>),
+    Block(Block),
 }
 
 #[derive(Eq, PartialEq, Clone)]
@@ -163,9 +163,9 @@ impl Mutability {
     }
 }
 
-impl Display for Module {
+impl Display for Block {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        for item in self.global_statements.iter() {
+        for item in self.statements.iter() {
             write!(fmt, "{}\n\n", item)?
         };
         return Ok(())
@@ -269,10 +269,8 @@ impl Display for Term {
                 write_comma_separated_list(fmt, arguments)?;
                 write!(fmt, "]")
             },
-            Term::Block(statements) => {
-                write!(fmt, "{{\n")?;
-                for item in statements.iter() { write!(fmt, "    {};\n", item)? };
-                write!(fmt, "}}")
+            Term::Block(block) => {
+                write!(fmt, "{{\n{}}}", block)
             }
             Term::Dot => write!(fmt, "."),
         }

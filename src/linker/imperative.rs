@@ -174,11 +174,11 @@ impl <'a> ImperativeLinker<'a> {
         Ok(())
     }
 
-    pub fn link_block(&mut self, body: &Vec<Box<Positioned<ast::Statement>>>, scope: &scopes::Scope) -> RResult<ExpressionID> {
+    pub fn link_block(&mut self, body: &ast::Block, scope: &scopes::Scope) -> RResult<ExpressionID> {
         let mut scope = scope.subscope();
-        let statements: Vec<ExpressionID> = body.iter().map(|pstatement| {
+        let statements: Vec<ExpressionID> = body.statements.iter().map(|pstatement| {
             self.link_statement(&mut scope, pstatement)
-                .err_in_range(&pstatement.position)
+                .err_in_range(&pstatement.value.position)
         }).try_collect()?;
 
         let expression_id = self.register_new_expression(statements);
@@ -187,11 +187,13 @@ impl <'a> ImperativeLinker<'a> {
         Ok(expression_id)
     }
 
-    fn link_statement(&mut self, scope: &mut scopes::Scope, pstatement: &Positioned<ast::Statement>) -> RResult<ExpressionID> {
-        let expression_id = match &pstatement.value {
+    fn link_statement(&mut self, scope: &mut scopes::Scope, pstatement: &ast::Decorated<Positioned<ast::Statement>>) -> RResult<ExpressionID> {
+        let expression_id = match &pstatement.value.value {
             ast::Statement::VariableDeclaration {
                 mutability, identifier, type_declaration, assignment
             } => {
+                pstatement.no_decorations()?;
+
                 let Some(assignment) = assignment else {
                     return Err(RuntimeError::new(format!("Value {} must be assigned on declaration.", identifier)))
                 };
@@ -210,6 +212,8 @@ impl <'a> ImperativeLinker<'a> {
                 expression_id
             },
             ast::Statement::VariableUpdate { target, new_value } => {
+                pstatement.no_decorations()?;
+
                 let new_value: ExpressionID = self.link_expression(&new_value, &scope)?;
 
                 match &target.iter().map(|a| a.as_ref()).collect_vec()[..] {
@@ -232,12 +236,21 @@ impl <'a> ImperativeLinker<'a> {
                         let overload = scope
                             .resolve(scopes::Environment::Member, &access)?
                             .as_function_overload()?;
-                        self.link_function_call(overload.functions.iter(), overload.representation.clone(), vec![ParameterKey::Positional, ParameterKey::Positional], vec![target, new_value], scope, pstatement.position.clone())?
+                        self.link_function_call(
+                            overload.functions.iter(),
+                            overload.representation.clone(),
+                            vec![ParameterKey::Positional, ParameterKey::Positional],
+                            vec![target, new_value],
+                            scope,
+                            pstatement.value.position.clone()
+                        )?
                     }
                     _ => return Err(RuntimeError::new("upd keyword must be followed by an identifier or a single member.".to_string()))
                 }
             }
             ast::Statement::Return(expression) => {
+                pstatement.no_decorations()?;
+
                 if let Some(expression) = expression {
                     if self.function.interface.return_type.unit.is_void() {
                         return Err(RuntimeError::new(format!("Return statement offers a value when the function declares void.")))
@@ -262,6 +275,8 @@ impl <'a> ImperativeLinker<'a> {
                 }
             },
             ast::Statement::Expression(expression) => {
+                pstatement.no_decorations()?;
+
                 self.link_expression(&expression, &scope)?
             }
             statement => {

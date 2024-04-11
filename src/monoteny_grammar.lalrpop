@@ -71,8 +71,8 @@ AnyIdentifier: String = {
 // =============================== Global =====================================
 
 
-pub Program: Module = {
-    <global_statements: Box<Decorated<Positioned<(<Statement> ";")>>>*> => Module { <> }
+pub Block: Block = {
+    <statements: Box<Decorated<Positioned<(<Statement> ";")>>>*> => Block { <> }
 };
 
 Function: Box<Function> = {
@@ -130,7 +130,7 @@ Term: Term = {
     "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Term::Array(<>),
     "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Term::Struct(<>),
     "\"" <Box<Positioned<StringPart>>*> "\"" => Term::StringLiteral(<>),
-    "{" <(<Box<Positioned<Statement>>> ";")*> "}" => Term::Block(<>),
+    "{" <Block> "}" => Term::Block(<>),
     <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Term::Error(derive_error(&e, start, end)) },
 }
 
