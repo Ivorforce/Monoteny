@@ -130,6 +130,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
             internal_name: abstract_field.name.clone(),
             type_: abstract_field.type_.clone(),
         });
+        field_names.insert(Rc::clone(&variable_as_object), abstract_field.name.clone());
         fields.push(variable_as_object);
     }
 

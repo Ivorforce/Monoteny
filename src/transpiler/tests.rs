@@ -41,36 +41,49 @@ mod tests {
     /// This tests generics, algebra and printing.
     #[test]
     fn custom_grammar() -> RResult<()> {
-        test_transpiles(fs::read_to_string("test-code/custom_grammar.monoteny").unwrap().as_str())?;
+        test_transpiles(fs::read_to_string("test-code/grammar/custom_grammar.monoteny").unwrap().as_str())?;
         Ok(())
     }
 
     /// Tests if a static function created for a trait fulfillment (Eq) can be called.
     #[test]
     fn eq0() -> RResult<()> {
-        test_transpiles(fs::read_to_string("test-code/eq0.monoteny").unwrap().as_str())?;
+        test_transpiles(fs::read_to_string("test-code/requirements/eq0.monoteny").unwrap().as_str())?;
         Ok(())
     }
 
     /// Tests if a function can call a requirements' function.
     #[test]
     fn eq1() -> RResult<()> {
-        test_transpiles(fs::read_to_string("test-code/eq1.monoteny").unwrap().as_str())?;
+        test_transpiles(fs::read_to_string("test-code/requirements/eq1.monoteny").unwrap().as_str())?;
         Ok(())
     }
 
     /// Tests if a function can call another function, passing its requirements fulfillment down.
     #[test]
     fn eq2() -> RResult<()> {
-        test_transpiles(fs::read_to_string("test-code/eq2.monoteny").unwrap().as_str())?;
+        test_transpiles(fs::read_to_string("test-code/requirements/eq2.monoteny").unwrap().as_str())?;
         Ok(())
     }
 
-    /// Tests whether monomorphization can yield two separate functions.
     #[test]
     fn monomorphize_branch() -> RResult<()> {
-        let py_file = test_transpiles(fs::read_to_string("test-code/monomorphize_branch.monoteny").unwrap().as_str())?;
+        let py_file = test_transpiles(fs::read_to_string("test-code/monomorphization/branch.monoteny").unwrap().as_str())?;
         assert_eq!(py_file.match_indices("square").count(), 4);
+
+        Ok(())
+    }
+
+    #[test]
+    fn trait_conformance() -> RResult<()> {
+        let py_file = test_transpiles(fs::read_to_string("test-code/traits/conformance.monoteny").unwrap().as_str())?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn trait_fields() -> RResult<()> {
+        let py_file = test_transpiles(fs::read_to_string("test-code/traits/fields.monoteny").unwrap().as_str())?;
 
         Ok(())
     }

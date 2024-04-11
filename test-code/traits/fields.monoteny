@@ -1,0 +1,28 @@
+-- Tests traits with fields.
+
+use!(module!("common"));
+
+trait Animal {
+    -- Immutable Field
+    let species 'String;
+    let name 'String;
+
+    -- Mutable Field
+    var height_cm 'Float32;
+};
+
+def main! :: {
+    -- Create a cat with pre-defined name and height.
+    var animal = Animal(species: "Cat", name: "Noir", height_cm: 180);
+
+    -- Write current status
+    write_line("\(animal.name) (\(animal.species)) was: \(animal.height_cm)cm");
+
+    -- We can set height_cm, but not species or name.
+    upd animal.height_cm = 25;
+    write_line("And is now: \(animal.height_cm)");
+};
+
+def transpile! :: {
+    transpiler.add(main);
+};

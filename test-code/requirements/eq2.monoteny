@@ -1,3 +1,6 @@
+-- Tests whether we can call is_equal with one layer of indirection.
+-- This is_equal_2 must pass on its requirements to is_equal_1.
+
 def is_equal_1(lhs '$Eq, rhs '$Eq) -> Bool :: is_equal(lhs, rhs);
 def is_equal_2(lhs '$Eq, rhs '$Eq) -> Bool :: is_equal_1(lhs, rhs);
 

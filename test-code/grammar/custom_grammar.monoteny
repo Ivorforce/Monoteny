@@ -1,3 +1,5 @@
+-- This tests whether we can define a custom grammar.
+
 precedence_order!([
     LeftUnaryPrecedence(LeftUnary),
     ExponentiationPrecedence(Right),

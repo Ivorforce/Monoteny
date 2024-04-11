@@ -29,7 +29,7 @@ mod tests {
 
     #[test]
     fn custom_grammar() -> RResult<()> {
-        let file_contents = fs::read_to_string("test-code/custom_grammar.monoteny").unwrap();
+        let file_contents = fs::read_to_string("test-code/grammar/custom_grammar.monoteny").unwrap();
         let (parsed, errors) = parser::parse_program(file_contents.as_str())?;
         assert!(errors.is_empty());
 
