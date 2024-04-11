@@ -47,20 +47,20 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
 // The function is written like this
 pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpiler>> {
     let entry_function = match &module.transpile_functions[..] {
-        [] => return Err(RuntimeError::new(format!("No @transpile function declared."))),
+        [] => return Err(RuntimeError::new(format!("No transpile! function declared."))),
         [f] => f,
-        functions => return Err(RuntimeError::new(format!("Too many @main functions declared: {:?}", functions))),
+        functions => return Err(RuntimeError::new(format!("Too many main! functions declared: {:?}", functions))),
     };
-    assert!(entry_function.interface.return_type.unit.is_void(), "@transpile function has a return value.");
+    assert!(entry_function.interface.return_type.unit.is_void(), "transpile! function has a return value.");
 
     let FunctionLogic::Implementation(implementation) = &runtime.source.fn_logic[entry_function] else {
-        return Err(RuntimeError::new(format!("Cannot run @transpile function because it does not have a body.")));
+        return Err(RuntimeError::new(format!("Cannot run transpile! function because it does not have a body.")));
     };
 
     let mut assignments = HashMap::new();
     let mut transpiler = Rc::new(RefCell::new(Box::new(Transpiler {
         main_function: module.main_functions.iter().at_most_one()
-            .map_err(|_| RuntimeError::new(format!("Too many @main functions declared: {:?}", module.main_functions)))?
+            .map_err(|_| RuntimeError::new(format!("Too many main! functions declared: {:?}", module.main_functions)))?
             .cloned(),
         exported_artifacts: vec![],
     })));
