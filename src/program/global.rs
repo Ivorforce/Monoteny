@@ -31,7 +31,7 @@ pub struct FunctionImplementation {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum FunctionLogicDescriptor {
-    /// This function was not described by the implementer and is excpected not to be called,
+    /// This function was not described by the implementer and is expected not to be called,
     ///  or to be injected by a transpiler.
     Stub,
     PrimitiveOperation { operation: PrimitiveOperation, type_: primitives::Type },
