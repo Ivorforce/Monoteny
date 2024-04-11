@@ -1,27 +1,21 @@
--- import(monoteny.dialects.common.0.0);
+use!(module!("common"));
 
-def {$Number}.square() -> $Number :: self * self;
+def (self '$Number).square() -> $Number :: self * self;
 
 declare List<$Real> is Summable {
-    def {Self}.sum() :: self.reduce(+);
+    def (self 'Self).sum() :: self.reduce(+);
 }
 
 declare MyList is Collection<$Real> {
-    def {Self}.count -> $Int :: self.list.count;
+    def (self 'Self).count -> $Int :: self.list.count;
 }
 
 def add(element: $Real, to_list: List<super $Real>) :: to_list.push(element);
 
-@main
-def main() :: {
-    print(2.square() ** 3 'Float32);
+def main! :: {
+    write_line(2.square() ** 3 'Float32);
 }
 
-@transpile
-def transpile(transpiler 'Transpiler) :: {
-    -- The idea is that if we transpile this and run it, it should yield the same output
-    -- as if running using the interpreter.
-
-    -- Ideally, constant folding can break it down to just print statements.
+def transpile! :: {
     transpiler.add(main);
 }
