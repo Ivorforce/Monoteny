@@ -24,9 +24,9 @@ mod tests {
     ")?;
         assert!(errors.is_empty());
 
-        assert_eq!(parsed.global_statements.len(), 3);
+        assert_eq!(parsed.statements.len(), 3);
 
-        let Statement::FunctionDeclaration(function) = &parsed.global_statements[1].as_ref().value.value else {
+        let Statement::FunctionDeclaration(function) = &parsed.statements[1].as_ref().value.value else {
             panic!();
         };
 
@@ -59,9 +59,9 @@ mod tests {
     ")?;
         assert!(errors.is_empty());
 
-        assert_eq!(parsed.global_statements.len(), 3);
+        assert_eq!(parsed.statements.len(), 3);
 
-        let Statement::FunctionDeclaration(floor_div) = &parsed.global_statements[1].as_ref().value.value else {
+        let Statement::FunctionDeclaration(floor_div) = &parsed.statements[1].as_ref().value.value else {
             panic!();
         };
 
@@ -72,7 +72,7 @@ mod tests {
             }
             _ => panic!()
         }
-        assert_eq!(parsed.global_statements[1].decorations.len(), 1);
+        assert_eq!(parsed.statements[1].decorations.len(), 1);
 
         Ok(())
     }

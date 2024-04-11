@@ -8,7 +8,7 @@ mod tests {
     use crate::program::module::module_name;
     use crate::transpiler::LanguageContext;
 
-    fn test_transpiles(code: &str) -> RResult<()> {
+    fn test_transpiles(code: &str) -> RResult<String> {
         let (parsed, _) = parser::parse_program(code)?;
 
         let mut runtime = Runtime::new()?;
@@ -28,7 +28,7 @@ mod tests {
         let python_string = file_map["main.py"].to_string();
         assert!(python_string.contains("def main():"));
 
-        Ok(())
+        Ok(python_string)
     }
 
     #[test]
@@ -43,7 +43,8 @@ mod tests {
     def transpile! :: {
         transpiler.add(main);
     };
-")
+")?;
+        Ok(())
     }
 
     /// This tests generics, algebra and printing.
@@ -70,7 +71,8 @@ def main! :: {
 def transpile! :: {
     transpiler.add(main);
 };
-")
+")?;
+        Ok(())
     }
 
     /// Tests if a static function created for a trait fulfillment (Eq) can be called.
@@ -84,7 +86,8 @@ def main! :: {
 def transpile! :: {
     transpiler.add(main);
 };
-")
+")?;
+        Ok(())
     }
 
     /// Tests if a function can call a requirements' function.
@@ -100,7 +103,8 @@ def main! :: {
 def transpile! :: {
     transpiler.add(main);
 };
-")
+")?;
+        Ok(())
     }
 
     /// Tests if a function can call another function, passing its requirements fulfillment down.
@@ -117,6 +121,27 @@ def main! :: {
 def transpile! :: {
     transpiler.add(main);
 };
-")
+")?;
+        Ok(())
+    }
+
+    /// Tests whether monomorphization can yield two separate functions.
+    #[test]
+    fn monomorphize_branch() -> RResult<()> {
+        let py_file = test_transpiles("
+def (self '$Number).square() -> $Number :: multiply(self, self);
+
+def main! :: {
+    _write_line(\"\\(3.square() 'Int32)\");
+    _write_line(\"\\(3.square() 'Float32)\");
+};
+
+def transpile! :: {
+    transpiler.add(main);
+};
+")?;
+        assert_eq!(py_file.match_indices("square").count(), 4);
+
+        Ok(())
     }
 }
