@@ -75,7 +75,7 @@ More code can be found in the [test-code](./test-code) (unit tests) and [monoten
     - Annotate all heartbeats in an ECG.
     - Read the metadata from a `.mp3` file.
     - Approximate the light spectrum hitting a solar panel at some geolocation.
-    - Generate repetitive code for less versatile languages.
+    - Boost the available capabilities of other languages with versatile metaprogramming.
 - **Solve deterministic problems**
     - Determine `pi` to the n'ths decimal.
     - Calculate the atmospheric pressure at the equator.
@@ -84,7 +84,6 @@ More code can be found in the [test-code](./test-code) (unit tests) and [monoten
     - Make a compute shader / object graph.
     - Write code to get LaTeX formulas.
     - Test your algorithm's accuracy with perfect precision rationals.
-    - Boost the library of a language (your language?) with everything Monoteny has to offer.
 
 #### Monoteny isn't well-suited for:
 
