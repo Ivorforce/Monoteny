@@ -15,6 +15,7 @@ use linked_hash_map::LinkedHashMap;
 use crate::error::RResult;
 use crate::transpiler;
 use crate::interpreter::Runtime;
+use crate::program::global::FunctionLogicDescriptor;
 
 use crate::refactor::Refactor;
 use crate::transpiler::{namespaces, structs, TranspilePackage};
@@ -138,6 +139,20 @@ impl Context {
                 &mut internals_namespace,
                 implementation, representation
             )
+        }
+
+        for (native_function, descriptor) in transpile.used_native_functions.iter() {
+            match descriptor {
+                FunctionLogicDescriptor::Stub => {}
+                FunctionLogicDescriptor::TraitProvider(trait_) => {
+                    representations.function_forms.insert(Rc::clone(&native_function), FunctionForm::Constant(trait_.id));
+                }
+                FunctionLogicDescriptor::FunctionProvider(_) => {}
+                FunctionLogicDescriptor::PrimitiveOperation { .. } => {}
+                FunctionLogicDescriptor::Constructor(_) => {}
+                FunctionLogicDescriptor::GetMemberField(_, _) => {}
+                FunctionLogicDescriptor::SetMemberField(_, _) => {}
+            }
         }
 
         // ================= Build AST ==================
