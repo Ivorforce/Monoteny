@@ -214,7 +214,7 @@ impl TypeForest {
     }
 
     fn merge_identities(&mut self, lhs: GenericIdentity, rhs: GenericIdentity) -> RResult<GenericIdentity> {
-        if (lhs == rhs) {
+        if lhs == rhs {
             return Ok(lhs)
         }
 

@@ -60,7 +60,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     };
 
     let mut assignments = HashMap::new();
-    let mut transpiler = Rc::new(RefCell::new(Box::new(Transpiler {
+    let transpiler = Rc::new(RefCell::new(Box::new(Transpiler {
         main_function: module.main_functions.iter().at_most_one()
             .map_err(|_| RuntimeError::new(format!("Too many main! functions declared: {:?}", module.main_functions)))?
             .cloned(),

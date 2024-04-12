@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
-use std::ops::DerefMut;
 use std::rc::Rc;
 
 use itertools::Itertools;

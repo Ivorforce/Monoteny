@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::ops::DerefMut;
 use std::rc::Rc;
 
 use itertools::Itertools;

@@ -1,4 +1,3 @@
-use std::hash::Hash;
 use std::rc::Rc;
 
 use itertools::Itertools;

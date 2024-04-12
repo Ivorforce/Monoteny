@@ -3,8 +3,6 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
-    use itertools::Itertools;
-
     use crate::{interpreter, parser, transpiler};
     use crate::error::RResult;
     use crate::interpreter::Runtime;

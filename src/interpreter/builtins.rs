@@ -49,7 +49,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     }
 
     for function in runtime.source.module_by_name[&module_name("core.transpilation")].explicit_functions(&runtime.source) {
-        let representation = &runtime.source.fn_representations[function];
+        // let representation = &runtime.source.fn_representations[function];
 
         runtime.function_evaluators.insert(
             function.function_id,

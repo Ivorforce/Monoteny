@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use itertools::Itertools;
-
 use crate::error::{RResult, RuntimeError};
 use crate::program::module::ModuleName;
 
