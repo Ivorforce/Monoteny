@@ -168,6 +168,7 @@ impl Context {
             main_function: transpile.main_function.map(|head| names[&head.function_id].clone())
         });
 
+        let mut unestablished_structs = structs.keys().map(Rc::clone).collect();
         for (type_, struct_) in structs.iter() {
             if builtin_structs.contains(type_) {
                 continue
@@ -176,6 +177,7 @@ impl Context {
             let context = ClassContext {
                 names: &names,
                 representations: &representations,
+                unestablished_structs: &unestablished_structs,
             };
 
             let statement = Box::new(Statement::Class(transpile_class(type_, &context)));
@@ -185,6 +187,8 @@ impl Context {
             //  Everything else is an internal class.
             module.exported_statements.push(statement);
             module.exported_names.insert(names[id].clone());
+
+            unestablished_structs.remove(type_);
         }
 
         for (implementations, is_exported) in [

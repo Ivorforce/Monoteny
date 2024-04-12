@@ -1,12 +1,15 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 use uuid::Uuid;
 use crate::program::types::{TypeProto, TypeUnit};
+use crate::source::StructInfo;
 use crate::transpiler::python::ast;
 use crate::transpiler::python::representations::Representations;
 
 pub struct ClassContext<'a> {
     pub names: &'a HashMap<Uuid, String>,
     pub representations: &'a Representations,
+    pub unestablished_structs: &'a HashSet<Rc<TypeProto>>,
 }
 
 pub fn transpile_class(type_def: &TypeProto, context: &ClassContext) -> Box<ast::Class> {
@@ -18,10 +21,16 @@ pub fn transpile_class(type_def: &TypeProto, context: &ClassContext) -> Box<ast:
     match &type_def.unit {
         TypeUnit::Struct(struct_) => {
             for hint in &struct_.field_hints {
+                let is_established = !context.unestablished_structs.contains(&hint.type_);
+                let type_string = context.names[&context.representations.type_ids[&hint.type_]].clone();
+
                 statements.push(Box::new(ast::Statement::VariableAssignment {
                     target: Box::new(ast::Expression::NamedReference(hint.name.clone())),
                     value: None,
-                    type_annotation: Some(Box::new(ast::Expression::NamedReference(context.names[&context.representations.type_ids[&hint.type_]].clone()))),
+                    type_annotation: Some(Box::new(match is_established {
+                        true => ast::Expression::NamedReference(type_string),
+                        false => ast::Expression::StringLiteral(type_string),
+                    })),
                 }))
             }
         }
