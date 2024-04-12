@@ -1,5 +1,7 @@
-use linked_hash_set::LinkedHashSet;
 use std::rc::Rc;
+
+use linked_hash_set::LinkedHashSet;
+
 use crate::program::calls::{FunctionBinding, resolve_binding};
 use crate::program::expression_tree::ExpressionOperation;
 use crate::program::global::FunctionImplementation;

@@ -1,12 +1,13 @@
 use std::fmt::Display;
+
+pub use abstract_call::AmbiguousAbstractCall;
+pub use function_call::{AmbiguousFunctionCall, AmbiguousFunctionCandidate};
+
+use crate::error::RResult;
 use crate::linker::imperative::ImperativeLinker;
 
 pub mod function_call;
 pub mod abstract_call;
-
-pub use function_call::{AmbiguousFunctionCall, AmbiguousFunctionCandidate};
-pub use abstract_call::AmbiguousAbstractCall;
-use crate::error::RResult;
 
 pub enum AmbiguityResult<V> {
     Ok(V),

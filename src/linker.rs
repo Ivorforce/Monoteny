@@ -1,3 +1,5 @@
+pub use crate::linker::global::link_file;
+
 pub mod scopes;
 pub mod imperative;
 pub mod traits;
@@ -13,4 +15,3 @@ pub mod referencible;
 pub mod grammar;
 pub mod decorations;
 
-pub use crate::linker::global::link_file;

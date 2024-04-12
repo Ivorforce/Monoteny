@@ -1,7 +1,9 @@
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
-use uuid::Uuid;
 use std::rc::Rc;
+
+use uuid::Uuid;
+
 use crate::program::types::TypeProto;
 
 #[derive(Copy, Clone, PartialEq, Eq)]

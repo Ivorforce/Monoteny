@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 use std::rc::Rc;
+
 use itertools::Itertools;
+
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::ExpressionOperation;
 use crate::program::functions::{FunctionHead, FunctionInterface};

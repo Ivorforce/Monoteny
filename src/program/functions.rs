@@ -2,7 +2,9 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
+
 use uuid::Uuid;
+
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::TypeProto;

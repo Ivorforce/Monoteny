@@ -1,6 +1,8 @@
 use std::rc::Rc;
+
 use itertools::Itertools;
 use uuid::Uuid;
+
 use crate::error::{RResult, RuntimeError};
 use crate::linker::grammar::{Pattern, PatternPart};
 use crate::linker::scopes;

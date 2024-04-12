@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+
 use itertools::Itertools;
+
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::linker::scopes;
@@ -8,7 +10,6 @@ use crate::linker::scopes::Environment;
 use crate::parser::ast;
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
-
 
 pub struct TypeFactory<'a> {
     pub runtime: &'a Runtime,

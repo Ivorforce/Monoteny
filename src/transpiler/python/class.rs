@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+
 use uuid::Uuid;
+
 use crate::program::types::{TypeProto, TypeUnit};
-use crate::source::StructInfo;
 use crate::transpiler::python::ast;
 use crate::transpiler::python::representations::Representations;
 

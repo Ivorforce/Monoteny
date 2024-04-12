@@ -1,13 +1,15 @@
 use std::collections::HashMap;
 use std::rc::Rc;
+
 use itertools::{Either, Itertools, zip_eq};
 use itertools::Either::{Left, Right};
-use uuid::Uuid;
 use regex;
+use uuid::Uuid;
+
 use crate::program::expression_tree::*;
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::TypeForest;
-use crate::program::global::{FunctionLogicDescriptor, FunctionImplementation, PrimitiveOperation};
+use crate::program::global::{FunctionImplementation, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::transpiler::python::{ast, types};
 use crate::transpiler::python::representations::{FunctionForm, Representations};
 use crate::util::strings;

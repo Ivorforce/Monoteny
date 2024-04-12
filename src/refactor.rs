@@ -1,16 +1,11 @@
-pub mod simplify;
-pub mod monomorphize;
-pub mod inline;
-pub mod locals;
-pub mod analyze;
-pub mod call_graph;
-
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::ops::DerefMut;
 use std::rc::Rc;
+
 use itertools::Itertools;
 use linked_hash_set::LinkedHashSet;
+
 use crate::interpreter::Runtime;
 use crate::program::calls::FunctionBinding;
 use crate::program::function_object::FunctionRepresentation;
@@ -20,6 +15,12 @@ use crate::refactor::call_graph::CallGraph;
 use crate::refactor::inline::{inline_calls, InlineHint, try_inline};
 use crate::refactor::monomorphize::monomorphize_implementation;
 
+pub mod simplify;
+pub mod monomorphize;
+pub mod inline;
+pub mod locals;
+pub mod analyze;
+pub mod call_graph;
 
 pub struct Refactor<'a> {
     pub runtime: &'a mut Runtime,

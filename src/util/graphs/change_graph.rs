@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
+
 use linked_hash_set::LinkedHashSet;
+
 use crate::util::multimap::insert_into_multimap;
 
 pub struct ChangeGraph<I: Eq + Hash + Clone> {

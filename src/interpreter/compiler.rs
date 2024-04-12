@@ -1,11 +1,12 @@
 use std::alloc::{alloc, Layout};
 use std::collections::HashMap;
 use std::rc::Rc;
+
 use uuid::Uuid;
+
 use crate::interpreter::{FunctionInterpreter, FunctionInterpreterImpl};
 use crate::interpreter::allocation::Value;
 use crate::program::global::FunctionImplementation;
-
 
 pub fn compile_function(function: &FunctionImplementation) -> FunctionInterpreterImpl {
     // Make it our own because the function implementation change at any point.

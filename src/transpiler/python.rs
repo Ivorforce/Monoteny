@@ -1,3 +1,22 @@
+use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
+use std::ops::DerefMut;
+use std::rc::Rc;
+
+use itertools::Itertools;
+use linked_hash_map::LinkedHashMap;
+
+use crate::error::RResult;
+use crate::interpreter::Runtime;
+use crate::program::global::FunctionLogicDescriptor;
+use crate::refactor::Refactor;
+use crate::transpiler;
+use crate::transpiler::{namespaces, structs, TranspilePackage};
+use crate::transpiler::python::ast::Statement;
+use crate::transpiler::python::class::{ClassContext, transpile_class};
+use crate::transpiler::python::imperative::{FunctionContext, transpile_function};
+use crate::transpiler::python::representations::{FunctionForm, Representations};
+
 pub mod types;
 pub mod builtins;
 pub mod class;
@@ -5,25 +24,6 @@ pub mod ast;
 pub mod imperative;
 pub mod representations;
 pub mod keywords;
-
-use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
-use std::ops::DerefMut;
-use std::rc::Rc;
-use itertools::Itertools;
-use linked_hash_map::LinkedHashMap;
-use crate::error::RResult;
-use crate::transpiler;
-use crate::interpreter::Runtime;
-use crate::program::global::FunctionLogicDescriptor;
-
-use crate::refactor::Refactor;
-use crate::transpiler::{namespaces, structs, TranspilePackage};
-use crate::transpiler::python::ast::Statement;
-use crate::transpiler::python::class::{ClassContext, transpile_class};
-use crate::transpiler::python::imperative::{FunctionContext, transpile_function};
-use crate::transpiler::python::representations::{FunctionForm, Representations};
-
 
 pub struct Context {
     pub representations: Representations,

@@ -1,7 +1,9 @@
 use std::rc::Rc;
+
 use itertools::Itertools;
-use uuid::Uuid;
 use strum::IntoEnumIterator;
+use uuid::Uuid;
+
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::linker::grammar::{OperatorAssociativity, PrecedenceGroup};
 use crate::linker::interpreter_mock;

@@ -1,17 +1,13 @@
-pub mod builtins;
-pub mod compiler;
-pub mod run;
-pub mod allocation;
-mod tests;
-
 use std::alloc::{alloc, Layout};
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::path::PathBuf;
 use std::rc::Rc;
+
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
+
 use allocation::Value;
+
 use crate::{linker, parser, program};
 use crate::error::{RResult, RuntimeError};
 use crate::linker::{imports, referencible, scopes};
@@ -24,6 +20,11 @@ use crate::program::traits::{RequirementsFulfillment, Trait};
 use crate::repository::Repository;
 use crate::source::Source;
 
+pub mod builtins;
+pub mod compiler;
+pub mod run;
+pub mod allocation;
+mod tests;
 
 pub type FunctionInterpreterImpl = Rc<dyn Fn(&mut FunctionInterpreter, ExpressionID, &RequirementsFulfillment) -> Option<Value>>;
 

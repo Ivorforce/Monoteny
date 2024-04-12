@@ -1,20 +1,22 @@
 use std::collections::HashMap;
 use std::ops::Range;
 use std::rc::Rc;
-use uuid::Uuid;
+
 use itertools::Itertools;
+use uuid::Uuid;
+
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::program::expression_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
 use crate::linker::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, LinkerAmbiguity};
 use crate::linker::grammar::parse::{link_expression_to_tokens, link_patterns};
-use crate::linker::{grammar, scopes};
 use crate::linker::grammar::Struct;
+use crate::linker::scopes;
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::debug::MockFunctionInterface;
+use crate::program::expression_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
 use crate::program::function_object::{FunctionForm, FunctionOverload, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};

@@ -1,9 +1,10 @@
 use std::fmt::Debug;
 use std::rc::Rc;
-use crate::util::graphs::node_tree::NodeTree;
+
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::generics::GenericAlias;
+use crate::util::graphs::node_tree::NodeTree;
 
 pub type ExpressionID = GenericAlias;
 

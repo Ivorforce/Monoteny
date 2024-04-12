@@ -1,11 +1,13 @@
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
 use std::rc::Rc;
+
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
+
 use crate::error::{RResult, RuntimeError};
 use crate::program::traits::Trait;
-use crate::program::types::{TypeUnit, TypeProto};
+use crate::program::types::{TypeProto, TypeUnit};
 
 pub type GenericIdentity = Uuid;
 pub type GenericAlias = Uuid;

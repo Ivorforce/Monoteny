@@ -1,10 +1,11 @@
-use std::rc::Rc;
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::rc::Rc;
+
 use crate::error::{RResult, RuntimeError};
+use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::ExpressionTree;
 use crate::program::functions::FunctionHead;
-use crate::program::allocation::ObjectReference;
 use crate::program::generics::TypeForest;
 use crate::program::primitives;
 use crate::program::traits::{RequirementsAssumption, Trait};

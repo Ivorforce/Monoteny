@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::rc::Rc;
+
 use strum::IntoEnumIterator;
+
 use crate::interpreter::Runtime;
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::module_name;
@@ -9,7 +11,6 @@ use crate::program::types::TypeProto;
 use crate::transpiler::python::{Context, keywords};
 use crate::transpiler::python::keywords::{KEYWORD_IDS, PSEUDO_KEYWORD_IDS};
 use crate::transpiler::python::representations::FunctionForm;
-
 
 pub fn register_global(runtime: &Runtime, context: &mut Context) {
     let representations = &mut context.representations;

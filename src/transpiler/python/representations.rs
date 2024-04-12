@@ -1,6 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
+
 use uuid::Uuid;
+
 use crate::program::expression_tree::ExpressionOperation;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;

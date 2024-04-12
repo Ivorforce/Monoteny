@@ -1,17 +1,18 @@
 use std::hash::Hash;
 use std::rc::Rc;
+
 use itertools::Itertools;
+
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::linker::grammar::{OperatorAssociativity, Token};
 use crate::linker::imperative::ImperativeLinker;
-use crate::linker::{grammar, scopes};
+use crate::linker::scopes;
 use crate::parser::ast;
 use crate::program::allocation::ObjectReference;
-use crate::program::calls::FunctionBinding;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::function_object::{FunctionForm, FunctionOverload, FunctionRepresentation};
+use crate::program::function_object::{FunctionForm, FunctionRepresentation};
 use crate::program::functions::{FunctionHead, ParameterKey};
-use crate::util::position::{Positioned, positioned};
+use crate::util::position::Positioned;
 
 pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<Vec<Positioned<Token>>> {
     // Here's what this function does:

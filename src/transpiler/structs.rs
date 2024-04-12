@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 use std::rc::Rc;
+
 use linked_hash_map::{Entry, LinkedHashMap};
-use crate::source::StructInfo;
+
 use crate::program::expression_tree::ExpressionOperation;
 use crate::program::functions::FunctionHead;
-use crate::program::global::{FunctionLogicDescriptor, FunctionImplementation};
+use crate::program::global::{FunctionImplementation, FunctionLogicDescriptor};
 use crate::program::types::TypeProto;
+use crate::source::StructInfo;
 
 pub fn find_in_interfaces(heads: impl Iterator<Item=Rc<FunctionHead>>, map: &mut LinkedHashMap<Rc<TypeProto>, Rc<StructInfo>>) {
     for head in heads {

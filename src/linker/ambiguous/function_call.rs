@@ -2,13 +2,15 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
 use std::rc::Rc;
+
 use itertools::{Itertools, zip_eq};
+
 use crate::error::{format_errors, RResult, RuntimeError};
 use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
 use crate::linker::imperative::ImperativeLinker;
 use crate::program::calls::FunctionBinding;
-use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::debug::MockFunctionInterface;
+use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::TypeForest;

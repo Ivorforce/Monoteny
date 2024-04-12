@@ -1,14 +1,15 @@
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::fmt::{Debug, Formatter};
+use std::rc::Rc;
+
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::linker::grammar::{Grammar, Pattern, PrecedenceGroup};
 use crate::program::allocation::ObjectReference;
 use crate::program::function_object::{FunctionForm, FunctionOverload, FunctionRepresentation};
 use crate::program::functions::FunctionHead;
-use crate::program::traits::TraitGraph;
 use crate::program::module::Module;
+use crate::program::traits::TraitGraph;
 
 // Note: While a single pool cannot own overloaded variables, multiple same-level pools (-> from imports) can.
 // When we have imports, this should be ignored until referenced, to avoid unnecessary import complications.

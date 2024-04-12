@@ -1,4 +1,5 @@
 use lalrpop_util::{ErrorRecovery, ParseError};
+
 use crate::error::{FilePosition, RuntimeError};
 use crate::parser::lexer::Token;
 

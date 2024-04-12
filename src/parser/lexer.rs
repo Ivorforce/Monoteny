@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
+
 use crate::parser::error::Error;
 
 /// Token returned by the lexers

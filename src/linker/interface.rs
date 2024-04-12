@@ -1,19 +1,20 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use itertools::{Itertools, zip_eq};
+
+use itertools::Itertools;
 use try_map::FallibleMapExt;
+
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::linker::type_factory::TypeFactory;
 use crate::linker::scopes;
+use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
-use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
+use crate::program::functions::{FunctionHead, FunctionInterface, Parameter};
 use crate::program::module::{Module, module_name};
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::TypeProto;
 use crate::util::position::Positioned;
-
 
 pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
     let mut type_factory = TypeFactory::new(scope, runtime);

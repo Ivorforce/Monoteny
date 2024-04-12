@@ -1,27 +1,29 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::rc::Rc;
+
 use itertools::Itertools;
 use uuid::Uuid;
+
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::parser::ast;
-use crate::program::expression_tree::*;
-use crate::linker::imperative::ImperativeLinker;
 use crate::linker::{imports, interpreter_mock, referencible, scopes};
 use crate::linker::conformance::ConformanceLinker;
 use crate::linker::decorations::try_parse_pattern;
 use crate::linker::grammar::precedence_order::link_precedence_order;
+use crate::linker::imperative::ImperativeLinker;
 use crate::linker::imports::link_imports;
 use crate::linker::interface::link_function_interface;
-use crate::linker::type_factory::TypeFactory;
 use crate::linker::traits::{TraitLinker, try_make_struct};
+use crate::linker::type_factory::TypeFactory;
+use crate::parser::ast;
+use crate::program::expression_tree::*;
 use crate::program::function_object::{FunctionForm, FunctionRepresentation};
-use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
-use crate::program::functions::{FunctionHead, FunctionInterface, Parameter};
+use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
+use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
 use crate::program::types::*;
 use crate::util::position::Positioned;
 

@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod tests {
     use std::fs;
+
     use itertools::Itertools;
-    use crate::{interpreter, parser, transpiler};
+
     use crate::error::RResult;
+    use crate::parser;
     use crate::parser::ast::*;
 
     #[test]

@@ -1,11 +1,13 @@
-use uuid::Uuid;
+use std::collections::{HashMap, HashSet};
+use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 use std::rc::Rc;
-use std::fmt::{Debug, Formatter};
-use std::collections::{HashMap, HashSet};
+
 use itertools::Itertools;
-use crate::program::traits::{Trait};
+use uuid::Uuid;
+
 use crate::program::generics::GenericAlias;
+use crate::program::traits::Trait;
 use crate::util::fmt::write_comma_separated_list_debug;
 
 #[derive(Clone, PartialEq, Eq, Hash)]

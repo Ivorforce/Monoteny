@@ -1,9 +1,11 @@
 use std::fmt::{Display, Error, Formatter};
-use std::ops::{Deref, DerefMut, Range};
+use std::ops::{Deref, DerefMut};
+
 use itertools::Itertools;
+
 use crate::error::{RResult, RuntimeError};
-use crate::program::functions::ParameterKey;
 use crate::program::allocation::Mutability;
+use crate::program::functions::ParameterKey;
 use crate::util::fmt::{write_comma_separated_list, write_space_separated_list};
 use crate::util::position::Positioned;
 

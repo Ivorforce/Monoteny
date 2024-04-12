@@ -3,12 +3,14 @@ use std::collections::hash_map::{DefaultHasher, Entry};
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
+
 use itertools::Itertools;
 use uuid::Uuid;
+
 use crate::error::{format_errors, RResult, RuntimeError};
 use crate::linker::ambiguous::AmbiguityResult;
 use crate::program::function_object::FunctionRepresentation;
-use crate::program::functions::{FunctionHead, FunctionType, FunctionInterface};
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::util::fmt::{write_comma_separated_list, write_keyval};

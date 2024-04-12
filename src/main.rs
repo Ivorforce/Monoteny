@@ -1,6 +1,14 @@
+extern crate core;
 #[macro_use]
 extern crate lalrpop_util;
-extern crate core;
+
+use std::env;
+use std::process::ExitCode;
+
+use clap::Command;
+use itertools::Itertools;
+
+use crate::error::dump_failure;
 
 lalrpop_mod!(pub monoteny_grammar);
 pub mod interpreter;
@@ -14,13 +22,6 @@ pub mod repository;
 pub mod refactor;
 pub mod source;
 pub mod cli;
-
-use std::env;
-use std::process::ExitCode;
-use clap::Command;
-use itertools::Itertools;
-use crate::error::dump_failure;
-
 
 fn cli() -> Command<'static> {
     Command::new("monoteny")

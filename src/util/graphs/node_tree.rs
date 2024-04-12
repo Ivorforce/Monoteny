@@ -2,10 +2,11 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
+
 use itertools::Itertools;
+
 use crate::util::iter::omega;
 use crate::util::vec;
-
 
 /// TODO We could also use an actual tree...
 #[derive(Clone)]

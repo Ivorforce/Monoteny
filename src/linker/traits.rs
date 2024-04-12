@@ -1,10 +1,12 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+
 use itertools::Itertools;
+
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::linker::global::GlobalLinker;
 use crate::linker::{fields, scopes};
+use crate::linker::global::GlobalLinker;
 use crate::linker::interface::link_function_interface;
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;

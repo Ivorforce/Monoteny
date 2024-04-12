@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 
-
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Type {
     Bool,

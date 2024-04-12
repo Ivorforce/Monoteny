@@ -1,11 +1,13 @@
 use std::collections::HashSet;
 use std::rc::Rc;
+
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::source::Source;
+
 use crate::linker::grammar::{Pattern, PrecedenceGroup};
 use crate::program::functions::FunctionHead;
 use crate::program::traits::TraitGraph;
+use crate::source::Source;
 
 pub type ModuleName = Vec<String>;
 
