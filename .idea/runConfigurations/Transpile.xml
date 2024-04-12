@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Transpile" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
-    <option name="command" value="run -- transpile --input examples/1/example1.monoteny --all" />
+    <option name="command" value="run -- transpile --input notebooks/example.monoteny --all" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <envs />
     <option name="emulateTerminal" value="true" />
