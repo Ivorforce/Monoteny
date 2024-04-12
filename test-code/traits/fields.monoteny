@@ -1,3 +1,5 @@
+-- Tests traits with fields.
+
 use!(module!("common"));
 
 trait Animal {

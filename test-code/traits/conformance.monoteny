@@ -1,21 +1,23 @@
+-- Tests conformance to traits.
+
 use!(module!("common"));
 
 trait Animal {
-    def {Self}.talk() -> String;
+    def (self 'Self).talk() -> String;
 };
 
 trait Cat {};
 
 -- Declare every Cat subtype is Animal.
 declare $Cat is Animal {
-    def {Self}.talk() -> String :: "Meow";
+    def (self 'Self).talk() -> String :: "Meow";
 };
 
 trait Dog {};
 
 -- Declare just the Dog struct is Animal.
 declare Dog is Animal {
-   def {Self}.talk() -> String :: "Bark";
+   def (self 'Self).talk() -> String :: "Bark";
 };
 
 def converse(lhs '$Animal#lhs, rhs '$Animal#rhs) :: {

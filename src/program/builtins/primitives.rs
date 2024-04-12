@@ -152,8 +152,8 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         }
 
         let real_functions = traits::make_real_functions(&type_);
-        add_function(&real_functions.exponent, primitive_type, PrimitiveOperation::Exp, module, runtime);
-        add_function(&real_functions.logarithm, primitive_type, PrimitiveOperation::Log, module, runtime);
+        add_function(&real_functions.pow, primitive_type, PrimitiveOperation::Exp, module, runtime);
+        add_function(&real_functions.log, primitive_type, PrimitiveOperation::Log, module, runtime);
 
         let _parse_real_literal = FunctionPointer::new_global_function(
             "parse_real_literal",
@@ -170,8 +170,8 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.Real.create_generic_binding(vec![("Self", type_)]),
             vec![
-                (&traits.Real_functions.exponent.target, &real_functions.exponent.target),
-                (&traits.Real_functions.logarithm.target, &real_functions.logarithm.target),
+                (&traits.Real_functions.pow.target, &real_functions.pow.target),
+                (&traits.Real_functions.log.target, &real_functions.log.target),
             ]
         ));
     }

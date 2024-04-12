@@ -111,7 +111,7 @@ impl Runtime {
         self.load_ast(&ast, name)
     }
 
-    pub fn load_ast(&mut self, syntax: &ast::Module, name: ModuleName) -> RResult<Box<Module>> {
+    pub fn load_ast(&mut self, syntax: &ast::Block, name: ModuleName) -> RResult<Box<Module>> {
         let mut scope = scopes::Scope::new();
 
         let builtins_name = module_name("builtins");

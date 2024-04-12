@@ -88,7 +88,7 @@ impl Context {
         // TODO We only need to export structs that are mentioned in the interfaces of exported functions.
         //  But the following function doesn't work for now.
         // structs::find_in_interfaces(explicit_functions.iter().map(|i| &i.head), &mut structs);
-        structs::find_in_implementations(&transpile.explicit_functions, &transpile.used_internal_functions, &mut structs);
+        structs::find_in_implementations(&transpile.explicit_functions, &transpile.used_native_functions, &mut structs);
         let exported_structs = structs.keys().cloned().collect_vec();
         for struct_ in structs.values() {
             exports_namespace.insert_name(struct_.trait_.id, struct_.trait_.name.as_str());
@@ -107,7 +107,7 @@ impl Context {
         }
 
         // Internal struct names
-        structs::find_in_implementations(&transpile.implicit_functions, &transpile.used_internal_functions, &mut structs);
+        structs::find_in_implementations(&transpile.implicit_functions, &transpile.used_native_functions, &mut structs);
         let internal_structs = structs.keys().filter(|s| !exported_structs.contains(s)).collect_vec();
         for type_ in internal_structs.iter() {
             let struct_ = &structs[*type_];
@@ -182,7 +182,7 @@ impl Context {
                     expressions: &implementation.expression_tree,
                     types: &implementation.type_forest,
                     representations: &representations,
-                    logic: &transpile.used_internal_functions,
+                    logic: &transpile.used_native_functions,
                 };
 
                 let transpiled = transpile_function(implementation, &context);

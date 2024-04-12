@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use std::path::PathBuf;
     use itertools::Itertools;
     use crate::{interpreter, parser, transpiler};
@@ -8,7 +9,7 @@ mod tests {
     use crate::program::module::module_name;
     use crate::transpiler::LanguageContext;
 
-    fn test_transpiles(code: &str) -> RResult<()> {
+    fn test_transpiles(code: &str) -> RResult<String> {
         let (parsed, _) = parser::parse_program(code)?;
 
         let mut runtime = Runtime::new()?;
@@ -20,103 +21,70 @@ mod tests {
         let transpiler = interpreter::run::transpile(&module, &mut runtime)?;
         let file_map = transpiler::transpile(&module, &mut runtime, &context, &transpiler::Config {
             should_monomorphize: true,
-            should_constant_fold: false,
-            should_inline: false,
-            should_trim_locals: false,
+            should_constant_fold: true,
+            should_inline: true,
+            should_trim_locals: true,
         }, "main")?;
 
         let python_string = file_map["main.py"].to_string();
         assert!(python_string.contains("def main():"));
 
-        Ok(())
+        Ok(python_string)
     }
 
     #[test]
     fn hello_world() -> RResult<()> {
-        test_transpiles("
-    use!(module!(\"common\"));
-
-    def main! :: {
-        write_line(\"Hello World!\");
-    };
-
-    def transpile! :: {
-        transpiler.add(main);
-    };
-")
+        test_transpiles(fs::read_to_string("test-code/hello_world.monoteny").unwrap().as_str())?;
+        Ok(())
     }
 
     /// This tests generics, algebra and printing.
     #[test]
-    fn simple_math() -> RResult<()> {
-        test_transpiles("
-precedence_order!([
-    LeftUnaryPrecedence(LeftUnary),
-    ExponentiationPrecedence(Right),
-    MultiplicationPrecedence(Left),
-    AdditionPrecedence(Left),
-    ComparisonPrecedence(LeftConjunctivePairs),
-    LogicalConjunctionPrecedence(Left),
-    LogicalDisjunctionPrecedence(Left),
-]);
-
-![pattern(lhs + rhs, AdditionPrecedence)]
-def _add(lhs '$Number, rhs '$Number) -> $Number :: add(lhs, rhs);
-
-def main! :: {
-    let a 'Float32 = 1 + 2;
-};
-
-def transpile! :: {
-    transpiler.add(main);
-};
-")
+    fn custom_grammar() -> RResult<()> {
+        test_transpiles(fs::read_to_string("test-code/grammar/custom_grammar.monoteny").unwrap().as_str())?;
+        Ok(())
     }
 
     /// Tests if a static function created for a trait fulfillment (Eq) can be called.
     #[test]
     fn eq0() -> RResult<()> {
-        test_transpiles("
-def main! :: {
-    is_equal(1, 1 'Int32);
-};
-
-def transpile! :: {
-    transpiler.add(main);
-};
-")
+        test_transpiles(fs::read_to_string("test-code/requirements/eq0.monoteny").unwrap().as_str())?;
+        Ok(())
     }
 
     /// Tests if a function can call a requirements' function.
     #[test]
     fn eq1() -> RResult<()> {
-        test_transpiles("
-def is_equal_1(lhs '$Eq, rhs '$Eq) -> Bool :: is_equal(lhs, rhs);
-
-def main! :: {
-    is_equal_1(1, 1 'Int32);
-};
-
-def transpile! :: {
-    transpiler.add(main);
-};
-")
+        test_transpiles(fs::read_to_string("test-code/requirements/eq1.monoteny").unwrap().as_str())?;
+        Ok(())
     }
 
     /// Tests if a function can call another function, passing its requirements fulfillment down.
     #[test]
     fn eq2() -> RResult<()> {
-        test_transpiles("
-def is_equal_1(lhs '$Eq, rhs '$Eq) -> Bool :: is_equal(lhs, rhs);
-def is_equal_2(lhs '$Eq, rhs '$Eq) -> Bool :: is_equal_1(lhs, rhs);
+        test_transpiles(fs::read_to_string("test-code/requirements/eq2.monoteny").unwrap().as_str())?;
+        Ok(())
+    }
 
-def main! :: {
-    is_equal_2(1, 1 'Int32);
-};
+    #[test]
+    fn monomorphize_branch() -> RResult<()> {
+        let py_file = test_transpiles(fs::read_to_string("test-code/monomorphization/branch.monoteny").unwrap().as_str())?;
+        assert_eq!(py_file.match_indices("square").count(), 4);
 
-def transpile! :: {
-    transpiler.add(main);
-};
-")
+        Ok(())
+    }
+
+    #[test]
+    fn trait_conformance() -> RResult<()> {
+        let py_file = test_transpiles(fs::read_to_string("test-code/traits/conformance.monoteny").unwrap().as_str())?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn trait_fields() -> RResult<()> {
+        let py_file = test_transpiles(fs::read_to_string("test-code/traits/fields.monoteny").unwrap().as_str())?;
+
+        Ok(())
     }
 }

@@ -1,0 +1,12 @@
+-- Tests whether monomorphization can yield two separate functions.
+
+def (self '$Number).square() -> $Number :: multiply(self, self);
+
+def main! :: {
+    _write_line("\(3.square() 'Int32)");
+    _write_line("\(3.square() 'Float32)");
+};
+
+def transpile! :: {
+    transpiler.add(main);
+};

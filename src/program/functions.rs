@@ -142,12 +142,16 @@ impl FunctionInterface {
             FunctionForm::GlobalFunction => true,
             FunctionForm::GlobalImplicit => false,
             FunctionForm::MemberFunction => {
-                write!(fmt, "{{'{:?}}}.", self.parameters.get(head).unwrap().type_)?;
+                write!(fmt, "(")?;
+                Self::format_parameter(fmt, self.parameters.get(head).unwrap())?;
+                write!(fmt, ").")?;
                 head += 1;
                 true
             },
             FunctionForm::MemberImplicit => {
-                write!(fmt, "{{'{:?}}}.", self.parameters.get(head).unwrap().type_)?;
+                write!(fmt, "(")?;
+                Self::format_parameter(fmt, self.parameters.get(head).unwrap())?;
+                write!(fmt, ").")?;
                 head += 1;
                 false
             }
@@ -157,23 +161,9 @@ impl FunctionInterface {
 
         if has_args {
             write!(fmt, "(")?;
-
             for parameter in self.parameters.iter().skip(head) {
-                match &parameter.external_key {
-                    ParameterKey::Positional => {
-                        write!(fmt, "{} '{:?},", parameter.internal_name, parameter.type_)?;
-                    }
-                    ParameterKey::Name(n) => {
-                        if n != &parameter.internal_name {
-                            write!(fmt, "{}: {} '{:?},", n, parameter.internal_name, parameter.type_)?;
-                        }
-                        else {
-                            write!(fmt, "{}: '{:?},", n, parameter.type_)?;
-                        }
-                    }
-                }
+                Self::format_parameter(fmt, &parameter)?;
             }
-
             write!(fmt, ")")?;
         }
 
@@ -183,6 +173,22 @@ impl FunctionInterface {
 
         Ok(())
         // TODO Requirements?
+    }
+
+    fn format_parameter(fmt: &mut Formatter, parameter: &Parameter) -> std::fmt::Result {
+        match &parameter.external_key {
+            ParameterKey::Positional => {
+                write!(fmt, "{} '{:?},", parameter.internal_name, parameter.type_)?;
+            }
+            ParameterKey::Name(n) => {
+                if n != &parameter.internal_name {
+                    write!(fmt, "{}: {} '{:?},", n, parameter.internal_name, parameter.type_)?;
+                } else {
+                    write!(fmt, "{}: '{:?},", n, parameter.type_)?;
+                }
+            }
+        }
+        Ok(())
     }
 }
 

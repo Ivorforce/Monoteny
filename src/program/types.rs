@@ -49,7 +49,7 @@ impl Debug for TypeProto {
 impl Debug for TypeUnit {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeUnit::Struct(s) => write!(fmt, "{:?}", s),
+            TypeUnit::Struct(s) => write!(fmt, "{}", s.name),
             TypeUnit::Generic(g) => write!(fmt, "#({})", g),
             TypeUnit::Void => write!(fmt, "Void"),
         }

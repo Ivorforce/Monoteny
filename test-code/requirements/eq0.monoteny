@@ -1,0 +1,9 @@
+-- Tests whether we can call is_equal statically.
+
+def main! :: {
+    is_equal(1, 1 'Int32);
+};
+
+def transpile! :: {
+    transpiler.add(main);
+};

@@ -177,17 +177,17 @@ pub fn make_number_functions(type_: &Rc<TypeProto>) -> NumberFunctions {
 
 #[derive(Clone)]
 pub struct RealFunctions {
-    pub exponent: Rc<FunctionPointer>,
-    pub logarithm: Rc<FunctionPointer>,
+    pub pow: Rc<FunctionPointer>,
+    pub log: Rc<FunctionPointer>,
 }
 
 pub fn make_real_functions(type_: &Rc<TypeProto>) -> RealFunctions {
     RealFunctions {
-        exponent: FunctionPointer::new_global_function(
-            "exponent",
+        pow: FunctionPointer::new_global_function(
+            "pow",
             FunctionInterface::new_operator(2, type_, type_)
         ),
-        logarithm: FunctionPointer::new_global_function(
+        log: FunctionPointer::new_global_function(
             "log",
             FunctionInterface::new_operator(1, type_, type_)
         ),
@@ -297,8 +297,8 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     let mut Real = Trait::new_with_self("Real");
     let float_functions = make_real_functions(&Real.create_generic_type("Self"));
     insert_functions(&mut Real, [
-        &float_functions.exponent,
-        &float_functions.logarithm
+        &float_functions.pow,
+        &float_functions.log
     ].into_iter());
     Real.add_simple_parent_requirement(&Number);
     Real.add_simple_parent_requirement(&ConstructableByRealLiteral);
