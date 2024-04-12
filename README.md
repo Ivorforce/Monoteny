@@ -60,7 +60,7 @@ def transpile! :: {
 };
 ```
 
-More code can be found in the [test-code](./test-code) directory.
+More code can be found in the [test-code](./test-code) (unit tests) and [monoteny](./monoteny) (standard library)  directories.
 
 ## Targets
 
