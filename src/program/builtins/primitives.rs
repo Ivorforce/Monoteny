@@ -47,7 +47,7 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
     let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
 
     let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module, runtime: &mut Runtime| {
-        referencible::add_function(runtime, module, None, Rc::clone(&function.target), function.representation.clone());
+        referencible::add_function(runtime, module, None, Rc::clone(&function.target), function.representation.clone()).unwrap();
         runtime.source.fn_logic.insert(
             Rc::clone(&function.target),
             FunctionLogic::Descriptor(FunctionLogicDescriptor::PrimitiveOperation { type_: primitive_type, operation })
