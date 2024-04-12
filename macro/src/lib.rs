@@ -3,7 +3,9 @@ use proc_macro::TokenStream;
 
 #[proc_macro]
 pub fn bin_op(_item: TokenStream) -> TokenStream {
-    let mut args_str = _item.to_string();  // TODO Stringifying back is stupid; is there a way to force the lexer to split just on spaces?
+    // Taking the tokens with into_iter splits e.g. && into two tokens.
+    // So we just split it by space.
+    let mut args_str = _item.to_string();
     let mut args = args_str.split(" ");
 
     let type_ = args.next().unwrap();
