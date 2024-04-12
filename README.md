@@ -62,6 +62,39 @@ def transpile! :: {
 
 More code can be found in the [test-code](./test-code) (unit tests) and [monoteny](./monoteny) (standard library)  directories.
 
+## A language with unique strengths and weaknesses
+
+**Monoteny** makes a few decisions that are pretty unusual. Because it's not a general purpose language, it can double down on its design principles, and focus on making code readable, re-usable and safe. Anything you can't do in **Monoteny**, you can still hack together in the target environment, after all.
+
+
+#### You'll like Monoteny for these tasks:
+
+
+- **Create safe and reusable libraries**
+    - Parse a **.yaml** file to a data structure.
+    - Annotate all heartbeats in an ECG.
+    - Read the metadata from a `.mp3` file.
+    - Approximate the light spectrum hitting a solar panel at some geolocation.
+    - Generate repetitive code for less versatile languages.
+- **Solve deterministic problems**
+    - Determine `pi` to the n'ths decimal.
+    - Calculate the atmospheric pressure at the equator.
+    - Create a graph for your expenses from a .CSV file.
+- **Other niches**
+    - Make a compute shader / object graph.
+    - Write code to get LaTeX formulas.
+    - Test your algorithm's accuracy with perfect precision rationals.
+    - Boost the library of a language (your language?) with everything Monoteny has to offer.
+
+#### Monoteny isn't well-suited for:
+
+- Making application software (use Swift / C++ / Java instead).
+- Making a web backend (use Typescript / Go / Erlang instead).
+- Managing a database (use SQL instead).
+- Driving a microchip (use C / zig / nim instead).
+- Creating low level architecture (use Rust / C++ instead).
+
+
 ## Targets
 
 The following targets will be officially supported:
