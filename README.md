@@ -118,3 +118,5 @@ Then, you can use the following commands:
 - `cargo run`: Get the available commands for running. 
 - `cargo run transpile -h`: Get info about the transpile subcommand. 
 - `cargo run transpile --input test-code/hello_world.monoteny --all`: Transpile hello world to all currently available targets.
+
+There is also a textmate grammar file for the language at [resources/Monoteny.tmbundle](./resources/Monoteny.tmbundle).

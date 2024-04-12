@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>contactEmailRot13</key>
+	<string>yhxnf.graoevax@tznvy.pbz</string>
+	<key>contactName</key>
+	<string>Lukas Tenbrink</string>
+	<key>description</key>
+	<string>Rudimentary grammar support for the Monoteny programming language.</string>
+	<key>name</key>
+	<string>Monoteny</string>
+	<key>uuid</key>
+	<string>4A934ACC-37B3-48A2-8289-B0AEA3E0024B</string>
+</dict>
+</plist>
