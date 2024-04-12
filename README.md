@@ -107,3 +107,14 @@ The following targets will be officially supported:
 * [Future] LaTeX Expressions
 
 In addition, the transpilation API will allow 3rd parties to target more ecosystems as plugins.
+
+## How to run
+
+The compiler is made with Rust. So first install Rust.
+Then, you can use the following commands:
+
+- `cargo build`: Build the project.
+- `cargo test`: Run the unit tests.
+- `cargo run`: Get the available commands for running. 
+- `cargo run transpile -h`: Get info about the transpile subcommand. 
+- `cargo run transpile --input test-code/hello_world.monoteny --all`: Transpile hello world to all currently available targets.
