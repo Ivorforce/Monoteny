@@ -29,6 +29,7 @@ mod tests;
 pub type FunctionInterpreterImpl = Rc<dyn Fn(&mut FunctionInterpreter, ExpressionID, &RequirementsFulfillment) -> Option<Value>>;
 
 pub struct Runtime {
+    #[allow(non_snake_case)]
     pub Metatype: Rc<Trait>,
     pub primitives: Option<HashMap<program::primitives::Type, Rc<Trait>>>,
     pub traits: Option<program::builtins::traits::Traits>,
@@ -53,6 +54,7 @@ pub struct FunctionInterpreter<'a> {
 }
 
 impl Runtime {
+    #[allow(non_snake_case)]
     pub fn new() -> RResult<Box<Runtime>> {
         let mut Metatype = Trait::new_with_self("Type");
         let Metatype = Rc::new(Metatype);
