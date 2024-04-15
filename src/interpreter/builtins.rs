@@ -281,7 +281,6 @@ pub fn create_primitive_op(type_: primitives::Type, operation: PrimitiveOperatio
         (primitives::Type::Float(32), PrimitiveOperation::Exp) => fun_op!(f32 powf f32),
         (primitives::Type::Float(64), PrimitiveOperation::Exp) => fun_op!(f64 powf f64),
 
-        // TODO For unsigneds, this shouldn't exist. But it does exist in $Number for now.
         (primitives::Type::UInt(8), PrimitiveOperation::Negative) => un_op!(i8 -),
         (primitives::Type::UInt(16), PrimitiveOperation::Negative) => un_op!(i16 -),
         (primitives::Type::UInt(32), PrimitiveOperation::Negative) => un_op!(i32 -),

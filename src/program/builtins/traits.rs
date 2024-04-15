@@ -142,6 +142,9 @@ pub struct NumberFunctions {
 
     pub modulo: Rc<FunctionPointer>,
 
+    /// You may argue that unsigned numbers should not need to support negative.
+    /// However, all unsigned numbers have rollover. That means that e.g. -1 = MAX, and
+    ///  it's generally a perfectly valid operation.
     pub negative: Rc<FunctionPointer>,
 }
 
