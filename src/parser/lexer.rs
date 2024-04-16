@@ -23,9 +23,6 @@ pub struct Lexer<'i> {
     /// The source string.
     source: &'i str,
     /// The unconsumed input.
-    /// We need to peek a maximum of 2 at a time:
-    ///     0.0 => RealLiteral
-    ///     0.a => IntLiteral . Identifier
     input: Peekable<CharIndices<'i>>,
 
     /// For every string we are in, the amount of opened (.
