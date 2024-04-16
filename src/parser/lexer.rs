@@ -86,103 +86,98 @@ impl<'i> Lexer<'i> {
                 return None;
             };
 
-            // Skip over whitespace
-            if ch.is_ascii_whitespace() {
-                continue;
-            }
+            match ch {
+                // Skip over whitespace
+                '\t' | '\n' | '\x0C' | '\r' | ' ' => continue,
+                '"' => {
+                    self.string_context.push(0);
+                    return self.make_token_from(start, Token::Symbol);
+                }
+                '{' | '}' | '(' | ')' | '[' | ']' | ':' | '@' | '\'' | ',' | ';' => {
+                    if let Some((_, ':')) = self.input.peek() {
+                        // Consume :
+                        self.input.next();
+                        self.make_token_from(start, Token::Symbol);
+                    }
 
-            if matches!(ch, '"') {
-                self.string_context.push(0);
-                return self.make_token_from(start, Token::Symbol);
-            }
+                    // If it's ( or ), we need to modify the current string context.
+                    match ch {
+                        '(' => _ = self.string_context.last_mut().map(|i| *i += 1),
+                        ')' => _ = self.string_context.last_mut().map(|i| *i -= 1),
+                        _ => {}
+                    }
 
-            if matches!(ch, '{' | '}' | '(' | ')' | '[' | ']' | ':' | '@' | '\'' | ',' | ';') {
-                if let Some((_, ':')) = self.input.peek() {
-                    // Consume :
+                    return self.make_token_from(start, Token::Symbol)
+                }
+                '0'..='9' => {
+                    self.input.by_ref().peeking_take_while(|(_, ch)| matches!(ch, '0'..='9')).count() + 1;
+
+                    let Some((dot_start, '.')) = self.input.peek().cloned() else {
+                        return self.make_token_from(start, Token::IntLiteral);
+                    };
+
+                    // Skip .
                     self.input.next();
-                    self.make_token_from(start, Token::Symbol);
+
+                    if self.input.peeking_take_while(|(_, ch)| matches!(ch, '0'..='9')).count() > 0 {
+                        // We found at least one digit! Skip all digits.
+                        return self.make_token_from(start, Token::RealLiteral)
+                    } else {
+                        // The next is a dot (already consumed)
+                        self.next_planned = self.make_token_from(dot_start, Token::Symbol);
+                        return Some(Ok((start, Token::IntLiteral(&self.source[start..dot_start]), dot_start)));
+                    }
                 }
+                'a'..='z' | 'A'..='Z' | '_' | '$' | '#' => {
+                    let len = self.input.by_ref().peeking_take_while(|(_, ch)| ch.is_alphanumeric() || matches!(ch, '_' | '$' | '#')).count() + 1;
 
-                // If it's ( or ), we need to modify the current string context.
-                match ch {
-                    '(' => _ = self.string_context.last_mut().map(|i| *i += 1),
-                    ')' => _ = self.string_context.last_mut().map(|i| *i -= 1),
-                    _ => {}
+                    if let Some((_, '!')) = self.input.peek() {
+                        let macro_token = self.make_token_from(start, Token::MacroIdentifier);
+                        self.input.next();  // Skip !
+                        return macro_token;
+                    };
+
+                    let end = peek_pos(&mut self.input, self.source);
+                    let slice = unsafe { self.source.get_unchecked(start..end) };
+
+                    if match len {
+                        7 => matches!(slice, "declare"),
+                        6 => matches!(slice, "return"),
+                        5 => matches!(slice, "trait"),
+                        3 => matches!(slice, "let" | "var" | "upd" | "def"),
+                        2 => matches!(slice, "is"),
+                        _ => false,
+                    } {
+                        return Some(Ok((start, Token::Symbol(slice), end)));
+                    };
+
+                    return Some(Ok((start, Token::Identifier(slice), end)));
                 }
+                '!' | '+' | '\\' | '-' | '*' | '/' | '&' | '%' | '=' | '>' | '<' | '|' | '.' | '^' | '?' => {
+                    if let Some((_, '-')) = self.input.peek() {
+                        // Skip comment
+                        // TODO We should collect the comment and put it somewhere
+                        self.input.by_ref().take_while(|(_, ch)| ch != &'\n').count();
+                        continue;
+                    }
 
-                return self.make_token_from(start, Token::Symbol)
-            }
+                    let len = self.input.by_ref().peeking_take_while(|(_, ch)| matches!(ch, '!' | '+' | '\\' | '-' | '*' | '/' | '&' | '%' | '=' | '>' | '<' | '|' | '.' | '^' | '?' | '_')).count() + 1;
 
-            if matches!(ch, '0'..='9') {
-                self.input.by_ref().peeking_take_while(|(_, ch)| matches!(ch, '0'..='9')).count() + 1;
+                    let end = peek_pos(&mut self.input, self.source);
+                    let slice = unsafe { self.source.get_unchecked(start..end) };
 
-                let Some((dot_start, '.')) = self.input.peek().cloned() else {
-                    return self.make_token_from(start, Token::IntLiteral);
-                };
+                    if match len {
+                        2 => matches!(slice, "->"),
+                        1 => matches!(ch, '=' | '.' | '!'),
+                        _ => false,
+                    } {
+                        return Some(Ok((start, Token::Symbol(slice), end)));
+                    };
 
-                // Skip .
-                self.input.next();
-
-                if self.input.peeking_take_while(|(_, ch)| matches!(ch, '0'..='9')).count() > 0 {
-                    // We found at least one digit! Skip all digits.
-                    return self.make_token_from(start, Token::RealLiteral)
-                } else {
-                    // The next is a dot (already consumed)
-                    self.next_planned = self.make_token_from(dot_start, Token::Symbol);
-                    return Some(Ok((start, Token::IntLiteral(&self.source[start..dot_start]), dot_start)));
+                    return Some(Ok((start, Token::OperatorIdentifier(slice), end)));
                 }
+                _ => return Some(Err(Error(format!("Unexpected Character: {}", ch)))),
             }
-
-            if matches!(ch, 'a'..='z' | 'A'..='Z' | '_' | '$' | '#') {
-                let len = self.input.by_ref().peeking_take_while(|(_, ch)| ch.is_alphanumeric() || matches!(ch, '_' | '$' | '#')).count() + 1;
-
-                if let Some((_, '!')) = self.input.peek() {
-                    let macro_token = self.make_token_from(start, Token::MacroIdentifier);
-                    self.input.next();  // Skip !
-                    return macro_token;
-                };
-
-                let end = peek_pos(&mut self.input, self.source);
-                let slice = unsafe { self.source.get_unchecked(start..end) };
-
-                if match len {
-                    7 => matches!(slice, "declare"),
-                    6 => matches!(slice, "return"),
-                    5 => matches!(slice, "trait"),
-                    3 => matches!(slice, "let" | "var" | "upd" | "def"),
-                    2 => matches!(slice, "is"),
-                    _ => false,
-                } {
-                    return Some(Ok((start, Token::Symbol(slice), end)));
-                };
-
-                return Some(Ok((start, Token::Identifier(slice), end)));
-            }
-            else if matches!(ch, '!' | '+' | '\\' | '-' | '*' | '/' | '&' | '%' | '=' | '>' | '<' | '|' | '.' | '^' | '?') {
-                if let Some((_, '-')) = self.input.peek() {
-                    // Skip comment
-                    // TODO We should collect the comment and put it somewhere
-                    self.input.by_ref().take_while(|(_, ch)| ch != &'\n').count();
-                    continue;
-                }
-
-                let len = self.input.by_ref().peeking_take_while(|(_, ch)| matches!(ch, '!' | '+' | '\\' | '-' | '*' | '/' | '&' | '%' | '=' | '>' | '<' | '|' | '.' | '^' | '?' | '_')).count() + 1;
-
-                let end = peek_pos(&mut self.input, self.source);
-                let slice = unsafe { self.source.get_unchecked(start..end) };
-
-                if match len {
-                    2 => matches!(slice, "->"),
-                    1 => matches!(ch, '=' | '.' | '!'),
-                    _ => false,
-                } {
-                    return Some(Ok((start, Token::Symbol(slice), end)));
-                };
-
-                return Some(Ok((start, Token::OperatorIdentifier(slice), end)));
-            }
-
-            return Some(Err(Error(format!("Unexpected Character: {}", ch))));
         }
     }
 
