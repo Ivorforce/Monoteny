@@ -125,7 +125,7 @@ impl<'i> Lexer<'i> {
                     } else {
                         // The next is a dot (already consumed)
                         self.next_planned = self.make_token_from(dot_start, Token::Symbol);
-                        return Some(Ok((start, Token::IntLiteral(&self.source[start..dot_start]), dot_start)));
+                        return self.make_token_from_to(start, Token::IntLiteral, dot_start);
                     }
                 }
                 'a'..='z' | 'A'..='Z' | '_' | '$' | '#' => {
@@ -248,10 +248,13 @@ impl<'i> Lexer<'i> {
         return self.next_planned.take();
     }
 
-    fn make_token_from(&mut self, start: usize, token: fn(&'i str) -> Token<'i>) -> Option<<Self as Iterator>::Item> {
-        let end = peek_pos(&mut self.input, self.source);
+    fn make_token_from_to(&mut self, start: usize, token: fn(&'i str) -> Token<'i>, end: usize) -> Option<<Self as Iterator>::Item> {
         let slice = unsafe { self.source.get_unchecked(start..end) };
         Some(Ok((start, token(slice), end)))
+    }
+
+    fn make_token_from(&mut self, start: usize, token: fn(&'i str) -> Token<'i>) -> Option<<Self as Iterator>::Item> {
+        self.make_token_from_to(start, token, peek_pos(&mut self.input, self.source))
     }
 }
 
