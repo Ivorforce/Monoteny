@@ -254,7 +254,8 @@ impl<'i> Lexer<'i> {
     }
 
     fn make_token_from(&mut self, start: usize, token: fn(&'i str) -> Token<'i>) -> Option<<Self as Iterator>::Item> {
-        self.make_token_from_to(start, token, peek_pos(&mut self.input, self.source))
+        let end = peek_pos(&mut self.input, self.source);
+        self.make_token_from_to(start, token, end)
     }
 }
 
