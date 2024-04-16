@@ -64,47 +64,45 @@ impl<'i> Iterator for Lexer<'i> {
 
             // Advance until " or \(
             loop {
-                if let Some((pos, ch)) = self.input.next() {
-                    match ch {
-                        '"' => {
-                            // End of string. Emit the constant, but plan to emit a " next.
-                            self.string_context.pop();
-                            let end = self.peek_next_pos(self.input.clone());
-                            let slice = unsafe { self.source.get_unchecked(pos..end) };
-                            self.next_planned = Some((pos, Token::Symbol(slice), end));
+                let Some((pos, ch)) = self.input.next() else {
+                    break
+                };
+
+                match ch {
+                    '"' => {
+                        // End of string. Emit the constant, but plan to emit a " next.
+                        self.string_context.pop();
+                        let end = self.peek_next_pos(self.input.clone());
+                        let slice = unsafe { self.source.get_unchecked(pos..end) };
+                        self.next_planned = Some((pos, Token::Symbol(slice), end));
+                        break;
+                    },
+                    '\\' => {
+                        // Escape next character
+                        let Some((pos, ch)) = self.input.next() else {
+                            // Skip over the escape char and push nothing.
+                            // Technically a mistake but it might be WIP.
                             break;
-                        },
-                        '\\' => {
-                            // Escape next character
-                            if let Some((pos, ch)) = self.input.next() {
-                                match ch {
-                                    '(' => {
-                                        // We are in a struct! Emit the constant, but plan to emit a ( next.
-                                        self.string_context.last_mut().unwrap().1 += 1;
-                                        let end = self.peek_next_pos(self.input.clone());
-                                        let slice = unsafe { self.source.get_unchecked(pos..end) };
-                                        self.next_planned = Some((pos, Token::Symbol(slice), end));
-                                        break;
-                                    }
-                                    '\\' | '"' => builder.push(ch),
-                                    '0' => builder.push('\0'),
-                                    'n' => builder.push('\n'),
-                                    't' => builder.push('\t'),
-                                    'r' => builder.push('\r'),
-                                    _ => return Some(Err(Error(format!("Invalid escape sequence in string literal: {}", ch))))
-                                }
-                            }
-                            else {
-                                // Skip over the escape char and push nothing.
-                                // Technically a mistake but it might be WIP.
+                        };
+
+                        match ch {
+                            '(' => {
+                                // We are in a struct! Emit the constant, but plan to emit a ( next.
+                                self.string_context.last_mut().unwrap().1 += 1;
+                                let end = self.peek_next_pos(self.input.clone());
+                                let slice = unsafe { self.source.get_unchecked(pos..end) };
+                                self.next_planned = Some((pos, Token::Symbol(slice), end));
                                 break;
                             }
+                            '\\' | '"' => builder.push(ch),
+                            '0' => builder.push('\0'),
+                            'n' => builder.push('\n'),
+                            't' => builder.push('\t'),
+                            'r' => builder.push('\r'),
+                            _ => return Some(Err(Error(format!("Invalid escape sequence in string literal: {}", ch))))
                         }
-                        _ => builder.push(ch),
                     }
-                }
-                else {
-                    break;
+                    _ => builder.push(ch),
                 }
             }
 
@@ -119,123 +117,122 @@ impl<'i> Iterator for Lexer<'i> {
         }
 
         loop {
-            if let Some((start, ch)) = self.input.next() {
-                // Skip over whitespace
-                if ch.is_ascii_whitespace() {
-                    continue;
+            let Some((start, ch)) = self.input.next() else {
+                return None;
+            };
+
+            // Skip over whitespace
+            if ch.is_ascii_whitespace() {
+                continue;
+            }
+
+            if matches!(ch, '"') {
+                self.string_context.push((start, 0));
+                let end = self.peek_next_pos(self.input.clone());
+                let slice = unsafe { self.source.get_unchecked(start..end) };
+                return Some(Ok((start, Token::Symbol(slice), end)))
+            }
+
+            if let Some(result) = self.match_slice(self.input.clone(), start, 2, |str| matches!(str, "--")) {
+                // Skip comment
+                Self::advance_while(&mut self.input, |ch| ch != '\n');
+                self.input.next();  // Skip the newline too.
+                continue;
+            }
+
+            if let Some(result) = self.match_slice(self.input.clone(), start, 2, |str| matches!(str, "::")) {
+                self.input.next();
+                return Some(Ok(result))
+            }
+
+            if matches!(ch, '{' | '}' | '(' | ')' | '[' | ']' | ':' | '@' | '\'' | ',' | ';') {
+                if distance_from_string >= 0 {
+                    if ch == '(' {
+                        self.string_context.last_mut().unwrap().1 += 1;
+                    }
+                    else if ch == ')' {
+                        self.string_context.last_mut().unwrap().1 -= 1;
+                    }
                 }
 
-                if matches!(ch, '"') {
-                    self.string_context.push((start, 0));
-                    let end = self.peek_next_pos(self.input.clone());
-                    let slice = unsafe { self.source.get_unchecked(start..end) };
-                    return Some(Ok((start, Token::Symbol(slice), end)))
-                }
+                let end = self.peek_next_pos(self.input.clone());
+                let slice = unsafe { self.source.get_unchecked(start..end) };
+                return Some(Ok((start, Token::Symbol(slice), end)))
+            }
 
-                if let Some(result) = self.match_slice(self.input.clone(), start, 2, |str| matches!(str, "--")) {
-                    // Skip comment
-                    Self::advance_while(&mut self.input, |ch| ch != '\n');
-                    self.input.next();  // Skip the newline too.
-                    continue;
-                }
+            if matches!(ch, '0'..='9') {
+                let mut input = self.input.clone();
+                let mut len = 1 + Self::advance_while(&mut input, |ch| matches!(ch, '0'..='9'));
 
-                if let Some(result) = self.match_slice(self.input.clone(), start, 2, |str| matches!(str, "::")) {
-                    self.input.next();
-                    return Some(Ok(result))
-                }
-
-                if matches!(ch, '{' | '}' | '(' | ')' | '[' | ']' | ':' | '@' | '\'' | ',' | ';') {
-                    if distance_from_string >= 0 {
-                        if ch == '(' {
-                            self.string_context.last_mut().unwrap().1 += 1;
+                let is_float = match input.peek() {
+                    Some((_, '.')) => {
+                        input.next();  // Skip dot.
+                        let len_plus = Self::advance_while(&mut input, |ch| matches!(ch, '0'..='9'));
+                        if len_plus > 0 {
+                            len += 1 + len_plus;
+                            true
                         }
-                        else if ch == ')' {
-                            self.string_context.last_mut().unwrap().1 -= 1;
+                        else {
+                            false
                         }
                     }
+                    _ => false,
+                };
 
-                    let end = self.peek_next_pos(self.input.clone());
-                    let slice = unsafe { self.source.get_unchecked(start..end) };
-                    return Some(Ok((start, Token::Symbol(slice), end)))
-                }
-
-                if matches!(ch, '0'..='9') {
-                    let mut input = self.input.clone();
-                    let mut len = 1 + Self::advance_while(&mut input, |ch| matches!(ch, '0'..='9'));
-
-                    let is_float = match input.peek() {
-                        Some((_, '.')) => {
-                            input.next();  // Skip dot.
-                            let len_plus = Self::advance_while(&mut input, |ch| matches!(ch, '0'..='9'));
-                            if len_plus > 0 {
-                                len += 1 + len_plus;
-                                true
-                            }
-                            else {
-                                false
-                            }
-                        }
-                        _ => false,
-                    };
-
-                    advance(&mut self.input, len - 1);
-                    let end = self.peek_next_pos(input);
-                    let slice = unsafe { self.source.get_unchecked(start..end) };
-                    return Some(Ok((start, if is_float { Token::RealLiteral(slice) } else { Token::IntLiteral(slice)}, end)));
-                }
-
-                if matches!(ch, 'a'..='z' | 'A'..='Z' | '_' | '$' | '#') {
-                    let mut input = self.input.clone();
-                    let len = 1 + Self::advance_while(&mut input, |ch| ch.is_alphanumeric() || matches!(ch, '_' | '$' | '#'));
-                    advance(&mut self.input, len - 1);
-
-                    if let Some((_, '!')) = input.peek() {
-                        self.input.next();  // Skip !
-                        let end = self.peek_next_pos(input);
-                        let slice = unsafe { self.source.get_unchecked(start..end) };
-                        return Some(Ok((start, Token::MacroIdentifier(slice), end)));
-                    };
-
-                    let end = self.peek_next_pos(input);
-                    let slice = unsafe { self.source.get_unchecked(start..end) };
-
-                    if match len {
-                        7 => matches!(slice, "declare"),
-                        6 => matches!(slice, "return"),
-                        5 => matches!(slice, "trait"),
-                        3 => matches!(slice, "let" | "var" | "upd" | "def"),
-                        2 => matches!(slice, "is"),
-                        _ => false,
-                    } {
-                        return Some(Ok((start, Token::Symbol(slice), end)));
-                    };
-
-                    return Some(Ok((start, Token::Identifier(slice), end)));
-                }
-                else if matches!(ch, '!' | '+' | '\\' | '-' | '*' | '/' | '&' | '%' | '=' | '>' | '<' | '|' | '.' | '^' | '?') {
-                    let mut input = self.input.clone();
-                    let len = 1 + Self::advance_while(&mut input, |ch| matches!(ch, '!' | '+' | '\\' | '-' | '*' | '/' | '&' | '%' | '=' | '>' | '<' | '|' | '.' | '^' | '?' | '_'));
-
-                    advance(&mut self.input, len - 1);
-                    let end = self.peek_next_pos(input);
-                    let slice = unsafe { self.source.get_unchecked(start..end) };
-
-                    if match len {
-                        2 => matches!(slice, "->"),
-                        1 => matches!(ch, '=' | '.' | '!'),
-                        _ => false,
-                    } {
-                        return Some(Ok((start, Token::Symbol(slice), end)));
-                    };
-
-                    return Some(Ok((start, Token::OperatorIdentifier(slice), end)));
-                }
-
-                return Some(Err(Error(format!("Unexpected Character: {}", ch))));
+                advance(&mut self.input, len - 1);
+                let end = self.peek_next_pos(input);
+                let slice = unsafe { self.source.get_unchecked(start..end) };
+                return Some(Ok((start, if is_float { Token::RealLiteral(slice) } else { Token::IntLiteral(slice)}, end)));
             }
-            else {
-                return None;
+
+            if matches!(ch, 'a'..='z' | 'A'..='Z' | '_' | '$' | '#') {
+                let mut input = self.input.clone();
+                let len = 1 + Self::advance_while(&mut input, |ch| ch.is_alphanumeric() || matches!(ch, '_' | '$' | '#'));
+                advance(&mut self.input, len - 1);
+
+                if let Some((_, '!')) = input.peek() {
+                    self.input.next();  // Skip !
+                    let end = self.peek_next_pos(input);
+                    let slice = unsafe { self.source.get_unchecked(start..end) };
+                    return Some(Ok((start, Token::MacroIdentifier(slice), end)));
+                };
+
+                let end = self.peek_next_pos(input);
+                let slice = unsafe { self.source.get_unchecked(start..end) };
+
+                if match len {
+                    7 => matches!(slice, "declare"),
+                    6 => matches!(slice, "return"),
+                    5 => matches!(slice, "trait"),
+                    3 => matches!(slice, "let" | "var" | "upd" | "def"),
+                    2 => matches!(slice, "is"),
+                    _ => false,
+                } {
+                    return Some(Ok((start, Token::Symbol(slice), end)));
+                };
+
+                return Some(Ok((start, Token::Identifier(slice), end)));
             }
+            else if matches!(ch, '!' | '+' | '\\' | '-' | '*' | '/' | '&' | '%' | '=' | '>' | '<' | '|' | '.' | '^' | '?') {
+                let mut input = self.input.clone();
+                let len = 1 + Self::advance_while(&mut input, |ch| matches!(ch, '!' | '+' | '\\' | '-' | '*' | '/' | '&' | '%' | '=' | '>' | '<' | '|' | '.' | '^' | '?' | '_'));
+
+                advance(&mut self.input, len - 1);
+                let end = self.peek_next_pos(input);
+                let slice = unsafe { self.source.get_unchecked(start..end) };
+
+                if match len {
+                    2 => matches!(slice, "->"),
+                    1 => matches!(ch, '=' | '.' | '!'),
+                    _ => false,
+                } {
+                    return Some(Ok((start, Token::Symbol(slice), end)));
+                };
+
+                return Some(Ok((start, Token::OperatorIdentifier(slice), end)));
+            }
+
+            return Some(Err(Error(format!("Unexpected Character: {}", ch))));
         }
     }
 }
@@ -246,16 +243,15 @@ impl<'i> Lexer<'i> {
         let mut len = 0;
 
         loop {
-            if let Some((pos, ch)) = input.peek() {
-                if !f(*ch) {
-                    return len;
-                }
-                len += 1;
-                input.next();
-            }
-            else {
+            let Some((pos, ch)) = input.peek() else {
+                return len;
+            };
+
+            if !f(*ch) {
                 return len;
             }
+            len += 1;
+            input.next();
         };
     }
 }
