@@ -231,7 +231,7 @@ impl<'i> Iterator for Lexer<'i> {
                     return Some(Ok((start, Token::OperatorIdentifier(slice), end)));
                 }
 
-                return Some(Err(Error(format!("Unrecognized Symbol: {}", ch))));
+                return Some(Err(Error(format!("Unexpected Character: {}", ch))));
             }
             else {
                 return None;
