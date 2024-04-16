@@ -65,7 +65,9 @@ impl<'i> Iterator for Lexer<'i> {
             // Advance until " or \(
             loop {
                 let Some((pos, ch)) = self.input.next() else {
-                    break
+                    // Technically this is a mistake.
+                    //  ... but it will be caught later on anyway, because no " symbol is emitted.
+                    break;
                 };
 
                 match ch {
