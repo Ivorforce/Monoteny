@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
+use itertools::Itertools;
 
 use crate::parser::error::Error;
 
@@ -19,11 +20,22 @@ pub enum Token<'a> {
 /// A concrete lexer
 #[derive(Clone)]
 pub struct Lexer<'i> {
+    /// The source string.
     source: &'i str,
+    /// The unconsumed input.
+    /// We need to peek a maximum of 2 at a time:
+    ///     0.0 => RealLiteral
+    ///     0.a => IntLiteral . Identifier
     input: Peekable<CharIndices<'i>>,
 
-    string_context: Vec<(usize, i32)>,
-    next_planned: Option<(usize, Token<'i>, usize)>,
+    /// For every string we are in, the amount of opened (.
+    /// When the last is closed with ), the last one is popped.
+    string_context: Vec<usize>,
+
+    /// Sometimes, we need to emit two tokens at once.
+    /// e.g. when we find " in a string, we need to emit the current string part,
+    /// as well as the " token itself.
+    next_planned: Option<<Self as Iterator>::Item>,
 }
 
 impl<'i> Lexer<'i> {
@@ -54,72 +66,23 @@ impl<'i> Iterator for Lexer<'i> {
         //  is a string of the same length.
 
         if let Some(next) = self.next_planned.take() {
-            return Some(Ok(next));
+            return Some(next);
         }
 
-        // Are we in a base string?
-        let (string_start, distance_from_string) = self.string_context.last().cloned().unwrap_or((0, -1));
-        if distance_from_string == 0 {
-            let mut builder = String::new();
-
-            // Advance until " or \(
-            loop {
-                let Some((pos, ch)) = self.input.next() else {
-                    // Technically this is a mistake.
-                    //  ... but it will be caught later on anyway, because no " symbol is emitted.
-                    break;
-                };
-
-                match ch {
-                    '"' => {
-                        // End of string. Emit the constant, but plan to emit a " next.
-                        self.string_context.pop();
-                        let end = self.peek_next_pos(self.input.clone());
-                        let slice = unsafe { self.source.get_unchecked(pos..end) };
-                        self.next_planned = Some((pos, Token::Symbol(slice), end));
-                        break;
-                    },
-                    '\\' => {
-                        // Escape next character
-                        let Some((pos, ch)) = self.input.next() else {
-                            // Skip over the escape char and push nothing.
-                            // Technically a mistake but it might be WIP.
-                            break;
-                        };
-
-                        match ch {
-                            '(' => {
-                                // We are in a struct! Emit the constant, but plan to emit a ( next.
-                                self.string_context.last_mut().unwrap().1 += 1;
-                                let end = self.peek_next_pos(self.input.clone());
-                                let slice = unsafe { self.source.get_unchecked(pos..end) };
-                                self.next_planned = Some((pos, Token::Symbol(slice), end));
-                                break;
-                            }
-                            '\\' | '"' => builder.push(ch),
-                            '0' => builder.push('\0'),
-                            'n' => builder.push('\n'),
-                            't' => builder.push('\t'),
-                            'r' => builder.push('\r'),
-                            _ => return Some(Err(Error(format!("Invalid escape sequence in string literal: {}", ch))))
-                        }
-                    }
-                    _ => builder.push(ch),
-                }
-            }
-
-            // If the string is empty it's not worth emitting a StringLiteral for.
-            if !builder.is_empty() {
-                let end = string_start + builder.as_bytes().len();
-                return Some(Ok((string_start, Token::StringLiteral(builder), end)))
-            }
-
-            // Either way we definitely have a token planned. Either " or (
-            return Some(Ok(self.next_planned.take().unwrap()))
+        if let Some(0) = self.string_context.last() {
+            return self.scan_string_part();
         }
 
+        return self.scan_normal_token();
+    }
+}
+
+impl<'i> Lexer<'i> {
+    fn scan_normal_token(&mut self) -> Option<<Self as Iterator>::Item> {
         loop {
+            // We are in normal token scanning mode.
             let Some((start, ch)) = self.input.next() else {
+                // End of file
                 return None;
             };
 
@@ -129,77 +92,57 @@ impl<'i> Iterator for Lexer<'i> {
             }
 
             if matches!(ch, '"') {
-                self.string_context.push((start, 0));
-                let end = self.peek_next_pos(self.input.clone());
-                let slice = unsafe { self.source.get_unchecked(start..end) };
-                return Some(Ok((start, Token::Symbol(slice), end)))
-            }
-
-            if let Some(result) = self.match_slice(self.input.clone(), start, 2, |str| matches!(str, "--")) {
-                // Skip comment
-                Self::advance_while(&mut self.input, |ch| ch != '\n');
-                self.input.next();  // Skip the newline too.
-                continue;
-            }
-
-            if let Some(result) = self.match_slice(self.input.clone(), start, 2, |str| matches!(str, "::")) {
-                self.input.next();
-                return Some(Ok(result))
+                self.string_context.push(0);
+                return self.make_token_from(start, Token::Symbol);
             }
 
             if matches!(ch, '{' | '}' | '(' | ')' | '[' | ']' | ':' | '@' | '\'' | ',' | ';') {
-                if distance_from_string >= 0 {
-                    if ch == '(' {
-                        self.string_context.last_mut().unwrap().1 += 1;
-                    }
-                    else if ch == ')' {
-                        self.string_context.last_mut().unwrap().1 -= 1;
-                    }
+                if let Some((_, ':')) = self.input.peek() {
+                    // Consume :
+                    self.input.next();
+                    self.make_token_from(start, Token::Symbol);
                 }
 
-                let end = self.peek_next_pos(self.input.clone());
-                let slice = unsafe { self.source.get_unchecked(start..end) };
-                return Some(Ok((start, Token::Symbol(slice), end)))
+                // If it's ( or ), we need to modify the current string context.
+                match ch {
+                    '(' => _ = self.string_context.last_mut().map(|i| *i += 1),
+                    ')' => _ = self.string_context.last_mut().map(|i| *i -= 1),
+                    _ => {}
+                }
+
+                return self.make_token_from(start, Token::Symbol)
             }
 
             if matches!(ch, '0'..='9') {
-                let mut input = self.input.clone();
-                let mut len = 1 + Self::advance_while(&mut input, |ch| matches!(ch, '0'..='9'));
+                self.input.by_ref().peeking_take_while(|(_, ch)| matches!(ch, '0'..='9')).count() + 1;
 
-                let is_float = match input.peek() {
-                    Some((_, '.')) => {
-                        input.next();  // Skip dot.
-                        let len_plus = Self::advance_while(&mut input, |ch| matches!(ch, '0'..='9'));
-                        if len_plus > 0 {
-                            len += 1 + len_plus;
-                            true
-                        }
-                        else {
-                            false
-                        }
-                    }
-                    _ => false,
+                let Some((dot_start, '.')) = self.input.peek().cloned() else {
+                    return self.make_token_from(start, Token::IntLiteral);
                 };
 
-                advance(&mut self.input, len - 1);
-                let end = self.peek_next_pos(input);
-                let slice = unsafe { self.source.get_unchecked(start..end) };
-                return Some(Ok((start, if is_float { Token::RealLiteral(slice) } else { Token::IntLiteral(slice)}, end)));
+                // Skip .
+                self.input.next();
+
+                if self.input.peeking_take_while(|(_, ch)| matches!(ch, '0'..='9')).count() > 0 {
+                    // We found at least one digit! Skip all digits.
+                    return self.make_token_from(start, Token::RealLiteral)
+                } else {
+                    // The next is a dot (already consumed)
+                    self.next_planned = self.make_token_from(dot_start, Token::Symbol);
+                    return Some(Ok((start, Token::IntLiteral(&self.source[start..dot_start]), dot_start)));
+                }
             }
 
             if matches!(ch, 'a'..='z' | 'A'..='Z' | '_' | '$' | '#') {
-                let mut input = self.input.clone();
-                let len = 1 + Self::advance_while(&mut input, |ch| ch.is_alphanumeric() || matches!(ch, '_' | '$' | '#'));
-                advance(&mut self.input, len - 1);
+                let len = self.input.by_ref().peeking_take_while(|(_, ch)| ch.is_alphanumeric() || matches!(ch, '_' | '$' | '#')).count() + 1;
 
-                if let Some((_, '!')) = input.peek() {
+                if let Some((_, '!')) = self.input.peek() {
+                    let macro_token = self.make_token_from(start, Token::MacroIdentifier);
                     self.input.next();  // Skip !
-                    let end = self.peek_next_pos(input);
-                    let slice = unsafe { self.source.get_unchecked(start..end) };
-                    return Some(Ok((start, Token::MacroIdentifier(slice), end)));
+                    return macro_token;
                 };
 
-                let end = self.peek_next_pos(input);
+                let end = peek_pos(&mut self.input, self.source);
                 let slice = unsafe { self.source.get_unchecked(start..end) };
 
                 if match len {
@@ -216,11 +159,16 @@ impl<'i> Iterator for Lexer<'i> {
                 return Some(Ok((start, Token::Identifier(slice), end)));
             }
             else if matches!(ch, '!' | '+' | '\\' | '-' | '*' | '/' | '&' | '%' | '=' | '>' | '<' | '|' | '.' | '^' | '?') {
-                let mut input = self.input.clone();
-                let len = 1 + Self::advance_while(&mut input, |ch| matches!(ch, '!' | '+' | '\\' | '-' | '*' | '/' | '&' | '%' | '=' | '>' | '<' | '|' | '.' | '^' | '?' | '_'));
+                if let Some((_, '-')) = self.input.peek() {
+                    // Skip comment
+                    // TODO We should collect the comment and put it somewhere
+                    self.input.by_ref().take_while(|(_, ch)| ch != &'\n').count();
+                    continue;
+                }
 
-                advance(&mut self.input, len - 1);
-                let end = self.peek_next_pos(input);
+                let len = self.input.by_ref().peeking_take_while(|(_, ch)| matches!(ch, '!' | '+' | '\\' | '-' | '*' | '/' | '&' | '%' | '=' | '>' | '<' | '|' | '.' | '^' | '?' | '_')).count() + 1;
+
+                let end = peek_pos(&mut self.input, self.source);
                 let slice = unsafe { self.source.get_unchecked(start..end) };
 
                 if match len {
@@ -237,52 +185,86 @@ impl<'i> Iterator for Lexer<'i> {
             return Some(Err(Error(format!("Unexpected Character: {}", ch))));
         }
     }
-}
 
-impl<'i> Lexer<'i> {
-    // Advances until the next peeked character does not match f anymore.
-    fn advance_while(input: &mut Peekable<CharIndices>, f: fn(char) -> bool) -> i32 {
-        let mut len = 0;
+    fn scan_string_part(&mut self) -> Option<<Self as Iterator>::Item> {
+        // We are in a string literal!
+        // Let's collect all the characters we have.
+        let string_part_start = peek_pos(&mut self.input, self.source);
+        let mut string_builder_preemptive_end_chars = 0;
+        let mut builder = String::new();
 
+        // Advance until " or \(
         loop {
-            let Some((pos, ch)) = input.peek() else {
-                return len;
+            let Some((pos, ch)) = self.input.next() else {
+                // Unterminated string.
+                // Handled in lalrpop, due to missing "
+                break;
             };
 
-            if !f(*ch) {
-                return len;
+            match ch {
+                '"' => {
+                    // End of string. Plan to emit a ", but first emit the current literal, if any.
+                    self.string_context.pop();
+                    self.next_planned = self.make_token_from(pos, Token::Symbol);
+                    string_builder_preemptive_end_chars = 1;
+                    break;
+                },
+                '\\' => {
+                    // Escape next character
+                    let Some((pos, ch)) = self.input.next() else {
+                        // Unterminated string, just after a \.
+                        // Handled in lalrpop, due to missing "
+                        break;
+                    };
+
+                    match ch {
+                        '(' => {
+                            // Starting a struct! Plan to emit (, but first emit the current literal, if any.
+                            *self.string_context.last_mut().unwrap() += 1;
+                            self.next_planned = self.make_token_from(pos, Token::Symbol);
+                            string_builder_preemptive_end_chars = 2;
+                            break;
+                        }
+                        '\\' | '"' => builder.push(ch),
+                        '0' => builder.push('\0'),
+                        'n' => builder.push('\n'),
+                        't' => builder.push('\t'),
+                        'r' => builder.push('\r'),
+                        _ => return Some(Err(Error(format!("Invalid escape sequence in string literal: {}", ch))))
+                    }
+                }
+                // Normal character.
+                _ => builder.push(ch),
             }
-            len += 1;
-            input.next();
-        };
-    }
-}
+        }
 
-impl<'i> Lexer<'i> {
-    #[inline]
-    fn match_slice(&self, mut input: Peekable<CharIndices>, start: usize, len: i32, f: fn(&str) -> bool) -> Option<(usize, Token<'i>, usize)> {
-        advance(&mut input, len - 1);
-        let end = self.peek_next_pos(input);
+        // If the builder is not empty, emit its contents.
+        if !builder.is_empty() {
+            return Some(Ok((
+                string_part_start,
+                Token::StringLiteral(builder),
+                // The string part may end one or two chars early of where we are now.
+                peek_pos(&mut self.input, self.source) - string_builder_preemptive_end_chars
+            )))
+        }
+
+        // If we have something planned, emit that now.
+        // Otherwise, it's eof.
+        return self.next_planned.take();
+    }
+
+    fn make_token_from(&mut self, start: usize, token: fn(&'i str) -> Token<'i>) -> Option<<Self as Iterator>::Item> {
+        let end = peek_pos(&mut self.input, self.source);
         let slice = unsafe { self.source.get_unchecked(start..end) };
-        return match f(slice) {
-            true => Some((start, Token::Symbol(slice), end)),
-            false => None,
-        }
-    }
-
-    #[inline]
-    fn peek_next_pos(&self, mut input: Peekable<CharIndices>) -> usize {
-        match input.peek() {
-            None => self.source.len(),
-            Some((pos, _)) => *pos,
-        }
+        Some(Ok((start, token(slice), end)))
     }
 }
 
 #[inline]
-fn advance(indices: &mut impl Iterator, n: i32) {
-    for _ in 0..n {
-        indices.next();
+fn peek_pos(input: &mut Peekable<CharIndices>, full_str: &str) -> usize {
+    match input.peek() {
+        Some((pos, _)) => *pos,
+        None => full_str.len(),
     }
 }
 
