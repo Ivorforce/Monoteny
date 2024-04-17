@@ -41,8 +41,8 @@ pub struct Struct {
 
 #[derive(Clone, Debug)]
 pub enum Token {
-    Keyword(String),
-    Expression(ExpressionID),
+    Symbol(String),
+    Value(ExpressionID),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]

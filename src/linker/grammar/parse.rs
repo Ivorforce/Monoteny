@@ -34,14 +34,14 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                 match scope.resolve(scopes::Environment::Global, identifier)? {
                     scopes::Reference::Keyword(keyword) => {
                         tokens.push(ast_token.with_value(
-                            Token::Keyword(keyword.clone())
+                            Token::Symbol(keyword.clone())
                         ));
                     }
                     scopes::Reference::Local(local) => {
                         let ObjectReference { id, type_, mutability } = local.as_ref();
 
                         tokens.push(ast_token.with_value(
-                            Token::Expression(linker.link_unambiguous_expression(
+                            Token::Value(linker.link_unambiguous_expression(
                                 vec![],
                                 type_,
                                 ExpressionOperation::GetLocal(local.clone())
@@ -70,13 +70,13 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                                                 ast_token.position.clone(),
                                             )?;
 
-                                            Token::Expression(expression_id)
+                                            Token::Value(expression_id)
                                         },
-                                        _ => Token::Expression(linker.link_function_reference(overload)?),
+                                        _ => Token::Value(linker.link_function_reference(overload)?),
                                     }
                                 }
                                 FunctionForm::GlobalImplicit => {
-                                    Token::Expression(
+                                    Token::Value(
                                         linker.link_function_call(
                                             overload.functions.iter(),
                                             overload.representation.clone(),
@@ -98,7 +98,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
             }
             ast::Term::Dot => {
                 let previous = tokens.last();
-                let Some(Token::Expression(target)) = previous.map(|v| &v.value) else {
+                let Some(Token::Value(target)) = previous.map(|v| &v.value) else {
                     return Err(RuntimeError::new(format!("Dot notation requires a preceding object.")))
                 };
                 let next = syntax.get(i);
@@ -130,13 +130,13 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                                     ast_token.position.clone(),
                                 )?;
 
-                                Token::Expression(expression_id)
+                                Token::Value(expression_id)
                             },
                             _ => return Err(RuntimeError::new(format!("Member function references are not yet supported."))),
                         }
                     }
                     FunctionForm::MemberImplicit => {
-                        Token::Expression(
+                        Token::Value(
                             linker.link_function_call(
                                 overload.functions.iter(),
                                 overload.representation.clone(),
@@ -154,7 +154,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                 let string_expression_id = linker.link_string_primitive(string)?;
 
                 tokens.push(ast_token.with_value(
-                    Token::Expression(linker.link_abstract_function_call(
+                    Token::Value(linker.link_abstract_function_call(
                         vec![string_expression_id],
                         Rc::clone(&linker.runtime.traits.as_ref().unwrap().ConstructableByIntLiteral),
                         Rc::clone(&linker.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
@@ -167,7 +167,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                 let string_expression_id = linker.link_string_primitive(string)?;
 
                 tokens.push(ast_token.with_value(
-                    Token::Expression(linker.link_abstract_function_call(
+                    Token::Value(linker.link_abstract_function_call(
                         vec![string_expression_id],
                         Rc::clone(&linker.runtime.traits.as_ref().unwrap().ConstructableByRealLiteral),
                         Rc::clone(&linker.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
@@ -178,7 +178,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
             }
             ast::Term::StringLiteral(parts) => {
                 tokens.push(ast_token.with_value(
-                    Token::Expression(linker.link_string_literal(scope, ast_token, parts)?)
+                    Token::Value(linker.link_string_literal(scope, ast_token, parts)?)
                 ))
             }
             ast::Term::Struct(s) => {
@@ -186,7 +186,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
 
                 let previous = tokens.last();
                 match previous.map(|v| &v.value) {
-                    Some(Token::Expression(expression)) => {
+                    Some(Token::Value(expression)) => {
                         // Call previous token
                         let overload = scope
                             .resolve(scopes::Environment::Member, "call_as_function").err_in_range(&ast_token.position)?
@@ -201,14 +201,14 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                             ast_token.position.clone(),
                         )?;
 
-                        *tokens.last_mut().unwrap() = ast_token.with_value(Token::Expression(expression_id));
+                        *tokens.last_mut().unwrap() = ast_token.with_value(Token::Value(expression_id));
                     }
                     _ => {
                         // No previous token; Use struct as value.
                         if &struct_.keys[..] == &[ParameterKey::Positional] {
                             let expression_id = *struct_.values.iter().exactly_one().unwrap();
                             tokens.push(ast_token.with_value(
-                                Token::Expression(expression_id)
+                                Token::Value(expression_id)
                             ));
                         } else {
                             return Err(RuntimeError::new(String::from("Anonymous struct literals are not yet supported.")))
@@ -223,7 +223,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
 
                 let previous = tokens.last();
                 match previous.map(|v| &v.value) {
-                    Some(Token::Expression(expression)) => {
+                    Some(Token::Value(expression)) => {
                         return Err(RuntimeError::new(String::from("Object subscript is not yet supported.")))
                     }
                     _ => {
@@ -242,7 +242,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
             }
             ast::Term::Block(statements) => {
                 tokens.push(ast_token.with_value(
-                    Token::Expression(linker.link_block(statements, &scope)?)
+                    Token::Value(linker.link_block(statements, &scope)?)
                 ))
             }
         }
@@ -256,7 +256,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
     let mut keywords: Vec<String> = vec![];
 
     let final_ptoken = tokens.remove(tokens.len() - 1);
-    if let Token::Expression(expression) = &final_ptoken.value {
+    if let Token::Value(expression) = &final_ptoken.value {
         arguments.push(final_ptoken.with_value(*expression));
     }
     else {
@@ -271,12 +271,12 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
 
         while !tokens.is_empty() {
             let ptoken = tokens.remove(tokens.len() - 1);
-            let Token::Keyword(keyword) = ptoken.value else {
+            let Token::Symbol(keyword) = ptoken.value else {
                 return Err(RuntimeError::new(String::from("Expecting an operator but got an expression.")))
             };
 
             if let Some(ptoken) = tokens.get(tokens.len() - 1) {
-                if let Token::Expression(expression) = &ptoken.value {
+                if let Token::Value(expression) = &ptoken.value {
                     // Binary Operator, because left of operator is an expression!
                     arguments.insert(0, ptoken.with_value(*expression));
                     keywords.insert(0, keyword);
