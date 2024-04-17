@@ -198,6 +198,7 @@ impl <'a> Scope<'a> {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Reference {
+    // TODO WE can probably get rid of locals if we replace them by getters and setters.
     Local(Rc<ObjectReference>),
     // Keywords aren't really objects and can't be logically passed around.
     // They aren't technically language keywords, but instead were defined in patterns.
