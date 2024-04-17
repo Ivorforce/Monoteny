@@ -34,7 +34,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                 match scope.resolve(scopes::Environment::Global, identifier)? {
                     scopes::Reference::Keyword(keyword) => {
                         tokens.push(ast_token.with_value(
-                            Token::Symbol(keyword.clone())
+                            Token::Keyword(keyword.clone())
                         ));
                     }
                     scopes::Reference::Local(local) => {
@@ -252,12 +252,12 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
 }
 
 pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, linker: &mut ImperativeLinker) -> RResult<ExpressionID> {
-    let mut arguments: Vec<Positioned<ExpressionID>> = vec![];
+    let mut values: Vec<Positioned<ExpressionID>> = vec![];
     let mut keywords: Vec<String> = vec![];
 
     let final_ptoken = tokens.remove(tokens.len() - 1);
     if let Token::Value(expression) = &final_ptoken.value {
-        arguments.push(final_ptoken.with_value(*expression));
+        values.push(final_ptoken.with_value(*expression));
     }
     else {
         return Err(RuntimeError::new_in_range(String::from("Expected expression."), final_ptoken.position))
@@ -270,14 +270,14 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
         }
 
         while let Some(ptoken) = tokens.pop() {
-            let Token::Symbol(keyword) = ptoken.value else {
-                return Err(RuntimeError::new(String::from("Expecting an operator but got a value.")))
+            let Token::Keyword(keyword) = ptoken.value else {
+                return Err(RuntimeError::new(String::from("Got two consecutive values; expected an operator in between.")))
             };
 
             if let Some(ptoken) = tokens.last() {
                 if let Token::Value(expression) = &ptoken.value {
                     // Binary Operator, because left of operator is a value
-                    arguments.insert(0, ptoken.with_value(*expression));
+                    values.insert(0, ptoken.with_value(*expression));
                     keywords.insert(0, keyword);
                     tokens.pop();
 
@@ -288,7 +288,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
             // Unary operator, because left of operator is an operator
 
             let function_head = &left_unary_operators[&keyword];
-            let argument = arguments.remove(0);
+            let argument = values.remove(0);
             let expression_id = linker.link_function_call(
                 [function_head].into_iter(),
                 FunctionRepresentation { name: "fn".to_string(), form: FunctionForm::GlobalFunction },
@@ -297,13 +297,13 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                 scope,
                 ptoken.position
             )?;
-            arguments.insert(0, argument.with_value(expression_id));
+            values.insert(0, argument.with_value(expression_id));
         }
     }
 
-    if arguments.len() == 1 {
+    if values.len() == 1 {
         // Just one argument, we can shortcut!
-        return Ok(arguments.remove(0).value)
+        return Ok(values.remove(0).value)
     }
 
     // Resolve binary operators. At this point, we have only expressions interspersed with operators.
@@ -338,7 +338,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                 while i < keywords.len() {
                     if let Some(function_head) = group_operators.get(&keywords[i]) {
                         keywords.remove(i);
-                        join_binary_at(linker, &mut arguments, function_head, i)?;
+                        join_binary_at(linker, &mut values, function_head, i)?;
                     }
                     else {
                         i += 1;  // Skip
@@ -352,7 +352,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                     i -= 1;
                     if let Some(alias) = group_operators.get(&keywords[i]) {
                         keywords.remove(i);
-                        join_binary_at(linker, &mut arguments, alias, i)?;
+                        join_binary_at(linker, &mut values, alias, i)?;
                     }
                 }
             }
@@ -366,7 +366,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                         }
 
                         keywords.remove(i);
-                        join_binary_at(linker, &mut arguments, alias, i)?;
+                        join_binary_at(linker, &mut values, alias, i)?;
                     }
 
                     i += 1;
@@ -384,7 +384,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
 
                     if i + 1 >= keywords.len() || !group_operators.contains_key(&keywords[i + 1]) {
                         // Just one operation; let's use a binary operator.
-                        join_binary_at(linker, &mut arguments, &group_operators[&keywords.remove(i)], i)?;
+                        join_binary_at(linker, &mut values, &group_operators[&keywords.remove(i)], i)?;
                         continue;
                     }
 
@@ -392,7 +392,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                     // We can start with the first two operators and 3 arguments of which we
                     // know they belong to the operation.
                     let mut group_arguments = vec![
-                        arguments.remove(i), arguments.remove(i), arguments.remove(i)
+                        values.remove(i), values.remove(i), values.remove(i)
                     ];
                     let mut group_operators = vec![
                         keywords.remove(i), keywords.remove(i)
@@ -400,12 +400,12 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
 
                     while i < keywords.len() && group_operators.contains(&keywords[i]) {
                         // Found one more! Yay!
-                        group_arguments.push(arguments.remove(i));
+                        group_arguments.push(values.remove(i));
                         group_operators.push(keywords.remove(i));
                     }
 
                     // Let's wrap this up.
-                    arguments.insert(i, linker.link_conjunctive_pairs(
+                    values.insert(i, linker.link_conjunctive_pairs(
                         group_arguments,
                         todo!("Resolve group_operators to overloads")
                     )?);
@@ -418,7 +418,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
 
         if keywords.len() == 0 {
             // We can return early
-            return Ok(arguments.iter().exactly_one().unwrap().value)
+            return Ok(values.iter().exactly_one().unwrap().value)
         }
     }
 
@@ -426,5 +426,5 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
         panic!("Unrecognized binary operator pattern(s); did you forget an import? Offending Operators: {:?}", &keywords);
     }
 
-    Ok(arguments.into_iter().exactly_one().unwrap().value)
+    Ok(values.into_iter().exactly_one().unwrap().value)
 }
