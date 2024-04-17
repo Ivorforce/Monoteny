@@ -6,7 +6,7 @@ use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::linker::grammar::{Grammar, Pattern, PrecedenceGroup};
 use crate::program::allocation::ObjectReference;
-use crate::program::function_object::{FunctionForm, FunctionOverload, FunctionRepresentation};
+use crate::program::function_object::{FunctionTargetType, FunctionOverload, FunctionRepresentation};
 use crate::program::functions::FunctionHead;
 use crate::program::module::Module;
 use crate::program::traits::TraitGraph;
@@ -15,12 +15,6 @@ use crate::program::traits::TraitGraph;
 // When we have imports, this should be ignored until referenced, to avoid unnecessary import complications.
 // For these cases, we could store an AMBIGUOUS value inside our pool, crashing when accessed?
 type RefPool = HashMap<String, Reference>;
-
-#[derive(Copy, Clone, PartialEq)]
-pub enum Environment {
-    Global,
-    Member
-}
 
 pub struct Scope<'a> {
     pub parent: Option<&'a Scope<'a>>,
@@ -60,17 +54,17 @@ impl <'a> Scope<'a> {
         }
     }
 
-    pub fn references_mut(&mut self, environment: Environment) -> &mut RefPool {
+    pub fn references_mut(&mut self, environment: FunctionTargetType) -> &mut RefPool {
         match environment {
-            Environment::Global => &mut self.global,
-            Environment::Member => &mut self.member
+            FunctionTargetType::Global => &mut self.global,
+            FunctionTargetType::Member => &mut self.member
         }
     }
 
-    pub fn references(&self, environment: Environment) -> &RefPool {
+    pub fn references(&self, environment: FunctionTargetType) -> &RefPool {
         match environment {
-            Environment::Global => &self.global,
-            Environment::Member => &self.member
+            FunctionTargetType::Global => &self.global,
+            FunctionTargetType::Member => &self.member
         }
     }
 
@@ -96,9 +90,8 @@ impl <'a> Scope<'a> {
 
     pub fn overload_function(&mut self, fun: &Rc<FunctionHead>, representation: FunctionRepresentation) -> RResult<()> {
         let name = &representation.name;
-        let environment = Environment::from_form(&representation.form);
 
-        let mut refs = self.references_mut(environment);
+        let mut refs = self.references_mut(representation.target_type);
 
         // Remove the current FunctionOverload reference and replace with a reference containing also our new overload.
         // This may seem weird at first but it kinda makes sense - if someone queries the scope, gets a reference,
@@ -115,14 +108,14 @@ impl <'a> Scope<'a> {
         }
         else {
             // Copy the parent's function overload into us and then add the function to the overload
-            if let Some(Some(Reference::FunctionOverload(overload))) = self.parent.map(|x| x.resolve(environment, name).ok()) {
+            if let Some(Some(Reference::FunctionOverload(overload))) = self.parent.map(|x| x.resolve(representation.target_type, name).ok()) {
                 let overload = Reference::FunctionOverload(overload.adding_function(fun)?);
 
-                let mut refs = self.references_mut(environment);
+                let mut refs = self.references_mut(representation.target_type);
                 refs.insert(representation.name.clone(), overload);
             }
 
-            let mut refs = self.references_mut(environment);
+            let mut refs = self.references_mut(representation.target_type);
 
             let overload = Reference::FunctionOverload(FunctionOverload::from(fun, representation.clone()));
 
@@ -132,8 +125,8 @@ impl <'a> Scope<'a> {
         Ok(())
     }
 
-    pub fn insert_singleton(&mut self, environment: Environment, reference: Reference, name: &str) {
-        let mut refs = self.references_mut(environment);
+    pub fn insert_singleton(&mut self, target_type: FunctionTargetType, reference: Reference, name: &str) {
+        let mut refs = self.references_mut(target_type);
 
         if let Some(other) = refs.insert(name.to_string(), reference) {
             panic!("Multiple references with the same name: {}", name);
@@ -142,7 +135,7 @@ impl <'a> Scope<'a> {
 
     pub fn insert_keyword(&mut self, keyword: &str) {
         let reference = Reference::Keyword(keyword.to_string());
-        let mut refs = self.references_mut(Environment::Global);
+        let mut refs = self.references_mut(FunctionTargetType::Global);
 
         if let Some(other) = refs.insert(keyword.to_string(), reference) {
             if Reference::Keyword(keyword.to_string()) != other {
@@ -158,22 +151,22 @@ impl <'a> Scope<'a> {
         Ok(())
     }
 
-    pub fn override_reference(&mut self, environment: Environment, reference: Reference, name: &str) {
-        let mut refs = self.references_mut(environment);
+    pub fn override_reference(&mut self, target_type: FunctionTargetType, reference: Reference, name: &str) {
+        let mut refs = self.references_mut(target_type);
 
         refs.insert(name.to_string(), reference);
     }
 
-    pub fn contains(&mut self, environment: Environment, name: &str) -> bool {
-        self.references(environment).contains_key(name)
+    pub fn contains(&mut self, target_type: FunctionTargetType, name: &str) -> bool {
+        self.references(target_type).contains_key(name)
     }
 }
 
 impl <'a> Scope<'a> {
-    pub fn resolve(&'a self, environment: Environment, name: &str) -> RResult<&'a Reference> {
+    pub fn resolve(&'a self, target_type: FunctionTargetType, name: &str) -> RResult<&'a Reference> {
         let mut scope = self;
         loop {
-            if let Some(reference) = scope.references(environment).get(name) {
+            if let Some(reference) = scope.references(target_type).get(name) {
                 return Ok(reference)
             }
 
@@ -182,9 +175,9 @@ impl <'a> Scope<'a> {
             }
             else {
                 // take that rust, i steal ur phrasings
-                let env_part = match environment {
-                    Environment::Global => "",
-                    Environment::Member => "."
+                let env_part = match target_type {
+                    FunctionTargetType::Global => "",
+                    FunctionTargetType::Member => "."
                 };
 
                 return Err(RuntimeError::new(format!("Cannot find '{}{}' in this scope", env_part, name)))
@@ -200,17 +193,6 @@ impl <'a> Scope<'a> {
         }
 
         return Err(RuntimeError::new(format!("Precedence group could not be resolved: {}", name)))
-    }
-}
-
-impl Environment {
-    pub fn from_form(form: &FunctionForm) -> Environment {
-        match form {
-            FunctionForm::MemberFunction => Environment::Member,
-            FunctionForm::MemberImplicit => Environment::Member,
-            FunctionForm::GlobalFunction => Environment::Global,
-            FunctionForm::GlobalImplicit => Environment::Global,
-        }
     }
 }
 

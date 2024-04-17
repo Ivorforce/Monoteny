@@ -18,7 +18,7 @@ use crate::linker::traits::{TraitLinker, try_make_struct};
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::expression_tree::*;
-use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
@@ -108,7 +108,7 @@ impl <'a> GlobalLinker<'a> {
                 );
 
                 let mut scope = self.global_variables.subscope();
-                scope.overload_function(&generic_self_self_getter, FunctionRepresentation::new("Self", FunctionForm::GlobalImplicit))?;
+                scope.overload_function(&generic_self_self_getter, FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit))?;
                 self.runtime.source.trait_references.insert(Rc::clone(&generic_self_self_getter), Rc::clone(&trait_.generics["Self"]));
 
                 let mut linker = TraitLinker {
@@ -152,7 +152,7 @@ impl <'a> GlobalLinker<'a> {
                 let self_binding = declared.create_generic_binding(vec![("Self", self_type)]);
 
                 let mut scope = self.global_variables.subscope();
-                scope.overload_function(&self_getter, FunctionRepresentation::new("Self", FunctionForm::GlobalImplicit))?;
+                scope.overload_function(&self_getter, FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit))?;
                 self.runtime.source.trait_references.insert(Rc::clone(&self_getter), self_trait);
 
                 let mut linker = ConformanceLinker { runtime: &self.runtime, functions: vec![], };

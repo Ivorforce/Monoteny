@@ -17,7 +17,8 @@ use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::debug::MockFunctionInterface;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
-use crate::program::function_object::{FunctionForm, FunctionOverload, FunctionRepresentation};
+use crate::program::function_object;
+use crate::program::function_object::{FunctionCallExplicity, FunctionOverload, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
@@ -221,7 +222,7 @@ impl <'a> ImperativeLinker<'a> {
                 match &target.iter().map(|a| a.as_ref()).collect_vec()[..] {
                     [Positioned { position, value: ast::Term::Identifier(identifier) }] => {
                         let object_ref = scope
-                            .resolve(scopes::Environment::Global, identifier)?
+                            .resolve(function_object::FunctionTargetType::Global, identifier)?
                             .as_local(true)?;
                         self.types.bind(new_value, &object_ref.type_)?;
                         let expression_id = self.register_new_expression(vec![new_value]);
@@ -236,7 +237,7 @@ impl <'a> ImperativeLinker<'a> {
                     ] => {
                         let target = self.link_expression(&target[..target.len() - 2], scope)?;
                         let overload = scope
-                            .resolve(scopes::Environment::Member, &access)?
+                            .resolve(function_object::FunctionTargetType::Member, &access)?
                             .as_function_overload()?;
                         self.link_function_call(
                             overload.functions.iter(),
@@ -290,7 +291,7 @@ impl <'a> ImperativeLinker<'a> {
 
     fn register_local(&mut self, identifier: &str, reference: Rc<ObjectReference>, scope: &mut scopes::Scope) {
         self.locals_names.insert(Rc::clone(&reference), identifier.to_string());
-        scope.override_reference(scopes::Environment::Global, scopes::Reference::Local(reference), identifier);
+        scope.override_reference(function_object::FunctionTargetType::Global, scopes::Reference::Local(reference), identifier);
     }
 
     pub fn link_expression_with_type(&mut self, syntax: &ast::Expression, type_declaration: &Option<ast::Expression>, scope: &scopes::Scope) -> RResult<ExpressionID> {
@@ -372,12 +373,12 @@ impl <'a> ImperativeLinker<'a> {
     }
 
     pub fn link_simple_function_call(&mut self, name: &str, keys: Vec<ParameterKey>, args: Vec<ExpressionID>, scope: &scopes::Scope, range: Range<usize>) -> RResult<ExpressionID> {
-        let variable = scope.resolve(scopes::Environment::Global, name)?;
+        let variable = scope.resolve(FunctionTargetType::Global, name)?;
 
         match variable {
             scopes::Reference::FunctionOverload(overload) => {
-                match overload.representation.form {
-                    FunctionForm::GlobalFunction => {
+                match (overload.representation.target_type, overload.representation.call_explicity) {
+                    (FunctionTargetType::Global, FunctionCallExplicity::Explicit) => {
                         let expression_id = self.link_function_call(overload.functions.iter(), overload.representation.clone(), keys, args, scope, range)?;
                         // Make sure the return type is actually String.
                         self.types.bind(expression_id, &TypeProto::unit_struct(&self.runtime.traits.as_ref().unwrap().String))?;

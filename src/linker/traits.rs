@@ -11,7 +11,7 @@ use crate::linker::interface::link_function_interface;
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::{Mutability, ObjectReference};
-use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
@@ -166,7 +166,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
     );
     linker.add_function_interface(
         Rc::clone(&struct_.constructor),
-        FunctionRepresentation::new("call_as_function", FunctionForm::MemberFunction),
+        FunctionRepresentation::new("call_as_function", FunctionTargetType::Member, FunctionCallExplicity::Explicit),
         &vec![],
     )?;
 
@@ -179,7 +179,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         );
         linker.add_function_interface(
             Rc::clone(head),
-            FunctionRepresentation::new(name, FunctionForm::MemberImplicit),
+            FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit),
             &vec![])?
         ;
     }
@@ -193,7 +193,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         );
         linker.add_function_interface(
             Rc::clone(head),
-            FunctionRepresentation::new(name, FunctionForm::MemberImplicit),
+            FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit),
             &vec![]
         )?;
     }

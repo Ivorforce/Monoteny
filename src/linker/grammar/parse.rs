@@ -9,7 +9,8 @@ use crate::linker::scopes;
 use crate::parser::ast;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::function_object;
+use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::util::position::Positioned;
 
@@ -31,7 +32,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
         match &ast_token.value {
             ast::Term::Error(err) => return Err(vec![err.clone()]),
             ast::Term::Identifier(identifier) => {
-                match scope.resolve(scopes::Environment::Global, identifier)? {
+                match scope.resolve(function_object::FunctionTargetType::Global, identifier)? {
                     scopes::Reference::Keyword(keyword) => {
                         tokens.push(ast_token.with_value(
                             Token::Keyword(keyword.clone())
@@ -50,8 +51,8 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                     }
                     scopes::Reference::FunctionOverload(overload) => {
                         tokens.push(ast_token.with_value(
-                            match overload.representation.form {
-                                FunctionForm::GlobalFunction => {
+                            match overload.representation.call_explicity {
+                                FunctionCallExplicity::Explicit => {
                                     let next_token = syntax.get(i);
 
                                     match next_token.map(|t| &t.value) {
@@ -75,7 +76,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                                         _ => Token::Value(linker.link_function_reference(overload)?),
                                     }
                                 }
-                                FunctionForm::GlobalImplicit => {
+                                FunctionCallExplicity::Implicit => {
                                     Token::Value(
                                         linker.link_function_call(
                                             overload.functions.iter(),
@@ -107,12 +108,12 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                     return Err(RuntimeError::new(format!("Dot notation requires a following identifier.")))
                 };
 
-                let overload = scope.resolve(scopes::Environment::Member, member)?
+                let overload = scope.resolve(function_object::FunctionTargetType::Member, member)?
                     .as_function_overload()?;
 
                 // TODO This is almost duplicated code from normal function calls above.
-                *tokens.last_mut().unwrap() = ast_token.with_value(match overload.representation.form {
-                    FunctionForm::MemberFunction => {
+                *tokens.last_mut().unwrap() = ast_token.with_value(match overload.representation.call_explicity {
+                    FunctionCallExplicity::Explicit => {
                         let next_token = syntax.get(i);
                         i += 1;
 
@@ -135,7 +136,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                             _ => return Err(RuntimeError::new(format!("Member function references are not yet supported."))),
                         }
                     }
-                    FunctionForm::MemberImplicit => {
+                    FunctionCallExplicity::Implicit => {
                         Token::Value(
                             linker.link_function_call(
                                 overload.functions.iter(),
@@ -189,7 +190,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                     Some(Token::Value(expression)) => {
                         // Call previous token
                         let overload = scope
-                            .resolve(scopes::Environment::Member, "call_as_function").err_in_range(&ast_token.position)?
+                            .resolve(function_object::FunctionTargetType::Member, "call_as_function").err_in_range(&ast_token.position)?
                             .as_function_overload().err_in_range(&ast_token.position)?;
 
                         let expression_id = linker.link_function_call(
@@ -291,7 +292,11 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
             let argument = values.remove(0);
             let expression_id = linker.link_function_call(
                 [function_head].into_iter(),
-                FunctionRepresentation { name: "fn".to_string(), form: FunctionForm::GlobalFunction },
+                FunctionRepresentation {
+                    name: "fn".to_string(),
+                    target_type: FunctionTargetType::Global,
+                    call_explicity: FunctionCallExplicity::Explicit,
+                },
                 vec![ParameterKey::Positional],
                 vec![argument.value],
                 scope,
@@ -320,7 +325,11 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                 position: range.clone(),
                 value: linker.link_function_call(
                     [function_head].into_iter(),
-                    FunctionRepresentation { name: "fn".to_string(), form: FunctionForm::GlobalFunction },
+                    FunctionRepresentation {
+                        name: "fn".to_string(),
+                        target_type: FunctionTargetType::Global,
+                        call_explicity: FunctionCallExplicity::Explicit,
+                    },
                     vec![ParameterKey::Positional, ParameterKey::Positional],
                     vec![lhs.value, rhs.value],
                     scope,

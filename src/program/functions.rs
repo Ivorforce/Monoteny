@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use uuid::Uuid;
 
-use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::TypeProto;
 
@@ -140,28 +140,16 @@ impl FunctionInterface {
     pub fn format(&self, fmt: &mut Formatter<'_>, representation: &FunctionRepresentation) -> std::fmt::Result {
         let mut head = 0;
 
-        let has_args = match representation.form {
-            FunctionForm::GlobalFunction => true,
-            FunctionForm::GlobalImplicit => false,
-            FunctionForm::MemberFunction => {
-                write!(fmt, "(")?;
-                Self::format_parameter(fmt, self.parameters.get(head).unwrap())?;
-                write!(fmt, ").")?;
-                head += 1;
-                true
-            },
-            FunctionForm::MemberImplicit => {
-                write!(fmt, "(")?;
-                Self::format_parameter(fmt, self.parameters.get(head).unwrap())?;
-                write!(fmt, ").")?;
-                head += 1;
-                false
-            }
-        };
+        if representation.target_type == FunctionTargetType::Member {
+            write!(fmt, "(")?;
+            Self::format_parameter(fmt, self.parameters.get(head).unwrap())?;
+            write!(fmt, ").")?;
+            head += 1;
+        }
 
         write!(fmt, "{}", representation.name)?;
 
-        if has_args {
+        if representation.call_explicity == FunctionCallExplicity::Explicit {
             write!(fmt, "(")?;
             for parameter in self.parameters.iter().skip(head) {
                 Self::format_parameter(fmt, &parameter)?;
@@ -251,7 +239,7 @@ impl Hash for FunctionHead {
 
 impl Debug for FunctionHead {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        self.format(fmt, &FunctionRepresentation::new("fn", FunctionForm::GlobalFunction))
+        self.format(fmt, &FunctionRepresentation::new("fn", FunctionTargetType::Global, FunctionCallExplicity::Explicit))
     }
 }
 

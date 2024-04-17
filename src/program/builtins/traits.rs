@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::interpreter::Runtime;
 use crate::linker::referencible;
-use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::module::Module;
 use crate::program::primitives;
@@ -20,7 +20,8 @@ impl FunctionPointer {
             target: FunctionHead::new_static(interface),
             representation: FunctionRepresentation {
                 name: name.to_string(),
-                form: FunctionForm::GlobalFunction,
+                target_type: FunctionTargetType::Global,
+                call_explicity: FunctionCallExplicity::Explicit,
             },
         })
     }
@@ -30,7 +31,8 @@ impl FunctionPointer {
             target: FunctionHead::new_static(interface),
             representation: FunctionRepresentation {
                 name: name.to_string(),
-                form: FunctionForm::MemberFunction,
+                target_type: FunctionTargetType::Member,
+                call_explicity: FunctionCallExplicity::Explicit,
             },
         })
     }
@@ -40,7 +42,8 @@ impl FunctionPointer {
             target: FunctionHead::new_static(interface),
             representation: FunctionRepresentation {
                 name: name.to_string(),
-                form: FunctionForm::GlobalImplicit,
+                target_type: FunctionTargetType::Global,
+                call_explicity: FunctionCallExplicity::Implicit,
             },
         })
     }

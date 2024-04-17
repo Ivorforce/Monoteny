@@ -4,7 +4,7 @@ use crate::error::RResult;
 use crate::interpreter::compiler::make_function_getter;
 use crate::interpreter::Runtime;
 use crate::linker::scopes;
-use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
@@ -25,7 +25,7 @@ pub fn add_trait(runtime: &mut Runtime, module: &mut Module, scope: Option<&mut 
         FunctionLogic::Descriptor(FunctionLogicDescriptor::TraitProvider(Rc::clone(trait_))),
     );
 
-    let representation = FunctionRepresentation::new(&trait_.name, FunctionForm::GlobalImplicit);
+    let representation = FunctionRepresentation::new(&trait_.name, FunctionTargetType::Global, FunctionCallExplicity::Implicit);
 
     runtime.source.fn_representations.insert(
         Rc::clone(&getter),
@@ -66,7 +66,7 @@ pub fn add_function(runtime: &mut Runtime, module: &mut Module, scope: Option<&m
 
     runtime.source.fn_representations.insert(
         Rc::clone(&getter),
-        FunctionRepresentation::new(representation.name.as_str(), representation.form.implicit())
+        FunctionRepresentation::new(representation.name.as_str(), representation.target_type, FunctionCallExplicity::Implicit)
     );
     runtime.function_evaluators.insert(
         getter.function_id,

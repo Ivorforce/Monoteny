@@ -9,7 +9,7 @@ use crate::interpreter::Runtime;
 use crate::linker::scopes;
 use crate::linker::type_factory::TypeFactory;
 use crate::parser::ast;
-use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface, Parameter};
 use crate::program::module::{Module, module_name};
 use crate::program::traits::{Trait, TraitBinding};
@@ -36,7 +36,8 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
         ] => {
             _link_function_interface(FunctionRepresentation {
                 name: i.clone(),
-                form: FunctionForm::GlobalImplicit,
+                target_type: FunctionTargetType::Global,
+                call_explicity: FunctionCallExplicity::Implicit,
             }, [].into_iter(), &interface.return_type, type_factory, requirements, generics)
         }
         [
@@ -46,7 +47,8 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
         ] => {
             _link_function_interface(FunctionRepresentation {
                 name: i.clone(),
-                form: FunctionForm::GlobalFunction,
+                target_type: FunctionTargetType::Global,
+                call_explicity: FunctionCallExplicity::Explicit,
             }, args.iter(), &interface.return_type, type_factory, requirements, generics)
         }
         [
@@ -58,7 +60,8 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
             let target = get_as_target_parameter(&target)?;
             _link_function_interface(FunctionRepresentation {
                 name: member.clone(),
-                form: FunctionForm::MemberImplicit,
+                target_type: FunctionTargetType::Member,
+                call_explicity: FunctionCallExplicity::Implicit,
             }, Some(target).into_iter(), &interface.return_type, type_factory, requirements, generics)
         }
         [
@@ -71,7 +74,8 @@ pub fn link_function_interface(interface: &ast::FunctionInterface, scope: &scope
             let target = get_as_target_parameter(&target)?;
             _link_function_interface(FunctionRepresentation {
                 name: member.clone(),
-                form: FunctionForm::MemberFunction,
+                target_type: FunctionTargetType::Member,
+                call_explicity: FunctionCallExplicity::Explicit,
             }, Some(target).into_iter().chain(args), &interface.return_type, type_factory, requirements, generics)
         }
         _ => Err(RuntimeError::new("Cannot have non-function definition.".to_string())),
@@ -86,7 +90,7 @@ fn link_macro_function_interface(module: Option<&mut Module>, runtime: &Runtime,
                 .exactly_one().unwrap();
 
             let fun = FunctionHead::new_static(Rc::clone(&proto_function.interface));
-            let representation = FunctionRepresentation::new("main", FunctionForm::GlobalFunction);
+            let representation = FunctionRepresentation::new("main", FunctionTargetType::Global, FunctionCallExplicity::Explicit);
 
             if let Some(module) = module {
                 module.main_functions.push(Rc::clone(&fun));
@@ -99,7 +103,7 @@ fn link_macro_function_interface(module: Option<&mut Module>, runtime: &Runtime,
                 .exactly_one().unwrap();
 
             let fun = FunctionHead::new_static(Rc::clone(&proto_function.interface));
-            let representation = FunctionRepresentation::new("transpile", FunctionForm::GlobalFunction);
+            let representation = FunctionRepresentation::new("transpile", FunctionTargetType::Global, FunctionCallExplicity::Explicit);
 
             if let Some(module) = module {
                 module.transpile_functions.push(Rc::clone(&fun));

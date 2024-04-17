@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::program::function_object::{FunctionForm, FunctionRepresentation};
+use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
 use crate::program::traits::{FieldHint, Trait};
 use crate::program::types::TypeProto;
@@ -55,13 +55,13 @@ pub fn add_to_trait(trait_: &mut Trait, field: FieldHint) {
     if let Some(getter) = &field.getter {
         trait_.insert_function(
             Rc::clone(getter),
-            FunctionRepresentation::new(&field.name, FunctionForm::MemberImplicit)
+            FunctionRepresentation::new(&field.name, FunctionTargetType::Member, FunctionCallExplicity::Implicit)
         )
     }
     if let Some(setter) = &field.setter {
         trait_.insert_function(
             Rc::clone(setter),
-            FunctionRepresentation::new(&field.name, FunctionForm::MemberImplicit)
+            FunctionRepresentation::new(&field.name, FunctionTargetType::Member, FunctionCallExplicity::Implicit)
         )
     }
     trait_.field_hints.push(field)

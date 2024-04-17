@@ -5,19 +5,23 @@ use crate::error::RResult;
 use crate::program::functions::FunctionHead;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum FunctionForm {
-    GlobalFunction,
-    GlobalImplicit,
-    MemberFunction,
-    MemberImplicit,
+pub enum FunctionCallExplicity {
+    Explicit,
+    Implicit,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum FunctionTargetType {
+    Global,
+    Member
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct FunctionRepresentation {
     /// Name of the function.
     pub name: String,
-    /// How the functon looks in syntax.
-    pub form: FunctionForm,
+    pub target_type: FunctionTargetType,
+    pub call_explicity: FunctionCallExplicity,
 }
 
 /// Reference to a multiplicity of functions, usually resolved when attempting to call
@@ -29,10 +33,11 @@ pub struct FunctionOverload {
 }
 
 impl FunctionRepresentation {
-    pub fn new(name: &str, form: FunctionForm) -> FunctionRepresentation {
+    pub fn new(name: &str, target_type: FunctionTargetType, explicity: FunctionCallExplicity) -> FunctionRepresentation {
         FunctionRepresentation {
             name: name.into(),
-            form,
+            target_type,
+            call_explicity: explicity,
         }
     }
 }
@@ -53,25 +58,5 @@ impl FunctionOverload {
                 .collect(),
             representation: self.representation.clone(),
         }))
-    }
-}
-
-impl FunctionForm {
-    pub fn implicit(&self) -> FunctionForm {
-        match self {
-            FunctionForm::GlobalFunction => FunctionForm::GlobalImplicit,
-            FunctionForm::GlobalImplicit => FunctionForm::GlobalImplicit,
-            FunctionForm::MemberFunction => FunctionForm::MemberImplicit,
-            FunctionForm::MemberImplicit => FunctionForm::MemberImplicit,
-        }
-    }
-
-    pub fn is_implicit(&self) -> bool {
-        match self {
-            FunctionForm::GlobalFunction => false,
-            FunctionForm::GlobalImplicit => true,
-            FunctionForm::MemberFunction => false,
-            FunctionForm::MemberImplicit => true,
-        }
     }
 }

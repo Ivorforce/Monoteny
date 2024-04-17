@@ -6,7 +6,7 @@ use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
 use crate::linker::scopes;
-use crate::linker::scopes::Environment;
+use crate::program::function_object::FunctionTargetType;
 use crate::parser::ast;
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
@@ -32,7 +32,7 @@ impl <'a> TypeFactory<'a> {
     }
 
     pub fn resolve_trait(&mut self, name: &str) -> RResult<Rc<Trait>> {
-        let reference = self.scope.resolve(Environment::Global, &name)?;
+        let reference = self.scope.resolve(FunctionTargetType::Global, &name)?;
         let overload = reference.as_function_overload()?;
 
         let function = overload.functions.iter().exactly_one()
