@@ -260,7 +260,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
         arguments.push(final_ptoken.with_value(*expression));
     }
     else {
-        return Err(RuntimeError::new_in_range(String::from("Expression missing the final argument."), final_ptoken.position))
+        return Err(RuntimeError::new_in_range(String::from("Expected expression."), final_ptoken.position))
     }
 
     // Reduce all unary operators, and build interspersed arguments / operators list.
@@ -269,26 +269,25 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
             todo!("Left Unary operators must be first for now.");
         }
 
-        while !tokens.is_empty() {
-            let ptoken = tokens.remove(tokens.len() - 1);
+        while let Some(ptoken) = tokens.pop() {
             let Token::Symbol(keyword) = ptoken.value else {
-                return Err(RuntimeError::new(String::from("Expecting an operator but got an expression.")))
+                return Err(RuntimeError::new(String::from("Expecting an operator but got a value.")))
             };
 
-            if let Some(ptoken) = tokens.get(tokens.len() - 1) {
+            if let Some(ptoken) = tokens.last() {
                 if let Token::Value(expression) = &ptoken.value {
-                    // Binary Operator, because left of operator is an expression!
+                    // Binary Operator, because left of operator is a value
                     arguments.insert(0, ptoken.with_value(*expression));
                     keywords.insert(0, keyword);
-                    tokens.remove(tokens.len() - 1);
+                    tokens.pop();
 
                     continue
                 }
             }
 
-            let function_head = &left_unary_operators[&keyword];
+            // Unary operator, because left of operator is an operator
 
-            // Unary operator, because left of operator is an operator!
+            let function_head = &left_unary_operators[&keyword];
             let argument = arguments.remove(0);
             let expression_id = linker.link_function_call(
                 [function_head].into_iter(),
