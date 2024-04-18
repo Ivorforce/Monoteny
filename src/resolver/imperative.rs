@@ -303,9 +303,9 @@ impl <'a> ImperativeResolver<'a> {
     }
 
     pub fn resolve_expression(&mut self, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<ExpressionID> {
-        // First, link core grammar.
+        // First, resolve core grammar.
         let tokens = resolve_expression_to_tokens(self, syntax, scope)?;
-        // Then, link configurable user grammar.
+        // Then, resolve configurable user grammar.
         resolve_tokens_to_value(tokens, scope, self)
     }
 

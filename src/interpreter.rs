@@ -40,7 +40,7 @@ pub struct Runtime {
     // TODO We'll need these only in the future when we compile functions to constants.
     // pub global_assignments: HashMap<Uuid, Value>,
 
-    // These remain unchanged after linking.
+    // These remain unchanged after resolution.
     pub source: Source,
     pub repository: Box<Repository>,
 }
@@ -108,7 +108,7 @@ impl Runtime {
 
     pub fn load_code(&mut self, source: &str, name: ModuleName) -> RResult<Box<Module>> {
         // We can ignore the errors. All errors are stored inside the AST too and will fail there.
-        // TODO When JIT loading is implemented, we should still try to link all non-loaded
+        // TODO When JIT loading is implemented, we should still try to resolve all non-loaded
         //  functions / modules and warn if they fail. We can also then warn they're unused too.
         let (ast, _) = parser::parse_program(source)?;
         self.load_ast(&ast, name)

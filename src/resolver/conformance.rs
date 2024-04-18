@@ -15,7 +15,7 @@ use crate::program::traits::{Trait, TraitBinding, TraitConformance};
 use crate::refactor::monomorphize::map_interface_types;
 use crate::util::fmt::fmta;
 
-pub struct UnlinkedFunctionImplementation<'a> {
+pub struct UnresolvedFunctionImplementation<'a> {
     pub function: Rc<FunctionHead>,
     pub representation: FunctionRepresentation,
     pub decorators: Vec<String>,
@@ -24,7 +24,7 @@ pub struct UnlinkedFunctionImplementation<'a> {
 
 pub struct ConformanceResolver<'a, 'b> {
     pub runtime: &'b Runtime,
-    pub functions: Vec<UnlinkedFunctionImplementation<'a>>,
+    pub functions: Vec<UnresolvedFunctionImplementation<'a>>,
 }
 
 impl <'a, 'b> ConformanceResolver<'a, 'b> {
@@ -36,7 +36,7 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
                 //  generic to generic mapping later.
                 let (function, representation) = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
 
-                self.functions.push(UnlinkedFunctionImplementation {
+                self.functions.push(UnresolvedFunctionImplementation {
                     function,
                     representation,
                     body: &syntax.body,
@@ -91,7 +91,7 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
     }
 }
 
-impl<'a> Debug for UnlinkedFunctionImplementation<'a> {
+impl<'a> Debug for UnresolvedFunctionImplementation<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.function.format(f, &self.representation)
     }
