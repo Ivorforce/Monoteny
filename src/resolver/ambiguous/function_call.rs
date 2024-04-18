@@ -6,8 +6,8 @@ use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
 
 use crate::error::{format_errors, RResult, RuntimeError};
-use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
-use crate::linker::imperative::ImperativeLinker;
+use crate::resolver::ambiguous::{AmbiguityResult, ResolverAmbiguity};
+use crate::resolver::imperative::ImperativeResolver;
 use crate::program::calls::FunctionBinding;
 use crate::program::debug::MockFunctionInterface;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
@@ -73,11 +73,11 @@ impl Display for AmbiguousFunctionCall {
     }
 }
 
-impl LinkerAmbiguity for AmbiguousFunctionCall {
-    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> RResult<AmbiguityResult<()>> {
+impl ResolverAmbiguity for AmbiguousFunctionCall {
+    fn attempt_to_resolve(&mut self, resolver: &mut ImperativeResolver) -> RResult<AmbiguityResult<()>> {
         let mut is_ambiguous = false;
         for candidate in self.candidates.drain(..).collect_vec() {
-            let mut types_copy = linker.types.clone();
+            let mut types_copy = resolver.types.clone();
             let result = self.attempt_with_candidate(&mut types_copy, &candidate);
 
             match result {
@@ -99,10 +99,10 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
 
         if self.candidates.len() == 1 {
             let candidate = self.candidates.drain(..).next().unwrap();
-            // TODO We can just assign linker.types to the candidate's result; it was literally just copied.
-            match self.attempt_with_candidate(&mut linker.types, &candidate)? {
+            // TODO We can just assign resolver.types to the candidate's result; it was literally just copied.
+            match self.attempt_with_candidate(&mut resolver.types, &candidate)? {
                 AmbiguityResult::Ok(resolution) => {
-                    linker.expression_tree.values.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
+                    resolver.expression_tree.values.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                         function: Rc::clone(&candidate.function),
                         requirements_fulfillment: resolution
                     })));
@@ -129,7 +129,7 @@ impl LinkerAmbiguity for AmbiguousFunctionCall {
                     representation: self.representation.clone(),
                     argument_keys: self.arguments.iter().map(|a| ParameterKey::Positional).collect_vec(),
                     arguments: self.arguments.clone(),
-                    types: &linker.types,
+                    types: &resolver.types,
                 };
                 Err(RuntimeError::new(format!("function {} could not be resolved. {} candidates failed type / requirements test.", signature, cs.len())))
             }

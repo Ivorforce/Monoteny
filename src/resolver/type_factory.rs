@@ -5,7 +5,7 @@ use itertools::Itertools;
 
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::linker::scopes;
+use crate::resolver::scopes;
 use crate::program::function_object::FunctionTargetType;
 use crate::parser::ast;
 use crate::program::traits::{Trait, TraitBinding};
@@ -53,7 +53,7 @@ impl <'a> TypeFactory<'a> {
         self.requirements.insert(requirement);
     }
 
-    pub fn link_type(&mut self, syntax: &ast::Expression, allow_anonymous_generics: bool) -> RResult<Rc<TypeProto>> {
+    pub fn resolve_type(&mut self, syntax: &ast::Expression, allow_anonymous_generics: bool) -> RResult<Rc<TypeProto>> {
         let Ok(pterm) = syntax.iter().exactly_one() else {
             return Err(RuntimeError::new("Interpreted types aren't supported yet; please use an explicit type for now. 2 ".to_string()));
         };

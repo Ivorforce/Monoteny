@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::linker::{interpreter_mock, scopes};
+use crate::resolver::{interpreter_mock, scopes};
 use crate::parser::ast;
 use crate::program::functions::ParameterKey;
 use crate::program::module::ModuleName;
@@ -22,7 +22,7 @@ impl Import {
     }
 }
 
-pub fn link_imports(body: &Vec<ast::StructArgument>) -> RResult<Vec<Import>> {
+pub fn resolve_imports(body: &Vec<ast::StructArgument>) -> RResult<Vec<Import>> {
     body.iter().map(|arg| {
         if arg.key != ParameterKey::Positional {
             return Err(RuntimeError::new(format!("Imports cannot be renamed for now.")));
@@ -31,11 +31,11 @@ pub fn link_imports(body: &Vec<ast::StructArgument>) -> RResult<Vec<Import>> {
             return Err(RuntimeError::new(format!("Imports cannot have type declarations.")));
         }
 
-        link_module(&arg.value)
+        resolve_module(&arg.value)
     }).try_collect()
 }
 
-pub fn link_module(body: &ast::Expression) -> RResult<Import> {
+pub fn resolve_module(body: &ast::Expression) -> RResult<Import> {
     let error = RuntimeError::new(format!("Import parameter is not a module."));
 
     match &body[..] {

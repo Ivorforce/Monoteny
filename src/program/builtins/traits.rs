@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::interpreter::Runtime;
-use crate::linker::referencible;
+use crate::resolver::referencible;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::module::Module;

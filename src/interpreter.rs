@@ -8,9 +8,9 @@ use uuid::Uuid;
 
 use allocation::Value;
 
-use crate::{linker, parser, program};
+use crate::{resolver, parser, program};
 use crate::error::{RResult, RuntimeError};
-use crate::linker::{imports, referencible, scopes};
+use crate::resolver::{imports, referencible, scopes};
 use crate::parser::ast;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionHead, FunctionType};
@@ -128,7 +128,7 @@ impl Runtime {
         }
 
         let mut module = Box::new(Module::new(name));
-        linker::link_file(syntax, &scope, self, &mut module)?;
+        resolver::resolve_file(syntax, &scope, self, &mut module)?;
         Ok(module)
     }
 }

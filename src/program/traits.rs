@@ -8,7 +8,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 
 use crate::error::{format_errors, RResult, RuntimeError};
-use crate::linker::ambiguous::AmbiguityResult;
+use crate::resolver::ambiguous::AmbiguityResult;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType};
 use crate::program::generics::{GenericAlias, TypeForest};

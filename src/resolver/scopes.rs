@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::linker::grammar::{Grammar, Pattern, PrecedenceGroup};
+use crate::resolver::grammar::{Grammar, Pattern, PrecedenceGroup};
 use crate::program::allocation::ObjectReference;
 use crate::program::function_object::{FunctionTargetType, FunctionOverload, FunctionRepresentation};
 use crate::program::functions::FunctionHead;

@@ -4,7 +4,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 
-use crate::linker::grammar::{Pattern, PrecedenceGroup};
+use crate::resolver::grammar::{Pattern, PrecedenceGroup};
 use crate::program::functions::FunctionHead;
 use crate::program::traits::TraitGraph;
 use crate::source::Source;

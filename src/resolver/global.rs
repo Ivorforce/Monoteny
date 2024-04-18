@@ -7,15 +7,15 @@ use uuid::Uuid;
 
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::linker::{imports, interpreter_mock, referencible, scopes};
-use crate::linker::conformance::ConformanceLinker;
-use crate::linker::decorations::try_parse_pattern;
-use crate::linker::grammar::precedence_order::link_precedence_order;
-use crate::linker::imperative::ImperativeLinker;
-use crate::linker::imports::link_imports;
-use crate::linker::interface::link_function_interface;
-use crate::linker::traits::{TraitLinker, try_make_struct};
-use crate::linker::type_factory::TypeFactory;
+use crate::resolver::{imports, interpreter_mock, referencible, scopes};
+use crate::resolver::conformance::ConformanceResolver;
+use crate::resolver::decorations::try_parse_pattern;
+use crate::resolver::grammar::precedence_order::resolve_precedence_order;
+use crate::resolver::imperative::ImperativeResolver;
+use crate::resolver::imports::resolve_imports;
+use crate::resolver::interface::resolve_function_interface;
+use crate::resolver::traits::{TraitResolver, try_make_struct};
+use crate::resolver::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::expression_tree::*;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
@@ -27,15 +27,15 @@ use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
 use crate::program::types::*;
 use crate::util::position::Positioned;
 
-pub struct GlobalLinker<'a> {
+pub struct GlobalResolver<'a> {
     pub runtime: &'a mut Runtime,
     pub global_variables: scopes::Scope<'a>,
     pub function_bodies: HashMap<Rc<FunctionHead>, Positioned<&'a ast::Expression>>,
     pub module: &'a mut Module,
 }
 
-pub fn link_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Runtime, module: &mut Module) -> RResult<()> {
-    let mut global_linker = GlobalLinker {
+pub fn resolve_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Runtime, module: &mut Module) -> RResult<()> {
+    let mut global_resolver = GlobalResolver {
         runtime,
         module,
         global_variables: scope.subscope(),
@@ -44,17 +44,17 @@ pub fn link_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Runti
 
     // Resolve global types / interfaces
     for statement in &syntax.statements {
-        global_linker.link_global_statement(statement, &HashSet::new())
+        global_resolver.resolve_global_statement(statement, &HashSet::new())
             .err_in_range(&statement.value.position)?;
     }
 
-    let global_variable_scope = global_linker.global_variables;
-    let runtime = global_linker.runtime;
+    let global_variable_scope = global_resolver.global_variables;
+    let runtime = global_resolver.runtime;
 
     // Resolve function bodies
     let mut errors = vec![];
-    for (head, pbody) in global_linker.function_bodies {
-        let mut resolver = Box::new(ImperativeLinker {
+    for (head, pbody) in global_resolver.function_bodies {
+        let mut resolver = Box::new(ImperativeResolver {
             function: Rc::clone(&head),
             runtime,
             types: Box::new(TypeForest::new()),
@@ -63,7 +63,7 @@ pub fn link_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Runti
             locals_names: Default::default(),
         });
 
-        match resolver.link_function_body(&pbody.value, &global_variable_scope) {
+        match resolver.resolve_function_body(&pbody.value, &global_variable_scope) {
             Ok(implementation) => {
                 runtime.source.fn_logic.insert(Rc::clone(&head), FunctionLogic::Implementation(implementation));
             }
@@ -79,12 +79,12 @@ pub fn link_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Runti
     }
 }
 
-impl <'a> GlobalLinker<'a> {
-    pub fn link_global_statement(&mut self, pstatement: &'a ast::Decorated<Positioned<ast::Statement>>, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<()> {
+impl <'a> GlobalResolver<'a> {
+    pub fn resolve_global_statement(&mut self, pstatement: &'a ast::Decorated<Positioned<ast::Statement>>, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<()> {
         match &pstatement.value.value {
             ast::Statement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
-                let (fun, representation) = link_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &HashMap::new())?;
+                let (fun, representation) = resolve_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &HashMap::new())?;
 
                 for decoration in pstatement.decorations_as_vec()? {
                     let pattern = try_parse_pattern(decoration, Rc::clone(&fun), &self.global_variables)?;
@@ -111,13 +111,13 @@ impl <'a> GlobalLinker<'a> {
                 scope.overload_function(&generic_self_self_getter, FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit))?;
                 self.runtime.source.trait_references.insert(Rc::clone(&generic_self_self_getter), Rc::clone(&trait_.generics["Self"]));
 
-                let mut linker = TraitLinker {
+                let mut resolver = TraitResolver {
                     runtime: &self.runtime,
                     trait_: &mut trait_,
                     generic_self_type,
                 };
                 for statement in syntax.statements.iter() {
-                    linker.link_statement(&statement.value, requirements, &HashMap::new(), &scope)
+                    resolver.resolve_statement(&statement.value, requirements, &HashMap::new(), &scope)
                         .err_in_range(&statement.position)?;
                 }
 
@@ -127,7 +127,7 @@ impl <'a> GlobalLinker<'a> {
                 pstatement.no_decorations()?;
 
                 let mut type_factory = TypeFactory::new(&self.global_variables, &mut self.runtime);
-                let self_type = type_factory.link_type(&syntax.declared_for, true)?;
+                let self_type = type_factory.resolve_type(&syntax.declared_for, true)?;
                 let declared = type_factory.resolve_trait(&syntax.declared)?;
                 if declared.generics.keys().collect_vec() != vec!["Self"] {
                     // Requires 1) parsing generics that the programmer binds
@@ -155,15 +155,15 @@ impl <'a> GlobalLinker<'a> {
                 scope.overload_function(&self_getter, FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit))?;
                 self.runtime.source.trait_references.insert(Rc::clone(&self_getter), self_trait);
 
-                let mut linker = ConformanceLinker { runtime: &self.runtime, functions: vec![], };
+                let mut resolver = ConformanceResolver { runtime: &self.runtime, functions: vec![], };
                 for statement in syntax.statements.iter() {
-                    linker.link_statement(&statement.value, &requirements.union(&conformance_requirements).cloned().collect(), &generics, &scope)
+                    resolver.resolve_statement(&statement.value, &requirements.union(&conformance_requirements).cloned().collect(), &generics, &scope)
                         .err_in_range(&statement.position)?;
                 }
 
                 // TODO To be order independent, we should finalize after sorting...
                 //  ... Or check inconsistencies only at the very end.
-                let conformance = linker.finalize_conformance(self_binding, &conformance_requirements, &generics)?;
+                let conformance = resolver.finalize_conformance(self_binding, &conformance_requirements, &generics)?;
 
                 let rule = Rc::new(TraitConformanceRule {
                     generics,
@@ -173,7 +173,7 @@ impl <'a> GlobalLinker<'a> {
                 self.module.trait_conformance.add_conformance_rule(rule.clone());
                 self.global_variables.trait_conformance.add_conformance_rule(rule);
 
-                for fun in linker.functions {
+                for fun in resolver.functions {
                     self.schedule_function_body(&fun.function, fun.body.as_ref(), pstatement.value.position.clone());
                     self.add_function_interface(fun.function, fun.representation.clone(), &fun.decorators)?;
                 }
@@ -190,19 +190,19 @@ impl <'a> GlobalLinker<'a> {
                                     "precedence_order" => {
                                         let body = interpreter_mock::plain_parameter(format!("{}!", macro_name).as_str(), args)?;
 
-                                        let precedence_order = link_precedence_order(body)?;
+                                        let precedence_order = resolve_precedence_order(body)?;
                                         self.module.precedence_order = Some(precedence_order.clone());
                                         self.global_variables.grammar.set_precedence_order(precedence_order);
                                         return Ok(())
                                     }
                                     "use" => {
-                                        for import in link_imports(args)? {
+                                        for import in resolve_imports(args)? {
                                             self.import(&&import.relative_to(&self.module.name))?;
                                         }
                                         return Ok(())
                                     }
                                     "include" => {
-                                        for import in link_imports(args)? {
+                                        for import in resolve_imports(args)? {
                                             let import = import.relative_to(&self.module.name);
                                             self.import(&import)?;
                                             self.module.included_modules.push(import);

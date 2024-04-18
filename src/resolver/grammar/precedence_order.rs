@@ -5,12 +5,12 @@ use strum::IntoEnumIterator;
 use uuid::Uuid;
 
 use crate::error::{ErrInRange, RResult, RuntimeError};
-use crate::linker::grammar::{OperatorAssociativity, PrecedenceGroup};
-use crate::linker::interpreter_mock;
+use crate::resolver::grammar::{OperatorAssociativity, PrecedenceGroup};
+use crate::resolver::interpreter_mock;
 use crate::parser::ast;
 use crate::parser::ast::Term;
 
-pub fn link_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<PrecedenceGroup>>> {
+pub fn resolve_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<PrecedenceGroup>>> {
     let error = RuntimeError::new(format!("@precedence_order needs an array literal body."));
 
     let order: Vec<Rc<PrecedenceGroup>> = match &body[..] {
@@ -22,7 +22,7 @@ pub fn link_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<Precedenc
                             return Err(error.clone())
                         }
 
-                        link_precedence_group(&arg.value)
+                        resolve_precedence_group(&arg.value)
                     }).try_collect().err_in_range(&term.position)?
                 }
                 _ => return Err(error),
@@ -39,7 +39,7 @@ pub fn link_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<Precedenc
     Ok(order)
 }
 
-pub fn link_precedence_group(body: &ast::Expression) -> RResult<Rc<PrecedenceGroup>> {
+pub fn resolve_precedence_group(body: &ast::Expression) -> RResult<Rc<PrecedenceGroup>> {
     let error = RuntimeError::new(format!("Precedence group needs form name(associativity)."));
 
     match &body[..] {
@@ -47,7 +47,7 @@ pub fn link_precedence_group(body: &ast::Expression) -> RResult<Rc<PrecedenceGro
             match (&l.value, &r.value) {
                 (Term::Identifier(name), Term::Struct(struct_args)) => {
                     let body = interpreter_mock::plain_parameter("Precedence Group", struct_args)?;
-                    let associativity = link_associativity(body).err_in_range(&r.position)?;
+                    let associativity = resolve_associativity(body).err_in_range(&r.position)?;
 
                     Ok(Rc::new(PrecedenceGroup {
                         trait_id: Uuid::new_v4(),
@@ -62,7 +62,7 @@ pub fn link_precedence_group(body: &ast::Expression) -> RResult<Rc<PrecedenceGro
     }
 }
 
-pub fn link_associativity(body: &ast::Expression) -> RResult<OperatorAssociativity> {
+pub fn resolve_associativity(body: &ast::Expression) -> RResult<OperatorAssociativity> {
     let error = RuntimeError::new(format!("Operator associativity needs to be one of {:?}.", OperatorAssociativity::iter().collect_vec()));
     match &body[..] {
         [arg] => {

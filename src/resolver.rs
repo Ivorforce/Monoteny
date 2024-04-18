@@ -1,4 +1,4 @@
-pub use crate::linker::global::link_file;
+pub use crate::resolver::global::resolve_file;
 
 pub mod scopes;
 pub mod imperative;

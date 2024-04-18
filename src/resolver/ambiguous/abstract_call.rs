@@ -4,8 +4,8 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use crate::error::{ErrInRange, RResult};
-use crate::linker::ambiguous::{AmbiguityResult, LinkerAmbiguity};
-use crate::linker::imperative::ImperativeLinker;
+use crate::resolver::ambiguous::{AmbiguityResult, ResolverAmbiguity};
+use crate::resolver::imperative::ImperativeResolver;
 use crate::program::calls::FunctionBinding;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
@@ -28,12 +28,12 @@ impl Display for AmbiguousAbstractCall {
     }
 }
 
-impl LinkerAmbiguity for AmbiguousAbstractCall {
-    fn attempt_to_resolve(&mut self, linker: &mut ImperativeLinker) -> RResult<AmbiguityResult<()>> {
-        let type_ = linker.types.resolve_binding_alias(&self.expression_id)?;
+impl ResolverAmbiguity for AmbiguousAbstractCall {
+    fn attempt_to_resolve(&mut self, resolver: &mut ImperativeResolver) -> RResult<AmbiguityResult<()>> {
+        let type_ = resolver.types.resolve_binding_alias(&self.expression_id)?;
 
         let requirement = self.trait_.create_generic_binding(vec![("Self", type_.clone())]);
-        let trait_conformance = self.traits.satisfy_requirement(&requirement, &linker.types)
+        let trait_conformance = self.traits.satisfy_requirement(&requirement, &resolver.types)
             .err_in_range(&self.range)?;
         Ok(match trait_conformance {
             AmbiguityResult::Ambiguous => {
@@ -42,7 +42,7 @@ impl LinkerAmbiguity for AmbiguousAbstractCall {
             AmbiguityResult::Ok(trait_conformance) => {
                 let used_function = &trait_conformance.conformance.function_mapping[&self.abstract_function];
 
-                linker.expression_tree.values.insert(
+                resolver.expression_tree.values.insert(
                     self.expression_id.clone(),
                     ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                         function: Rc::clone(used_function),
@@ -52,7 +52,7 @@ impl LinkerAmbiguity for AmbiguousAbstractCall {
                         }),
                     }))
                 );
-                linker.types.bind(self.expression_id.clone(), type_.as_ref())
+                resolver.types.bind(self.expression_id.clone(), type_.as_ref())
                     .err_in_range(&self.range)?;
 
                 AmbiguityResult::Ok(())

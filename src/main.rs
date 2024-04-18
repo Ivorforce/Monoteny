@@ -12,7 +12,7 @@ use crate::error::dump_failure;
 
 lalrpop_mod!(pub monoteny_grammar);
 pub mod interpreter;
-pub mod linker;
+pub mod resolver;
 pub mod parser;
 pub mod program;
 pub mod transpiler;

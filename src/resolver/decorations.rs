@@ -4,8 +4,8 @@ use itertools::Itertools;
 use uuid::Uuid;
 
 use crate::error::{RResult, RuntimeError};
-use crate::linker::grammar::{Pattern, PatternPart};
-use crate::linker::scopes;
+use crate::resolver::grammar::{Pattern, PatternPart};
+use crate::resolver::scopes;
 use crate::parser::ast;
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::util::position::Positioned;

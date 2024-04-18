@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::error::RResult;
 use crate::interpreter::compiler::make_function_getter;
 use crate::interpreter::Runtime;
-use crate::linker::scopes;
+use crate::resolver::scopes;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};

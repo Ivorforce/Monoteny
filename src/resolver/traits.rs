@@ -5,10 +5,10 @@ use itertools::Itertools;
 
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::linker::{fields, scopes};
-use crate::linker::global::GlobalLinker;
-use crate::linker::interface::link_function_interface;
-use crate::linker::type_factory::TypeFactory;
+use crate::resolver::{fields, scopes};
+use crate::resolver::global::GlobalResolver;
+use crate::resolver::interface::resolve_function_interface;
+use crate::resolver::type_factory::TypeFactory;
 use crate::parser::ast;
 use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
@@ -19,17 +19,17 @@ use crate::program::types::TypeProto;
 use crate::source::StructInfo;
 use crate::util::fmt::fmta;
 
-pub struct TraitLinker<'a> {
+pub struct TraitResolver<'a> {
     pub runtime: &'a Runtime,
     pub trait_: &'a mut Trait,
     pub generic_self_type: Rc<TypeProto>,
 }
 
-impl <'a> TraitLinker<'a> {
-    pub fn link_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
+impl <'a> TraitResolver<'a> {
+    pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
-                let (fun, representation) = link_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
+                let (fun, representation) = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
                 if !syntax.body.is_none() {
                     return Err(RuntimeError::new(format!("Abstract function {} cannot have a body.", fmta(|fmt| fun.format(fmt, &representation)))));
                 };
@@ -50,7 +50,7 @@ impl <'a> TraitLinker<'a> {
 
                 let mut type_factory = TypeFactory::new(scope, &self.runtime);
 
-                let variable_type = type_factory.link_type(type_declaration, true)?;
+                let variable_type = type_factory.resolve_type(type_declaration, true)?;
 
                 if TypeProto::contains_generics([&variable_type].into_iter()) {
                     return Err(RuntimeError::new(format!("Variables cannot be generic: {}", identifier)));
@@ -78,7 +78,7 @@ impl <'a> TraitLinker<'a> {
     }
 }
 
-pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult<Option<Rc<StructInfo>>> {
+pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RResult<Option<Rc<StructInfo>>> {
     let mut unaccounted_for_abstract_functions: HashSet<_> = trait_.abstract_functions.keys().collect();
     trait_.field_hints.iter().for_each(|hint| {
         [&hint.getter, &hint.setter].into_iter().flatten().map(|g| unaccounted_for_abstract_functions.remove(g)).collect_vec();
@@ -100,7 +100,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         Parameter {
             external_key: ParameterKey::Positional,
             internal_name: "type".to_string(),
-            type_: TypeProto::one_arg(&linker.runtime.Metatype, struct_type.clone()),
+            type_: TypeProto::one_arg(&resolver.runtime.Metatype, struct_type.clone()),
         }
     ];
     let mut fields = vec![];
@@ -141,8 +141,8 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         function_mapping,
     );
     let conformance_rule = TraitConformanceRule::direct(conformance);
-    linker.module.trait_conformance.add_conformance_rule(conformance_rule.clone());
-    linker.global_variables.trait_conformance.add_conformance_rule(conformance_rule);
+    resolver.module.trait_conformance.add_conformance_rule(conformance_rule.clone());
+    resolver.global_variables.trait_conformance.add_conformance_rule(conformance_rule);
 
     let struct_ = Rc::new(StructInfo {
         trait_: Rc::clone(trait_),
@@ -160,11 +160,11 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
         field_setters,
     });
 
-    linker.runtime.source.fn_logic.insert(
+    resolver.runtime.source.fn_logic.insert(
         Rc::clone(&struct_.constructor),
         FunctionLogic::Descriptor(FunctionLogicDescriptor::Constructor(Rc::clone(&struct_)))
     );
-    linker.add_function_interface(
+    resolver.add_function_interface(
         Rc::clone(&struct_.constructor),
         FunctionRepresentation::new("call_as_function", FunctionTargetType::Member, FunctionCallExplicity::Explicit),
         &vec![],
@@ -173,11 +173,11 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
     for (ref_, head) in struct_.field_getters.iter() {
         let name = &struct_.field_names[ref_];
 
-        linker.runtime.source.fn_logic.insert(
+        resolver.runtime.source.fn_logic.insert(
             Rc::clone(head),
             FunctionLogic::Descriptor(FunctionLogicDescriptor::GetMemberField(Rc::clone(&struct_), Rc::clone(ref_)))
         );
-        linker.add_function_interface(
+        resolver.add_function_interface(
             Rc::clone(head),
             FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit),
             &vec![])?
@@ -187,11 +187,11 @@ pub fn try_make_struct(trait_: &Rc<Trait>, linker: &mut GlobalLinker) -> RResult
     for (ref_, head) in struct_.field_setters.iter() {
         let name = &struct_.field_names[ref_];
 
-        linker.runtime.source.fn_logic.insert(
+        resolver.runtime.source.fn_logic.insert(
             Rc::clone(&head),
             FunctionLogic::Descriptor(FunctionLogicDescriptor::SetMemberField(Rc::clone(&struct_), Rc::clone(ref_)))
         );
-        linker.add_function_interface(
+        resolver.add_function_interface(
             Rc::clone(head),
             FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit),
             &vec![]

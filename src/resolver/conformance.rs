@@ -6,8 +6,8 @@ use itertools::Itertools;
 
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::Runtime;
-use crate::linker::interface::link_function_interface;
-use crate::linker::scopes;
+use crate::resolver::interface::resolve_function_interface;
+use crate::resolver::scopes;
 use crate::parser::ast;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
@@ -22,19 +22,19 @@ pub struct UnlinkedFunctionImplementation<'a> {
     pub body: &'a Option<ast::Expression>,
 }
 
-pub struct ConformanceLinker<'a, 'b> {
+pub struct ConformanceResolver<'a, 'b> {
     pub runtime: &'b Runtime,
     pub functions: Vec<UnlinkedFunctionImplementation<'a>>,
 }
 
-impl <'a, 'b> ConformanceLinker<'a, 'b> {
-    pub fn link_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
+impl <'a, 'b> ConformanceResolver<'a, 'b> {
+    pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
                 //  to the ID of the parent abstract function. That way, we can avoid another
                 //  generic to generic mapping later.
-                let (function, representation) = link_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
+                let (function, representation) = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
 
                 self.functions.push(UnlinkedFunctionImplementation {
                     function,

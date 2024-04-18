@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::interpreter::Runtime;
-use crate::linker::referencible;
+use crate::resolver::referencible;
 use crate::program::builtins::traits;
 use crate::program::builtins::traits::{FunctionPointer, make_to_string_function};
 use crate::program::functions::FunctionInterface;

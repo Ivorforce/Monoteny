@@ -3,9 +3,9 @@ use std::rc::Rc;
 use itertools::Itertools;
 
 use crate::error::{ErrInRange, RResult, RuntimeError};
-use crate::linker::grammar::{OperatorAssociativity, Token};
-use crate::linker::imperative::ImperativeLinker;
-use crate::linker::scopes;
+use crate::resolver::grammar::{OperatorAssociativity, Token};
+use crate::resolver::imperative::ImperativeResolver;
+use crate::resolver::scopes;
 use crate::parser::ast;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
@@ -14,7 +14,7 @@ use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentat
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::util::position::Positioned;
 
-pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<Vec<Positioned<Token>>> {
+pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<Vec<Positioned<Token>>> {
     // Here's what this function does:
     // We go left to right through all the terms.
     // Many terms can just be evaluated to a token, like int literals or local references.
@@ -42,7 +42,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                         let ObjectReference { id, type_, mutability } = local.as_ref();
 
                         tokens.push(ast_token.with_value(
-                            Token::Value(linker.link_unambiguous_expression(
+                            Token::Value(resolver.resolve_unambiguous_expression(
                                 vec![],
                                 type_,
                                 ExpressionOperation::GetLocal(local.clone())
@@ -60,9 +60,9 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                                             i += 1;
 
                                             // The next token is a struct; we can immediately call it!
-                                            let struct_ = linker.link_struct(scope, s)?;
+                                            let struct_ = resolver.resolve_struct(scope, s)?;
 
-                                            let expression_id = linker.link_function_call(
+                                            let expression_id = resolver.resolve_function_call(
                                                 overload.functions.iter(),
                                                 overload.representation.clone(),
                                                 struct_.keys.clone(),
@@ -73,12 +73,12 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
 
                                             Token::Value(expression_id)
                                         },
-                                        _ => Token::Value(linker.link_function_reference(overload)?),
+                                        _ => Token::Value(resolver.resolve_function_reference(overload)?),
                                     }
                                 }
                                 FunctionCallExplicity::Implicit => {
                                     Token::Value(
-                                        linker.link_function_call(
+                                        resolver.resolve_function_call(
                                             overload.functions.iter(),
                                             overload.representation.clone(),
                                             vec![],
@@ -120,9 +120,9 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                         match next_token.map(|t| &t.value) {
                             Some(ast::Term::Struct(s)) => {
                                 // The next token is a struct; we can immediately call it!
-                                let struct_ = linker.link_struct(scope, s)?;
+                                let struct_ = resolver.resolve_struct(scope, s)?;
 
-                                let expression_id = linker.link_function_call(
+                                let expression_id = resolver.resolve_function_call(
                                     overload.functions.iter(),
                                     overload.representation.clone(),
                                     [ParameterKey::Positional].into_iter().chain(struct_.keys.clone()).collect_vec(),
@@ -138,7 +138,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                     }
                     FunctionCallExplicity::Implicit => {
                         Token::Value(
-                            linker.link_function_call(
+                            resolver.resolve_function_call(
                                 overload.functions.iter(),
                                 overload.representation.clone(),
                                 vec![ParameterKey::Positional],
@@ -152,26 +152,26 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                 });
             }
             ast::Term::IntLiteral(string) => {
-                let string_expression_id = linker.link_string_primitive(string)?;
+                let string_expression_id = resolver.resolve_string_primitive(string)?;
 
                 tokens.push(ast_token.with_value(
-                    Token::Value(linker.link_abstract_function_call(
+                    Token::Value(resolver.resolve_abstract_function_call(
                         vec![string_expression_id],
-                        Rc::clone(&linker.runtime.traits.as_ref().unwrap().ConstructableByIntLiteral),
-                        Rc::clone(&linker.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
+                        Rc::clone(&resolver.runtime.traits.as_ref().unwrap().ConstructableByIntLiteral),
+                        Rc::clone(&resolver.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
                         scope.trait_conformance.clone(),
                         ast_token.position.clone(),
                     )?)
                 ));
             }
             ast::Term::RealLiteral(string) => {
-                let string_expression_id = linker.link_string_primitive(string)?;
+                let string_expression_id = resolver.resolve_string_primitive(string)?;
 
                 tokens.push(ast_token.with_value(
-                    Token::Value(linker.link_abstract_function_call(
+                    Token::Value(resolver.resolve_abstract_function_call(
                         vec![string_expression_id],
-                        Rc::clone(&linker.runtime.traits.as_ref().unwrap().ConstructableByRealLiteral),
-                        Rc::clone(&linker.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
+                        Rc::clone(&resolver.runtime.traits.as_ref().unwrap().ConstructableByRealLiteral),
+                        Rc::clone(&resolver.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
                         scope.trait_conformance.clone(),
                         ast_token.position.clone(),
                     )?)
@@ -179,11 +179,11 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
             }
             ast::Term::StringLiteral(parts) => {
                 tokens.push(ast_token.with_value(
-                    Token::Value(linker.link_string_literal(scope, ast_token, parts)?)
+                    Token::Value(resolver.resolve_string_literal(scope, ast_token, parts)?)
                 ))
             }
             ast::Term::Struct(s) => {
-                let struct_ = linker.link_struct(scope, s)?;
+                let struct_ = resolver.resolve_struct(scope, s)?;
 
                 let previous = tokens.last();
                 match previous.map(|v| &v.value) {
@@ -193,7 +193,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                             .resolve(function_object::FunctionTargetType::Member, "call_as_function").err_in_range(&ast_token.position)?
                             .as_function_overload().err_in_range(&ast_token.position)?;
 
-                        let expression_id = linker.link_function_call(
+                        let expression_id = resolver.resolve_function_call(
                             overload.functions.iter(),
                             overload.representation.clone(),
                             [&ParameterKey::Positional].into_iter().chain(&struct_.keys).cloned().collect(),
@@ -219,7 +219,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
             }
             ast::Term::Array(a) => {
                 let values = a.iter().map(|x| {
-                    linker.link_expression_with_type(&x.value, &x.type_declaration, scope)
+                    resolver.resolve_expression_with_type(&x.value, &x.type_declaration, scope)
                 }).try_collect()?;
 
                 let previous = tokens.last();
@@ -228,11 +228,11 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
                         return Err(RuntimeError::new(String::from("Object subscript is not yet supported.")))
                     }
                     _ => {
-                        let supertype = linker.types.merge_all(&values)?.clone();
+                        let supertype = resolver.types.merge_all(&values)?.clone();
                         return Err(RuntimeError::new(String::from("Array literals are not yet supported.")))
 
                         // tokens.push(ast_token.with_value(
-                        //     Token::Expression(linker.link_unambiguous_expression(
+                        //     Token::Expression(resolver.resolve_unambiguous_expression(
                         //         vec![],
                         //         &TypeProto::monad(TypeProto::unit(TypeUnit::Generic(supertype))),
                         //         ExpressionOperation::ArrayLiteral
@@ -243,7 +243,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
             }
             ast::Term::Block(statements) => {
                 tokens.push(ast_token.with_value(
-                    Token::Value(linker.link_block(statements, &scope)?)
+                    Token::Value(resolver.resolve_block(statements, &scope)?)
                 ))
             }
         }
@@ -252,7 +252,7 @@ pub fn link_expression_to_tokens(linker: &mut ImperativeLinker, syntax: &[Box<Po
     Ok(tokens)
 }
 
-pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, linker: &mut ImperativeLinker) -> RResult<ExpressionID> {
+pub fn resolve_tokens_to_value(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, resolver: &mut ImperativeResolver) -> RResult<ExpressionID> {
     let mut values: Vec<Positioned<ExpressionID>> = vec![];
     let mut keywords: Vec<String> = vec![];
 
@@ -290,7 +290,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
 
             let function_head = &left_unary_operators[&keyword];
             let argument = values.remove(0);
-            let expression_id = linker.link_function_call(
+            let expression_id = resolver.resolve_function_call(
                 [function_head].into_iter(),
                 FunctionRepresentation {
                     name: "fn".to_string(),
@@ -313,7 +313,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
 
     // Resolve binary operators. At this point, we have only expressions interspersed with operators.
 
-    let join_binary_at = |linker: &mut ImperativeLinker, arguments: &mut Vec<Positioned<ExpressionID>>, function_head: &Rc<FunctionHead>, i: usize| -> RResult<()> {
+    let join_binary_at = |resolver: &mut ImperativeResolver, arguments: &mut Vec<Positioned<ExpressionID>>, function_head: &Rc<FunctionHead>, i: usize| -> RResult<()> {
         let lhs = arguments.remove(i);
         let rhs = arguments.remove(i);
 
@@ -323,7 +323,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
             i,
             Positioned {
                 position: range.clone(),
-                value: linker.link_function_call(
+                value: resolver.resolve_function_call(
                     [function_head].into_iter(),
                     FunctionRepresentation {
                         name: "fn".to_string(),
@@ -347,7 +347,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                 while i < keywords.len() {
                     if let Some(function_head) = group_operators.get(&keywords[i]) {
                         keywords.remove(i);
-                        join_binary_at(linker, &mut values, function_head, i)?;
+                        join_binary_at(resolver, &mut values, function_head, i)?;
                     }
                     else {
                         i += 1;  // Skip
@@ -361,7 +361,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                     i -= 1;
                     if let Some(alias) = group_operators.get(&keywords[i]) {
                         keywords.remove(i);
-                        join_binary_at(linker, &mut values, alias, i)?;
+                        join_binary_at(resolver, &mut values, alias, i)?;
                     }
                 }
             }
@@ -375,7 +375,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                         }
 
                         keywords.remove(i);
-                        join_binary_at(linker, &mut values, alias, i)?;
+                        join_binary_at(resolver, &mut values, alias, i)?;
                     }
 
                     i += 1;
@@ -393,7 +393,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
 
                     if i + 1 >= keywords.len() || !group_operators.contains_key(&keywords[i + 1]) {
                         // Just one operation; let's use a binary operator.
-                        join_binary_at(linker, &mut values, &group_operators[&keywords.remove(i)], i)?;
+                        join_binary_at(resolver, &mut values, &group_operators[&keywords.remove(i)], i)?;
                         continue;
                     }
 
@@ -414,7 +414,7 @@ pub fn link_patterns(mut tokens: Vec<Positioned<Token>>, scope: &scopes::Scope, 
                     }
 
                     // Let's wrap this up.
-                    values.insert(i, linker.link_conjunctive_pairs(
+                    values.insert(i, resolver.resolve_conjunctive_pairs(
                         group_arguments,
                         todo!("Resolve group_operators to overloads")
                     )?);
