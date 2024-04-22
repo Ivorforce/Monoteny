@@ -4,6 +4,7 @@ extern crate lalrpop_util;
 
 use std::env;
 use std::process::ExitCode;
+use std::ptr::read_unaligned;
 
 use clap::{arg, Command};
 use itertools::Itertools;
@@ -46,13 +47,15 @@ fn make_vm_test_command() -> Command<'static> {
 fn run_vm_test() -> RResult<ExitCode> {
     let mut chunk = Chunk::new();
     chunk.push(Code::NOOP);
-    chunk.push2(Code::LOAD8, 2);
-    chunk.push2(Code::LOAD8, 6);
-    chunk.push2(Code::ADD, Primitive::U8 as u8);
+    chunk.push_with_u16(Code::LOAD16, 2);
+    chunk.push_with_u16(Code::LOAD16, 6);
+    chunk.push_with_u8(Code::ADD, Primitive::U16 as u8);
     chunk.push(Code::RETURN);
     let mut vm = VM::new(&chunk);
     vm.run()?;
-    println!("R: {}", vm.stack[0]);
+    unsafe {
+        println!("R: {}", read_unaligned(vm.stack.as_ptr() as *const u16));
+    }
     Ok(ExitCode::SUCCESS)
 }
 

@@ -1,5 +1,6 @@
 use std::mem::transmute;
 use std::ops::Add;
+use std::ptr::read_unaligned;
 use crate::interpreter::chunks::{Chunk, Code, Primitive};
 
 pub fn disassemble(chunk: &Chunk) {
@@ -24,6 +25,22 @@ pub fn disassemble_one(ip: *const u8) -> usize {
             },
             Code::LOAD8 => {
                 print!("{:?}\t{:?}", code, *ip.add(1));
+                return 2;
+            }
+            Code::LOAD16 => {
+                print!("{:?}\t{:?}", code, read_unaligned(ip.add(1) as *mut u16));
+                return 2;
+            }
+            Code::LOAD32 => {
+                print!("{:?}\t{:?}", code, read_unaligned(ip.add(1) as *mut u32));
+                return 2;
+            }
+            Code::LOAD64 => {
+                print!("{:?}\t{:?}", code, read_unaligned(ip.add(1) as *mut u64));
+                return 2;
+            }
+            Code::LOAD128 => {
+                print!("{:?}\t{:?}", code, read_unaligned(ip.add(1) as *mut u128));
                 return 2;
             }
             _ => {
