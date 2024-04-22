@@ -1,26 +1,34 @@
 use std::mem::transmute;
+use std::ops::Add;
 use crate::interpreter::chunks::{Chunk, Code, Primitive};
 
 pub fn disassemble(chunk: &Chunk) {
-    let mut ip = 0;
-    while ip < chunk.code.len() {
-        print!("{:04}\t", ip);
-        disassemble_one(&chunk, &mut ip);
-        print!("\n");
+    unsafe {
+        let mut idx = 0;
+
+        while idx <= chunk.code.len() {
+            print!("{:04}\t", idx);
+            idx += disassemble_one(transmute(&chunk.code[idx]));
+            print!("\n");
+        }
     }
 }
 
-pub fn disassemble_one(chunk: &Chunk, ip: &mut usize) {
+pub fn disassemble_one(ip: *const u8) -> usize {
     unsafe {
-        let code = &chunk.code[*ip];
+        let code = transmute::<u8, Code>(*ip);
         match code {
             Code::ADD | Code::SUB | Code::MUL | Code::DIV => {
-                print!("{:?}\t{:?}", code, transmute::<u8, Primitive>(chunk.code[*ip + 1] as u8));
-                *ip += 2;
+                print!("{:?}\t{:?}", code, transmute::<u8, Primitive>(*ip.add(1)));
+                return 2;
             },
+            Code::LOAD8 => {
+                print!("{:?}\t{:?}", code, *ip.add(1));
+                return 2;
+            }
             _ => {
                 print!("{:?}", code);
-                *ip += 1;
+                return 1;
             },
         }
     }

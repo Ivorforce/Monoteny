@@ -4,6 +4,8 @@ use std::mem::transmute;
 #[derive(Debug, Copy, Clone)]
 pub enum Code {
     NOOP,
+    RETURN,
+    LOAD8,
     ADD,
     SUB,
     MUL,

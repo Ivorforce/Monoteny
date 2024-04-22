@@ -20,10 +20,7 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
 
     let compiled = compile(runtime, entry_function)?;
 
-    let mut vm = VM {
-        chunk: compiled,
-        stack: vec![],
-    };
+    let mut vm = VM::new(&compiled);
     unsafe {
         vm.run();
     }
@@ -43,10 +40,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     // Set the transpiler object.
     let compiled = compile(runtime, entry_function)?;
 
-    let mut vm = VM {
-        chunk: compiled,
-        stack: vec![],
-    };
+    let mut vm = VM::new(&compiled);
     unsafe {
         vm.run();
     }

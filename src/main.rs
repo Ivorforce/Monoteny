@@ -11,6 +11,7 @@ use itertools::Itertools;
 use crate::error::{dump_failure, RResult};
 use crate::interpreter::chunks::{Chunk, Code, Primitive};
 use crate::interpreter::disassembler::disassemble;
+use crate::interpreter::vm::VM;
 
 lalrpop_mod!(pub monoteny_grammar);
 pub mod interpreter;
@@ -45,8 +46,13 @@ fn make_vm_test_command() -> Command<'static> {
 fn run_vm_test() -> RResult<ExitCode> {
     let mut chunk = Chunk::new();
     chunk.push(Code::NOOP);
-    chunk.push2(Code::ADD, Primitive::F32 as u8);
-    disassemble(&chunk);
+    chunk.push2(Code::LOAD8, 2);
+    chunk.push2(Code::LOAD8, 6);
+    chunk.push2(Code::ADD, Primitive::U8 as u8);
+    chunk.push(Code::RETURN);
+    let mut vm = VM::new(&chunk);
+    vm.run()?;
+    println!("R: {}", vm.stack[0]);
     Ok(ExitCode::SUCCESS)
 }
 
