@@ -35,12 +35,13 @@ impl<'a> VM<'a> {
                     Code::LOAD32 => load_ip!(ip sp u32),
                     Code::LOAD64 => load_ip!(ip sp u64),
                     Code::LOAD128 => load_ip!(ip sp u128),
+                    Code::AND => bin_op!(sp bool &&),
+                    Code::OR => bin_op!(sp bool ||),
                     Code::ADD => {
                         let arg: Primitive = transmute(*ip.add(1));
                         ip = ip.add(2);
 
                         match arg {
-                            Primitive::BOOL => return Err(RuntimeError::new("Cannot add bool.".to_string())),
                             Primitive::U8 => bin_op!(sp u8 +),
                             Primitive::U16 => bin_op!(sp u16 +),
                             Primitive::U32 => bin_op!(sp u32 +),
@@ -53,6 +54,7 @@ impl<'a> VM<'a> {
                             Primitive::I128 => bin_op!(sp i128 +),
                             Primitive::F32 => bin_op!(sp f32 +),
                             Primitive::F64 => bin_op!(sp f64 +),
+                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
                     Code::SUB => {
@@ -60,7 +62,6 @@ impl<'a> VM<'a> {
                         ip = ip.add(2);
 
                         match arg {
-                            Primitive::BOOL => return Err(RuntimeError::new("Cannot add bool.".to_string())),
                             Primitive::U8 => bin_op!(sp u8 -),
                             Primitive::U16 => bin_op!(sp u16 -),
                             Primitive::U32 => bin_op!(sp u32 -),
@@ -73,6 +74,7 @@ impl<'a> VM<'a> {
                             Primitive::I128 => bin_op!(sp i128 -),
                             Primitive::F32 => bin_op!(sp f32 -),
                             Primitive::F64 => bin_op!(sp f64 -),
+                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
                     Code::MUL => {
@@ -80,7 +82,6 @@ impl<'a> VM<'a> {
                         ip = ip.add(2);
 
                         match arg {
-                            Primitive::BOOL => return Err(RuntimeError::new("Cannot add bool.".to_string())),
                             Primitive::U8 => bin_op!(sp u8 *),
                             Primitive::U16 => bin_op!(sp u16 *),
                             Primitive::U32 => bin_op!(sp u32 *),
@@ -93,6 +94,7 @@ impl<'a> VM<'a> {
                             Primitive::I128 => bin_op!(sp i128 *),
                             Primitive::F32 => bin_op!(sp f32 *),
                             Primitive::F64 => bin_op!(sp f64 *),
+                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
                     Code::DIV => {
@@ -100,7 +102,6 @@ impl<'a> VM<'a> {
                         ip = ip.add(2);
 
                         match arg {
-                            Primitive::BOOL => return Err(RuntimeError::new("Cannot add bool.".to_string())),
                             Primitive::U8 => bin_op!(sp u8 /),
                             Primitive::U16 => bin_op!(sp u16 /),
                             Primitive::U32 => bin_op!(sp u32 /),
@@ -113,6 +114,7 @@ impl<'a> VM<'a> {
                             Primitive::I128 => bin_op!(sp i128 /),
                             Primitive::F32 => bin_op!(sp f32 /),
                             Primitive::F64 => bin_op!(sp f64 /),
+                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
                 }

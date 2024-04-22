@@ -1,4 +1,3 @@
-use std::mem::transmute;
 use std::ptr::write_unaligned;
 
 #[repr(u8)]
@@ -11,6 +10,8 @@ pub enum Code {
     LOAD32,
     LOAD64,
     LOAD128,
+    AND,
+    OR,
     ADD,
     SUB,
     MUL,
