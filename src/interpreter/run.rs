@@ -22,7 +22,7 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
 
     let mut vm = VM::new(&compiled);
     unsafe {
-        vm.run();
+        vm.run()?;
     }
 
     Ok(())
@@ -42,7 +42,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
 
     let mut vm = VM::new(&compiled);
     unsafe {
-        vm.run();
+        vm.run()?;
     }
 
     todo!()

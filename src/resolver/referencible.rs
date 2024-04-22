@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use crate::error::RResult;
-use crate::interpreter::compiler::make_function_getter;
 use crate::interpreter::Runtime;
 use crate::resolver::scopes;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
@@ -67,10 +66,6 @@ pub fn add_function(runtime: &mut Runtime, module: &mut Module, scope: Option<&m
     runtime.source.fn_representations.insert(
         Rc::clone(&getter),
         FunctionRepresentation::new(representation.name.as_str(), representation.target_type, FunctionCallExplicity::Implicit)
-    );
-    runtime.function_evaluators.insert(
-        getter.function_id,
-        make_function_getter(&function),
     );
 
     // Implicits expose themselves, but functions will sit behind a getter
