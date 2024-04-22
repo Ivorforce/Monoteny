@@ -46,10 +46,11 @@ fn make_vm_test_command() -> Command<'static> {
 
 fn run_vm_test() -> RResult<ExitCode> {
     let mut chunk = Chunk::new();
-    chunk.push(Code::NOOP);
     chunk.push_with_u16(Code::LOAD16, 2);
     chunk.push_with_u16(Code::LOAD16, 6);
-    chunk.push_with_u8(Code::ADD, Primitive::U16 as u8);
+    chunk.push_with_u8(Code::ADD, Primitive::U32 as u8);
+    chunk.push_with_u16(Code::LOAD16, 8);
+    chunk.push_with_u8(Code::EQ, Primitive::U32 as u8);
     chunk.push(Code::RETURN);
     let mut vm = VM::new(&chunk);
     vm.run()?;

@@ -19,7 +19,8 @@ pub fn disassemble_one(ip: *const u8) -> usize {
     unsafe {
         let code = transmute::<u8, Code>(*ip);
         match code {
-            Code::ADD | Code::SUB | Code::MUL | Code::DIV => {
+            Code::ADD | Code::SUB | Code::MUL | Code::DIV |
+            Code::EQ | Code::NEQ | Code::GR | Code::GR_EQ  | Code::LE  | Code::LE_EQ => {
                 print!("{:?}\t{:?}", code, transmute::<u8, Primitive>(*ip.add(1)));
                 return 2;
             },
@@ -37,10 +38,6 @@ pub fn disassemble_one(ip: *const u8) -> usize {
             }
             Code::LOAD64 => {
                 print!("{:?}\t{:?}", code, read_unaligned(ip.add(1) as *mut u64));
-                return 2;
-            }
-            Code::LOAD128 => {
-                print!("{:?}\t{:?}", code, read_unaligned(ip.add(1) as *mut u128));
                 return 2;
             }
             _ => {
