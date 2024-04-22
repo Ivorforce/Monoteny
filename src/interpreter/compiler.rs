@@ -1,45 +1,66 @@
-use std::alloc::{alloc, Layout};
-use std::collections::HashMap;
+mod builtins;
+
 use std::rc::Rc;
+use itertools::Itertools;
+use crate::error::{RResult, RuntimeError};
+use crate::interpreter::chunks::Chunk;
+use crate::interpreter::compiler::builtins::compile_builtin_function;
+use crate::interpreter::Runtime;
+use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
+use crate::program::functions::FunctionHead;
+use crate::program::global::{FunctionImplementation, FunctionLogic};
 
-use uuid::Uuid;
-
-use crate::interpreter::{FunctionInterpreter, FunctionInterpreterImpl};
-use crate::interpreter::allocation::Value;
-use crate::program::global::FunctionImplementation;
-
-pub fn compile_function(function: &FunctionImplementation) -> FunctionInterpreterImpl {
-    // Make it our own because the function implementation change at any point.
-    let function = Rc::new(function.clone());
-
-    Rc::new(move |interpreter, expression_id, binding| {
-        let f = Rc::clone(&function);
-
-        unsafe {
-            let arguments = interpreter.evaluate_arguments(expression_id);
-
-            let mut sub_interpreter = FunctionInterpreter {
-                implementation: f,
-                requirements_fulfillment: FunctionInterpreter::combine_bindings(&interpreter.requirements_fulfillment, binding),
-                runtime: interpreter.runtime,
-                locals: HashMap::new(),
-            };
-            sub_interpreter.assign_arguments(arguments);
-            sub_interpreter.run()
-        }
-    })
+pub struct FunctionCompiler<'a> {
+    runtime: &'a Runtime,
+    implementation: &'a FunctionImplementation,
 }
 
-pub fn make_function_getter(function_id: Uuid) -> FunctionInterpreterImpl {
-    Rc::new(move |interpreter, expression_id, binding| {
-        let fn_layout = Layout::new::<Uuid>();
-        unsafe {
-            let ptr = alloc(fn_layout);
-            *(ptr as *mut Uuid) = function_id;
-            Some(Value {
-                layout: fn_layout,
-                data: ptr,
-            })
+pub fn compile(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Chunk> {
+    let FunctionLogic::Implementation(implementation) = &runtime.source.fn_logic[function] else {
+        return Err(RuntimeError::new("Cannot run function because it is not implemented.".to_string()));
+    };
+
+    let mut compiler = FunctionCompiler {
+        runtime,
+        implementation,
+    };
+    compiler.compile_expression(&implementation.expression_tree.root)
+}
+
+impl FunctionCompiler<'_> {
+    pub fn compile_expression(&mut self, expression: &ExpressionID) -> RResult<Chunk> {
+        let operation = &self.implementation.expression_tree.values[expression];
+        let children = &self.implementation.expression_tree.children[expression];
+
+        match operation {
+            ExpressionOperation::Block => {
+                todo!()
+            },
+            ExpressionOperation::GetLocal(local) => todo!(),
+            ExpressionOperation::SetLocal(local) => todo!(),
+            ExpressionOperation::Return => todo!(),
+            ExpressionOperation::FunctionCall(function) => {
+                if !function.requirements_fulfillment.is_empty() {
+                    return Err(RuntimeError::new("Internal error; function was not monomorphized before call.".to_string()));
+                }
+
+                let logic = &self.runtime.source.fn_logic[&function.function];
+                match logic {
+                    FunctionLogic::Implementation(i) => {
+                        todo!()
+                    }
+                    FunctionLogic::Descriptor(d) => {
+                        compile_builtin_function(d)
+                    }
+                }
+            },
+            ExpressionOperation::PairwiseOperations { .. } => todo!(),
+            ExpressionOperation::ArrayLiteral => todo!(),
+            ExpressionOperation::StringLiteral(string) => todo!(),
         }
-    })
+    }
+}
+
+pub fn make_function_getter(function: &FunctionHead) -> Chunk {
+    todo!()
 }

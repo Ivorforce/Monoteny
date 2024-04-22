@@ -70,7 +70,7 @@ pub fn add_function(runtime: &mut Runtime, module: &mut Module, scope: Option<&m
     );
     runtime.function_evaluators.insert(
         getter.function_id,
-        make_function_getter(function.function_id),
+        make_function_getter(&function),
     );
 
     // Implicits expose themselves, but functions will sit behind a getter
