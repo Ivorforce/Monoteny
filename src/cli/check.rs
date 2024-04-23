@@ -28,7 +28,7 @@ pub fn run(args: &ArgMatches) -> RResult<ExitCode> {
 
     let mut error_count = 0;
     for path in paths {
-        match runtime.load_file(path, module_name("main")) {
+        match runtime.load_file_as_module(path, module_name("main")) {
             Ok(_) => {},
             Err(e) => {
                 dump_named_failure(format!("import({})", path.as_os_str().to_string_lossy()).as_str(), e);

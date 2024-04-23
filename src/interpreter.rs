@@ -76,15 +76,15 @@ impl Runtime {
 
         // Gotta load the module first.
         let path = self.repository.resolve_module_path(name)?;
-        let module = self.load_file(&path, name.clone())?;
+        let module = self.load_file_as_module(&path, name.clone())?;
         self.source.module_by_name.insert(name.clone(), module);
         Ok(&self.source.module_by_name[name])
     }
 
-    pub fn load_file(&mut self, path: &PathBuf, name: ModuleName) -> RResult<Box<Module>> {
+    pub fn load_file_as_module(&mut self, path: &PathBuf, name: ModuleName) -> RResult<Box<Module>> {
         let content = std::fs::read_to_string(&path)
             .map_err(|e| RuntimeError::new(format!("Error loading {:?}: {}", path, e)))?;
-        self.load_code(&content, name)
+        self.load_text_as_module(&content, name)
             .map_err(|errs| {
                 errs.into_iter().map(|e| {
                     e.in_file(path.clone())
@@ -92,15 +92,15 @@ impl Runtime {
             })
     }
 
-    pub fn load_code(&mut self, source: &str, name: ModuleName) -> RResult<Box<Module>> {
+    pub fn load_text_as_module(&mut self, source: &str, name: ModuleName) -> RResult<Box<Module>> {
         // We can ignore the errors. All errors are stored inside the AST too and will fail there.
         // TODO When JIT loading is implemented, we should still try to resolve all non-loaded
         //  functions / modules and warn if they fail. We can also then warn they're unused too.
         let (ast, _) = parser::parse_program(source)?;
-        self.load_ast(&ast, name)
+        self.load_ast_as_module(&ast, name)
     }
 
-    pub fn load_ast(&mut self, syntax: &ast::Block, name: ModuleName) -> RResult<Box<Module>> {
+    pub fn load_ast_as_module(&mut self, syntax: &ast::Block, name: ModuleName) -> RResult<Box<Module>> {
         let mut scope = scopes::Scope::new();
 
         let builtins_name = module_name("builtins");

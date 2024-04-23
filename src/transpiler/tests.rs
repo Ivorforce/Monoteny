@@ -18,7 +18,7 @@ mod tests {
         let mut runtime = Runtime::new()?;
         runtime.repository.add("common", PathBuf::from("monoteny"));
 
-        let module = runtime.load_ast(&parsed, module_name("main"))?;
+        let module = runtime.load_ast_as_module(&parsed, module_name("main"))?;
         let context = transpiler::python::Context::new(&runtime);
 
         let transpiler = interpreter::run::transpile(&module, &mut runtime)?;
@@ -39,7 +39,7 @@ mod tests {
         let mut runtime = Runtime::new()?;
         runtime.repository.add("common", PathBuf::from("monoteny"));
 
-        let module = runtime.load_ast(&parsed, module_name("main"))?;
+        let module = runtime.load_ast_as_module(&parsed, module_name("main"))?;
         let main_function = module.main_functions.iter().at_most_one().unwrap().unwrap();
 
         let transpiler = Box::new(Transpiler {

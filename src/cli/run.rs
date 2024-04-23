@@ -21,7 +21,7 @@ pub fn run(args: &ArgMatches) -> RResult<ExitCode> {
     let mut runtime = Runtime::new()?;
     runtime.repository.add("common", PathBuf::from("monoteny"));
 
-    let module = runtime.load_file(input_path, module_name("main"))?;
+    let module = runtime.load_file_as_module(input_path, module_name("main"))?;
 
     interpreter::run::main(&module, &mut runtime)?;
 
