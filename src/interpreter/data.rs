@@ -13,6 +13,7 @@ pub union Value {
     pub i64: u64,
     pub f32: f32,
     pub f64: f64,
+    pub ptr: *mut (),
 }
 
 impl Value {

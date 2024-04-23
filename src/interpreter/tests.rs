@@ -38,20 +38,19 @@ mod tests {
         Ok(())
     }
 
-    // TODO Hello world is still broken.
-    // /// This tests the transpiler, interpreter and function calls.
-    // #[test]
-    // fn run_hello_world() -> RResult<()> {
-    //     let mut runtime = Runtime::new()?;
-    //     runtime.repository.add("common", PathBuf::from("monoteny"));
-    //
-    //     let module = runtime.load_file_as_module(&PathBuf::from("test-code/hello_world.monoteny"), module_name("main"))?;
-    //
-    //     assert_eq!(module.exposed_functions.len(), 2);
-    //
-    //     // TODO Pass a pipe and monitor that "Hello World!" is printed.
-    //     interpreter::run::main(&module, &mut runtime)?;
-    //
-    //     Ok(())
-    // }
+    /// This tests the transpiler, interpreter and function calls.
+    #[test]
+    fn run_hello_world() -> RResult<()> {
+        let mut runtime = Runtime::new()?;
+        runtime.repository.add("common", PathBuf::from("monoteny"));
+
+        let module = runtime.load_file_as_module(&PathBuf::from("test-code/hello_world.monoteny"), module_name("main"))?;
+
+        assert_eq!(module.exposed_functions.len(), 2);
+
+        // TODO Pass a pipe and monitor that "Hello World!" is printed.
+        interpreter::run::main(&module, &mut runtime)?;
+
+        Ok(())
+    }
 }

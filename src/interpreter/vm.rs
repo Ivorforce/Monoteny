@@ -75,6 +75,11 @@ impl<'a> VM<'a> {
                         sp = sp.offset(-8);
                         self.locals[usize::try_from(local_idx).unwrap()] = *sp;
                     }
+                    OpCode::LOAD_CONSTANT => {
+                        let constant_idx: u32 = pop_ip!(u32);
+                        *sp = self.chunk.constants[usize::try_from(constant_idx).unwrap()];
+                        sp = sp.add(8);
+                    }
                     OpCode::POP64 => {
                         sp = sp.offset(-8);
                     },
@@ -260,6 +265,11 @@ impl<'a> VM<'a> {
 
                         let uuid = Uuid::from_u64_pair(msb, lsb);
                         self.transpile_functions.push(uuid);
+                    }
+                    OpCode::PRINT => {
+                        let ptr = pop_sp!().ptr;
+                        let string: *mut String = (ptr as *mut String).clone();
+                        println!("{}", *string);
                     }
                 }
             }

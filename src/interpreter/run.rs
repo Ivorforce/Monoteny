@@ -1,11 +1,15 @@
+use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
-use crate::interpreter::compiler::compile;
+use crate::interpreter::compiler::compile_deep;
 use crate::interpreter::Runtime;
 use crate::interpreter::vm::VM;
 use crate::program::global::FunctionLogic;
 use crate::program::module::Module;
+use crate::refactor::Refactor;
+use crate::refactor::simplify::Simplify;
+use crate::transpiler;
 use crate::transpiler::{TranspiledArtifact, Transpiler};
 
 pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
@@ -21,7 +25,8 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
         return Err(RuntimeError::new(format!("main! function has a return value.")));
     }
 
-    let compiled = compile(runtime, entry_function)?;
+    // TODO Should gather all used functions and compile them
+    let compiled = compile_deep(runtime, entry_function)?;
 
     let mut vm = VM::new(&compiled);
     unsafe {
@@ -41,7 +46,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     assert!(entry_function.interface.return_type.unit.is_void(), "transpile! function has a return value.");
 
     // Set the transpiler object.
-    let compiled = compile(runtime, entry_function)?;
+    let compiled = compile_deep(runtime, entry_function)?;
 
     let mut vm = VM::new(&compiled);
     unsafe {

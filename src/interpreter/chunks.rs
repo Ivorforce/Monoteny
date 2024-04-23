@@ -1,11 +1,15 @@
 use std::ptr::write_unaligned;
+use crate::interpreter::data::Value;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]
 pub enum OpCode {
     NOOP,
     RETURN,
+    // TODO Replace with function call?
     TRANSPILE_ADD,
+    // TODO Replace with function call?
+    PRINT,
     LOAD8,
     LOAD16,
     LOAD32,
@@ -13,6 +17,7 @@ pub enum OpCode {
     LOAD128,
     LOAD_LOCAL,
     STORE_LOCAL,
+    LOAD_CONSTANT,
     POP64,
     POP128,
     AND,
@@ -48,6 +53,7 @@ pub enum Primitive {
 pub struct Chunk {
     pub code: Vec<u8>,
     pub locals_count: u32,
+    pub constants: Vec<Value>,
 }
 
 impl Chunk {
@@ -55,6 +61,7 @@ impl Chunk {
         Chunk {
             code: vec![],
             locals_count: 0,
+            constants: vec![],
         }
     }
 

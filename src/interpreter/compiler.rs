@@ -1,36 +1,59 @@
 mod builtins;
 
+use std::alloc::{alloc, Layout};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::mem::transmute;
 use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::chunks::{Chunk, OpCode};
 use crate::interpreter::compiler::builtins::compile_builtin_function_call;
-use crate::interpreter::data::{bytes_to_stack_slots, get_size_bytes};
+use crate::interpreter::data::{bytes_to_stack_slots, get_size_bytes, Value};
 use crate::interpreter::Runtime;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
 use crate::program::global::{FunctionImplementation, FunctionLogic};
+use crate::refactor::Refactor;
+use crate::refactor::simplify::Simplify;
+use crate::transpiler;
 
 pub struct FunctionCompiler<'a> {
     runtime: &'a Runtime,
     implementation: &'a FunctionImplementation,
     chunk: Chunk,
     locals: HashMap<Rc<ObjectReference>, u32>,
+    constants: Vec<Value>,
 }
 
-pub fn compile(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Chunk> {
-    let FunctionLogic::Implementation(implementation) = &runtime.source.fn_logic[function] else {
-        return Err(RuntimeError::new("Cannot run function because it is not implemented.".to_string()));
+pub fn compile_deep(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Chunk> {
+    let FunctionLogic::Implementation(implementation) = runtime.source.fn_logic[function].clone() else {
+        return Err(RuntimeError::new(format!("main! function was somehow internal.")));
+    };
+    let function_representation = runtime.source.fn_representations[function].clone();
+
+    let mut refactor = Refactor::new(runtime);
+    refactor.add(implementation, function_representation);
+
+    let mut simplify = Simplify::new(&mut refactor, &transpiler::Config::default());
+    simplify.run();
+
+    // TODO We should gather all invented functions, register them in the runtime, and compile them.
+    let FunctionLogic::Implementation(implementation) = &refactor.fn_logic[function] else {
+        return Err(RuntimeError::new(format!("main! function was somehow internal after refactor.")));
     };
 
+    compile_function(runtime, implementation)
+}
+
+fn compile_function(runtime: &mut Runtime, implementation: &FunctionImplementation) -> RResult<Chunk> {
     let mut compiler = FunctionCompiler {
         runtime,
         implementation,
         chunk: Chunk::new(),
-        locals: HashMap::new()
+        locals: HashMap::new(),
+        constants: vec![],
     };
 
     compiler.compile_expression(&implementation.expression_tree.root)?;
@@ -38,6 +61,7 @@ pub fn compile(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Ch
     compiler.chunk.push(OpCode::RETURN);
 
     compiler.chunk.locals_count = u32::try_from(compiler.locals.len()).unwrap();
+    compiler.chunk.constants = compiler.constants;
 
     Ok(compiler.chunk)
 }
@@ -88,7 +112,14 @@ impl FunctionCompiler<'_> {
             },
             ExpressionOperation::PairwiseOperations { .. } => todo!(),
             ExpressionOperation::ArrayLiteral => todo!(),
-            ExpressionOperation::StringLiteral(string) => todo!(),
+            ExpressionOperation::StringLiteral(string) => {
+                unsafe {
+                    let data = alloc(Layout::new::<String>());
+                    *(data as *mut String) = string.clone();
+                    self.constants.push(Value { ptr: transmute(data) });
+                    self.chunk.push_with_u32(OpCode::LOAD_CONSTANT, u32::try_from(self.constants.len() - 1).unwrap());
+                }
+            },
         }
 
         Ok(())

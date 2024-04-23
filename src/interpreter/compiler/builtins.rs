@@ -21,6 +21,9 @@ pub fn compile_builtin_function_call(descriptor: &FunctionLogicDescriptor, bindi
                 "add" => {
                     chunk.push(OpCode::TRANSPILE_ADD);
                 },
+                "_write_line" => {
+                    chunk.push(OpCode::PRINT);
+                }
                 _ => todo!(),
             }
         },
