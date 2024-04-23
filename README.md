@@ -82,10 +82,11 @@ More code can be found in the [test-code](./test-code) (unit tests) and [monoten
     - Determine `pi` to the n'ths decimal.
     - Calculate the atmospheric pressure at the equator.
     - Create a graph for your expenses from a .CSV file.
-- **Other niches**
-    - Make a compute shader / object graph.
-    - Write code to get LaTeX formulas.
-    - Test your algorithm's accuracy with perfect precision rationals.
+    - Test your algorithm's floating point accuracy with perfect precision rationals.
+- **Write code anyone can read**
+  - Transpile as readable code for many languages.
+  - Create LaTeX formulas from code.
+  - Create pseudocode of known algorithms in customizable style.
 
 #### Monoteny isn't well-suited for:
 
