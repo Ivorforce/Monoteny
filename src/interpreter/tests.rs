@@ -23,7 +23,9 @@ mod tests {
         chunk.push_with_u16(OpCode::LOAD16, 2);
         chunk.push_with_u16(OpCode::LOAD16, 6);
         chunk.push_with_u8(OpCode::ADD, Primitive::U32 as u8);
-        chunk.push_with_u16(OpCode::LOAD16, 8);
+        chunk.push_with_u16(OpCode::LOAD16, 4);
+        chunk.push_with_u8(OpCode::DIV, Primitive::U32 as u8);
+        chunk.push_with_u16(OpCode::LOAD16, 2);
         chunk.push_with_u8(OpCode::EQ, Primitive::U32 as u8);
         chunk.push(OpCode::RETURN);
 
