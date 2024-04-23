@@ -4,15 +4,11 @@ extern crate lalrpop_util;
 
 use std::env;
 use std::process::ExitCode;
-use std::ptr::read_unaligned;
 
-use clap::{arg, Command};
+use clap::Command;
 use itertools::Itertools;
 
-use crate::error::{dump_failure, RResult};
-use crate::interpreter::chunks::{Chunk, Code, Primitive};
-use crate::interpreter::disassembler::disassemble;
-use crate::interpreter::vm::VM;
+use crate::error::dump_failure;
 
 lalrpop_mod!(pub monoteny_grammar);
 pub mod interpreter;
@@ -36,28 +32,6 @@ fn cli() -> Command<'static> {
         .subcommand(cli::run::make_command())
         .subcommand(cli::check::make_command())
         .subcommand(cli::transpile::make_command())
-        .subcommand(make_vm_test_command())
-}
-
-fn make_vm_test_command() -> Command<'static> {
-    Command::new("vm-test")
-        .about("Test the vm.")
-}
-
-fn run_vm_test() -> RResult<ExitCode> {
-    let mut chunk = Chunk::new();
-    chunk.push_with_u16(Code::LOAD16, 2);
-    chunk.push_with_u16(Code::LOAD16, 6);
-    chunk.push_with_u8(Code::ADD, Primitive::U32 as u8);
-    chunk.push_with_u16(Code::LOAD16, 8);
-    chunk.push_with_u8(Code::EQ, Primitive::U32 as u8);
-    chunk.push(Code::RETURN);
-    let mut vm = VM::new(&chunk);
-    vm.run()?;
-    unsafe {
-        println!("R: {}", read_unaligned(vm.stack.as_ptr() as *const u16));
-    }
-    Ok(ExitCode::SUCCESS)
 }
 
 fn main() -> ExitCode {
@@ -68,7 +42,6 @@ fn main() -> ExitCode {
         Some(("run", sub_matches)) => cli::run::run(sub_matches),
         Some(("check", sub_matches)) => cli::check::run(sub_matches),
         Some(("transpile", sub_matches)) => cli::transpile::run(sub_matches),
-        Some(("vm-test", sub_matches)) => run_vm_test(),
         _ => panic!("Unsupported action."),
     };
 
