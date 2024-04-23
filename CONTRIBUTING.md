@@ -1,6 +1,6 @@
 Monoteny is in its early stages of development. Its design and implementation are highly exploratory, and features are expected to stop and start working regularly as the language is expanded. 
 
-I do not recommend using the language in its current form. However, if you would like to make contributions, such as bug fixes or adding new features, please reach out to me before starting. 
+I do not recommend using the language in its current form. If you want to get involved, discuss the language design or make contributions, please reach out to me. 
 
 #### Socials
 
