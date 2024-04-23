@@ -39,9 +39,9 @@ impl<'a> VM<'a> {
             let mut sp: *mut Value = &mut self.stack[0] as *mut Value;
 
             loop {
-                println!("sp: {:?}; ip: {:?}", sp, ip);
-                disassemble_one(ip);
-                print!("\n");
+                // println!("sp: {:?}; ip: {:?}", sp, ip);
+                // disassemble_one(ip);
+                // print!("\n");
 
                 let code = transmute::<u8, OpCode>(*ip);
                 ip = ip.add(1);
