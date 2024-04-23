@@ -5,8 +5,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
-use crate::interpreter::chunks::{Chunk, Code, Primitive};
+use crate::interpreter::chunks::{Chunk, Code};
 use crate::interpreter::compiler::builtins::compile_builtin_function_call;
+use crate::interpreter::data::{bytes_to_stack_slots, get_size_bytes};
 use crate::interpreter::Runtime;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
@@ -38,8 +39,7 @@ pub fn compile(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Ch
 
     compiler.chunk.locals = vec![0; compiler.locals.len()];
     for (obj, idx) in compiler.locals {
-        // TODO Figure out the actual size of the local, in bytes.
-        compiler.chunk.locals[usize::try_from(idx).unwrap()] = 0;
+        compiler.chunk.locals[usize::try_from(idx).unwrap()] = bytes_to_stack_slots(get_size_bytes(&obj.type_));
     }
 
     Ok(compiler.chunk)
@@ -54,6 +54,11 @@ impl FunctionCompiler<'_> {
             ExpressionOperation::Block => {
                 for expr in children {
                     self.compile_expression(expr)?;
+                    let type_ = &self.implementation.type_forest.resolve_binding_alias(expr)?;
+                    let size_slots = bytes_to_stack_slots(get_size_bytes(type_));
+                    if size_slots > 0 {
+                        todo!("Need to pop")
+                    }
                 }
             },
             ExpressionOperation::GetLocal(local) => {

@@ -82,6 +82,15 @@ impl<'a> VM<'a> {
                             continue
                         }
                     }
+                    Code::POP32 => {
+                        sp = sp.offset(-1);
+                    },
+                    Code::POP64 => {
+                        sp = sp.offset(-2);
+                    },
+                    Code::POP128 => {
+                        sp = sp.offset(-4);
+                    },
                     Code::AND => bool_bin_op!(&&),
                     Code::OR => bool_bin_op!(||),
                     Code::ADD => {

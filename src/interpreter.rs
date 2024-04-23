@@ -19,6 +19,7 @@ pub mod run;
 pub mod chunks;
 pub mod builtins;
 pub mod disassembler;
+pub mod data;
 mod tests;
 
 pub struct Runtime {

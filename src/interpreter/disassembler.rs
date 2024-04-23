@@ -44,7 +44,7 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("{:?}\t{:?}", code, read_unaligned(ip.add(1) as *mut u128));
                 return 1 + 16;
             }
-            Code::NOOP | Code::RETURN | Code::TRANSPILE_ADD | Code::AND | Code::OR => {
+            Code::NOOP | Code::RETURN | Code::TRANSPILE_ADD | Code::AND | Code::OR | Code::POP32 | Code::POP64 | Code::POP128 => {
                 print!("{:?}", code);
                 return 1;
             },
