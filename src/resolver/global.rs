@@ -25,6 +25,7 @@ use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
 use crate::program::types::*;
+use crate::static_analysis;
 use crate::util::position::Positioned;
 
 pub struct GlobalResolver<'a> {
@@ -63,7 +64,10 @@ pub fn resolve_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Ru
             locals_names: Default::default(),
         });
 
-        match resolver.resolve_function_body(&pbody.value, &global_variable_scope) {
+        match resolver.resolve_function_body(&pbody.value, &global_variable_scope).and_then(|mut imp| {
+            static_analysis::check(&mut imp)?;
+            Ok(imp)
+        }) {
             Ok(implementation) => {
                 runtime.source.fn_logic.insert(Rc::clone(&head), FunctionLogic::Implementation(implementation));
             }
