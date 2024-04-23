@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compiler::compile;
 use crate::interpreter::Runtime;
@@ -47,7 +48,19 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
         vm.run()?;
     }
 
-    let exported_artifacts = vm.transpile_functions.iter().map(|uuid| {
+    let exported_artifacts = gather_functions_logic(runtime, &vm.transpile_functions);
+
+    Ok(Box::new(Transpiler {
+        // TODO This should be one of the exported artifacts
+        main_function: module.main_functions.iter().at_most_one()
+            .map_err(|_| RuntimeError::new(format!("Too many main! functions declared: {:?}", module.main_functions)))?
+            .cloned(),
+        exported_artifacts,
+    }))
+}
+
+pub fn gather_functions_logic(runtime: &Runtime, transpile_functions: &Vec<Uuid>) -> Vec<TranspiledArtifact> {
+    transpile_functions.iter().map(|uuid| {
         let function_head = &runtime.source.fn_heads[uuid];
         match &runtime.source.fn_logic[function_head] {
             FunctionLogic::Implementation(implementation) => {
@@ -58,13 +71,5 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
                 panic!("Cannot transpile a function for which whe don't know an implementation!")
             }
         }
-    }).collect();
-
-    Ok(Box::new(Transpiler {
-        // TODO This should be one of the exported artifacts
-        main_function: module.main_functions.iter().at_most_one()
-            .map_err(|_| RuntimeError::new(format!("Too many main! functions declared: {:?}", module.main_functions)))?
-            .cloned(),
-        exported_artifacts,
-    }))
+    }).collect()
 }

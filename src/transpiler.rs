@@ -4,12 +4,10 @@ use std::rc::Rc;
 use itertools::Itertools;
 
 use crate::error::RResult;
-use crate::interpreter;
 use crate::interpreter::Runtime;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
 use crate::program::global::{FunctionImplementation, FunctionLogic, FunctionLogicDescriptor};
-use crate::program::module::Module;
 use crate::refactor::Refactor;
 use crate::refactor::simplify::Simplify;
 
@@ -23,6 +21,17 @@ pub struct Config {
     pub should_monomorphize: bool,
     pub should_inline: bool,
     pub should_trim_locals: bool,
+}
+
+impl Config {
+    pub fn default() -> Config {
+        Config {
+            should_constant_fold: true,
+            should_monomorphize: true,
+            should_inline: true,
+            should_trim_locals: true,
+        }
+    }
 }
 
 pub enum TranspiledArtifact {
@@ -55,9 +64,7 @@ pub trait LanguageContext {
     ) -> RResult<HashMap<String, String>>;
 }
 
-pub fn transpile(module: &Module, runtime: &mut Runtime, context: &dyn LanguageContext, config: &Config, base_filename: &str) -> RResult<HashMap<String, String>>{
-    let transpiler = interpreter::run::transpile(&module, runtime)?;
-
+pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &dyn LanguageContext, config: &Config, base_filename: &str) -> RResult<HashMap<String, String>>{
     let mut refactor = Refactor::new(runtime);
     context.register_builtins(&mut refactor);
 

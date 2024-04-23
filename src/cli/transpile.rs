@@ -8,7 +8,7 @@ use itertools::Itertools;
 use crate::error::{dump_failure, dump_start, dump_success, RResult};
 use crate::interpreter::Runtime;
 use crate::program::module::{Module, module_name};
-use crate::transpiler;
+use crate::{interpreter, transpiler};
 use crate::transpiler::LanguageContext;
 use crate::util::file_writer::write_file_safe;
 
@@ -84,7 +84,8 @@ fn create_context(runtime: &Runtime, extension: &str) -> Box<dyn LanguageContext
 
 fn transpile_target(base_filename: &str, base_output_path: &Path, config: &transpiler::Config, mut runtime: &mut Box<Runtime>, module: &Box<Module>, output_extension: &str) -> RResult<Vec<PathBuf>> {
     let context = create_context(&runtime, output_extension);
-    let file_map = transpiler::transpile(module, runtime, context.as_ref(), config, base_filename)?;
+    let transpiler = interpreter::run::transpile(&module, runtime)?;
+    let file_map = transpiler::transpile(transpiler, runtime, context.as_ref(), config, base_filename)?;
 
     let output_files = file_map.into_iter().map(|(filename, content)| {
         write_file_safe(base_output_path, &filename, &content)
