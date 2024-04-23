@@ -1,6 +1,6 @@
 # Monoteny
 
-#### NOTE: Monoteny is in its early development. The documents refer to features as if done, although the implementation does not reflect it. A language spec does not exist because the language design is highly exploratory. Feel free to browse nonetheless.
+#### NOTE: Monoteny is in its early development. The documents refer to features as if done, although the implementation does not reflect it. A language spec does not exist because the language design is highly exploratory. No ETA can be given yet. Feel free to browse nonetheless.
 
 Welcome to the mathemagical land of Monoteny! 
 
