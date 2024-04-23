@@ -1,5 +1,7 @@
 # Monoteny
 
+#### NOTE: Monoteny is in its early development. The documents refer to features as if done, although the implementation does not reflect it. A language spec does not exist because the language design is highly exploratory. Feel free to browse nonetheless.
+
 Welcome to the mathemagical land of Monoteny! 
 
 Monoteny is a programming language intended for making libraries. It transpiles to many other programming languages and ecosystems so nobody needs to reinvent the wheel!
