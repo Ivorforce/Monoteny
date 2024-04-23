@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use std::fs;
     use std::path::PathBuf;
-    use std::process::ExitCode;
     use std::ptr::read_unaligned;
 
     use crate::error::RResult;
@@ -47,10 +45,7 @@ mod tests {
     //     let mut runtime = Runtime::new()?;
     //     runtime.repository.add("common", PathBuf::from("monoteny"));
     //
-    //     let module = runtime.load_code(
-    //         fs::read_to_string("test-code/hello_world.monoteny").unwrap().as_str(),
-    //         module_name("main")
-    //     )?;
+    //     let module = runtime.load_file_as_module(&PathBuf::from("test-code/hello_world.monoteny"), module_name("main"))?;
     //
     //     assert_eq!(module.exposed_functions.len(), 2);
     //
