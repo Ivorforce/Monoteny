@@ -6,7 +6,7 @@ Welcome to the mathemagical land of Monoteny!
 
 Monoteny is a programming language intended for making libraries. It transpiles to many other programming languages and ecosystems so nobody needs to reinvent the wheel!
 
-Monoteny specializes in reusability, runtime safety and readability. Why not check out [Monoteny 101](https://www.craft.me/s/dYSfJhYM9TAsne)?
+Monoteny specializes in reusability, runtime safety and readability. Why not check out [Monoteny 101](https://www.craft.me/s/dYSfJhYM9TAsne)? Also, come join the community on [Discord](https://discord.gg/zgyNx9K7mE)!
 
 ## Philosophy
 
