@@ -36,8 +36,8 @@ impl<'a> VM<'a> {
             let mut sp: *mut u32 = &mut self.stack[0] as *mut u32;
 
             loop {
-                disassemble_one(ip);
-                print!("\n");
+                // disassemble_one(ip);
+                // print!("\n");
 
                 let code = transmute::<u8, Code>(*ip);
                 ip = ip.add(1);
