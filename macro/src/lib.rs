@@ -19,6 +19,22 @@ pub fn pop_ip(_item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+pub fn pop_sp(_item: TokenStream) -> TokenStream {
+    let mut args_str = _item.to_string();
+    let mut args = args_str.split(" ");
+
+    let type_ = args.next().unwrap();
+
+    // TODO When it's stable, these should be replaced by quote!()
+    format!("
+{{
+            sp = transmute((sp as *mut {type_}).offset(-1));
+            *(sp as *mut {type_})
+}}
+    ", type_=type_).parse().unwrap()
+}
+
+#[proc_macro]
 pub fn bin_op(_item: TokenStream) -> TokenStream {
     let mut args_str = _item.to_string();
     let mut args = args_str.split(" ");

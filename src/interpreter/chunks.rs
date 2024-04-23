@@ -5,10 +5,14 @@ use std::ptr::write_unaligned;
 pub enum Code {
     NOOP,
     RETURN,
+    TRANSPILE_ADD,
     LOAD8,
     LOAD16,
     LOAD32,
     LOAD64,
+    LOAD128,
+    LOAD_LOCAL,
+    STORE_LOCAL,
     AND,
     OR,
     ADD,
@@ -37,12 +41,14 @@ pub enum Primitive {
 
 pub struct Chunk {
     pub code: Vec<u8>,
+    pub locals: Vec<u8>,
 }
 
 impl Chunk {
     pub fn new() -> Chunk {
         Chunk {
             code: vec![],
+            locals: vec![],
         }
     }
 
@@ -61,7 +67,7 @@ impl Chunk {
             self.code.reserve(1 + 2);
             *self.code.as_mut_ptr().add(len) = code as u8;
             write_unaligned(self.code.as_mut_ptr().add(len + 1) as *mut u16, arg);
-            self.code.set_len(len + 3);
+            self.code.set_len(len + 1 + 2);
         }
     }
 
@@ -72,7 +78,7 @@ impl Chunk {
             self.code.reserve(1 + 4);
             *self.code.as_mut_ptr().add(len) = code as u8;
             write_unaligned(self.code.as_mut_ptr().add(len + 1) as *mut u32, arg);
-            self.code.set_len(len + 3);
+            self.code.set_len(len + 1 + 4);
         }
     }
 
@@ -83,7 +89,18 @@ impl Chunk {
             self.code.reserve(1 + 8);
             *self.code.as_mut_ptr().add(len) = code as u8;
             write_unaligned(self.code.as_mut_ptr().add(len + 1) as *mut u64, arg);
-            self.code.set_len(len + 3);
+            self.code.set_len(len + 1 + 8);
+        }
+    }
+
+    pub fn push_with_u128(&mut self, code: Code, arg: u128) {
+        let len = self.code.len();
+
+        unsafe {
+            self.code.reserve(1 + 16);
+            *self.code.as_mut_ptr().add(len) = code as u8;
+            write_unaligned(self.code.as_mut_ptr().add(len + 1) as *mut u128, arg);
+            self.code.set_len(len + 1 + 16);
         }
     }
 }

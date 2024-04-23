@@ -1,9 +1,11 @@
+use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compiler::compile;
 use crate::interpreter::Runtime;
 use crate::interpreter::vm::VM;
+use crate::program::global::FunctionLogic;
 use crate::program::module::Module;
-use crate::transpiler::Transpiler;
+use crate::transpiler::{TranspiledArtifact, Transpiler};
 
 pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
     let entry_function = match &module.main_functions[..] {
@@ -45,5 +47,24 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
         vm.run()?;
     }
 
-    todo!()
+    let exported_artifacts = vm.transpile_functions.iter().map(|uuid| {
+        let function_head = &runtime.source.fn_heads[uuid];
+        match &runtime.source.fn_logic[function_head] {
+            FunctionLogic::Implementation(implementation) => {
+                // TODO Why copy the implementation now?
+                TranspiledArtifact::Function(implementation.clone())
+            }
+            FunctionLogic::Descriptor(_) => {
+                panic!("Cannot transpile a function for which whe don't know an implementation!")
+            }
+        }
+    }).collect();
+
+    Ok(Box::new(Transpiler {
+        // TODO This should be one of the exported artifacts
+        main_function: module.main_functions.iter().at_most_one()
+            .map_err(|_| RuntimeError::new(format!("Too many main! functions declared: {:?}", module.main_functions)))?
+            .cloned(),
+        exported_artifacts,
+    }))
 }

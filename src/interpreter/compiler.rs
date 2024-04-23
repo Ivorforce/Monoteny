@@ -1,11 +1,14 @@
 mod builtins;
 
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::chunks::{Chunk, Code, Primitive};
-use crate::interpreter::compiler::builtins::compile_builtin_function;
+use crate::interpreter::compiler::builtins::compile_builtin_function_call;
 use crate::interpreter::Runtime;
+use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
 use crate::program::global::{FunctionImplementation, FunctionLogic};
@@ -14,6 +17,7 @@ pub struct FunctionCompiler<'a> {
     runtime: &'a Runtime,
     implementation: &'a FunctionImplementation,
     chunk: Chunk,
+    locals: HashMap<Rc<ObjectReference>, u32>,
 }
 
 pub fn compile(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Chunk> {
@@ -24,9 +28,20 @@ pub fn compile(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Ch
     let mut compiler = FunctionCompiler {
         runtime,
         implementation,
-        chunk: Chunk::new()
+        chunk: Chunk::new(),
+        locals: HashMap::new()
     };
+
     compiler.compile_expression(&implementation.expression_tree.root)?;
+    // The root expression is implicitly returned.
+    compiler.chunk.push(Code::RETURN);
+
+    compiler.chunk.locals = vec![0; compiler.locals.len()];
+    for (obj, idx) in compiler.locals {
+        // TODO Figure out the actual size of the local, in bytes.
+        compiler.chunk.locals[usize::try_from(idx).unwrap()] = 0;
+    }
+
     Ok(compiler.chunk)
 }
 
@@ -41,21 +56,31 @@ impl FunctionCompiler<'_> {
                     self.compile_expression(expr)?;
                 }
             },
-            ExpressionOperation::GetLocal(local) => todo!(),
-            ExpressionOperation::SetLocal(local) => todo!(),
+            ExpressionOperation::GetLocal(local) => {
+                let slot = self.get_variable_slot(local);
+                self.chunk.push_with_u32(Code::LOAD_LOCAL, slot);
+            },
+            ExpressionOperation::SetLocal(local) => {
+                let slot = self.get_variable_slot(local);
+                self.chunk.push_with_u32(Code::STORE_LOCAL, slot);
+            },
             ExpressionOperation::Return => todo!(),
             ExpressionOperation::FunctionCall(function) => {
-                if !function.requirements_fulfillment.is_empty() {
-                    return Err(RuntimeError::new(format!("Internal error; function call to {:?} was not monomorphized before call.", function.function)));
+                for expr in children.iter().rev() {
+                    self.compile_expression(expr)?;
                 }
 
                 let logic = &self.runtime.source.fn_logic[&function.function];
                 match logic {
                     FunctionLogic::Implementation(i) => {
+                        if !function.requirements_fulfillment.is_empty() {
+                            return Err(RuntimeError::new(format!("Internal error; function call to {:?} was not monomorphized before call.", function.function)));
+                        }
+
                         todo!()
                     }
                     FunctionLogic::Descriptor(d) => {
-                        compile_builtin_function(d, &mut self.chunk)?;
+                        compile_builtin_function_call(d, function, &mut self.chunk, &self.runtime)?;
                     }
                 }
             },
@@ -67,13 +92,25 @@ impl FunctionCompiler<'_> {
         Ok(())
     }
 
+    pub fn get_variable_slot(&mut self, object: &Rc<ObjectReference>) -> u32 {
+        let count = self.locals.len();
+
+        match self.locals.entry(Rc::clone(object)) {
+            Entry::Occupied(o) => *o.get(),
+            Entry::Vacant(v) => {
+                *v.insert(u32::try_from(count).unwrap())
+            }
+        }
+    }
 }
 
 pub fn make_function_getter(function: &FunctionHead) -> Chunk {
     let mut chunk = Chunk::new();
-    let u64s = function.function_id.as_u64_pair();
-    chunk.push_with_u64(Code::LOAD64, u64s.0);
-    chunk.push_with_u64(Code::LOAD64, u64s.1);
+    get_function(function, &mut chunk);
     chunk.push(Code::RETURN);
     chunk
+}
+
+fn get_function(function: &FunctionHead, chunk: &mut Chunk) {
+    chunk.push_with_u128(Code::LOAD128, function.function_id.as_u128());
 }

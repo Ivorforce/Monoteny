@@ -1,13 +1,21 @@
 use std::mem::transmute;
-use monoteny_macro::{bin_op, bool_bin_op, pop_ip, to_bool_bin_op};
+use monoteny_macro::{bin_op, bool_bin_op, pop_ip, pop_sp, to_bool_bin_op};
 use std::ptr::{write_unaligned, read_unaligned};
+use itertools::Itertools;
+use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::chunks::{Chunk, Code, Primitive};
 use crate::interpreter::disassembler::disassemble_one;
 
+pub struct Local {
+    pub size_slots: u8,
+}
+
 pub struct VM<'a> {
     pub chunk: &'a Chunk,
     pub stack: Vec<u32>,
+    pub locals: Vec<Local>,
+    pub transpile_functions: Vec<Uuid>,
 }
 
 impl<'a> VM<'a> {
@@ -15,6 +23,10 @@ impl<'a> VM<'a> {
         VM {
             chunk,
             stack: vec![0; 1024],
+            locals: chunk.locals.iter().map(|s| Local {
+                size_slots: *s,
+            }).collect_vec(),
+            transpile_functions: vec![],
         }
     }
 
@@ -48,10 +60,28 @@ impl<'a> VM<'a> {
                         sp = sp.add(1);
                     },
                     Code::LOAD64 => {
-                        *sp = 0;
                         *(sp as *mut u64) = pop_ip!(u64);
                         sp = sp.add(2);
                     },
+                    Code::LOAD128 => {
+                        *(sp as *mut u128) = pop_ip!(u128);
+                        sp = sp.add(4);
+                    },
+                    Code::LOAD_LOCAL => {
+                        let local_idx: u32 = pop_ip!(u32);
+                        let slots = self.locals[usize::try_from(local_idx).unwrap()].size_slots;
+                        if slots == 0 {
+                            continue
+                        }
+                        todo!()
+                    }
+                    Code::STORE_LOCAL => {
+                        let local_idx: u32 = pop_ip!(u32);
+                        let slots = self.locals[usize::try_from(local_idx).unwrap()].size_slots;
+                        if slots == 0 {
+                            continue
+                        }
+                    }
                     Code::AND => bool_bin_op!(&&),
                     Code::OR => bool_bin_op!(||),
                     Code::ADD => {
@@ -184,6 +214,10 @@ impl<'a> VM<'a> {
                             _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
+                    Code::TRANSPILE_ADD => {
+                        let uuid = Uuid::from_u128(pop_sp!(u128));
+                        self.transpile_functions.push(uuid);
+                    }
                 }
             }
         }
