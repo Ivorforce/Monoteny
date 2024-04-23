@@ -13,7 +13,6 @@ pub enum OpCode {
     LOAD128,
     LOAD_LOCAL,
     STORE_LOCAL,
-    POP32,
     POP64,
     POP128,
     AND,

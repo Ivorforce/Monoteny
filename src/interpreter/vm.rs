@@ -89,9 +89,6 @@ impl<'a> VM<'a> {
                             continue
                         }
                     }
-                    OpCode::POP32 => {
-                        sp = sp.offset(-8);
-                    },
                     OpCode::POP64 => {
                         sp = sp.offset(-8);
                     },
