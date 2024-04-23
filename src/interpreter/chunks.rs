@@ -47,14 +47,14 @@ pub enum Primitive {
 
 pub struct Chunk {
     pub code: Vec<u8>,
-    pub locals_sizes: Vec<u8>,
+    pub locals_count: u32,
 }
 
 impl Chunk {
     pub fn new() -> Chunk {
         Chunk {
             code: vec![],
-            locals_sizes: vec![],
+            locals_count: 0,
         }
     }
 

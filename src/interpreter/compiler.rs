@@ -37,10 +37,7 @@ pub fn compile(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Ch
     // The root expression is implicitly returned.
     compiler.chunk.push(OpCode::RETURN);
 
-    compiler.chunk.locals_sizes = vec![0; compiler.locals.len()];
-    for (obj, idx) in compiler.locals {
-        compiler.chunk.locals_sizes[usize::try_from(idx).unwrap()] = bytes_to_stack_slots(get_size_bytes(&obj.type_));
-    }
+    compiler.chunk.locals_count = u32::try_from(compiler.locals.len()).unwrap();
 
     Ok(compiler.chunk)
 }

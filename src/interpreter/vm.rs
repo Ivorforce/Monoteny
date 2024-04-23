@@ -6,17 +6,11 @@ use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::chunks::{Chunk, OpCode, Primitive};
 use crate::interpreter::data::Value;
-use crate::interpreter::disassembler::disassemble_one;
-
-pub struct Local {
-    pub size_slots: u8,
-    pub value: Value,
-}
 
 pub struct VM<'a> {
     pub chunk: &'a Chunk,
     pub stack: Vec<Value>,
-    pub locals: Vec<Local>,
+    pub locals: Vec<Value>,
     pub transpile_functions: Vec<Uuid>,
 }
 
@@ -25,10 +19,7 @@ impl<'a> VM<'a> {
         VM {
             chunk,
             stack: vec![Value::alloc(); 1024],
-            locals: chunk.locals_sizes.iter().map(|s| Local {
-                size_slots: *s,
-                value: Value::alloc(),
-            }).collect_vec(),
+            locals: vec![Value::alloc(); usize::try_from(chunk.locals_count).unwrap()],
             transpile_functions: vec![],
         }
     }
@@ -76,18 +67,13 @@ impl<'a> VM<'a> {
                     },
                     OpCode::LOAD_LOCAL => {
                         let local_idx: u32 = pop_ip!(u32);
-                        let slots = self.locals[usize::try_from(local_idx).unwrap()].size_slots;
-                        if slots == 0 {
-                            continue
-                        }
-                        todo!()
+                        *sp = self.locals[usize::try_from(local_idx).unwrap()];
+                        sp = sp.add(8);
                     }
                     OpCode::STORE_LOCAL => {
                         let local_idx: u32 = pop_ip!(u32);
-                        let slots = self.locals[usize::try_from(local_idx).unwrap()].size_slots;
-                        if slots == 0 {
-                            continue
-                        }
+                        sp = sp.offset(-8);
+                        self.locals[usize::try_from(local_idx).unwrap()] = *sp;
                     }
                     OpCode::POP64 => {
                         sp = sp.offset(-8);
@@ -268,6 +254,8 @@ impl<'a> VM<'a> {
                         }
                     },
                     OpCode::TRANSPILE_ADD => {
+                        // TODO Why is the transpiler on top of the stack??
+                        let transpiler = pop_sp!();
                         let lsb = pop_sp!().u64;
                         let msb = pop_sp!().u64;
 
