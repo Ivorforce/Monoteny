@@ -68,7 +68,7 @@ impl FunctionCompiler<'_> {
             },
             ExpressionOperation::Return => todo!(),
             ExpressionOperation::FunctionCall(function) => {
-                for expr in children.iter().rev() {
+                for expr in children.iter() {
                     self.compile_expression(expr)?;
                 }
 

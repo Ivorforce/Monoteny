@@ -254,10 +254,9 @@ impl<'a> VM<'a> {
                         }
                     },
                     OpCode::TRANSPILE_ADD => {
-                        // TODO Why is the transpiler on top of the stack??
-                        let transpiler = pop_sp!();
                         let lsb = pop_sp!().u64;
                         let msb = pop_sp!().u64;
+                        let transpiler = pop_sp!();
 
                         let uuid = Uuid::from_u64_pair(msb, lsb);
                         self.transpile_functions.push(uuid);
