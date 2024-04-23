@@ -98,7 +98,7 @@ More code can be found in the [test-code](./test-code) (unit tests) and [monoten
 
 ## Targets
 
-The following targets will be officially supported:
+The following languages are planned as compilation targets:
 
 * [WIP] Python with NumPy
 * [Future] Monoteny Dialect (e.g. to the reader-centric "Math" dialect, which uses math-y symbols)
@@ -108,7 +108,7 @@ The following targets will be officially supported:
 * [Future] Julia
 * [Future] LaTeX Expressions
 
-In addition, the transpilation API will allow 3rd parties to target more ecosystems as plugins.
+In addition, a transpilation API will allow 3rd parties to target custom ecosystems.
 
 ## How to run
 
