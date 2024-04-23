@@ -4,16 +4,18 @@ use std::ptr::{write_unaligned, read_unaligned};
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
-use crate::interpreter::chunks::{Chunk, Code, Primitive};
+use crate::interpreter::chunks::{Chunk, OpCode, Primitive};
+use crate::interpreter::data::Value;
 use crate::interpreter::disassembler::disassemble_one;
 
 pub struct Local {
     pub size_slots: u8,
+    pub value: Value,
 }
 
 pub struct VM<'a> {
     pub chunk: &'a Chunk,
-    pub stack: Vec<u32>,
+    pub stack: Vec<Value>,
     pub locals: Vec<Local>,
     pub transpile_functions: Vec<Uuid>,
 }
@@ -22,9 +24,10 @@ impl<'a> VM<'a> {
     pub fn new(chunk: &'a Chunk) -> VM {
         VM {
             chunk,
-            stack: vec![0; 1024],
-            locals: chunk.locals.iter().map(|s| Local {
+            stack: vec![Value::alloc(); 1024],
+            locals: chunk.locals_sizes.iter().map(|s| Local {
                 size_slots: *s,
+                value: Value::alloc(),
             }).collect_vec(),
             transpile_functions: vec![],
         }
@@ -33,41 +36,45 @@ impl<'a> VM<'a> {
     pub fn run(&mut self) -> RResult<()> {
         unsafe {
             let mut ip: *const u8 = transmute(&self.chunk.code[0]);
-            let mut sp: *mut u32 = &mut self.stack[0] as *mut u32;
+            let mut sp: *mut Value = &mut self.stack[0] as *mut Value;
 
             loop {
-                // disassemble_one(ip);
-                // print!("\n");
+                println!("sp: {:?}; ip: {:?}", sp, ip);
+                disassemble_one(ip);
+                print!("\n");
 
-                let code = transmute::<u8, Code>(*ip);
+                let code = transmute::<u8, OpCode>(*ip);
                 ip = ip.add(1);
 
                 match code {
-                    Code::NOOP => {},
-                    Code::RETURN => return Ok(()),
-                    Code::LOAD8 => {
-                        *sp = 0;
-                        *(sp as *mut u8) = pop_ip!(u8);
-                        sp = sp.add(1);
+                    OpCode::NOOP => {},
+                    OpCode::RETURN => return Ok(()),
+                    OpCode::LOAD8 => {
+                        (*sp).u8 = pop_ip!(u8);
+                        sp = sp.add(8);
                     },
-                    Code::LOAD16 => {
-                        *sp = 0;
-                        *(sp as *mut u16) = pop_ip!(u16);
-                        sp = sp.add(1);
+                    OpCode::LOAD16 => {
+                        (*sp).u16 = pop_ip!(u16);
+                        sp = sp.add(8);
                     },
-                    Code::LOAD32 => {
-                        *sp = pop_ip!(u32);
-                        sp = sp.add(1);
+                    OpCode::LOAD32 => {
+                        (*sp).u32 = pop_ip!(u32);
+                        sp = sp.add(8);
                     },
-                    Code::LOAD64 => {
-                        *(sp as *mut u64) = pop_ip!(u64);
-                        sp = sp.add(2);
+                    OpCode::LOAD64 => {
+                        (*sp).u64 = pop_ip!(u64);
+                        sp = sp.add(8);
                     },
-                    Code::LOAD128 => {
-                        *(sp as *mut u128) = pop_ip!(u128);
-                        sp = sp.add(4);
+                    OpCode::LOAD128 => {
+                        let v = pop_ip!(u128);
+
+                        (*sp).u64 = (v >> 64) as u64;
+                        sp = sp.add(8);
+
+                        (*sp).u64 = v as u64;
+                        sp = sp.add(8);
                     },
-                    Code::LOAD_LOCAL => {
+                    OpCode::LOAD_LOCAL => {
                         let local_idx: u32 = pop_ip!(u32);
                         let slots = self.locals[usize::try_from(local_idx).unwrap()].size_slots;
                         if slots == 0 {
@@ -75,30 +82,34 @@ impl<'a> VM<'a> {
                         }
                         todo!()
                     }
-                    Code::STORE_LOCAL => {
+                    OpCode::STORE_LOCAL => {
                         let local_idx: u32 = pop_ip!(u32);
                         let slots = self.locals[usize::try_from(local_idx).unwrap()].size_slots;
                         if slots == 0 {
                             continue
                         }
                     }
-                    Code::POP32 => {
-                        sp = sp.offset(-1);
+                    OpCode::POP32 => {
+                        sp = sp.offset(-8);
                     },
-                    Code::POP64 => {
-                        sp = sp.offset(-2);
+                    OpCode::POP64 => {
+                        sp = sp.offset(-8);
                     },
-                    Code::POP128 => {
-                        sp = sp.offset(-4);
+                    OpCode::POP128 => {
+                        sp = sp.offset(-16);
                     },
-                    Code::AND => bool_bin_op!(&&),
-                    Code::OR => bool_bin_op!(||),
-                    Code::ADD => {
+                    OpCode::AND => bool_bin_op!(&&),
+                    OpCode::OR => bool_bin_op!(||),
+                    OpCode::ADD => {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
                         match arg {
+                            Primitive::U8 => bin_op!(u8 +),
+                            Primitive::U16 => bin_op!(u16 +),
                             Primitive::U32 => bin_op!(u32 +),
                             Primitive::U64 => bin_op!(u64 +),
+                            Primitive::I8 => bin_op!(i8 +),
+                            Primitive::I16 => bin_op!(i16 +),
                             Primitive::I32 => bin_op!(i32 +),
                             Primitive::I64 => bin_op!(i64 +),
                             Primitive::F32 => bin_op!(f32 +),
@@ -106,12 +117,16 @@ impl<'a> VM<'a> {
                             _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
-                    Code::SUB => {
+                    OpCode::SUB => {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
                         match arg {
+                            Primitive::U8 => bin_op!(u8 -),
+                            Primitive::U16 => bin_op!(u16 -),
                             Primitive::U32 => bin_op!(u32 -),
                             Primitive::U64 => bin_op!(u64 -),
+                            Primitive::I8 => bin_op!(i8 -),
+                            Primitive::I16 => bin_op!(i16 -),
                             Primitive::I32 => bin_op!(i32 -),
                             Primitive::I64 => bin_op!(i64 -),
                             Primitive::F32 => bin_op!(f32 -),
@@ -119,12 +134,16 @@ impl<'a> VM<'a> {
                             _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
-                    Code::MUL => {
+                    OpCode::MUL => {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
                         match arg {
+                            Primitive::U8 => bin_op!(u8 *),
+                            Primitive::U16 => bin_op!(u16 *),
                             Primitive::U32 => bin_op!(u32 *),
                             Primitive::U64 => bin_op!(u64 *),
+                            Primitive::I8 => bin_op!(i8 *),
+                            Primitive::I16 => bin_op!(i16 *),
                             Primitive::I32 => bin_op!(i32 *),
                             Primitive::I64 => bin_op!(i64 *),
                             Primitive::F32 => bin_op!(f32 *),
@@ -132,12 +151,16 @@ impl<'a> VM<'a> {
                             _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
-                    Code::DIV => {
+                    OpCode::DIV => {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
                         match arg {
+                            Primitive::U8 => bin_op!(u8 /),
+                            Primitive::U16 => bin_op!(u16 /),
                             Primitive::U32 => bin_op!(u32 /),
                             Primitive::U64 => bin_op!(u64 /),
+                            Primitive::I8 => bin_op!(i8 /),
+                            Primitive::I16 => bin_op!(i16 /),
                             Primitive::I32 => bin_op!(i32 /),
                             Primitive::I64 => bin_op!(i64 /),
                             Primitive::F32 => bin_op!(f32 /),
@@ -145,38 +168,50 @@ impl<'a> VM<'a> {
                             _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
-                    Code::EQ => {
+                    OpCode::EQ => {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
                         match arg {
                             Primitive::BOOL => bool_bin_op!(==),
+                            Primitive::U8 => to_bool_bin_op!(u8 ==),
+                            Primitive::U16 => to_bool_bin_op!(u16 ==),
                             Primitive::U32 => to_bool_bin_op!(u32 ==),
                             Primitive::U64 => to_bool_bin_op!(u64 ==),
+                            Primitive::I8 => to_bool_bin_op!(i8 ==),
+                            Primitive::I16 => to_bool_bin_op!(i16 ==),
                             Primitive::I32 => to_bool_bin_op!(i32 ==),
                             Primitive::I64 => to_bool_bin_op!(i64 ==),
                             Primitive::F32 => to_bool_bin_op!(f32 ==),
                             Primitive::F64 => to_bool_bin_op!(f64 ==),
                         }
                     },
-                    Code::NEQ => {
+                    OpCode::NEQ => {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
                         match arg {
                             Primitive::BOOL => bool_bin_op!(==),
+                            Primitive::U8 => to_bool_bin_op!(u8 !=),
+                            Primitive::U16 => to_bool_bin_op!(u16 !=),
                             Primitive::U32 => to_bool_bin_op!(u32 !=),
                             Primitive::U64 => to_bool_bin_op!(u64 !=),
+                            Primitive::I8 => to_bool_bin_op!(i8 !=),
+                            Primitive::I16 => to_bool_bin_op!(i16 !=),
                             Primitive::I32 => to_bool_bin_op!(i32 !=),
                             Primitive::I64 => to_bool_bin_op!(i64 !=),
                             Primitive::F32 => to_bool_bin_op!(f32 !=),
                             Primitive::F64 => to_bool_bin_op!(f64 !=),
                         }
                     },
-                    Code::GR => {
+                    OpCode::GR => {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
                         match arg {
+                            Primitive::U8 => to_bool_bin_op!(u8 >),
+                            Primitive::U16 => to_bool_bin_op!(u16 >),
                             Primitive::U32 => to_bool_bin_op!(u32 >),
                             Primitive::U64 => to_bool_bin_op!(u64 >),
+                            Primitive::I8 => to_bool_bin_op!(i8 >),
+                            Primitive::I16 => to_bool_bin_op!(i16 >),
                             Primitive::I32 => to_bool_bin_op!(i32 >),
                             Primitive::I64 => to_bool_bin_op!(i64 >),
                             Primitive::F32 => to_bool_bin_op!(f32 >),
@@ -184,12 +219,16 @@ impl<'a> VM<'a> {
                             _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
-                    Code::GR_EQ => {
+                    OpCode::GR_EQ => {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
                         match arg {
+                            Primitive::U8 => to_bool_bin_op!(u8 >=),
+                            Primitive::U16 => to_bool_bin_op!(u16 >=),
                             Primitive::U32 => to_bool_bin_op!(u32 >=),
                             Primitive::U64 => to_bool_bin_op!(u64 >=),
+                            Primitive::I8 => to_bool_bin_op!(i8 >=),
+                            Primitive::I16 => to_bool_bin_op!(i16 >=),
                             Primitive::I32 => to_bool_bin_op!(i32 >=),
                             Primitive::I64 => to_bool_bin_op!(i64 >=),
                             Primitive::F32 => to_bool_bin_op!(f32 >=),
@@ -197,12 +236,16 @@ impl<'a> VM<'a> {
                             _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
-                    Code::LE => {
+                    OpCode::LE => {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
                         match arg {
+                            Primitive::U8 => to_bool_bin_op!(u8 <),
+                            Primitive::U16 => to_bool_bin_op!(u16 <),
                             Primitive::U32 => to_bool_bin_op!(u32 <),
                             Primitive::U64 => to_bool_bin_op!(u64 <),
+                            Primitive::I8 => to_bool_bin_op!(i8 <),
+                            Primitive::I16 => to_bool_bin_op!(i16 <),
                             Primitive::I32 => to_bool_bin_op!(i32 <),
                             Primitive::I64 => to_bool_bin_op!(i64 <),
                             Primitive::F32 => to_bool_bin_op!(f32 <),
@@ -210,12 +253,16 @@ impl<'a> VM<'a> {
                             _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
-                    Code::LE_EQ => {
+                    OpCode::LE_EQ => {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
                         match arg {
+                            Primitive::U8 => to_bool_bin_op!(u8 <=),
+                            Primitive::U16 => to_bool_bin_op!(u16 <=),
                             Primitive::U32 => to_bool_bin_op!(u32 <=),
                             Primitive::U64 => to_bool_bin_op!(u64 <=),
+                            Primitive::I8 => to_bool_bin_op!(i8 <=),
+                            Primitive::I16 => to_bool_bin_op!(i16 <=),
                             Primitive::I32 => to_bool_bin_op!(i32 <=),
                             Primitive::I64 => to_bool_bin_op!(i64 <=),
                             Primitive::F32 => to_bool_bin_op!(f32 <=),
@@ -223,8 +270,11 @@ impl<'a> VM<'a> {
                             _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
                         }
                     },
-                    Code::TRANSPILE_ADD => {
-                        let uuid = Uuid::from_u128(pop_sp!(u128));
+                    OpCode::TRANSPILE_ADD => {
+                        let lsb = pop_sp!().u64;
+                        let msb = pop_sp!().u64;
+
+                        let uuid = Uuid::from_u64_pair(msb, lsb);
                         self.transpile_functions.push(uuid);
                     }
                 }

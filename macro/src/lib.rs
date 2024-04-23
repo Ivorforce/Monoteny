@@ -20,18 +20,14 @@ pub fn pop_ip(_item: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn pop_sp(_item: TokenStream) -> TokenStream {
-    let mut args_str = _item.to_string();
-    let mut args = args_str.split(" ");
+    assert!(_item.is_empty());
 
-    let type_ = args.next().unwrap();
-
-    // TODO When it's stable, these should be replaced by quote!()
     format!("
 {{
-            sp = transmute((sp as *mut {type_}).offset(-1));
-            *(sp as *mut {type_})
+            sp = sp.offset(-8);
+            *sp
 }}
-    ", type_=type_).parse().unwrap()
+    ").parse().unwrap()
 }
 
 #[proc_macro]
@@ -45,12 +41,12 @@ pub fn bin_op(_item: TokenStream) -> TokenStream {
     // TODO When it's stable, these should be replaced by quote!()
     format!("
 {{
-            sp = transmute((sp as *mut {type_}).offset(-1));
-            let rhs = *(sp as *mut {type_});
+            sp = sp.offset(-8);
+            let rhs = (*sp).{type_};
 
-            let sp_last = (sp as *mut {type_}).offset(-1);
-            let lhs = *sp_last;
-            *sp_last = lhs {op} rhs;
+            let sp_last = sp.offset(-8);
+            let lhs = (*sp_last).{type_};
+            (*sp_last).{type_} = lhs {op} rhs;
 }}
     ", type_=type_, op=op).parse().unwrap()
 }
@@ -65,12 +61,12 @@ pub fn bool_bin_op(_item: TokenStream) -> TokenStream {
     // TODO When it's stable, these should be replaced by quote!()
     format!("
 {{
-            sp = sp.offset(-1);
-            let rhs = *(sp as *mut bool);
+            sp = sp.offset(-8);
+            let rhs = (*sp).bool;
 
-            let sp_last = sp.offset(-1) as *mut bool;
-            let lhs = *sp_last;
-            *sp_last = lhs {op} rhs;
+            let sp_last = sp.offset(-8);
+            let lhs = (*sp_last).bool;
+            (*sp_last).bool = lhs {op} rhs;
 }}
     ", op=op).parse().unwrap()
 }
@@ -86,14 +82,14 @@ pub fn to_bool_bin_op(_item: TokenStream) -> TokenStream {
     // TODO When it's stable, these should be replaced by quote!()
     format!("
 {{
-            sp = transmute((sp as *mut {type_}).offset(-1));
-            let rhs = *(sp as *mut {type_});
+            sp = sp.offset(-8);
+            let rhs = (*sp).{type_};
 
-            sp = transmute((sp as *mut {type_}).offset(-1));
-            let lhs = *(sp as *mut {type_});
+            sp = sp.offset(-8);
+            let lhs = (*sp).{type_};
 
-            *(sp as *mut bool) = lhs {op} rhs;
-            sp = sp.add(1);
+            (*sp).bool = lhs {op} rhs;
+            sp = sp.add(8);
 }}
     ", type_=type_, op=op).parse().unwrap()
 }

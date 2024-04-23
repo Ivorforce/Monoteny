@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
-use crate::interpreter::chunks::{Chunk, Code};
+use crate::interpreter::chunks::{Chunk, OpCode};
 use crate::interpreter::compiler::builtins::compile_builtin_function_call;
 use crate::interpreter::data::{bytes_to_stack_slots, get_size_bytes};
 use crate::interpreter::Runtime;
@@ -35,11 +35,11 @@ pub fn compile(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Ch
 
     compiler.compile_expression(&implementation.expression_tree.root)?;
     // The root expression is implicitly returned.
-    compiler.chunk.push(Code::RETURN);
+    compiler.chunk.push(OpCode::RETURN);
 
-    compiler.chunk.locals = vec![0; compiler.locals.len()];
+    compiler.chunk.locals_sizes = vec![0; compiler.locals.len()];
     for (obj, idx) in compiler.locals {
-        compiler.chunk.locals[usize::try_from(idx).unwrap()] = bytes_to_stack_slots(get_size_bytes(&obj.type_));
+        compiler.chunk.locals_sizes[usize::try_from(idx).unwrap()] = bytes_to_stack_slots(get_size_bytes(&obj.type_));
     }
 
     Ok(compiler.chunk)
@@ -63,11 +63,11 @@ impl FunctionCompiler<'_> {
             },
             ExpressionOperation::GetLocal(local) => {
                 let slot = self.get_variable_slot(local);
-                self.chunk.push_with_u32(Code::LOAD_LOCAL, slot);
+                self.chunk.push_with_u32(OpCode::LOAD_LOCAL, slot);
             },
             ExpressionOperation::SetLocal(local) => {
                 let slot = self.get_variable_slot(local);
-                self.chunk.push_with_u32(Code::STORE_LOCAL, slot);
+                self.chunk.push_with_u32(OpCode::STORE_LOCAL, slot);
             },
             ExpressionOperation::Return => todo!(),
             ExpressionOperation::FunctionCall(function) => {
@@ -112,10 +112,10 @@ impl FunctionCompiler<'_> {
 pub fn make_function_getter(function: &FunctionHead) -> Chunk {
     let mut chunk = Chunk::new();
     get_function(function, &mut chunk);
-    chunk.push(Code::RETURN);
+    chunk.push(OpCode::RETURN);
     chunk
 }
 
 fn get_function(function: &FunctionHead, chunk: &mut Chunk) {
-    chunk.push_with_u128(Code::LOAD128, function.function_id.as_u128());
+    chunk.push_with_u128(OpCode::LOAD128, function.function_id.as_u128());
 }

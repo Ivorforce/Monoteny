@@ -7,7 +7,7 @@ mod tests {
 
     use crate::error::RResult;
     use crate::interpreter;
-    use crate::interpreter::chunks::{Chunk, Code, Primitive};
+    use crate::interpreter::chunks::{Chunk, OpCode, Primitive};
     use crate::interpreter::Runtime;
     use crate::interpreter::vm::VM;
     use crate::program::module::module_name;
@@ -20,19 +20,19 @@ mod tests {
         runtime.repository.add("common", PathBuf::from("monoteny"));
 
         let mut chunk = Chunk::new();
-        chunk.push_with_u16(Code::LOAD16, 2);
-        chunk.push_with_u16(Code::LOAD16, 6);
-        chunk.push_with_u8(Code::ADD, Primitive::U32 as u8);
-        chunk.push_with_u16(Code::LOAD16, 8);
-        chunk.push_with_u8(Code::EQ, Primitive::U32 as u8);
-        chunk.push(Code::RETURN);
+        chunk.push_with_u16(OpCode::LOAD16, 2);
+        chunk.push_with_u16(OpCode::LOAD16, 6);
+        chunk.push_with_u8(OpCode::ADD, Primitive::U32 as u8);
+        chunk.push_with_u16(OpCode::LOAD16, 8);
+        chunk.push_with_u8(OpCode::EQ, Primitive::U32 as u8);
+        chunk.push(OpCode::RETURN);
 
         let mut vm = VM::new(&chunk);
         vm.run()?;
 
         unsafe {
-            let bool_value = read_unaligned(vm.stack.as_ptr());
-            assert_eq!(bool_value, 1);
+            let value = read_unaligned(vm.stack.as_ptr());
+            assert_eq!(value.i64, 1);
         }
 
         Ok(())

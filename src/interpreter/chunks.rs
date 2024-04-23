@@ -2,7 +2,7 @@ use std::ptr::write_unaligned;
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone)]
-pub enum Code {
+pub enum OpCode {
     NOOP,
     RETURN,
     TRANSPILE_ADD,
@@ -34,8 +34,12 @@ pub enum Code {
 #[derive(Debug, Copy, Clone)]
 pub enum Primitive {
     BOOL,
+    I8,
+    I16,
     I32,
     I64,
+    U8,
+    U16,
     U32,
     U64,
     F32,
@@ -44,26 +48,26 @@ pub enum Primitive {
 
 pub struct Chunk {
     pub code: Vec<u8>,
-    pub locals: Vec<u8>,
+    pub locals_sizes: Vec<u8>,
 }
 
 impl Chunk {
     pub fn new() -> Chunk {
         Chunk {
             code: vec![],
-            locals: vec![],
+            locals_sizes: vec![],
         }
     }
 
-    pub fn push(&mut self, code: Code) {
+    pub fn push(&mut self, code: OpCode) {
         self.code.push(code as u8)
     }
 
-    pub fn push_with_u8(&mut self, code: Code, arg: u8) {
+    pub fn push_with_u8(&mut self, code: OpCode, arg: u8) {
         unsafe { self.code.extend([code as u8, arg]) }
     }
 
-    pub fn push_with_u16(&mut self, code: Code, arg: u16) {
+    pub fn push_with_u16(&mut self, code: OpCode, arg: u16) {
         let len = self.code.len();
 
         unsafe {
@@ -74,7 +78,7 @@ impl Chunk {
         }
     }
 
-    pub fn push_with_u32(&mut self, code: Code, arg: u32) {
+    pub fn push_with_u32(&mut self, code: OpCode, arg: u32) {
         let len = self.code.len();
 
         unsafe {
@@ -85,7 +89,7 @@ impl Chunk {
         }
     }
 
-    pub fn push_with_u64(&mut self, code: Code, arg: u64) {
+    pub fn push_with_u64(&mut self, code: OpCode, arg: u64) {
         let len = self.code.len();
 
         unsafe {
@@ -96,7 +100,7 @@ impl Chunk {
         }
     }
 
-    pub fn push_with_u128(&mut self, code: Code, arg: u128) {
+    pub fn push_with_u128(&mut self, code: OpCode, arg: u128) {
         let len = self.code.len();
 
         unsafe {

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use crate::error::RResult;
-use crate::interpreter::chunks::{Chunk, Code};
+use crate::interpreter::chunks::{Chunk, OpCode};
 use crate::interpreter::compiler::get_function;
 use crate::interpreter::Runtime;
 use crate::program::calls::FunctionBinding;
@@ -19,7 +19,7 @@ pub fn compile_builtin_function_call(descriptor: &FunctionLogicDescriptor, bindi
 
             match repr.name.as_str() {
                 "add" => {
-                    chunk.push(Code::TRANSPILE_ADD);
+                    chunk.push(OpCode::TRANSPILE_ADD);
                 },
                 _ => todo!(),
             }
