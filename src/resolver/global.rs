@@ -179,6 +179,8 @@ impl <'a> GlobalResolver<'a> {
 
                 for fun in resolver.functions {
                     self.schedule_function_body(&fun.function, fun.body.as_ref(), pstatement.value.position.clone());
+                    // TODO Instead of adding conformance functions statically, we should add the abstract function to the scope.
+                    //  This will allow the compiler to determine "function exists but no declaration exists" in the future.
                     self.add_function_interface(fun.function, fun.representation.clone(), &fun.decorators)?;
                 }
             }
