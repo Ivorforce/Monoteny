@@ -73,6 +73,18 @@ mod tests {
     }
 
     #[test]
+    fn eq1() -> RResult<()> {
+        test_runs("test-code/requirements/eq1.monoteny")?;
+        Ok(())
+    }
+
+    #[test]
+    fn eq2() -> RResult<()> {
+        test_runs("test-code/requirements/eq2.monoteny")?;
+        Ok(())
+    }
+
+    #[test]
     fn string_interpolation() -> RResult<()> {
         test_runs("test-code/grammar/string_interpolation.monoteny")?;
         Ok(())
