@@ -150,17 +150,17 @@ impl FunctionCompiler<'_> {
 
 pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogicDescriptor, runtime: &mut Runtime) {
     match descriptor {
-        FunctionLogicDescriptor::Stub => {}
-        FunctionLogicDescriptor::TraitProvider(_) => {}
+        FunctionLogicDescriptor::Stub => todo!(),
+        FunctionLogicDescriptor::TraitProvider(_) => todo!(),
         FunctionLogicDescriptor::FunctionProvider(f) => {
             let uuid = f.function_id;
             runtime.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler| {
                 compiler.chunk.push_with_u128(OpCode::LOAD128, uuid.as_u128());
             }));
         }
-        FunctionLogicDescriptor::PrimitiveOperation { .. } => {}
-        FunctionLogicDescriptor::Constructor(_) => {}
-        FunctionLogicDescriptor::GetMemberField(_, _) => {}
-        FunctionLogicDescriptor::SetMemberField(_, _) => {}
+        FunctionLogicDescriptor::PrimitiveOperation { .. } => todo!(),
+        FunctionLogicDescriptor::Constructor(_) => todo!(),
+        FunctionLogicDescriptor::GetMemberField(_, _) => todo!(),
+        FunctionLogicDescriptor::SetMemberField(_, _) => todo!(),
     }
 }
