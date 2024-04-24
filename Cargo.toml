@@ -8,13 +8,13 @@ build = "build.rs"
 lalrpop = { version = "0.20.2" }
 
 [dependencies]
-clap = "3.2.15"
+clap = "4.5.4"
 custom_error = "1.9.2"
-itertools = "0.10.3"
+itertools = "0.12.1"
 lalrpop-util = { version = "0.20.2", features = ["lexer"] }
 regex = "1"
 replace_with = "0.1.7"
-strum = { version = "0.24.1", features = ["derive"] }
+strum = { version = "0.26.2", features = ["derive"] }
 try_map = "0.3.1"
 uuid = { version = "1.1.2", features = ["v4"] }
 monoteny-macro = { path = "macro" }

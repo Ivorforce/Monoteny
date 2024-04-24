@@ -12,17 +12,17 @@ use crate::{interpreter, transpiler};
 use crate::transpiler::LanguageContext;
 use crate::util::file_writer::write_file_safe;
 
-pub fn make_command() -> Command<'static> {
+pub fn make_command() -> Command {
     Command::new("transpile")
         .about("Transpile a file into another language.")
         .arg_required_else_help(true)
         .arg(arg!(<INPUT> "file to transpile").value_parser(clap::value_parser!(PathBuf)).long("input").short('i'))
         .arg(arg!(<OUTPUT> "output file path").required(false).value_parser(clap::value_parser!(PathBuf)).long("output").short('o'))
-        .arg(arg!(<ALL> "use all available transpilers").required(false).takes_value(false).long("all"))
-        .arg(arg!(<NOREFACTOR> "don't use ANY refactoring").required(false).takes_value(false).long("norefactor"))
-        .arg(arg!(<NOFOLD> "don't use constant folding").required(false).takes_value(false).long("nofold"))
-        .arg(arg!(<NOINLINE> "don't use inlining").required(false).takes_value(false).long("noinline"))
-        .arg(arg!(<NOTRIMLOCALS> "don't trim unused locals code").required(false).takes_value(false).long("notrimlocals"))
+        .arg(arg!(<ALL> "use all available transpilers").required(false).num_args(0).long("all"))
+        .arg(arg!(<NOREFACTOR> "don't use ANY refactoring").required(false).num_args(0).long("norefactor"))
+        .arg(arg!(<NOFOLD> "don't use constant folding").required(false).num_args(0).long("nofold"))
+        .arg(arg!(<NOINLINE> "don't use inlining").required(false).num_args(0).long("noinline"))
+        .arg(arg!(<NOTRIMLOCALS> "don't trim unused locals code").required(false).num_args(0).long("notrimlocals"))
 }
 
 pub fn run(args: &ArgMatches) -> RResult<ExitCode> {
@@ -34,14 +34,14 @@ pub fn run(args: &ArgMatches) -> RResult<ExitCode> {
     let base_filename = output_path_proto.file_name().and_then(OsStr::to_str).unwrap();
     let base_output_path = output_path_proto.parent().unwrap();
 
-    let can_refactor = !args.is_present("NOREFACTOR");
+    let can_refactor = !args.get_flag("NOREFACTOR");
     let config = transpiler::Config {
-        should_constant_fold: can_refactor && !args.is_present("NOFOLD"),
+        should_constant_fold: can_refactor && !args.get_flag("NOFOLD"),
         should_monomorphize: true, // TODO Cannot do without it for now
-        should_inline: can_refactor && !args.is_present("NOINLINE"),
-        should_trim_locals: can_refactor && !args.is_present("NOTRIMLOCALS"),
+        should_inline: can_refactor && !args.get_flag("NOINLINE"),
+        should_trim_locals: can_refactor && !args.get_flag("NOTRIMLOCALS"),
     };
-    let should_output_all = args.is_present("ALL");
+    let should_output_all = args.get_flag("ALL");
 
     let output_extensions: Vec<&str> = match should_output_all {
         true => vec!["py"],

@@ -8,7 +8,7 @@ use crate::interpreter;
 use crate::interpreter::runtime::Runtime;
 use crate::program::module::module_name;
 
-pub fn make_command() -> Command<'static> {
+pub fn make_command() -> Command {
     Command::new("run")
         .about("Run a file using the interpreter.")
         .arg_required_else_help(true)

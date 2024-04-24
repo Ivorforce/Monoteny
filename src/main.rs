@@ -24,7 +24,7 @@ pub mod source;
 pub mod cli;
 pub mod static_analysis;
 
-fn cli() -> Command<'static> {
+fn cli() -> Command {
     Command::new("monoteny")
         .about("A cli implementation for the monoteny language.")
         .subcommand_required(true)

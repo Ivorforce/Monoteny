@@ -7,7 +7,7 @@ use crate::error::{dump_named_failure, dump_start, dump_success, RResult};
 use crate::interpreter::runtime::Runtime;
 use crate::program::module::module_name;
 
-pub fn make_command() -> Command<'static> {
+pub fn make_command() -> Command {
     Command::new("check")
         .about("Parse files to check for validity.")
         .arg_required_else_help(true)
