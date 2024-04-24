@@ -20,6 +20,7 @@ pub mod vm;
 pub mod run;
 pub mod chunks;
 pub mod builtins;
+pub mod opcode;
 pub mod disassembler;
 pub mod data;
 mod tests;

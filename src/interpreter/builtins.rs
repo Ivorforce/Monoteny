@@ -2,8 +2,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::error::RResult;
-use crate::interpreter::chunks::{OpCode, Primitive};
-use crate::interpreter::compiler::FunctionCompiler;
+use crate::interpreter::compiler::InlineFunction;
+use crate::interpreter::opcode::{OpCode, Primitive};
 use crate::interpreter::Runtime;
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::module_name;
@@ -70,14 +70,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
             FunctionLogicDescriptor::TraitProvider(_) => continue,
             FunctionLogicDescriptor::FunctionProvider(_) => continue,
             FunctionLogicDescriptor::PrimitiveOperation { type_, operation } => {
-                let Some(opcode) = opcode_from_primitive_operation(operation) else {
-                    continue
-                };
-
-                let primitive = primitive_from_primitive(type_);
-                Rc::new(move |compiler| {{
-                    compiler.chunk.push_with_u8(opcode, primitive as u8);
-                }})
+                compile_primitive_operation(operation, type_)
             }
             FunctionLogicDescriptor::Constructor(_) => todo!(),
             FunctionLogicDescriptor::GetMemberField(_, _) => todo!(),
@@ -105,28 +98,42 @@ pub fn primitive_from_primitive(primitive: &primitives::Type) -> Primitive {
     }
 }
 
-pub fn opcode_from_primitive_operation(operation: &PrimitiveOperation) -> Option<OpCode> {
-    // TODO The empty ones should be filled in
-    Some(match operation {
-        PrimitiveOperation::And => OpCode::AND,
-        PrimitiveOperation::Or => OpCode::OR,
-        PrimitiveOperation::Not => return None,
-        PrimitiveOperation::Negative => return None,
-        PrimitiveOperation::Add => OpCode::ADD,
-        PrimitiveOperation::Subtract => OpCode::SUB,
-        PrimitiveOperation::Multiply => OpCode::MUL,
-        PrimitiveOperation::Divide => OpCode::DIV,
-        PrimitiveOperation::Modulo => return None,
-        PrimitiveOperation::Exp => return None,
-        PrimitiveOperation::Log => return None,
-        PrimitiveOperation::EqualTo => OpCode::EQ,
-        PrimitiveOperation::NotEqualTo => OpCode::NEQ,
-        PrimitiveOperation::GreaterThan => OpCode::GR,
-        PrimitiveOperation::LesserThan => OpCode::LE,
-        PrimitiveOperation::GreaterThanOrEqual => OpCode::GR_EQ,
-        PrimitiveOperation::LesserThanOrEqual => OpCode::LE_EQ,
-        PrimitiveOperation::ParseIntString => return None,
-        PrimitiveOperation::ParseRealString => return None,
-        PrimitiveOperation::ToString => return None,
-    })
+
+pub fn inline_fn_push(opcode: OpCode) -> InlineFunction {
+    Rc::new(move |compiler| {{
+        compiler.chunk.push(opcode);
+    }})
+}
+
+pub fn inline_fn_push_with_u8(opcode: OpCode, arg: u8) -> InlineFunction {
+    Rc::new(move |compiler| {{
+        compiler.chunk.push_with_u8(opcode, arg);
+    }})
+}
+
+pub fn compile_primitive_operation(operation: &PrimitiveOperation, type_: &primitives::Type) -> InlineFunction {
+    let primitive = primitive_from_primitive(type_) as u8;
+
+    match operation {
+        PrimitiveOperation::And => inline_fn_push(OpCode::AND),
+        PrimitiveOperation::Or => inline_fn_push(OpCode::OR),
+        PrimitiveOperation::Not => inline_fn_push(OpCode::NOT),
+        PrimitiveOperation::Negative => inline_fn_push_with_u8(OpCode::NEG, primitive),
+        PrimitiveOperation::Add => inline_fn_push_with_u8(OpCode::ADD, primitive),
+        PrimitiveOperation::Subtract => inline_fn_push_with_u8(OpCode::SUB, primitive),
+        PrimitiveOperation::Multiply => inline_fn_push_with_u8(OpCode::MUL, primitive),
+        PrimitiveOperation::Divide => inline_fn_push_with_u8(OpCode::DIV, primitive),
+        PrimitiveOperation::Modulo => inline_fn_push_with_u8(OpCode::MOD, primitive),
+        PrimitiveOperation::Exp => inline_fn_push_with_u8(OpCode::EXP, primitive),
+        PrimitiveOperation::Log => inline_fn_push_with_u8(OpCode::LOG, primitive),
+        PrimitiveOperation::EqualTo => inline_fn_push_with_u8(OpCode::EQ, primitive),
+        PrimitiveOperation::NotEqualTo => inline_fn_push_with_u8(OpCode::NEQ, primitive),
+        PrimitiveOperation::GreaterThan => inline_fn_push_with_u8(OpCode::GR, primitive),
+        PrimitiveOperation::LesserThan => inline_fn_push_with_u8(OpCode::LE, primitive),
+        PrimitiveOperation::GreaterThanOrEqual => inline_fn_push_with_u8(OpCode::GR_EQ, primitive),
+        PrimitiveOperation::LesserThanOrEqual => inline_fn_push_with_u8(OpCode::LE_EQ, primitive),
+        PrimitiveOperation::ParseIntString => inline_fn_push_with_u8(OpCode::PARSE, primitive),
+        PrimitiveOperation::ParseRealString => inline_fn_push_with_u8(OpCode::PARSE, primitive),
+        PrimitiveOperation::ToString => inline_fn_push_with_u8(OpCode::TO_STRING, primitive),
+    }
 }

@@ -1,7 +1,8 @@
 use std::mem::transmute;
 use std::ops::Add;
 use std::ptr::read_unaligned;
-use crate::interpreter::chunks::{Chunk, OpCode, Primitive};
+use crate::interpreter::chunks::Chunk;
+use crate::interpreter::opcode::{OpCode, Primitive};
 
 pub fn disassemble(chunk: &Chunk) {
     unsafe {
@@ -19,8 +20,9 @@ pub fn disassemble_one(ip: *const u8) -> usize {
     unsafe {
         let code = transmute::<u8, OpCode>(*ip);
         match code {
-            OpCode::ADD | OpCode::SUB | OpCode::MUL | OpCode::DIV |
-            OpCode::EQ | OpCode::NEQ | OpCode::GR | OpCode::GR_EQ  | OpCode::LE  | OpCode::LE_EQ => {
+            OpCode::NEG | OpCode::ADD | OpCode::SUB | OpCode::MUL | OpCode::DIV |
+            OpCode::EQ | OpCode::NEQ | OpCode::GR | OpCode::GR_EQ  | OpCode::LE  | OpCode::LE_EQ |
+            OpCode::MOD | OpCode::EXP | OpCode::LOG | OpCode::PARSE | OpCode::TO_STRING => {
                 print!("{:?}\t{:?}", code, transmute::<u8, Primitive>(*ip.add(1)));
                 return 1 + 1;
             },
@@ -44,7 +46,7 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("{:?}\t{:?}", code, read_unaligned(ip.add(1) as *mut u128));
                 return 1 + 16;
             }
-            OpCode::NOOP | OpCode::RETURN | OpCode::TRANSPILE_ADD | OpCode::AND | OpCode::OR | OpCode::POP64 | OpCode::POP128 | OpCode::PRINT => {
+            OpCode::NOOP | OpCode::RETURN | OpCode::TRANSPILE_ADD | OpCode::AND | OpCode::OR | OpCode::POP64 | OpCode::POP128 | OpCode::PRINT | OpCode::NOT => {
                 print!("{:?}", code);
                 return 1;
             },

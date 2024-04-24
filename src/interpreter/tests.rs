@@ -5,7 +5,8 @@ mod tests {
 
     use crate::error::RResult;
     use crate::interpreter;
-    use crate::interpreter::chunks::{Chunk, OpCode, Primitive};
+    use crate::interpreter::chunks::Chunk;
+    use crate::interpreter::opcode::{OpCode, Primitive};
     use crate::interpreter::Runtime;
     use crate::interpreter::vm::VM;
     use crate::program::module::{Module, module_name};
@@ -62,6 +63,12 @@ mod tests {
     #[test]
     fn run_custom_grammar() -> RResult<()> {
         test_runs("test-code/grammar/custom_grammar.monoteny")?;
+        Ok(())
+    }
+
+    #[test]
+    fn run_eq0() -> RResult<()> {
+        test_runs("test-code/requirements/eq0.monoteny")?;
         Ok(())
     }
 }

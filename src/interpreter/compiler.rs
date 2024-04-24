@@ -1,12 +1,11 @@
-use std::alloc::{alloc, Layout};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::mem::transmute;
 use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
-use crate::interpreter::chunks::{Chunk, OpCode};
-use crate::interpreter::data::{bytes_to_stack_slots, get_size_bytes, Value};
+use crate::interpreter::chunks::Chunk;
+use crate::interpreter::data::{bytes_to_stack_slots, get_size_bytes, string_to_ptr, Value};
+use crate::interpreter::opcode::OpCode;
 use crate::interpreter::Runtime;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
@@ -125,9 +124,7 @@ impl FunctionCompiler<'_> {
             ExpressionOperation::ArrayLiteral => todo!(),
             ExpressionOperation::StringLiteral(string) => {
                 unsafe {
-                    let data = alloc(Layout::new::<String>());
-                    *(data as *mut String) = string.clone();
-                    self.constants.push(Value { ptr: transmute(data) });
+                    self.constants.push(Value { ptr: string_to_ptr(string) });
                     self.chunk.push_with_u32(OpCode::LOAD_CONSTANT, u32::try_from(self.constants.len() - 1).unwrap());
                 }
             },
@@ -158,7 +155,7 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
                 compiler.chunk.push_with_u128(OpCode::LOAD128, uuid.as_u128());
             }));
         }
-        FunctionLogicDescriptor::PrimitiveOperation { .. } => todo!(),
+        FunctionLogicDescriptor::PrimitiveOperation { .. } => todo!("{:?}", descriptor),
         FunctionLogicDescriptor::Constructor(_) => todo!(),
         FunctionLogicDescriptor::GetMemberField(_, _) => todo!(),
         FunctionLogicDescriptor::SetMemberField(_, _) => todo!(),

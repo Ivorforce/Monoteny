@@ -1,3 +1,5 @@
+use std::alloc::{alloc, Layout};
+use std::intrinsics::transmute;
 use crate::program::types::TypeProto;
 
 #[derive(Copy, Clone)]
@@ -20,6 +22,12 @@ impl Value {
     pub fn alloc() -> Value {
         Value { u8: 0 }
     }
+}
+
+pub unsafe fn string_to_ptr(string: &String) -> *mut () {
+    let data = alloc(Layout::new::<String>());
+    *(data as *mut String) = string.clone();
+    transmute(data)
 }
 
 pub fn get_size_bytes(type_: &TypeProto) -> usize {
