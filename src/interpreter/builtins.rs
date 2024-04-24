@@ -22,9 +22,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
 
         runtime.function_inlines.insert(Rc::clone(function), match representation.name.as_str() {
             "_write_line" => inline_fn_push(OpCode::PRINT),
-            "_exit_with_error" => Rc::new(move |compiler| {{
-                panic!();
-            }}),
+            "_exit_with_error" => inline_fn_push(OpCode::PANIC),
             _ => continue,
         });
     }

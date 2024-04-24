@@ -47,6 +47,7 @@ impl<'a> VM<'a> {
 
                 match code {
                     OpCode::NOOP => {},
+                    OpCode::PANIC => panic!(),
                     OpCode::RETURN => return Ok(()),
                     OpCode::LOAD8 => {
                         (*sp).u8 = pop_ip!(u8);

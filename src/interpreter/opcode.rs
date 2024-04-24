@@ -2,6 +2,7 @@
 #[derive(Debug, Copy, Clone)]
 pub enum OpCode {
     NOOP,
+    PANIC,
     RETURN,
     // TODO Replace with function call?
     TRANSPILE_ADD,
