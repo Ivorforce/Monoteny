@@ -5,7 +5,7 @@ use itertools::Itertools;
 use linked_hash_map::LinkedHashMap;
 
 use crate::error::RResult;
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::program::global::FunctionLogicDescriptor;
 use crate::refactor::Refactor;
 use crate::transpiler;

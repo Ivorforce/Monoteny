@@ -3,7 +3,7 @@ use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 
 use crate::error::{RResult, RuntimeError};
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::resolver::grammar::{Grammar, Pattern, PrecedenceGroup};
 use crate::program::allocation::ObjectReference;
 use crate::program::function_object::{FunctionTargetType, FunctionOverload, FunctionRepresentation};

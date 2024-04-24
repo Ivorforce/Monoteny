@@ -5,7 +5,7 @@ use itertools::Itertools;
 use try_map::FallibleMapExt;
 
 use crate::error::{RResult, RuntimeError};
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::resolver::scopes;
 use crate::resolver::type_factory::TypeFactory;
 use crate::parser::ast;

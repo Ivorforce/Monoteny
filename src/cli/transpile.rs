@@ -6,7 +6,7 @@ use clap::{arg, ArgMatches, Command};
 use itertools::Itertools;
 
 use crate::error::{dump_failure, dump_start, dump_success, RResult};
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::program::module::{Module, module_name};
 use crate::{interpreter, transpiler};
 use crate::transpiler::LanguageContext;

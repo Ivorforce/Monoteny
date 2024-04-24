@@ -5,7 +5,7 @@ use clap::{arg, ArgMatches, Command};
 
 use crate::error::RResult;
 use crate::interpreter;
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::program::module::module_name;
 
 pub fn make_command() -> Command<'static> {

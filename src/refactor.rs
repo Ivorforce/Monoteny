@@ -5,7 +5,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use linked_hash_set::LinkedHashSet;
 
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::program::calls::FunctionBinding;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionType};

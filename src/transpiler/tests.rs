@@ -7,7 +7,7 @@ mod tests {
     use crate::{interpreter, parser, transpiler};
     use crate::error::{RResult, RuntimeError};
     use crate::interpreter::run::gather_functions_logic;
-    use crate::interpreter::Runtime;
+    use crate::interpreter::runtime::Runtime;
     use crate::program::module::module_name;
     use crate::transpiler::{LanguageContext, Transpiler};
 

@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use crate::error::{ErrInRange, RResult, RuntimeError};
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::resolver::{interpreter_mock, scopes};
 use crate::parser::ast;
 use crate::program::functions::ParameterKey;

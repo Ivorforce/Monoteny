@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::resolver::referencible;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface};

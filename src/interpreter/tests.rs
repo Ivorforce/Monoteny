@@ -7,7 +7,7 @@ mod tests {
     use crate::interpreter;
     use crate::interpreter::chunks::Chunk;
     use crate::interpreter::opcode::{OpCode, Primitive};
-    use crate::interpreter::Runtime;
+    use crate::interpreter::runtime::Runtime;
     use crate::interpreter::vm::VM;
     use crate::program::module::{Module, module_name};
     use crate::transpiler::LanguageContext;

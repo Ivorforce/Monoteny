@@ -6,7 +6,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 
 use crate::error::{ErrInRange, RResult, RuntimeError};
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
 use crate::resolver::grammar::parse::{resolve_expression_to_tokens, resolve_tokens_to_value};
 use crate::resolver::grammar::Struct;

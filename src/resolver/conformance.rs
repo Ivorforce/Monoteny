@@ -5,7 +5,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 
 use crate::error::{RResult, RuntimeError};
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::resolver::interface::resolve_function_interface;
 use crate::resolver::scopes;
 use crate::parser::ast;

@@ -4,7 +4,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 
 use crate::error::RResult;
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
 use crate::program::global::{FunctionImplementation, FunctionLogic, FunctionLogicDescriptor};

@@ -3,7 +3,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compiler::compile_deep;
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::VM;
 use crate::program::global::FunctionLogic;
 use crate::program::module::Module;

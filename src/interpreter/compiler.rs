@@ -6,7 +6,7 @@ use crate::error::{RResult, RuntimeError};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{bytes_to_stack_slots, get_size_bytes, string_to_ptr, Value};
 use crate::interpreter::opcode::OpCode;
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;

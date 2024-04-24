@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::error::RResult;
 use crate::interpreter::compiler::InlineFunction;
 use crate::interpreter::opcode::{OpCode, Primitive};
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::module_name;
 use crate::program::primitives;

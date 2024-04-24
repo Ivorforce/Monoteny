@@ -6,7 +6,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 
 use crate::error::{ErrInRange, RResult, RuntimeError};
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::resolver::{imports, interpreter_mock, referencible, scopes};
 use crate::resolver::conformance::ConformanceResolver;
 use crate::resolver::decorations::try_parse_pattern;

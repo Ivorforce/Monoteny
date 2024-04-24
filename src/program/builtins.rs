@@ -1,4 +1,4 @@
-use crate::interpreter::Runtime;
+use crate::interpreter::runtime::Runtime;
 use crate::program::module::{Module, module_name};
 
 pub mod primitives;
