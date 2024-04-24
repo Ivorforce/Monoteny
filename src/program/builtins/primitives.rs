@@ -21,12 +21,10 @@ pub fn create_traits(runtime: &mut Runtime, module: &mut Module) -> HashMap<prim
         primitives::Type::Int(16),
         primitives::Type::Int(32),
         primitives::Type::Int(64),
-        primitives::Type::Int(128),
         primitives::Type::UInt(8),
         primitives::Type::UInt(16),
         primitives::Type::UInt(32),
         primitives::Type::UInt(64),
-        primitives::Type::UInt(128),
         primitives::Type::Float(32),
         primitives::Type::Float(64),
     ] {
