@@ -5,6 +5,7 @@ use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{bytes_to_stack_slots, get_size_bytes, string_to_ptr, Value};
+use crate::interpreter::disassembler::disassemble;
 use crate::interpreter::opcode::OpCode;
 use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::ObjectReference;
@@ -79,6 +80,10 @@ fn compile_function(runtime: &mut Runtime, implementation: &FunctionImplementati
 
     compiler.chunk.locals_count = u32::try_from(compiler.locals.len()).unwrap();
     compiler.chunk.constants = compiler.constants;
+
+    // println!("{:?}", implementation.head);
+    // disassemble(&compiler.chunk);
+    // println!("\n");
 
     Ok(compiler.chunk)
 }
