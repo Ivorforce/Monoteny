@@ -8,7 +8,7 @@ mod tests {
     use crate::interpreter::chunks::{Chunk, OpCode, Primitive};
     use crate::interpreter::Runtime;
     use crate::interpreter::vm::VM;
-    use crate::program::module::module_name;
+    use crate::program::module::{Module, module_name};
     use crate::transpiler::LanguageContext;
 
     /// This tests the transpiler, interpreter and function calls.
@@ -38,19 +38,30 @@ mod tests {
         Ok(())
     }
 
-    /// This tests the transpiler, interpreter and function calls.
-    #[test]
-    fn run_hello_world() -> RResult<()> {
+    fn test_runs(path: &str) -> RResult<Box<Module>> {
         let mut runtime = Runtime::new()?;
         runtime.repository.add("common", PathBuf::from("monoteny"));
 
-        let module = runtime.load_file_as_module(&PathBuf::from("test-code/hello_world.monoteny"), module_name("main"))?;
+        let module = runtime.load_file_as_module(&PathBuf::from(path), module_name("main"))?;
 
-        assert_eq!(module.exposed_functions.len(), 2);
-
-        // TODO Pass a pipe and monitor that "Hello World!" is printed.
         interpreter::run::main(&module, &mut runtime)?;
 
+        Ok(module)
+    }
+
+    /// This tests the transpiler, interpreter and function calls.
+    #[test]
+    fn run_hello_world() -> RResult<()> {
+        // TODO Pass a pipe and monitor that "Hello World!" is printed.
+        let module = test_runs("test-code/hello_world.monoteny")?;
+        assert_eq!(module.exposed_functions.len(), 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn run_custom_grammar() -> RResult<()> {
+        test_runs("test-code/grammar/custom_grammar.monoteny")?;
         Ok(())
     }
 }
