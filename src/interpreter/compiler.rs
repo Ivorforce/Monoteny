@@ -1,5 +1,3 @@
-mod builtins;
-
 use std::alloc::{alloc, Layout};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -8,23 +6,24 @@ use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::chunks::{Chunk, OpCode};
-use crate::interpreter::compiler::builtins::compile_builtin_function_call;
 use crate::interpreter::data::{bytes_to_stack_slots, get_size_bytes, Value};
 use crate::interpreter::Runtime;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::FunctionHead;
-use crate::program::global::{FunctionImplementation, FunctionLogic};
+use crate::program::global::{FunctionImplementation, FunctionLogic, FunctionLogicDescriptor};
 use crate::refactor::Refactor;
 use crate::refactor::simplify::Simplify;
 use crate::transpiler;
 
+pub type InlineFunction = Rc<dyn Fn(&mut FunctionCompiler)>;
+
 pub struct FunctionCompiler<'a> {
-    runtime: &'a Runtime,
-    implementation: &'a FunctionImplementation,
-    chunk: Chunk,
-    locals: HashMap<Rc<ObjectReference>, u32>,
-    constants: Vec<Value>,
+    pub runtime: &'a Runtime,
+    pub implementation: &'a FunctionImplementation,
+    pub chunk: Chunk,
+    pub locals: HashMap<Rc<ObjectReference>, u32>,
+    pub constants: Vec<Value>,
 }
 
 pub fn compile_deep(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Chunk> {
@@ -39,12 +38,31 @@ pub fn compile_deep(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResu
     let mut simplify = Simplify::new(&mut refactor, &transpiler::Config::default());
     simplify.run();
 
-    // TODO We should gather all invented functions, register them in the runtime, and compile them.
-    let FunctionLogic::Implementation(implementation) = &refactor.fn_logic[function] else {
+    let needed_functions = refactor.gather_needed_functions();
+    let fn_logic = refactor.fn_logic;
+
+    for function in needed_functions {
+        match &fn_logic[&function] {
+            FunctionLogic::Descriptor(d) => {
+                if runtime.function_inlines.contains_key(&function) || runtime.function_evaluators.contains_key(&function.function_id) {
+                    continue
+                }
+
+                compile_descriptor(&function, d, runtime);
+            }
+            FunctionLogic::Implementation(implementation) => {
+                let compiled = compile_function(runtime, implementation)?;
+                runtime.function_evaluators.insert(function.function_id, compiled);
+            }
+        }
+    }
+
+    let FunctionLogic::Implementation(implementation) = &fn_logic[function] else {
         return Err(RuntimeError::new(format!("main! function was somehow internal after refactor.")));
     };
 
     compile_function(runtime, implementation)
+
 }
 
 fn compile_function(runtime: &mut Runtime, implementation: &FunctionImplementation) -> RResult<Chunk> {
@@ -96,18 +114,11 @@ impl FunctionCompiler<'_> {
                     self.compile_expression(expr)?;
                 }
 
-                let logic = &self.runtime.source.fn_logic[&function.function];
-                match logic {
-                    FunctionLogic::Implementation(i) => {
-                        if !function.requirements_fulfillment.is_empty() {
-                            return Err(RuntimeError::new(format!("Internal error; function call to {:?} was not monomorphized before call.", function.function)));
-                        }
-
-                        todo!()
-                    }
-                    FunctionLogic::Descriptor(d) => {
-                        compile_builtin_function_call(d, function, &mut self.chunk, &self.runtime)?;
-                    }
+                if let Some(inline_fn) = self.runtime.function_inlines.get(&function.function) {
+                    inline_fn(self);
+                }
+                else {
+                    todo!()
                 }
             },
             ExpressionOperation::PairwiseOperations { .. } => todo!(),
@@ -137,13 +148,19 @@ impl FunctionCompiler<'_> {
     }
 }
 
-pub fn make_function_getter(function: &FunctionHead) -> Chunk {
-    let mut chunk = Chunk::new();
-    get_function(function, &mut chunk);
-    chunk.push(OpCode::RETURN);
-    chunk
-}
-
-fn get_function(function: &FunctionHead, chunk: &mut Chunk) {
-    chunk.push_with_u128(OpCode::LOAD128, function.function_id.as_u128());
+pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogicDescriptor, runtime: &mut Runtime) {
+    match descriptor {
+        FunctionLogicDescriptor::Stub => {}
+        FunctionLogicDescriptor::TraitProvider(_) => {}
+        FunctionLogicDescriptor::FunctionProvider(f) => {
+            let uuid = f.function_id;
+            runtime.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler| {
+                compiler.chunk.push_with_u128(OpCode::LOAD128, uuid.as_u128());
+            }));
+        }
+        FunctionLogicDescriptor::PrimitiveOperation { .. } => {}
+        FunctionLogicDescriptor::Constructor(_) => {}
+        FunctionLogicDescriptor::GetMemberField(_, _) => {}
+        FunctionLogicDescriptor::SetMemberField(_, _) => {}
+    }
 }

@@ -6,7 +6,9 @@ use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::{parser, program, resolver};
 use crate::interpreter::chunks::Chunk;
+use crate::interpreter::compiler::InlineFunction;
 use crate::parser::ast;
+use crate::program::functions::FunctionHead;
 use crate::program::module::{Module, module_name, ModuleName};
 use crate::program::traits::Trait;
 use crate::repository::Repository;
@@ -33,6 +35,7 @@ pub struct Runtime {
     pub function_evaluators: HashMap<Uuid, Chunk>,
     // TODO We'll need these only in the future when we compile functions to constants.
     // pub global_assignments: HashMap<Uuid, Value>,
+    pub function_inlines: HashMap<Rc<FunctionHead>, InlineFunction>,
 
     // These remain unchanged after resolution.
     pub source: Source,
@@ -50,6 +53,7 @@ impl Runtime {
             primitives: None,
             traits: None,
             function_evaluators: Default::default(),
+            function_inlines: Default::default(),
             source: Source::new(),
             repository: Repository::new(),
         });
