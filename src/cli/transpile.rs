@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use clap::{arg, ArgMatches, Command};
+use clap::{arg, ArgAction, ArgMatches, Command};
 use itertools::Itertools;
 
 use crate::error::{dump_failure, dump_start, dump_success, RResult};
@@ -18,11 +18,11 @@ pub fn make_command() -> Command {
         .arg_required_else_help(true)
         .arg(arg!(<INPUT> "file to transpile").value_parser(clap::value_parser!(PathBuf)).long("input").short('i'))
         .arg(arg!(<OUTPUT> "output file path").required(false).value_parser(clap::value_parser!(PathBuf)).long("output").short('o'))
-        .arg(arg!(<ALL> "use all available transpilers").required(false).num_args(0).long("all"))
-        .arg(arg!(<NOREFACTOR> "don't use ANY refactoring").required(false).num_args(0).long("norefactor"))
-        .arg(arg!(<NOFOLD> "don't use constant folding").required(false).num_args(0).long("nofold"))
-        .arg(arg!(<NOINLINE> "don't use inlining").required(false).num_args(0).long("noinline"))
-        .arg(arg!(<NOTRIMLOCALS> "don't trim unused locals code").required(false).num_args(0).long("notrimlocals"))
+        .arg(arg!(<ALL> "use all available transpilers").required(false).action(ArgAction::SetTrue).long("all"))
+        .arg(arg!(<NOREFACTOR> "don't use ANY refactoring").required(false).action(ArgAction::SetTrue).long("norefactor"))
+        .arg(arg!(<NOFOLD> "don't use constant folding").required(false).action(ArgAction::SetTrue).long("nofold"))
+        .arg(arg!(<NOINLINE> "don't use inlining").required(false).action(ArgAction::SetTrue).long("noinline"))
+        .arg(arg!(<NOTRIMLOCALS> "don't trim unused locals code").required(false).action(ArgAction::SetTrue).long("notrimlocals"))
 }
 
 pub fn run(args: &ArgMatches) -> RResult<ExitCode> {
