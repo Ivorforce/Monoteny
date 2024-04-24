@@ -104,4 +104,11 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn string_interpolation() -> RResult<()> {
+        let py_file = test_transpiles("test-code/grammar/string_interpolation.monoteny")?;
+
+        Ok(())
+    }
 }

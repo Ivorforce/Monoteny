@@ -345,7 +345,6 @@ impl<'a> VM<'a> {
 
                         let sp_last = sp.offset(-8);
                         let string = (*((*sp_last).ptr as *mut String)).as_str();
-                        let i: i32 = string.parse().unwrap();
 
                         match arg {
                             Primitive::U8 => (*sp_last).u8 = string.parse().unwrap(),
@@ -377,6 +376,14 @@ impl<'a> VM<'a> {
                             Primitive::F64 => un_expr!(f64, ptr, to_str_ptr(val)),
                             Primitive::BOOL => un_expr!(bool, ptr, to_str_ptr(val)),
                         }
+                    }
+                    OpCode::ADD_STRING => {
+                        let rhs = (*(pop_sp!().ptr as *mut String)).as_str();
+
+                        let sp_last = sp.offset(-8);
+                        let lhs = (*((*sp_last).ptr as *mut String)).as_str();
+
+                        (*sp_last).ptr = to_str_ptr(lhs.to_string() + rhs);
                     }
                 }
             }

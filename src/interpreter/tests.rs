@@ -52,7 +52,7 @@ mod tests {
 
     /// This tests the transpiler, interpreter and function calls.
     #[test]
-    fn run_hello_world() -> RResult<()> {
+    fn hello_world() -> RResult<()> {
         // TODO Pass a pipe and monitor that "Hello World!" is printed.
         let module = test_runs("test-code/hello_world.monoteny")?;
         assert_eq!(module.exposed_functions.len(), 2);
@@ -61,14 +61,20 @@ mod tests {
     }
 
     #[test]
-    fn run_custom_grammar() -> RResult<()> {
+    fn custom_grammar() -> RResult<()> {
         test_runs("test-code/grammar/custom_grammar.monoteny")?;
         Ok(())
     }
 
     #[test]
-    fn run_eq0() -> RResult<()> {
+    fn eq0() -> RResult<()> {
         test_runs("test-code/requirements/eq0.monoteny")?;
+        Ok(())
+    }
+
+    #[test]
+    fn string_interpolation() -> RResult<()> {
+        test_runs("test-code/grammar/string_interpolation.monoteny")?;
         Ok(())
     }
 }

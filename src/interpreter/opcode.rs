@@ -36,6 +36,8 @@ pub enum OpCode {
     LE_EQ,
     PARSE,
     TO_STRING,
+    // TODO This can probably be done in-code some time (?)
+    ADD_STRING,
 }
 
 #[repr(u8)]

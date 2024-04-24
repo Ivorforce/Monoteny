@@ -21,9 +21,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         let representation = &runtime.source.fn_representations[function];
 
         runtime.function_inlines.insert(Rc::clone(function), match representation.name.as_str() {
-            "_write_line" => Rc::new(move |compiler| {{
-                compiler.chunk.push(OpCode::PRINT);
-            }}),
+            "_write_line" => inline_fn_push(OpCode::PRINT),
             "_exit_with_error" => Rc::new(move |compiler| {{
                 panic!();
             }}),
@@ -35,9 +33,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         let representation = &runtime.source.fn_representations[function];
 
         runtime.function_inlines.insert(Rc::clone(function), match representation.name.as_str() {
-            "add" => Rc::new(move |compiler| {{
-                compiler.chunk.push(OpCode::TRANSPILE_ADD);
-            }}),
+            "add" => inline_fn_push(OpCode::TRANSPILE_ADD),
             _ => continue,
         });
     }
@@ -46,12 +42,17 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         let representation = &runtime.source.fn_representations[function];
 
         runtime.function_inlines.insert(Rc::clone(function), match representation.name.as_str() {
-            "true" => Rc::new(move |compiler| {{
-                compiler.chunk.push_with_u8(OpCode::TRANSPILE_ADD, true as u8);
-            }}),
-            "false" => Rc::new(move |compiler| {{
-                compiler.chunk.push_with_u8(OpCode::TRANSPILE_ADD, false as u8);
-            }}),
+            "true" => inline_fn_push_with_u8(OpCode::TRANSPILE_ADD, true as u8),
+            "false" => inline_fn_push_with_u8(OpCode::TRANSPILE_ADD, false as u8),
+            _ => continue,
+        });
+    }
+
+    for function in runtime.source.module_by_name[&module_name("core.strings")].explicit_functions(&runtime.source) {
+        let representation = &runtime.source.fn_representations[function];
+
+        runtime.function_inlines.insert(Rc::clone(function), match representation.name.as_str() {
+            "add" => inline_fn_push(OpCode::ADD_STRING),
             _ => continue,
         });
     }
@@ -97,7 +98,6 @@ pub fn primitive_from_primitive(primitive: &primitives::Type) -> Primitive {
         _ => todo!("Unsupported type: {:?}", primitive)
     }
 }
-
 
 pub fn inline_fn_push(opcode: OpCode) -> InlineFunction {
     Rc::new(move |compiler| {{

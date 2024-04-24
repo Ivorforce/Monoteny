@@ -1,0 +1,9 @@
+-- This tests whether we strings can be interpolated.
+
+def main! :: {
+    _write_line("Left: \("String"), Right: \(2 'Int32)");
+};
+
+def transpile! :: {
+    transpiler.add(main);
+};
