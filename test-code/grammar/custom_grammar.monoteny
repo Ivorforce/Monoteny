@@ -13,8 +13,11 @@ precedence_order!([
 ![pattern(lhs + rhs, AdditionPrecedence)]
 def _add(lhs '$Number, rhs '$Number) -> $Number :: add(lhs, rhs);
 
+![pattern(lhs * rhs, MultiplicationPrecedence)]
+def _multiply(lhs '$Number, rhs '$Number) -> $Number :: multiply(lhs, rhs);
+
 def main! :: {
-    let a 'Float32 = 1 + 2;
+    _write_line(format(1 + 2 * 2 'Float32));
 };
 
 def transpile! :: {
