@@ -16,7 +16,7 @@ pub fn derive_error(error: &ErrorRecovery<usize, Token<'_>, Error>, start: usize
             ParseError::InvalidToken { .. } => {
                 format!("Invalid token")
             }
-            ParseError::UnrecognizedEOF { .. } => {
+            ParseError::UnrecognizedEof { .. } => {
                 format!("Unexpected end of file")
             }
             ParseError::UnrecognizedToken { token, expected } => {

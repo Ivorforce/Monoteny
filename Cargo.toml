@@ -5,13 +5,13 @@ edition = "2021"
 build = "build.rs"
 
 [build-dependencies]
-lalrpop = { version = "^0.19.8" }
+lalrpop = { version = "0.20.2" }
 
 [dependencies]
 clap = "3.2.15"
 custom_error = "1.9.2"
 itertools = "0.10.3"
-lalrpop-util = { version = "^0.19.8", features = ["lexer"] }
+lalrpop-util = { version = "0.20.2", features = ["lexer"] }
 regex = "1"
 replace_with = "0.1.7"
 strum = { version = "0.24.1", features = ["derive"] }
