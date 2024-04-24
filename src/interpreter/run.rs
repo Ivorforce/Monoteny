@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
@@ -7,9 +6,6 @@ use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::VM;
 use crate::program::global::FunctionLogic;
 use crate::program::module::Module;
-use crate::refactor::Refactor;
-use crate::refactor::simplify::Simplify;
-use crate::transpiler;
 use crate::transpiler::{TranspiledArtifact, Transpiler};
 
 pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {

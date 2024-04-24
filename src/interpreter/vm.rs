@@ -1,8 +1,6 @@
-use std::alloc::{alloc, Layout};
 use std::mem::transmute;
 use monoteny_macro::{bin_expr, pop_ip, pop_sp, un_expr};
 use std::ptr::{read_unaligned, write_unaligned};
-use itertools::Itertools;
 use uuid::Uuid;
 use std::ops::Neg;
 use crate::error::{RResult, RuntimeError};

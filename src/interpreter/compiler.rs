@@ -4,7 +4,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::chunks::Chunk;
-use crate::interpreter::data::{bytes_to_stack_slots, get_size_bytes, string_to_ptr, Value};
+use crate::interpreter::data::{string_to_ptr, Value};
 use crate::interpreter::disassembler::disassemble;
 use crate::interpreter::opcode::OpCode;
 use crate::interpreter::runtime::Runtime;
@@ -98,9 +98,8 @@ impl FunctionCompiler<'_> {
                 for expr in children {
                     self.compile_expression(expr)?;
                     let type_ = &self.implementation.type_forest.resolve_binding_alias(expr)?;
-                    let size_slots = bytes_to_stack_slots(get_size_bytes(type_));
-                    if size_slots > 0 {
-                        todo!("Need to pop")
+                    if !type_.unit.is_void() {
+                        self.chunk.push(OpCode::POP64);
                     }
                 }
             },

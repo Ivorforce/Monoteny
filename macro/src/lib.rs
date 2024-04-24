@@ -3,7 +3,7 @@ use proc_macro::TokenStream;
 
 #[proc_macro]
 pub fn pop_ip(_item: TokenStream) -> TokenStream {
-    let mut args_str = _item.to_string();
+    let args_str = _item.to_string();
     let mut args = args_str.split(" ");
 
     let type_ = args.next().unwrap();
@@ -33,7 +33,7 @@ pub fn pop_sp(_item: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn un_expr(_item: TokenStream) -> TokenStream {
-    let mut args_str = _item.to_string();
+    let args_str = _item.to_string();
     let mut args = args_str.split(",");
 
     let type_ = args.next().unwrap();
@@ -52,7 +52,7 @@ pub fn un_expr(_item: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn bin_expr(_item: TokenStream) -> TokenStream {
-    let mut args_str = _item.to_string();
+    let args_str = _item.to_string();
     let mut args = args_str.split(",");
 
     let type_ = args.next().unwrap();
