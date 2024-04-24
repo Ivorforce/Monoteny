@@ -277,9 +277,9 @@ impl<'a> VM<'a> {
                         self.transpile_functions.push(uuid);
                     }
                     OpCode::PRINT => {
-                        let ptr = pop_sp!().ptr;
-                        let string: *mut String = (ptr as *mut String).clone();
-                        println!("{}", *string);
+                        // TODO Shouldn't need to copy it
+                        let string: String = read_unaligned(pop_sp!().ptr as *mut String);
+                        println!("{}", string);
                     }
                     OpCode::NEG => {
                         let arg: Primitive = transmute(pop_ip!(u8));
@@ -345,7 +345,8 @@ impl<'a> VM<'a> {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
                         let sp_last = sp.offset(-8);
-                        let string = (*((*sp_last).ptr as *mut String)).as_str();
+                        // TODO Shouldn't need to copy
+                        let string = read_unaligned((*sp_last).ptr as *mut String);
 
                         match arg {
                             Primitive::U8 => (*sp_last).u8 = string.parse().unwrap(),
@@ -379,12 +380,14 @@ impl<'a> VM<'a> {
                         }
                     }
                     OpCode::ADD_STRING => {
-                        let rhs = (*(pop_sp!().ptr as *mut String)).as_str();
+                        // TODO Shouldn't need to copy
+                        let rhs = read_unaligned(pop_sp!().ptr as *mut String);
 
+                        // TODO Shouldn't need to copy
                         let sp_last = sp.offset(-8);
-                        let lhs = (*((*sp_last).ptr as *mut String)).as_str();
+                        let lhs = read_unaligned((*sp_last).ptr as *mut String);
 
-                        (*sp_last).ptr = to_str_ptr(lhs.to_string() + rhs);
+                        (*sp_last).ptr = to_str_ptr(lhs.to_string() + &rhs);
                     }
                 }
             }
