@@ -199,6 +199,23 @@ impl Display for ParameterKey {
     }
 }
 
+impl Debug for Parameter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.external_key {
+            ParameterKey::Positional => {
+                write!(f, "{} '{:?}", self.internal_name, self.type_)
+            }
+            ParameterKey::Name(n) => {
+                if n != &self.internal_name {
+                    write!(f, "{}: {} '{:?}", n, self.internal_name, self.type_)
+                } else {
+                    write!(f, "{}: '{:?}", n, self.type_)
+                }
+            }
+        }
+    }
+}
+
 impl DebugWithOptions<FunctionRepresentation> for FunctionHead {
     fn fmt(&self, fmt: &mut Formatter<'_>, representation: &FunctionRepresentation) -> std::fmt::Result {
         let call_type_symbol = match self.function_type {
@@ -211,28 +228,10 @@ impl DebugWithOptions<FunctionRepresentation> for FunctionHead {
 
 impl DebugWithOptions<FunctionRepresentation> for FunctionInterface {
     fn fmt(&self, fmt: &mut Formatter<'_>, representation: &FunctionRepresentation) -> std::fmt::Result {
-        fn format_parameter(fmt: &mut Formatter, parameter: &Parameter) -> std::fmt::Result {
-            match &parameter.external_key {
-                ParameterKey::Positional => {
-                    write!(fmt, "{} '{:?},", parameter.internal_name, parameter.type_)?;
-                }
-                ParameterKey::Name(n) => {
-                    if n != &parameter.internal_name {
-                        write!(fmt, "{}: {} '{:?},", n, parameter.internal_name, parameter.type_)?;
-                    } else {
-                        write!(fmt, "{}: '{:?},", n, parameter.type_)?;
-                    }
-                }
-            }
-            Ok(())
-        }
-
         let mut head = 0;
 
         if representation.target_type == FunctionTargetType::Member {
-            write!(fmt, "(")?;
-            format_parameter(fmt, self.parameters.get(head).unwrap())?;
-            write!(fmt, ").")?;
+            write!(fmt, "({:?}).", self.parameters.get(head).unwrap())?;
             head += 1;
         }
 
@@ -240,8 +239,8 @@ impl DebugWithOptions<FunctionRepresentation> for FunctionInterface {
 
         if representation.call_explicity == FunctionCallExplicity::Explicit {
             write!(fmt, "(")?;
-            for parameter in self.parameters.iter().skip(head) {
-                format_parameter(fmt, &parameter)?;
+            for parameter in self.parameters.iter().skip(head).enumerate() {
+                write!(fmt, "{:?}, ", &parameter)?;
             }
             write!(fmt, ")")?;
         }
