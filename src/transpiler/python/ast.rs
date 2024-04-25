@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
+use std::fmt::Write;
 
 use itertools::Itertools;
+use display_with_options::{DisplayWithOptions, IndentingFormatter, IndentOptions, with_options};
 
 use crate::program::functions::ParameterKey;
 use crate::transpiler::python::imperative::escape_string;
@@ -17,8 +19,10 @@ pub struct Module {
     pub main_function: Option<String>,
 }
 
-impl Display for Module {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl<'a> DisplayWithOptions<IndentOptions<'a>> for Module {
+    fn fmt(&self, f: &mut Formatter, options: &IndentOptions) -> std::fmt::Result {
+        let mut f = IndentingFormatter::new(f, &options.full_indentation);
+
         writeln!(f, "import numpy as np")?;
         writeln!(f, "import math")?;
         writeln!(f, "import operator as op")?;
@@ -28,7 +32,7 @@ impl Display for Module {
         write!(f, "\n\n")?;
 
         for statement in self.exported_statements.iter() {
-            write!(f, "{}\n\n", statement)?;
+            write!(f, "{}\n\n", with_options(statement.as_ref(), &options.restart()))?;
         }
 
         writeln!(f, "# ========================== ======== ============================")?;
@@ -37,17 +41,17 @@ impl Display for Module {
         write!(f, "\n\n")?;
 
         for statement in self.internal_statements.iter() {
-            write!(f, "{}\n\n", statement)?;
+            write!(f, "{}\n\n", with_options(statement.as_ref(), &options.restart()))?;
         }
 
         writeln!(f, "__all__ = [")?;
         for name in self.exported_names.iter().sorted() {
-            writeln!(f, "    \"{}\",", name)?;
+            writeln!(f, "{}\"{}\",", options.next_level, name)?;
         }
         writeln!(f, "]")?;
 
         if let Some(main_function) = &self.main_function {
-            write!(f, "\n\nif __name__ == \"__main__\":\n    {}()\n", main_function)?;
+            write!(f, "\n\nif __name__ == \"__main__\":\n{}{}()\n", options.next_level, main_function)?;
         }
 
         Ok(())
@@ -59,9 +63,16 @@ pub struct Class {
     pub block: Block,
 }
 
-impl Display for Class {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "@dataclass\nclass {}:{}\n", self.name, self.block)?;
+impl<'a> DisplayWithOptions<IndentOptions<'a>> for Class {
+    fn fmt(&self, f: &mut Formatter, options: &IndentOptions) -> std::fmt::Result {
+        write!(f, "{}@dataclass\nclass {}:\n", options, self.name)?;
+
+        let options = options.deeper();
+        let mut f = IndentingFormatter::new(f, &options.full_indentation);
+        let options = options.restart();
+
+        write!(f, "{}", with_options(&self.block, &options))?;
+
         Ok(())
     }
 }
@@ -70,14 +81,14 @@ pub struct Block {
     pub statements: Vec<Box<Statement>>,
 }
 
-impl Display for Block {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl<'a> DisplayWithOptions<IndentOptions<'a>> for Block {
+    fn fmt(&self, f: &mut Formatter, options: &IndentOptions) -> std::fmt::Result {
         if self.statements.is_empty() {
-            writeln!(f, "    pass")?;
+            writeln!(f, "{}pass", options)?;
         }
         else {
             for statement in self.statements.iter() {
-                write!(f, "    {}", statement)?;
+                write!(f, "{}", with_options(statement.as_ref(), options))?;
             }
         }
         Ok(())
@@ -92,9 +103,9 @@ pub struct Function {
     pub block: Box<Block>,
 }
 
-impl Display for Function {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "def {}(", self.name)?;
+impl<'a> DisplayWithOptions<IndentOptions<'a>> for Function {
+    fn fmt(&self, f: &mut Formatter, options: &IndentOptions) -> std::fmt::Result {
+        write!(f, "{}def {}(", options, self.name)?;
         for (idx, parameter) in self.parameters.iter().enumerate() {
             write!(f, "{}", parameter)?;
 
@@ -110,13 +121,17 @@ impl Display for Function {
 
         write!(f, ":\n")?;
 
-        write!(f, "    \"\"\"\n    <DOCSTRING TODO>")?;
+        let options = options.deeper();
+        let mut f = IndentingFormatter::new(f, &options.full_indentation);
+        let options = options.restart();
+
+        write!(f, "\"\"\"\n<DOCSTRING TODO>")?;
 
         if !self.parameters.is_empty() {
-            write!(f, "\n\n    Args:")?;
+            write!(f, "\n\n{}Args:", options)?;
 
             for (idx, parameter) in self.parameters.iter().enumerate() {
-                write!(f, "\n        {}: TODO", parameter.name)?;
+                write!(f, "\n{}: TODO", parameter.name)?;
             }
         }
 
@@ -125,7 +140,9 @@ impl Display for Function {
             write!(f, "        <TODO>")?;
         }
 
-        write!(f, "\n    \"\"\"\n{}", self.block)?;
+        write!(f, "\n\"\"\"\n")?;
+
+        write!(f, "{}", with_options(self.block.as_ref(), &options))?;
 
         Ok(())
     }
@@ -140,8 +157,8 @@ pub enum Statement {
     IfThenElse(Vec<(Box<Expression>, Box<Block>)>, Option<Box<Block>>),
 }
 
-impl Display for Statement {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl<'a> DisplayWithOptions<IndentOptions<'a>> for Statement {
+    fn fmt(&self, f: &mut Formatter, options: &IndentOptions) -> std::fmt::Result {
         match self {
             Statement::VariableAssignment { target: variable_name, value, type_annotation } => {
                 write!(f, "{}", variable_name)?;
@@ -164,19 +181,31 @@ impl Display for Statement {
             Statement::Return(None) => {
                 writeln!(f, "return")
             }
-            Statement::Class(c) => write!(f, "{}", c),
-            Statement::Function(fun) => write!(f, "{}", fun),
+            Statement::Class(c) => write!(f, "{}", with_options(c.as_ref(), &options)),
+            Statement::Function(fun) => write!(f, "{}", with_options(fun.as_ref(), &options)),
             Statement::IfThenElse(ifs, else_) => {
                 for (idx, (condition, body)) in ifs.iter().enumerate() {
                     if idx == 0 {
-                        write!(f, "if {}:\n{}", condition, body)?;
+                        write!(f, "if {}:\n", condition)?;
                     }
                     else {
-                        write!(f, "    elif {}:\n{}", condition, body)?;
+                        write!(f, "elif {}:\n", condition)?;
                     }
+
+                    let options = options.deeper();
+                    let mut f = IndentingFormatter::new(f, &options.full_indentation);
+                    let options = options.restart();
+
+                    write!(f, "{}", with_options(body.as_ref(), &options))?;
                 }
                 if let Some(else_) = else_ {
-                    write!(f, "    else:\n{}", else_)?;
+                    write!(f, "else:\n")?;
+
+                    let options = options.deeper();
+                    let mut f = IndentingFormatter::new(f, &options.full_indentation);
+                    let options = options.restart();
+
+                    write!(f, "{}", with_options(else_.as_ref(), &options))?;
                 }
 
                 Ok(())
@@ -210,7 +239,7 @@ impl Expression {
 }
 
 impl Display for Expression {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
             Expression::UnaryOperation(op, ex) => {
                 if matches!(op.as_str(), "+" | "-") {
@@ -264,7 +293,7 @@ pub struct Parameter {
 }
 
 impl Display for Parameter {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "{}: {}", self.name, self.type_)
     }
 }

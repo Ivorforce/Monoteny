@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use display_with_options::{IndentOptions, with_options};
 
 use itertools::Itertools;
 use linked_hash_map::LinkedHashMap;
@@ -51,8 +52,13 @@ impl transpiler::LanguageContext for Context {
     fn make_files(&self, base_filename: &str, package: TranspilePackage) -> RResult<HashMap<String, String>> {
         let ast = self.create_ast(package)?;
 
+        let string = format!("{}", with_options(ast.as_ref(), &IndentOptions {
+            full_indentation: String::new(),
+            next_level: "    ",
+        }));
+
         Ok(HashMap::from([
-            (format!("{}.py", base_filename), ast.to_string())
+            (format!("{}.py", base_filename), string)
         ]))
     }
 }

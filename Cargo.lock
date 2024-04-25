@@ -184,6 +184,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "display_with_options"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83bb3a625325062ad20caea02f97fecd9d754d6ddecbefa7a37897da7b044622"
+
+[[package]]
 name = "either"
 version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -358,6 +364,7 @@ dependencies = [
  "clap",
  "colored",
  "custom_error",
+ "display_with_options",
  "itertools 0.12.1",
  "lalrpop",
  "lalrpop-util",
