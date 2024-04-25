@@ -56,12 +56,22 @@ impl Display for Module {
 
 pub struct Class {
     pub name: String,
-    pub statements: Vec<Box<Statement>>,
+    pub block: Block,
 }
 
 impl Display for Class {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "@dataclass\nclass {}:\n", self.name)?;
+        write!(f, "@dataclass\nclass {}:{}\n", self.name, self.block)?;
+        Ok(())
+    }
+}
+
+pub struct Block {
+    pub statements: Vec<Box<Statement>>,
+}
+
+impl Display for Block {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         if self.statements.is_empty() {
             writeln!(f, "    pass")?;
         }
@@ -79,7 +89,7 @@ pub struct Function {
 
     pub parameters: Vec<Box<Parameter>>,
     pub return_type: Option<Box<Expression>>,
-    pub statements: Vec<Box<Statement>>,
+    pub block: Box<Block>,
 }
 
 impl Display for Function {
@@ -115,16 +125,7 @@ impl Display for Function {
             write!(f, "        <TODO>")?;
         }
 
-        write!(f, "\n    \"\"\"\n")?;
-
-        if self.statements.is_empty() {
-            writeln!(f, "pass")?;
-            return Ok(());
-        }
-
-        for statement in self.statements.iter() {
-            write!(f, "    {}", statement)?;
-        }
+        write!(f, "\n    \"\"\"\n{}", self.block)?;
 
         Ok(())
     }
@@ -136,6 +137,7 @@ pub enum Statement {
     Return(Option<Box<Expression>>),
     Class(Box<Class>),
     Function(Box<Function>),
+    IfThenElse(Vec<(Box<Expression>, Box<Block>)>, Option<Box<Block>>),
 }
 
 impl Display for Statement {
@@ -164,6 +166,21 @@ impl Display for Statement {
             }
             Statement::Class(c) => write!(f, "{}", c),
             Statement::Function(fun) => write!(f, "{}", fun),
+            Statement::IfThenElse(ifs, else_) => {
+                for (idx, (condition, body)) in ifs.iter().enumerate() {
+                    if idx == 0 {
+                        writeln!(f, "if {}:\n{}", condition, body)?;
+                    }
+                    else {
+                        writeln!(f, "elif {}:\n{}", condition, body)?;
+                    }
+                }
+                if let Some(else_) = else_ {
+                    writeln!(f, "else:\n{}", else_)?;
+                }
+
+                Ok(())
+            }
         }
     }
 }

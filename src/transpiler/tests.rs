@@ -111,4 +111,11 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn if_then_else() -> RResult<()> {
+        let py_file = test_transpiles("test-code/control_flow/if_then_else.monoteny")?;
+
+        Ok(())
+    }
 }

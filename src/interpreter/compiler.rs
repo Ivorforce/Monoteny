@@ -132,6 +132,7 @@ impl FunctionCompiler<'_> {
                     self.chunk.push_with_u32(OpCode::LOAD_CONSTANT, u32::try_from(self.constants.len() - 1).unwrap());
                 }
             },
+            ExpressionOperation::IfThenElse => todo!(),
         }
 
         Ok(())

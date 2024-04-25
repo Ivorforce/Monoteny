@@ -51,6 +51,8 @@ extern {
         "return" => Token::Symbol("return"),
 
         "is" => Token::Symbol("is"),
+        "if" => Token::Symbol("if"),
+        "else" => Token::Symbol("else"),
     }
 }
 
@@ -104,6 +106,7 @@ Statement: Statement = {
     <mutability: VariableDeclarationMutability> <identifier: Identifier> <type_declaration: ("'" <Expression>)?> <assignment: ("=" <Expression>)?> => Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment },
     "upd" <target: Expression> "=" <new_value: Expression> => Statement::VariableUpdate { <> },
     "return" <Expression?> => Statement::Return(<>),
+    IfThenElse => Statement::IfThenElse(<>),
     Expression => Statement::Expression(<>),
     Function => Statement::FunctionDeclaration(<>),
     Trait => Statement::Trait(<>),
@@ -113,6 +116,10 @@ Statement: Statement = {
 VariableDeclarationMutability: Mutability = {
     "let" => Mutability::Immutable,
     "var" => Mutability::Mutable,
+}
+
+IfThenElse: Box<IfThenElse> = {
+    "if" <condition: Expression> "::" <consequent: Expression> <alternative: ("else" "::" <Expression>)?> => Box::new(IfThenElse { <> }),
 }
 
 // =============================== Expression =====================================

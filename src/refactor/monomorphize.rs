@@ -65,6 +65,7 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
             ExpressionOperation::StringLiteral(_) => {},
             ExpressionOperation::Block => {},
             ExpressionOperation::Return => {}
+            ExpressionOperation::IfThenElse => {}
         };
     }
 

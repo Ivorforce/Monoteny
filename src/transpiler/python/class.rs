@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::transpiler::python::ast;
+use crate::transpiler::python::ast::Block;
 use crate::transpiler::python::representations::Representations;
 
 pub struct ClassContext<'a> {
@@ -40,6 +41,6 @@ pub fn transpile_class(type_def: &TypeProto, context: &ClassContext) -> Box<ast:
 
     Box::new(ast::Class {
         name: context.names[&struct_id].clone(),
-        statements,
+        block: Block { statements },
     })
 }

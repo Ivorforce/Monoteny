@@ -22,6 +22,7 @@ pub enum ExpressionOperation {
     //  }
     //  This syntax, while stupid, is at least supported in pretty much every language.
     Block,
+    IfThenElse,
 
     // TODO We can remove these operations if we just add a getter and setter for every global.
     GetLocal(Rc<ObjectReference>),

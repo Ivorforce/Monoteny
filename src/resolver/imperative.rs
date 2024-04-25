@@ -17,7 +17,7 @@ use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::debug::MockFunctionInterface;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
-use crate::program::function_object;
+use crate::program::{function_object, primitives};
 use crate::program::function_object::{FunctionCallExplicity, FunctionOverload, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
@@ -281,6 +281,26 @@ impl <'a> ImperativeResolver<'a> {
                 pstatement.no_decorations()?;
 
                 self.resolve_expression(&expression, &scope)?
+            }
+            ast::Statement::IfThenElse(if_then_else) => {
+                pstatement.no_decorations()?;
+
+                let condition: ExpressionID = self.resolve_expression(&if_then_else.condition, &scope)?;
+                self.types.bind(condition, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.primitives.as_ref().unwrap()[&primitives::Type::Bool]))))?;
+                let consequent: ExpressionID = self.resolve_expression(&if_then_else.consequent, &scope)?;
+
+                let mut arguments = vec![condition, consequent];
+
+                if let Some(alternative) = &if_then_else.alternative {
+                    let alternative: ExpressionID = self.resolve_expression(alternative, &scope)?;
+                    self.types.bind(alternative, &TypeProto::unit(TypeUnit::Generic(consequent)))?;
+                    arguments.push(alternative);
+                }
+
+                let expression_id = self.register_new_expression(arguments);
+                self.expression_tree.values.insert(expression_id, ExpressionOperation::IfThenElse);
+                self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Generic(consequent)))?;
+                expression_id
             }
             statement => {
                 return Err(RuntimeError::new(format!("Statement {} is not supported in an imperative context.", statement)))

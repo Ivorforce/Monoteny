@@ -56,7 +56,7 @@ pub fn transpile_plain_function(implementation: &FunctionImplementation, name: S
             true => None,
             false => Some(types::transpile(&implementation.type_forest.resolve_type(&implementation.head.interface.return_type).unwrap(), context))
         },
-        statements: vec![],
+        block: Box::new(ast::Block { statements: vec![] }),
     });
 
     // TODO We only need this when we do monads again
@@ -86,24 +86,24 @@ pub fn transpile_plain_function(implementation: &FunctionImplementation, name: S
     //     };
     // }
 
-    syntax.statements = match &implementation.expression_tree.values[&implementation.expression_tree.root] {
+    syntax.block = match &implementation.expression_tree.values[&implementation.expression_tree.root] {
         ExpressionOperation::Block => {
             transpile_block(&implementation, context, &implementation.expression_tree.children[&implementation.expression_tree.root])
         }
         _ => {
             let expression = transpile_expression(implementation.expression_tree.root, context);
 
-            vec![Box::new(match implementation.head.interface.return_type.unit.is_void() {
+            Box::new(ast::Block { statements: vec![Box::new(match implementation.head.interface.return_type.unit.is_void() {
                 true => ast::Statement::Expression(expression),
                 false => ast::Statement::Return(Some(expression)),
-            })]
+            })] })
         }
     };
 
     syntax
 }
 
-fn transpile_block(implementation: &&FunctionImplementation, context: &FunctionContext, statements: &Vec<ExpressionID>) -> Vec<Box<ast::Statement>> {
+fn transpile_block(implementation: &FunctionImplementation, context: &FunctionContext, statements: &Vec<ExpressionID>) -> Box<ast::Block> {
     let mut statements_ = vec![];
 
     for statement in statements.iter() {
@@ -128,12 +128,33 @@ fn transpile_block(implementation: &&FunctionImplementation, context: &FunctionC
                     Right(s) => s,
                 }
             }
+            ExpressionOperation::IfThenElse => {
+                let children = &implementation.expression_tree.children[&statement];
+                // TODO Handle inner if-then-elses as elif instead of inner else: if:
+                let condition = transpile_expression(children[0], context);
+                let consequent = transpile_as_block(implementation, context, &children[1]);
+                let alternative = children.get(2).map(|a| transpile_as_block(implementation, context, a));
+
+                Box::new(ast::Statement::IfThenElse(vec![(condition, consequent)], alternative))
+            }
             _ => Box::new(ast::Statement::Expression(transpile_expression(*statement, context))),
         });
     }
 
-    statements_
+    Box::new(ast::Block { statements: statements_ })
 }
+
+fn transpile_as_block(implementation: &FunctionImplementation, context: &FunctionContext, expression: &ExpressionID) -> Box<ast::Block> {
+    match &implementation.expression_tree.values[&implementation.expression_tree.root] {
+        ExpressionOperation::Block => {
+            transpile_block(&implementation, context, &implementation.expression_tree.children[expression])
+        }
+        _ => {
+            panic!("Need to reformat the code and introduce a new variable or something")
+        }
+    }
+}
+
 
 pub fn transpile_expression(expression_id: ExpressionID, context: &FunctionContext) -> Box<ast::Expression> {
     match &context.expressions.values.get(&expression_id).unwrap() {
@@ -183,6 +204,7 @@ pub fn transpile_expression(expression_id: ExpressionID, context: &FunctionConte
         ExpressionOperation::Block => todo!(),
         ExpressionOperation::SetLocal(_) => panic!("Variable assignment not allowed as expression."),
         ExpressionOperation::Return => panic!("Return not allowed as expression."),
+        ExpressionOperation::IfThenElse => panic!("If-Then-Else not allowed as expression."),
     }
 }
 

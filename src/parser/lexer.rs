@@ -141,8 +141,9 @@ impl<'i> Lexer<'i> {
                         7 => matches!(slice, "declare"),
                         6 => matches!(slice, "return"),
                         5 => matches!(slice, "trait"),
+                        4 => matches!(slice, "else"),
                         3 => matches!(slice, "let" | "var" | "upd" | "def"),
-                        2 => matches!(slice, "is"),
+                        2 => matches!(slice, "is" | "if"),
                         _ => false,
                     } {
                         return Some(Ok((start, Token::Symbol(slice), end)));
