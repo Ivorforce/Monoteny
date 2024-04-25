@@ -185,9 +185,9 @@ dependencies = [
 
 [[package]]
 name = "display_with_options"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0109bb4a1871d88ec58e065b0d4e8d3f4a0b2eaec2c5b199712edc9ae7e2167"
+checksum = "a12080a034391a20716585004337cbcd7fd48a2586fcc0e141026461f67bb8b2"
 
 [[package]]
 name = "either"
