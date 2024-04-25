@@ -9,6 +9,7 @@ use uuid::Uuid;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::TypeProto;
+use crate::util::fmt::write_separated_debug;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ParameterKey {
@@ -239,9 +240,7 @@ impl DebugWithOptions<FunctionRepresentation> for FunctionInterface {
 
         if representation.call_explicity == FunctionCallExplicity::Explicit {
             write!(fmt, "(")?;
-            for parameter in self.parameters.iter().skip(head).enumerate() {
-                write!(fmt, "{:?}, ", &parameter)?;
-            }
+            write_separated_debug(fmt, ", ", self.parameters.iter().skip(head))?;
             write!(fmt, ")")?;
         }
 

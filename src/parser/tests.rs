@@ -44,11 +44,11 @@ mod tests {
         match floor_div.interface.expression.iter().map(|t| &t.value).collect_vec()[..] {
             [Term::Identifier(i), Term::Struct(s)] => {
                 assert_eq!(i, "_add");
-                assert_eq!(s.len(), 2);
+                assert_eq!(s.arguments.len(), 2);
             }
             _ => panic!()
         }
-        assert_eq!(parsed.statements[1].decorations.len(), 1);
+        assert_eq!(parsed.statements[1].decorations.arguments.len(), 1);
 
         Ok(())
     }

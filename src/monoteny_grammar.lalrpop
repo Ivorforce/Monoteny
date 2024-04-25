@@ -77,8 +77,27 @@ pub Block: Block = {
     <statements: Box<Decorated<Positioned<(<Statement> ";")>>>*> => Block { <> }
 };
 
-Function: Box<Function> = {
-    "def" <interface: FunctionInterface> <body: ("::" <FunctionBody>)?> => Box::new(Function { <> }),
+Struct: Struct = {
+    "(" <arguments: OptionalFinalSeparatorList<Box<Positioned<StructArgument>>, ",">> ")" => Struct { <> }
+}
+
+StructArgument: StructArgument = {
+    <key: Identifier> ":" <value: Expression> <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Name(key), value: value, type_declaration },
+    <value: Expression> <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Positional, value: value, type_declaration },
+    <start:@L> <key: Identifier> <end:@R> ":" <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Name(key.clone()), value: Expression::from(vec![Box::new(positioned(Term::Identifier(key.clone()), start, end))]), type_declaration: type_declaration },
+}
+
+Array: Array = {
+    "[" <arguments: OptionalFinalSeparatorList<Box<Positioned<ArrayArgument>>, ",">> "]" => Array { <> }
+}
+
+ArrayArgument: ArrayArgument = {
+    <key: Expression> ":" <value: Expression> <type_declaration: ("'" <Expression>)?> => ArrayArgument { key: Some(key), value, type_declaration },
+    <value: Expression> <type_declaration: ("'" <Expression>)?>=> ArrayArgument { key: None, value, type_declaration },
+}
+
+Function: Function = {
+    "def" <interface: FunctionInterface> <body: ("::" <FunctionBody>)?> => Function { <> },
 }
 
 FunctionInterface: FunctionInterface = {
@@ -91,26 +110,26 @@ FunctionBody: Expression = {
 
 // =============================== Trait =====================================
 
-Trait: Box<TraitDefinition> = {
-    "trait" <name: Identifier> "{" <statements: (<Box<Positioned<Statement>>> ";")*> "}" => Box::new(TraitDefinition { <> }),
+Trait: TraitDefinition = {
+    "trait" <name: Identifier> "{" <block: Box<Block>> "}" => TraitDefinition { <> },
 }
 
-Conformance: Box<TraitConformanceDeclaration> = {
-    "declare" <declared_for: Expression> "is" <declared: Identifier> "{" <statements: (<Box<Positioned<Statement>>> ";")*> "}" => Box::new(TraitConformanceDeclaration { <> }),
+Conformance: TraitConformanceDeclaration = {
+    "declare" <declared_for: Expression> "is" <declared: Identifier> "{" <block: Box<Block>> "}" => TraitConformanceDeclaration { <> },
 }
 
 // =============================== Statement =====================================
 
 
 Statement: Statement = {
-    <mutability: VariableDeclarationMutability> <identifier: Identifier> <type_declaration: ("'" <Expression>)?> <assignment: ("=" <Expression>)?> => Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment },
-    "upd" <target: Expression> "=" <new_value: Expression> => Statement::VariableUpdate { <> },
-    "return" <Expression?> => Statement::Return(<>),
-    IfThenElse => Statement::IfThenElse(<>),
-    Expression => Statement::Expression(<>),
-    Function => Statement::FunctionDeclaration(<>),
-    Trait => Statement::Trait(<>),
-    Conformance => Statement::Conformance(<>),
+    <mutability: VariableDeclarationMutability> <identifier: Identifier> <type_declaration: ("'" <Box<Expression>>)?> <assignment: ("=" <Box<Expression>>)?> => Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment },
+    "upd" <target: Box<Expression>> "=" <new_value: Box<Expression>> => Statement::VariableUpdate { <> },
+    "return" <Box<Expression>?> => Statement::Return(<>),
+    Box<IfThenElse> => Statement::IfThenElse(<>),
+    Box<Expression> => Statement::Expression(<>),
+    Box<Function> => Statement::FunctionDeclaration(<>),
+    Box<Trait> => Statement::Trait(<>),
+    Box<Conformance> => Statement::Conformance(<>),
 }
 
 VariableDeclarationMutability: Mutability = {
@@ -118,8 +137,8 @@ VariableDeclarationMutability: Mutability = {
     "var" => Mutability::Mutable,
 }
 
-IfThenElse: Box<IfThenElse> = {
-    "if" <condition: Expression> "::" <consequent: Expression> <alternative: ("else" "::" <Expression>)?> => Box::new(IfThenElse { <> }),
+IfThenElse: IfThenElse = {
+    "if" <condition: Expression> "::" <consequent: Expression> <alternative: ("else" "::" <Expression>)?> => IfThenElse { <> },
 }
 
 // =============================== Expression =====================================
@@ -134,27 +153,16 @@ Term: Term = {
     IntLiteral => Term::IntLiteral(<>),
     RealLiteral => Term::RealLiteral(<>),
     "." => Term::Dot,
-    "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]" => Term::Array(<>),
-    "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => Term::Struct(<>),
+    Box<Array> => Term::Array(<>),
+    Box<Struct> => Term::Struct(<>),
     "\"" <Box<Positioned<StringPart>>*> "\"" => Term::StringLiteral(<>),
-    "{" <Block> "}" => Term::Block(<>),
+    "{" <Box<Block>> "}" => Term::Block(<>),
     <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Term::Error(derive_error(&e, start, end)) },
-}
-
-StructArgument: StructArgument = {
-    <key: Identifier> ":" <value: Expression> <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Name(key), value: value, type_declaration },
-    <value: Expression> <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Positional, value: value, type_declaration },
-    <start:@L> <key: Identifier> <end:@R> ":" <type_declaration: ("'" <Expression>)?> => StructArgument { key: ParameterKey::Name(key.clone()), value: Expression::from(vec![Box::new(positioned(Term::Identifier(key.clone()), start, end))]), type_declaration: type_declaration },
-}
-
-ArrayArgument: ArrayArgument = {
-    <key: Expression> ":" <value: Expression> <type_declaration: ("'" <Expression>)?> => ArrayArgument { key: Some(key), value, type_declaration },
-    <value: Expression> <type_declaration: ("'" <Expression>)?>=> ArrayArgument { key: None, value, type_declaration },
 }
 
 StringPart: StringPart = {
     StringLiteral => StringPart::Literal(<>.to_string()),
-    "(" <OptionalFinalSeparatorList<StructArgument, ",">> ")" => StringPart::Object(<>),
+    Box<Struct> => StringPart::Object(<>),
 }
 
 // =============================== Util =====================================
@@ -168,7 +176,7 @@ Positioned<Element>: Positioned<Element> = {
 }
 
 Decorated<Element>: Decorated<Element> = {
-    <decorations: ("!" "[" <OptionalFinalSeparatorList<ArrayArgument, ",">> "]")?> <value: Element> => Decorated { decorations: decorations.unwrap_or(vec![]), value },
+    <decorations: ("!" <Array>)?> <value: Element> => Decorated { decorations: decorations.unwrap_or(Array { arguments: vec![] }), value },
 }
 
 OptionalFinalSeparatorList<Element, Separator>: Vec<Element> = {

@@ -16,28 +16,28 @@ pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead
     return match &decoration.iter().map(|a| a.as_ref()).collect_vec()[..] {
         [
             Positioned { position: p1, value: ast::Term::Identifier(i)},
-            Positioned { position: p2, value: ast::Term::Struct(args)}
+            Positioned { position: p2, value: ast::Term::Struct(call_struct)}
         ] => {
             if i != "pattern" {
                 return Err(RuntimeError::new("Unrecognized decoration.".to_string()))
             }
 
-            let [a, b] = &args[..] else {
+            let [a, b] = &call_struct.arguments[..] else {
                 return Err(RuntimeError::new("pattern decoration needs two arguments.".to_string()))
             };
 
-            if a.key != ParameterKey::Positional || a.type_declaration.is_some() ||
-                b.key != ParameterKey::Positional || b.type_declaration.is_some() {
+            if a.value.key != ParameterKey::Positional || a.value.type_declaration.is_some() ||
+                b.value.key != ParameterKey::Positional || b.value.type_declaration.is_some() {
                 return Err(RuntimeError::new("pattern decoration arguments are faulty.".to_string()))
             }
 
-            let precedence_group = match &b.value.iter().map(|p| p.as_ref()).collect_vec()[..] {
+            let precedence_group = match &b.value.value.iter().map(|p| p.as_ref()).collect_vec()[..] {
                 [Positioned { position, value: ast::Term::Identifier(precedence) }] =>
                     scope.resolve_precedence_group(&precedence)?,
                 _ => return Err(RuntimeError::new("Second argument to pattern needs to be a precedence name.".to_string()))
             };
 
-            let parts: Vec<Box<PatternPart>> = a.value.iter()
+            let parts: Vec<Box<PatternPart>> = a.value.value.iter()
                 .map(|pterm| {
                     match &pterm.value {
                         ast::Term::Identifier(i) => {
@@ -57,7 +57,7 @@ pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead
                 parts,
                 head: function,
             }))
-        },
+        }
         _ => Err(RuntimeError::new("Unrecognized decoration.".to_string()))
     }
 }

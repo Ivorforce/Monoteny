@@ -7,6 +7,7 @@ use crate::parser::ast;
 use crate::program::functions::ParameterKey;
 use crate::program::module::ModuleName;
 use crate::util::iter::omega;
+use crate::util::position::Positioned;
 
 pub struct Import {
     pub is_relative: bool,
@@ -22,16 +23,16 @@ impl Import {
     }
 }
 
-pub fn resolve_imports(body: &Vec<ast::StructArgument>) -> RResult<Vec<Import>> {
+pub fn resolve_imports(body: &Vec<Box<Positioned<ast::StructArgument>>>) -> RResult<Vec<Import>> {
     body.iter().map(|arg| {
-        if arg.key != ParameterKey::Positional {
+        if arg.value.key != ParameterKey::Positional {
             return Err(RuntimeError::new(format!("Imports cannot be renamed for now.")));
         }
-        if arg.type_declaration.is_some() {
+        if arg.value.type_declaration.is_some() {
             return Err(RuntimeError::new(format!("Imports cannot have type declarations.")));
         }
 
-        resolve_module(&arg.value)
+        resolve_module(&arg.value.value)
     }).try_collect()
 }
 
@@ -41,11 +42,11 @@ pub fn resolve_module(body: &ast::Expression) -> RResult<Import> {
     match &body[..] {
         [l, r] => {
             match (&l.value, &r.value) {
-                (ast::Term::MacroIdentifier(name), ast::Term::Struct(struct_args)) => {
+                (ast::Term::MacroIdentifier(name), ast::Term::Struct(macro_struct)) => {
                     if name != "module" {
                         return Err(error).err_in_range(&l.position);
                     }
-                    let body = interpreter_mock::plain_parameter("module!", struct_args)?;
+                    let body = interpreter_mock::plain_parameter("module!", macro_struct)?;
                     let pterm = body.iter().exactly_one()
                         .map_err(|_| error.clone()).err_in_range(&r.position)?;
 

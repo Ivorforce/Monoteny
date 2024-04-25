@@ -120,9 +120,11 @@ impl <'a> GlobalResolver<'a> {
                     trait_: &mut trait_,
                     generic_self_type,
                 };
-                for statement in syntax.statements.iter() {
-                    resolver.resolve_statement(&statement.value, requirements, &HashMap::new(), &scope)
-                        .err_in_range(&statement.position)?;
+                for statement in syntax.block.statements.iter() {
+                    statement.no_decorations()?;
+
+                    resolver.resolve_statement(&statement.value.value, requirements, &HashMap::new(), &scope)
+                        .err_in_range(&statement.value.position)?;
                 }
 
                 self.add_trait(&Rc::new(trait_))?;
@@ -160,9 +162,11 @@ impl <'a> GlobalResolver<'a> {
                 self.runtime.source.trait_references.insert(Rc::clone(&self_getter), self_trait);
 
                 let mut resolver = ConformanceResolver { runtime: &self.runtime, functions: vec![], };
-                for statement in syntax.statements.iter() {
-                    resolver.resolve_statement(&statement.value, &requirements.union(&conformance_requirements).cloned().collect(), &generics, &scope)
-                        .err_in_range(&statement.position)?;
+                for statement in syntax.block.statements.iter() {
+                    statement.no_decorations()?;
+
+                    resolver.resolve_statement(&statement.value.value, &requirements.union(&conformance_requirements).cloned().collect(), &generics, &scope)
+                        .err_in_range(&statement.value.position)?;
                 }
 
                 // TODO To be order independent, we should finalize after sorting...
@@ -202,13 +206,13 @@ impl <'a> GlobalResolver<'a> {
                                         return Ok(())
                                     }
                                     "use" => {
-                                        for import in resolve_imports(args)? {
+                                        for import in resolve_imports(&args.arguments)? {
                                             self.import(&&import.relative_to(&self.module.name))?;
                                         }
                                         return Ok(())
                                     }
                                     "include" => {
-                                        for import in resolve_imports(args)? {
+                                        for import in resolve_imports(&args.arguments)? {
                                             let import = import.relative_to(&self.module.name);
                                             self.import(&import)?;
                                             self.module.included_modules.push(import);

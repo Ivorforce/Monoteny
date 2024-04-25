@@ -379,14 +379,14 @@ impl <'a> ImperativeResolver<'a> {
         })
     }
 
-    pub fn resolve_struct(&mut self, scope: &scopes::Scope, args: &Vec<ast::StructArgument>) -> RResult<Struct> {
-        let values = args.iter().map(|x| {
-            self.resolve_expression_with_type(&x.value, &x.type_declaration, scope)
+    pub fn resolve_struct(&mut self, scope: &scopes::Scope, struct_: &ast::Struct) -> RResult<Struct> {
+        let values = struct_.arguments.iter().map(|x| {
+            self.resolve_expression_with_type(&x.value.value, &x.value.type_declaration, scope)
         }).try_collect()?;
 
         Ok(Struct {
-            keys: args.iter()
-                .map(|x| x.key.clone())
+            keys: struct_.arguments.iter()
+                .map(|x| x.value.key.clone())
                 .collect(),
             values,
         })

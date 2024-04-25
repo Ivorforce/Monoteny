@@ -14,6 +14,7 @@ use crate::program::functions::{FunctionHead, FunctionInterface, Parameter};
 use crate::program::module::{Module, module_name};
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::TypeProto;
+use crate::resolver::grammar::Struct;
 use crate::util::position::Positioned;
 
 pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
@@ -43,13 +44,13 @@ pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &sc
         [
             // Function-like
             Positioned { position: p1, value: ast::Term::Identifier(i)},
-            Positioned { position: p2, value: ast::Term::Struct(args)}
+            Positioned { position: p2, value: ast::Term::Struct(struct_)}
         ] => {
             _resolve_function_interface(FunctionRepresentation {
                 name: i.clone(),
                 target_type: FunctionTargetType::Global,
                 call_explicity: FunctionCallExplicity::Explicit,
-            }, args.iter(), &interface.return_type, type_factory, requirements, generics)
+            }, struct_.arguments.iter().map(|a| &a.value), &interface.return_type, type_factory, requirements, generics)
         }
         [
             // Member-constant like
@@ -57,7 +58,7 @@ pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &sc
             Positioned { position: p2, value: ast::Term::Dot },
             Positioned { position: p3, value: ast::Term::Identifier(member) },
         ] => {
-            let target = get_as_target_parameter(&target)?;
+            let target = get_as_target_parameter(target)?;
             _resolve_function_interface(FunctionRepresentation {
                 name: member.clone(),
                 target_type: FunctionTargetType::Member,
@@ -69,14 +70,14 @@ pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &sc
             Positioned { position: p1, value: ast::Term::Struct(target) },
             Positioned { position: p2, value: ast::Term::Dot },
             Positioned { position: p3, value: ast::Term::Identifier(member) },
-            Positioned { position: p4, value: ast::Term::Struct(args)}
+            Positioned { position: p4, value: ast::Term::Struct(call_struct)}
         ] => {
             let target = get_as_target_parameter(&target)?;
             _resolve_function_interface(FunctionRepresentation {
                 name: member.clone(),
                 target_type: FunctionTargetType::Member,
                 call_explicity: FunctionCallExplicity::Explicit,
-            }, Some(target).into_iter().chain(args), &interface.return_type, type_factory, requirements, generics)
+            }, Some(target).into_iter().chain(call_struct.arguments.iter().map(|a| &a.value)), &interface.return_type, type_factory, requirements, generics)
         }
         _ => Err(RuntimeError::new("Cannot have non-function definition.".to_string())),
     }
@@ -162,10 +163,10 @@ pub fn resolve_function_parameter(parameter: &ast::StructArgument, type_factory:
     })
 }
 
-pub fn get_as_target_parameter(term: &Vec<ast::StructArgument>) -> RResult<&ast::StructArgument> {
-    let [target] = &term[..] else {
+pub fn get_as_target_parameter(term: &ast::Struct) -> RResult<&ast::StructArgument> {
+    let [target] = &term.arguments[..] else {
         return Err(RuntimeError::new("Target of member function must be one-element struct.".to_string()))
     };
 
-    Ok(target)
+    Ok(&target.value)
 }

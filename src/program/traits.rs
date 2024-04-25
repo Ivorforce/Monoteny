@@ -13,7 +13,7 @@ use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::types::{TypeProto, TypeUnit};
-use crate::util::fmt::{write_comma_separated_list, write_keyval};
+use crate::util::fmt::{write_separated_display, write_keyval};
 use crate::util::hash;
 
 /// The definition of some trait.
@@ -503,7 +503,7 @@ impl Debug for Trait {
         write!(fmt, "{}<{}>", self.name, self.id)?;
         if !self.generics.is_empty() {
             write!(fmt, "<")?;
-            write_comma_separated_list(fmt, &self.generics.keys().collect_vec())?;
+            write_separated_display(fmt, ", ", self.generics.keys())?;
             write!(fmt, ">")?;
         }
         Ok(())

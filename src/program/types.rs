@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::program::generics::GenericAlias;
 use crate::program::traits::Trait;
-use crate::util::fmt::write_comma_separated_list_debug;
+use crate::util::fmt::write_separated_debug;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TypeProto {
@@ -41,7 +41,7 @@ impl Debug for TypeProto {
         write!(fmt, "{:?}", self.unit)?;
         if !self.arguments.is_empty() {
             write!(fmt, "<")?;
-            write_comma_separated_list_debug(fmt, &self.arguments)?;
+            write_separated_debug(fmt, ", ", self.arguments.iter())?;
             write!(fmt, ">")?;
         }
         Ok(())

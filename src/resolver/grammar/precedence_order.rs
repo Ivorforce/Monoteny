@@ -16,13 +16,13 @@ pub fn resolve_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<Preced
     let order: Vec<Rc<PrecedenceGroup>> = match &body[..] {
         [term] => {
             match &term.value {
-                Term::Array(arguments) => {
-                    arguments.iter().map(|arg| {
-                        if arg.key.is_some() || arg.type_declaration.is_some() {
+                Term::Array(array) => {
+                    array.arguments.iter().map(|arg| {
+                        if arg.value.key.is_some() || arg.value.type_declaration.is_some() {
                             return Err(error.clone())
                         }
 
-                        resolve_precedence_group(&arg.value)
+                        resolve_precedence_group(&arg.value.value)
                     }).try_collect().err_in_range(&term.position)?
                 }
                 _ => return Err(error),

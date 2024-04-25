@@ -217,9 +217,9 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                     }
                 }
             }
-            ast::Term::Array(a) => {
-                let values = a.iter().map(|x| {
-                    resolver.resolve_expression_with_type(&x.value, &x.type_declaration, scope)
+            ast::Term::Array(array) => {
+                let values = array.arguments.iter().map(|x| {
+                    resolver.resolve_expression_with_type(&x.value.value, &x.value.type_declaration, scope)
                 }).try_collect()?;
 
                 let previous = tokens.last();

@@ -6,7 +6,7 @@ use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::program::allocation::Mutability;
 use crate::program::functions::ParameterKey;
-use crate::util::fmt::{write_comma_separated_list, write_space_separated_list};
+use crate::util::fmt::write_separated_display;
 use crate::util::position::Positioned;
 
 // =============================== Global =====================================
@@ -38,14 +38,14 @@ pub struct KeyedParameter {
 #[derive(Eq, PartialEq, Clone)]
 pub struct TraitDefinition {
     pub name: String,
-    pub statements: Vec<Box<Positioned<Statement>>>,
+    pub block: Box<Block>,
 }
 
 #[derive(Eq, PartialEq, Clone)]
 pub struct TraitConformanceDeclaration {
     pub declared_for: Expression,
     pub declared: String,
-    pub statements: Vec<Box<Positioned<Statement>>>,
+    pub block: Box<Block>,
 }
 
 #[derive(Eq, PartialEq, Clone)]
@@ -63,12 +63,12 @@ pub enum Statement {
     VariableDeclaration {
         mutability: Mutability,
         identifier: String,
-        type_declaration: Option<Expression>,
-        assignment: Option<Expression>
+        type_declaration: Option<Box<Expression>>,
+        assignment: Option<Box<Expression>>
     },
-    VariableUpdate { target: Expression, new_value: Expression },
-    Expression(Expression),
-    Return(Option<Expression>),
+    VariableUpdate { target: Box<Expression>, new_value: Box<Expression> },
+    Expression(Box<Expression>),
+    Return(Option<Box<Expression>>),
     FunctionDeclaration(Box<Function>),
     Trait(Box<TraitDefinition>),
     Conformance(Box<TraitConformanceDeclaration>),
@@ -124,11 +124,17 @@ pub enum Term {
     Dot,
     IntLiteral(String),
     RealLiteral(String),
-    Struct(Vec<StructArgument>),
-    Array(Vec<ArrayArgument>),
+    Struct(Box<Struct>),
+    Array(Box<Array>),
     StringLiteral(Vec<Box<Positioned<StringPart>>>),
-    Block(Block),
+    Block(Box<Block>),
 }
+
+#[derive(Eq, PartialEq, Clone)]
+pub struct Struct { pub arguments: Vec<Box<Positioned<StructArgument>>> }
+
+#[derive(Eq, PartialEq, Clone)]
+pub struct Array { pub arguments: Vec<Box<Positioned<ArrayArgument>>> }
 
 #[derive(Eq, PartialEq, Clone)]
 pub struct StructArgument {
@@ -153,12 +159,12 @@ pub enum FunctionCallType {
 #[derive(PartialEq, Eq, Clone)]
 pub enum StringPart {
     Literal(String),
-    Object(Vec<StructArgument>),
+    Object(Box<Struct>),
 }
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct Decorated<T> {
-    pub decorations: Vec<ArrayArgument>,
+    pub decorations: Array,
     pub value: T,
 }
 
@@ -170,6 +176,22 @@ impl Mutability {
             Mutability::Mutable => "var",
             Mutability::Immutable => "let",
         }
+    }
+}
+
+impl Display for Struct {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(")?;
+        write_separated_display(f, ", ", self.arguments.iter().map(|f| &f.value))?;
+        write!(f, ")")
+    }
+}
+
+impl Display for Array {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[")?;
+        write_separated_display(f, ", ", self.arguments.iter().map(|f| &f.value))?;
+        write!(f, "]")
     }
 }
 
@@ -257,7 +279,7 @@ impl Display for Statement {
 
 impl Display for Expression {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write_space_separated_list(f, &self.iter().map(|b| &b.value).collect_vec())
+        write_separated_display(f, " ", self.0.iter().map(|b| &b.value))
     }
 }
 
@@ -276,16 +298,12 @@ impl Display for Term {
                 }
                 write!(fmt, "\"")
             },
-            Term::Struct(arguments) => {
-                write!(fmt, "(")?;
-                write_comma_separated_list(fmt, arguments)?;
-                write!(fmt, ")")
-            },
-            Term::Array(arguments) => {
-                write!(fmt, "[")?;
-                write_comma_separated_list(fmt, arguments)?;
-                write!(fmt, "]")
-            },
+            Term::Struct(struct_) => {
+                write!(fmt, "{}", struct_)
+            }
+            Term::Array(array) => {
+                write!(fmt, "{}", array)
+            }
             Term::Block(block) => {
                 write!(fmt, "{{\n{}}}", block)
             }
@@ -328,39 +346,36 @@ impl Display for StringPart {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             StringPart::Literal(s) => write!(f, "{}", s),
-            StringPart::Object(arguments) => {
-                write!(f, "(")?;
-                write_comma_separated_list(f, arguments)?;
-                write!(f, ")")
-            },
+            StringPart::Object(struct_) => write!(f, "{}", struct_),
         }
     }
 }
 
 impl<V: Display> Display for Decorated<V> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "![")?;
-        write_comma_separated_list(fmt, &self.decorations)?;
-        write!(fmt, "]\n{}", self.value)
+        if self.decorations.arguments.is_empty() {
+            return write!(fmt, "{}", self.value)
+        }
+        write!(fmt, "!{}\n{}", self.decorations, self.value)
     }
 }
 
 impl<V> Decorated<V> {
     pub fn decorations_as_vec(&self) -> RResult<Vec<&Expression>> {
-        return self.decorations.iter().map(|d| {
-            if d.key.is_some() {
+        return self.decorations.arguments.iter().map(|d| {
+            if d.value.key.is_some() {
                 return Err(RuntimeError::new("Decorations cannot have keys.".to_string()))
             }
-            if d.type_declaration.is_some() {
+            if d.value.type_declaration.is_some() {
                 return Err(RuntimeError::new("Decorations cannot have type declarations.".to_string()))
             }
 
-            Ok(&d.value)
+            Ok(&d.value.value)
         }).try_collect()
     }
 
     pub fn no_decorations(&self) -> RResult<()> {
-        if !self.decorations.is_empty() {
+        if !self.decorations.arguments.is_empty() {
             return Err(RuntimeError::new("Decorations are not supported in this context.".to_string()))
         }
 
