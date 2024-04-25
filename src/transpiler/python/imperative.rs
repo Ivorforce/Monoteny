@@ -86,19 +86,7 @@ pub fn transpile_plain_function(implementation: &FunctionImplementation, name: S
     //     };
     // }
 
-    syntax.block = match &implementation.expression_tree.values[&implementation.expression_tree.root] {
-        ExpressionOperation::Block => {
-            transpile_block(&implementation, context, &implementation.expression_tree.children[&implementation.expression_tree.root])
-        }
-        _ => {
-            let expression = transpile_expression(implementation.expression_tree.root, context);
-
-            Box::new(ast::Block { statements: vec![Box::new(match implementation.head.interface.return_type.unit.is_void() {
-                true => ast::Statement::Expression(expression),
-                false => ast::Statement::Return(Some(expression)),
-            })] })
-        }
-    };
+    syntax.block = transpile_as_block(implementation, context, &implementation.expression_tree.root, true);
 
     syntax
 }
@@ -132,8 +120,8 @@ fn transpile_block(implementation: &FunctionImplementation, context: &FunctionCo
                 let children = &implementation.expression_tree.children[&statement];
                 // TODO Handle inner if-then-elses as elif instead of inner else: if:
                 let condition = transpile_expression(children[0], context);
-                let consequent = transpile_as_block(implementation, context, &children[1]);
-                let alternative = children.get(2).map(|a| transpile_as_block(implementation, context, a));
+                let consequent = transpile_as_block(implementation, context, &children[1], false);
+                let alternative = children.get(2).map(|a| transpile_as_block(implementation, context, a, false));
 
                 Box::new(ast::Statement::IfThenElse(vec![(condition, consequent)], alternative))
             }
@@ -144,13 +132,18 @@ fn transpile_block(implementation: &FunctionImplementation, context: &FunctionCo
     Box::new(ast::Block { statements: statements_ })
 }
 
-fn transpile_as_block(implementation: &FunctionImplementation, context: &FunctionContext, expression: &ExpressionID) -> Box<ast::Block> {
+fn transpile_as_block(implementation: &FunctionImplementation, context: &FunctionContext, expression: &ExpressionID, auto_return: bool) -> Box<ast::Block> {
     match &implementation.expression_tree.values[&implementation.expression_tree.root] {
         ExpressionOperation::Block => {
             transpile_block(&implementation, context, &implementation.expression_tree.children[expression])
         }
         _ => {
-            panic!("Need to reformat the code and introduce a new variable or something")
+            let expression = transpile_expression(implementation.expression_tree.root, context);
+
+            Box::new(ast::Block { statements: vec![Box::new(match auto_return && implementation.head.interface.return_type.unit.is_void() {
+                true => ast::Statement::Expression(expression),
+                false => ast::Statement::Return(Some(expression)),
+            })] })
         }
     }
 }

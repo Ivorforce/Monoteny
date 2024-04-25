@@ -169,14 +169,14 @@ impl Display for Statement {
             Statement::IfThenElse(ifs, else_) => {
                 for (idx, (condition, body)) in ifs.iter().enumerate() {
                     if idx == 0 {
-                        writeln!(f, "if {}:\n{}", condition, body)?;
+                        write!(f, "if {}:\n{}", condition, body)?;
                     }
                     else {
-                        writeln!(f, "elif {}:\n{}", condition, body)?;
+                        write!(f, "    elif {}:\n{}", condition, body)?;
                     }
                 }
                 if let Some(else_) = else_ {
-                    writeln!(f, "else:\n{}", else_)?;
+                    write!(f, "    else:\n{}", else_)?;
                 }
 
                 Ok(())
