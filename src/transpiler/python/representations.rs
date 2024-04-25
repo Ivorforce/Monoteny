@@ -27,7 +27,7 @@ impl Representations {
 
 // The IDs are attached per object because theoretically it's possible for a representation to use
 //  0 names (direct keyword use) or 2 (using multiple keywords). They just 'happen' to all use one.
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum FunctionForm {
     CallAsFunction,
     Constant(Uuid),

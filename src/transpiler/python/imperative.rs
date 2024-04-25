@@ -133,14 +133,14 @@ fn transpile_block(implementation: &FunctionImplementation, context: &FunctionCo
 }
 
 fn transpile_as_block(implementation: &FunctionImplementation, context: &FunctionContext, expression: &ExpressionID, auto_return: bool) -> Box<ast::Block> {
-    match &implementation.expression_tree.values[&implementation.expression_tree.root] {
+    match &implementation.expression_tree.values[expression] {
         ExpressionOperation::Block => {
             transpile_block(&implementation, context, &implementation.expression_tree.children[expression])
         }
         _ => {
-            let expression = transpile_expression(implementation.expression_tree.root, context);
+            let expression = transpile_expression(*expression, context);
 
-            Box::new(ast::Block { statements: vec![Box::new(match auto_return && implementation.head.interface.return_type.unit.is_void() {
+            Box::new(ast::Block { statements: vec![Box::new(match !auto_return && implementation.head.interface.return_type.unit.is_void() {
                 true => ast::Statement::Expression(expression),
                 false => ast::Statement::Return(Some(expression)),
             })] })
