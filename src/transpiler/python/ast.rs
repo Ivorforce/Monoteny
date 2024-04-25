@@ -248,12 +248,12 @@ impl Display for Expression {
                 else {
                     write!(f, "{} ", op)?;
                 }
-                write_maybe_paranthesized(f, ex, !ex.is_simple())
+                write_maybe_parenthesized(f, ex, !ex.is_simple())
             }
             Expression::BinaryOperation(lhs, op, rhs) => {
-                write_maybe_paranthesized(f, lhs, !lhs.is_simple())?;
+                write_maybe_parenthesized(f, lhs, !lhs.is_simple())?;
                 write!(f, " {} ", op)?;
-                write_maybe_paranthesized(f, rhs, !rhs.is_simple())
+                write_maybe_parenthesized(f, rhs, !rhs.is_simple())
             }
             Expression::FunctionCall(name, params) => {
                 write!(f, "{}(", name)?;
@@ -298,7 +298,7 @@ impl Display for Parameter {
     }
 }
 
-pub fn write_maybe_paranthesized<D: Display>(f: &mut Formatter, d: D, parenthesize: bool) -> std::fmt::Result {
+pub fn write_maybe_parenthesized<D: Display>(f: &mut Formatter, d: D, parenthesize: bool) -> std::fmt::Result {
     if parenthesize {
         write!(f, "({})", d)
     }
