@@ -9,9 +9,10 @@ use crate::resolver::scopes;
 use crate::parser::ast;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::function_object;
+use crate::program::{function_object, primitives};
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, ParameterKey};
+use crate::program::types::{TypeProto, TypeUnit};
 use crate::util::position::Positioned;
 
 pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<Vec<Positioned<Token>>> {
@@ -244,6 +245,27 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
             ast::Term::Block(statements) => {
                 tokens.push(ast_token.with_value(
                     Token::Value(resolver.resolve_block(statements, &scope)?)
+                ))
+            }
+            ast::Term::IfThenElse(if_then_else) => {
+                let condition: ExpressionID = resolver.resolve_expression(&if_then_else.condition, &scope)?;
+                resolver.types.bind(condition, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&resolver.runtime.primitives.as_ref().unwrap()[&primitives::Type::Bool]))))?;
+                let consequent: ExpressionID = resolver.resolve_expression(&if_then_else.consequent, &scope)?;
+
+                let mut arguments = vec![condition, consequent];
+
+                if let Some(alternative) = &if_then_else.alternative {
+                    let alternative: ExpressionID = resolver.resolve_expression(alternative, &scope)?;
+                    resolver.types.bind(alternative, &TypeProto::unit(TypeUnit::Generic(consequent)))?;
+                    arguments.push(alternative);
+                }
+
+                let expression_id = resolver.register_new_expression(arguments);
+                resolver.expression_tree.values.insert(expression_id, ExpressionOperation::IfThenElse);
+                resolver.types.bind(expression_id, &TypeProto::unit(TypeUnit::Generic(consequent)))?;
+
+                tokens.push(ast_token.with_value(
+                    Token::Value(expression_id)
                 ))
             }
         }

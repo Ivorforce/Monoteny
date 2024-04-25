@@ -72,7 +72,6 @@ pub enum Statement {
     FunctionDeclaration(Box<Function>),
     Trait(Box<TraitDefinition>),
     Conformance(Box<TraitConformanceDeclaration>),
-    IfThenElse(Box<IfThenElse>),
 }
 
 #[derive(Eq, PartialEq, Clone)]
@@ -128,6 +127,7 @@ pub enum Term {
     Array(Box<Array>),
     StringLiteral(Vec<Box<Positioned<StringPart>>>),
     Block(Box<Block>),
+    IfThenElse(Box<IfThenElse>),
 }
 
 #[derive(Eq, PartialEq, Clone)]
@@ -266,13 +266,6 @@ impl Display for Statement {
             Statement::FunctionDeclaration(function) => write!(fmt, "{}", function),
             Statement::Trait(trait_) => write!(fmt, "{}", trait_),
             Statement::Conformance(conformance) => write!(fmt, "{}", conformance),
-            Statement::IfThenElse(if_then_else) => {
-                write!(fmt, "if {} :: {}", if_then_else.condition, if_then_else.consequent)?;
-                if let Some(alternative) = &if_then_else.alternative {
-                    write!(fmt, "else :: {}", alternative)?;
-                }
-                Ok(())
-            },
         }
     }
 }
@@ -308,6 +301,13 @@ impl Display for Term {
                 write!(fmt, "{{\n{}}}", block)
             }
             Term::Dot => write!(fmt, "."),
+            Term::IfThenElse(if_then_else) => {
+                write!(fmt, "if {} :: {}", if_then_else.condition, if_then_else.consequent)?;
+                if let Some(alternative) = &if_then_else.alternative {
+                    write!(fmt, "else :: {}", alternative)?;
+                }
+                Ok(())
+            }
         }
     }
 }

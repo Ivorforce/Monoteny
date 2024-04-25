@@ -125,7 +125,6 @@ Statement: Statement = {
     <mutability: VariableDeclarationMutability> <identifier: Identifier> <type_declaration: ("'" <Box<Expression>>)?> <assignment: ("=" <Box<Expression>>)?> => Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment },
     "upd" <target: Box<Expression>> "=" <new_value: Box<Expression>> => Statement::VariableUpdate { <> },
     "return" <Box<Expression>?> => Statement::Return(<>),
-    Box<IfThenElse> => Statement::IfThenElse(<>),
     Box<Expression> => Statement::Expression(<>),
     Box<Function> => Statement::FunctionDeclaration(<>),
     Box<Trait> => Statement::Trait(<>),
@@ -137,13 +136,18 @@ VariableDeclarationMutability: Mutability = {
     "var" => Mutability::Mutable,
 }
 
-IfThenElse: IfThenElse = {
-    "if" <condition: Expression> "::" <consequent: Expression> <alternative: ("else" "::" <Expression>)?> => IfThenElse { <> },
-}
-
 // =============================== Expression =====================================
 
 Expression: Expression = {
+    Box<Positioned<IfThenElseTerm>> => Expression::from(vec![<>]),
+    ExpressionNoIfThenElse,
+}
+
+IfThenElseTerm: Term = {
+    "if" <condition: ExpressionNoIfThenElse> "::" <consequent: ExpressionNoIfThenElse> <alternative: ("else" "::" <Expression>)?> => Term::IfThenElse(Box::new(IfThenElse { <> })),
+}
+
+ExpressionNoIfThenElse: Expression = {
     Box<Positioned<Term>>+ => Expression::from(<>),
 }
 

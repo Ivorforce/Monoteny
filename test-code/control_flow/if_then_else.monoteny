@@ -1,6 +1,6 @@
 def main! :: {
     if true :: _write_line("true")
-    -- else :: if false :: _write_line("false")
+    else :: if false :: _write_line("false")
     else :: _write_line("maybe");
 };
 

@@ -117,13 +117,25 @@ fn transpile_block(implementation: &FunctionImplementation, context: &FunctionCo
                 }
             }
             ExpressionOperation::IfThenElse => {
-                let children = &implementation.expression_tree.children[&statement];
-                // TODO Handle inner if-then-elses as elif instead of inner else: if:
-                let condition = transpile_expression(children[0], context);
-                let consequent = transpile_as_block(implementation, context, &children[1], false);
-                let alternative = children.get(2).map(|a| transpile_as_block(implementation, context, a, false));
+                // Build up elifs from nested if else { if } expressions
+                let mut current_if = Some((
+                    &implementation.expression_tree.values[statement],
+                    statement
+                ));
+                let mut if_thens = vec![];
 
-                Box::new(ast::Statement::IfThenElse(vec![(condition, consequent)], alternative))
+                while let Some((ExpressionOperation::IfThenElse, expression)) = current_if {
+                    let children = &implementation.expression_tree.children[expression];
+                    let condition = transpile_expression(children[0], context);
+                    let consequent = transpile_as_block(implementation, context, &children[1], false);
+
+                    if_thens.push((condition, consequent));
+                    current_if = children.get(2).map(|a| (&implementation.expression_tree.values[a], a));
+                };
+
+                let alternative = current_if.map(|(_, a)| transpile_as_block(implementation, context, a, false));
+
+                Box::new(ast::Statement::IfThenElse(if_thens, alternative))
             }
             _ => Box::new(ast::Statement::Expression(transpile_expression(*statement, context))),
         });
