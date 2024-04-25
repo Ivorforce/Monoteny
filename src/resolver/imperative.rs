@@ -382,6 +382,7 @@ impl <'a> ImperativeResolver<'a> {
     pub fn resolve_struct(&mut self, scope: &scopes::Scope, struct_: &ast::Struct) -> RResult<Struct> {
         let values = struct_.arguments.iter().map(|x| {
             self.resolve_expression_with_type(&x.value.value, &x.value.type_declaration, scope)
+                .err_in_range(&x.position)
         }).try_collect()?;
 
         Ok(Struct {
