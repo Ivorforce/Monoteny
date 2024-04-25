@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use display_with_options::with_options;
 
 use itertools::Itertools;
 use uuid::Uuid;
@@ -31,6 +32,6 @@ impl<'a> Display for MockFunctionInterface<'a> {
             requirements: Default::default(),
             generics: Default::default(),
         };
-        signature.format(f, &self.representation)
+        write!(f, "{:?}", with_options(&signature, &self.representation))
     }
 }

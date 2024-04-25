@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
+use display_with_options::with_options;
 
 use itertools::Itertools;
 
@@ -13,7 +14,6 @@ use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
 use crate::program::traits::{Trait, TraitBinding, TraitConformance};
 use crate::refactor::monomorphize::map_interface_types;
-use crate::util::fmt::fmta;
 
 pub struct UnresolvedFunctionImplementation<'a> {
     pub function: Rc<FunctionHead>,
@@ -70,10 +70,10 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
                 .collect_vec();
 
             if matching_implementations.len() == 0 {
-                return Err(RuntimeError::new(format!("Function {:?} missing for conformance.", fmta(|f| expected_interface.format(f, abstract_representation)))));
+                return Err(RuntimeError::new(format!("Function {:?} missing for conformance.", with_options(&expected_interface, abstract_representation))));
             }
             else if matching_implementations.len() > 1 {
-                return Err(RuntimeError::new(format!("Function {:?} is implemented multiple times.", fmta(|f| expected_interface.format(f, abstract_representation)))));
+                return Err(RuntimeError::new(format!("Function {:?} is implemented multiple times.", with_options(&expected_interface, abstract_representation))));
             }
             else {
                 function_bindings.insert(
@@ -93,6 +93,6 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
 
 impl<'a> Debug for UnresolvedFunctionImplementation<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.function.format(f, &self.representation)
+        write!(f, "{:?}", with_options(self.function.as_ref(), &self.representation))
     }
 }

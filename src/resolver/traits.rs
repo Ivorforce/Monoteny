@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use display_with_options::with_options;
 
 use itertools::Itertools;
 
@@ -17,7 +18,6 @@ use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::TypeProto;
 use crate::source::StructInfo;
-use crate::util::fmt::fmta;
 
 pub struct TraitResolver<'a> {
     pub runtime: &'a Runtime,
@@ -31,7 +31,7 @@ impl <'a> TraitResolver<'a> {
             ast::Statement::FunctionDeclaration(syntax) => {
                 let (fun, representation) = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
                 if !syntax.body.is_none() {
-                    return Err(RuntimeError::new(format!("Abstract function {} cannot have a body.", fmta(|fmt| fun.format(fmt, &representation)))));
+                    return Err(RuntimeError::new(format!("Abstract function {:?} cannot have a body.", with_options(fun.as_ref(), &representation))));
                 };
 
                 self.trait_.insert_function(fun, representation);

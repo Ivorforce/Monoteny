@@ -181,8 +181,8 @@ impl<'a> DisplayWithOptions<IndentOptions<'a>> for Statement {
             Statement::Return(None) => {
                 writeln!(f, "return")
             }
-            Statement::Class(c) => write!(f, "{}", with_options(c.as_ref(), &options)),
-            Statement::Function(fun) => write!(f, "{}", with_options(fun.as_ref(), &options)),
+            Statement::Class(c) => write!(f, "{}", with_options(c.as_ref(), options)),
+            Statement::Function(fun) => write!(f, "{}", with_options(fun.as_ref(), options)),
             Statement::IfThenElse(ifs, else_) => {
                 for (idx, (condition, body)) in ifs.iter().enumerate() {
                     if idx == 0 {

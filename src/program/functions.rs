@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
+use display_with_options::{DebugWithOptions, DisplayWithOptions, with_options};
 
 use uuid::Uuid;
 
@@ -136,50 +137,6 @@ impl FunctionInterface {
             generics: Default::default(),
         })
     }
-
-    pub fn format(&self, fmt: &mut Formatter<'_>, representation: &FunctionRepresentation) -> std::fmt::Result {
-        let mut head = 0;
-
-        if representation.target_type == FunctionTargetType::Member {
-            write!(fmt, "(")?;
-            Self::format_parameter(fmt, self.parameters.get(head).unwrap())?;
-            write!(fmt, ").")?;
-            head += 1;
-        }
-
-        write!(fmt, "{}", representation.name)?;
-
-        if representation.call_explicity == FunctionCallExplicity::Explicit {
-            write!(fmt, "(")?;
-            for parameter in self.parameters.iter().skip(head) {
-                Self::format_parameter(fmt, &parameter)?;
-            }
-            write!(fmt, ")")?;
-        }
-
-        if !self.return_type.unit.is_void() {
-            write!(fmt, " -> {:?}", self.return_type)?;
-        }
-
-        Ok(())
-        // TODO Requirements?
-    }
-
-    fn format_parameter(fmt: &mut Formatter, parameter: &Parameter) -> std::fmt::Result {
-        match &parameter.external_key {
-            ParameterKey::Positional => {
-                write!(fmt, "{} '{:?},", parameter.internal_name, parameter.type_)?;
-            }
-            ParameterKey::Name(n) => {
-                if n != &parameter.internal_name {
-                    write!(fmt, "{}: {} '{:?},", n, parameter.internal_name, parameter.type_)?;
-                } else {
-                    write!(fmt, "{}: '{:?},", n, parameter.type_)?;
-                }
-            }
-        }
-        Ok(())
-    }
 }
 
 impl FunctionHead {
@@ -193,16 +150,6 @@ impl FunctionHead {
             interface,
             function_type
         })
-    }
-
-    pub fn format(&self, fmt: &mut Formatter<'_>, representation: &FunctionRepresentation) -> std::fmt::Result {
-        let call_type_symbol = match self.function_type {
-            FunctionType::Static => "|",
-            FunctionType::Polymorphic { .. } => "?"
-        };
-        write!(fmt, "-{}({})--> ", call_type_symbol, &self.function_id)?;
-
-        self.interface.format(fmt, representation)
     }
 
     pub fn unwrap_id(&self) -> Uuid {
@@ -239,7 +186,7 @@ impl Hash for FunctionHead {
 
 impl Debug for FunctionHead {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        self.format(fmt, &FunctionRepresentation::new("fn", FunctionTargetType::Global, FunctionCallExplicity::Explicit))
+        write!(fmt, "{:?}", with_options(self, &FunctionRepresentation::new("fn", FunctionTargetType::Global, FunctionCallExplicity::Explicit)))
     }
 }
 
@@ -249,5 +196,61 @@ impl Display for ParameterKey {
             ParameterKey::Name(s) => write!(fmt, "{}: ", s),
             ParameterKey::Positional => Ok(()),
         }
+    }
+}
+
+impl DebugWithOptions<FunctionRepresentation> for FunctionHead {
+    fn fmt(&self, fmt: &mut Formatter<'_>, representation: &FunctionRepresentation) -> std::fmt::Result {
+        let call_type_symbol = match self.function_type {
+            FunctionType::Static => "|",
+            FunctionType::Polymorphic { .. } => "?"
+        };
+        write!(fmt, "-{}({})--> {:?}", call_type_symbol, &self.function_id, with_options(self.interface.as_ref(), representation))
+    }
+}
+
+impl DebugWithOptions<FunctionRepresentation> for FunctionInterface {
+    fn fmt(&self, fmt: &mut Formatter<'_>, representation: &FunctionRepresentation) -> std::fmt::Result {
+        fn format_parameter(fmt: &mut Formatter, parameter: &Parameter) -> std::fmt::Result {
+            match &parameter.external_key {
+                ParameterKey::Positional => {
+                    write!(fmt, "{} '{:?},", parameter.internal_name, parameter.type_)?;
+                }
+                ParameterKey::Name(n) => {
+                    if n != &parameter.internal_name {
+                        write!(fmt, "{}: {} '{:?},", n, parameter.internal_name, parameter.type_)?;
+                    } else {
+                        write!(fmt, "{}: '{:?},", n, parameter.type_)?;
+                    }
+                }
+            }
+            Ok(())
+        }
+
+        let mut head = 0;
+
+        if representation.target_type == FunctionTargetType::Member {
+            write!(fmt, "(")?;
+            format_parameter(fmt, self.parameters.get(head).unwrap())?;
+            write!(fmt, ").")?;
+            head += 1;
+        }
+
+        write!(fmt, "{}", representation.name)?;
+
+        if representation.call_explicity == FunctionCallExplicity::Explicit {
+            write!(fmt, "(")?;
+            for parameter in self.parameters.iter().skip(head) {
+                format_parameter(fmt, &parameter)?;
+            }
+            write!(fmt, ")")?;
+        }
+
+        if !self.return_type.unit.is_void() {
+            write!(fmt, " -> {:?}", self.return_type)?;
+        }
+
+        Ok(())
+        // TODO Requirements?
     }
 }
