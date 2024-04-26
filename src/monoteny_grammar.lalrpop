@@ -81,7 +81,7 @@ Block: Block = {
 }
 
 InnerBlock: Block = {
-    <statements: Box<Decorated<Positioned<(<Statement> ";")>>>*> => Block { <> }
+    <statements: Box<Decorated<Positioned<<Statement>>>>*> => Block { <> }
 };
 
 Struct: Struct = {
@@ -127,8 +127,15 @@ Conformance: TraitConformanceDeclaration = {
 
 // =============================== Statement =====================================
 
-
 Statement: Statement = {
+    <e: Positioned<!>> => {
+        errors.push(e.value.clone());
+        Statement::Error(derive_error(&e))
+    },
+    <StatementNoSemicolon> ";",
+};
+
+StatementNoSemicolon: Statement = {
     <mutability: VariableDeclarationMutability> <identifier: Identifier> <type_declaration: ("'" <Box<Expression>>)?> <assignment: ("=" <Box<Expression>>)?> => Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment },
     "upd" <target: Box<Expression>> "=" <new_value: Box<Expression>> => Statement::VariableUpdate { <> },
     "return" <Box<Expression>?> => Statement::Return(<>),

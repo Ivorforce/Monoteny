@@ -294,6 +294,7 @@ impl <'a> ImperativeResolver<'a> {
 
                 self.resolve_expression(&expression, &scope)?
             }
+            ast::Statement::Error(err) => Err(err.clone().to_array())?,
             statement => {
                 return Err(
                     RuntimeError::error(format!("Statement {} is not supported in an imperative context.", statement).as_str()).to_array()

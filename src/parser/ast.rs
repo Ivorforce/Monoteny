@@ -60,6 +60,7 @@ pub struct IfThenElse {
 
 #[derive(Eq, PartialEq, Clone)]
 pub enum Statement {
+    Error(RuntimeError),
     VariableDeclaration {
         mutability: Mutability,
         identifier: String,
@@ -226,6 +227,7 @@ impl Display for TraitConformanceDeclaration {
 impl Display for Statement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
+            Statement::Error(error) => write!(fmt, "ERR"),
             Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment} => {
                 let mutability_string = mutability.variable_declaration_keyword();
                 write!(fmt, "{} {}", mutability_string, identifier)?;
