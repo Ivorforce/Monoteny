@@ -79,19 +79,12 @@ pub struct Expression(Vec<Box<Positioned<Term>>>);
 
 impl Expression {
     pub fn no_errors(&self) -> RResult<()> {
-        let errors = self.iter().filter_map(|t| {
-            match &t.value {
-                Term::Error(e) => Some(e.clone()),
-                _ => None
-            }
-        }).collect_vec();
-
-        if errors.is_empty() {
-            return Ok(())
-        }
-        else {
-            return Err(errors)
-        }
+        self.iter()
+            .map(|t| match &t.value {
+                Term::Error(e) => Err(e.clone().to_array()),
+                _ => Ok(())
+            })
+            .try_collect_many()
     }
 }
 
