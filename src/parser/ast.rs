@@ -354,6 +354,13 @@ impl<V: Display> Display for Decorated<V> {
 }
 
 impl<V> Decorated<V> {
+    pub fn with_value<N>(&self, n: N) -> Decorated<N> {
+        Decorated {
+            decorations: self.decorations.clone(),
+            value: n,
+        }
+    }
+
     pub fn undecorated(t: V) -> Decorated<V> {
         Decorated {
             decorations: Array { arguments: vec![] },

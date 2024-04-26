@@ -1,6 +1,7 @@
 use lalrpop_util::ErrorRecovery;
 use std::str::FromStr;
 use itertools::Itertools;
+use crate::error::RuntimeError;
 use crate::util::position::*;
 use crate::parser::ast::*;
 use crate::parser::lexer::*;
@@ -84,11 +85,13 @@ InnerBlock: Block = {
     // ... statements, maybe erroring in between
     <statements: Box<Decorated<Positioned<<Statement>>>>*> => Block { <> },
     // ... statements, then an erroring statement without a ; to end it
-    <statements: Box<Decorated<Positioned<<Statement>>>>*> <e: Positioned<!>> => {
-        errors.push(e.value.clone());
-        let expression: Expression = Expression::from(vec![Box::new(e.with_value(Term::Error(derive_error(&e))))]);
-        let statement = Box::new(Decorated::undecorated(e.with_value(Statement::Expression(Box::new(expression)))));
-        Block { statements: statements.into_iter().chain([statement]).collect_vec() }
+    <statements: Box<Decorated<Positioned<<Statement>>>>*> <last_statement: Box<Decorated<Positioned<<StatementNoSemicolon>>>>> => {
+        let err_position = last_statement.value.position.end;
+        let term = Term::Error(RuntimeError::error("Expected ;"));
+        let expression: Expression = Expression::from(vec![Box::new(positioned(term, err_position, err_position))]);
+        let error_statement = Box::new(Decorated::undecorated(positioned(Statement::Expression(Box::new(expression)), err_position, err_position)));
+
+        Block { statements: statements.into_iter().chain([last_statement, error_statement]).collect_vec() }
    },
 };
 
