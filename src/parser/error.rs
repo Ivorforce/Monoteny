@@ -21,11 +21,11 @@ pub fn map_parse_error(e: &ParseError<usize, Token, Error>) -> RuntimeError {
                 .with_note(make_expected_note(expected))
         }
         ParseError::UnrecognizedToken { token: (start, token, end), expected } => {
-            RuntimeError::error("Unrecognized token.").in_range(*start..*end)
+            RuntimeError::error("Unexpected token.").in_range(*start..*end)
                 .with_note(make_expected_note(expected))
         }
         ParseError::ExtraToken { token: (start, token, end) } => {
-            RuntimeError::error("Extra token.").in_range(*start..*end)
+            RuntimeError::error("Extraneous token.").in_range(*start..*end)
         }
         ParseError::User { error } => {
             panic!()
