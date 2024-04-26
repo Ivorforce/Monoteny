@@ -38,7 +38,7 @@ pub fn parse_program(content: &str) -> RResult<(ast::Block, Vec<ErrorRecovery<us
                         .with_note(RuntimeError::note(format!("Expected one of: {}", expected.iter().map(|s| rem_first_and_last(s)).join(" ")).as_str()))
                 }
                 ParseError::ExtraToken { token: (start, token, end) } => {
-                    RuntimeError::error("Unrecognized token.").in_range(start..end)
+                    RuntimeError::error("Extra token.").in_range(start..end)
                 }
                 ParseError::User { error } => {
                     panic!()
