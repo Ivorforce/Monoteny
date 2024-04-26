@@ -44,7 +44,7 @@ pub struct TraitDefinition {
 #[derive(Eq, PartialEq, Clone)]
 pub struct TraitConformanceDeclaration {
     pub declared_for: Expression,
-    pub declared: String,
+    pub declared: Expression,
     pub block: Box<Block>,
 }
 

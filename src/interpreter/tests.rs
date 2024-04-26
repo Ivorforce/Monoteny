@@ -47,7 +47,7 @@ mod tests {
 
         let module = runtime.load_file_as_module(&PathBuf::from(path), module_name("main"))?;
 
-        let entry_function = interpreter::run::get_main_function(&module)?;
+        let entry_function = interpreter::run::get_main_function(&module)?.unwrap();
 
         // TODO Should gather all used functions and compile them
         let compiled = compile_deep(&mut runtime, entry_function)?;

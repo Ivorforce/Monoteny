@@ -9,14 +9,14 @@ trait Animal {
 trait Cat {};
 
 -- Declare every Cat subtype is Animal.
-declare $Cat is Animal {
+declare $Cat is Animal :: {
     def (self 'Self).talk() -> String :: "Meow";
 };
 
 trait Dog {};
 
 -- Declare just the Dog struct is Animal.
-declare Dog is Animal {
+declare Dog is Animal :: {
    def (self 'Self).talk() -> String :: "Bark";
 };
 

@@ -5,7 +5,7 @@ use!(
 -- The easiest way to format an object: It formats itself!
 def format(object '$ToString) -> String :: object.to_string();
 
-declare String is ToString {
+declare String is ToString :: {
     def (self 'Self).to_string() -> String :: self;
 };
 

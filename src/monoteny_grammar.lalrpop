@@ -115,7 +115,7 @@ Trait: TraitDefinition = {
 }
 
 Conformance: TraitConformanceDeclaration = {
-    "declare" <declared_for: Expression> "is" <declared: Identifier> "{" <block: Box<Block>> "}" => TraitConformanceDeclaration { <> },
+    "declare" <declared_for: Expression> "is" <declared: Expression> "::" "{" <block: Box<Block>> "}" => TraitConformanceDeclaration { <> },
 }
 
 // =============================== Statement =====================================

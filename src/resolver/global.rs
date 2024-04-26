@@ -134,7 +134,14 @@ impl <'a> GlobalResolver<'a> {
 
                 let mut type_factory = TypeFactory::new(&self.global_variables, &mut self.runtime);
                 let self_type = type_factory.resolve_type(&syntax.declared_for, true)?;
-                let declared = type_factory.resolve_trait(&syntax.declared)?;
+                let declared_type = type_factory.resolve_type(&syntax.declared, false)?;
+                let TypeUnit::Struct(declared) = &declared_type.unit else {
+                    panic!("Somehow, the resolved type wasn't a struct.")
+                };
+                if !declared_type.arguments.is_empty() {
+                    return Err(RuntimeError::error("Conformance cannot be declared with bindings for now.").to_array());
+                }
+
                 if declared.generics.keys().collect_vec() != vec!["Self"] {
                     // Requires 1) parsing generics that the programmer binds
                     // and  2) inserting new generics for each that isn't explicitly bound
