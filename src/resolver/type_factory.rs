@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 
-use crate::error::{RResult, RuntimeError};
+use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
 use crate::resolver::scopes;
 use crate::program::function_object::FunctionTargetType;
@@ -58,7 +58,11 @@ impl <'a> TypeFactory<'a> {
             return Err(RuntimeError::error("Interpreted types aren't supported yet; please use an explicit type for now. 2 ").to_array());
         };
 
-        let term: &ast::Term = &pterm.value;
+        self.resolve_type_by_name(allow_anonymous_generics, &pterm.value)
+            .err_in_range(&pterm.position)
+    }
+
+    fn resolve_type_by_name(&mut self, allow_anonymous_generics: bool, term: &ast::Term) -> RResult<Rc<TypeProto>> {
         let arguments = vec![];
 
         let ast::Term::Identifier(type_name) = term else {
