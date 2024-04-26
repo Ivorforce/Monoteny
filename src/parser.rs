@@ -31,11 +31,11 @@ pub fn parse_program(content: &str) -> RResult<(ast::Block, Vec<ErrorRecovery<us
                 },
                 ParseError::UnrecognizedEof { location, expected } => {
                     RuntimeError::error("File ended unexpectedly.").in_range(location..location)
-                        .with_note(RuntimeError::note(format!("Expected one of: {}", expected.iter().map(|s| rem_first_and_last(s)).join(" ")).as_str()))
+                        .with_note(make_expected_note(expected))
                 }
                 ParseError::UnrecognizedToken { token: (start, token, end), expected } => {
                     RuntimeError::error("Unrecognized token.").in_range(start..end)
-                        .with_note(RuntimeError::note(format!("Expected one of: {}", expected.iter().map(|s| rem_first_and_last(s)).join(" ")).as_str()))
+                        .with_note(make_expected_note(expected))
                 }
                 ParseError::ExtraToken { token: (start, token, end) } => {
                     RuntimeError::error("Extra token.").in_range(start..end)
@@ -47,4 +47,11 @@ pub fn parse_program(content: &str) -> RResult<(ast::Block, Vec<ErrorRecovery<us
         })?;
 
     Ok((ast, errors))
+}
+
+fn make_expected_note(expected: Vec<String>) -> RuntimeError {
+    match &expected[..] {
+        [one] => RuntimeError::note(format!("Expected: {}", rem_first_and_last(one)).as_str()),
+        expected => RuntimeError::note(format!("Expected one of: {}", expected.iter().map(|s| rem_first_and_last(s)).join(" ")).as_str()),
+    }
 }
