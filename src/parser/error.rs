@@ -48,6 +48,7 @@ fn unquote(value: &str) -> &str {
 
 fn make_expected_note(expected: &Vec<String>) -> RuntimeError {
     match &expected[..] {
+        [] => RuntimeError::note("Internal Error (expected nothing)."),
         [one] => RuntimeError::note(format!("Expected: {}", unquote(one)).as_str()),
         expected => RuntimeError::note(format!("Expected one of: {}", expected.iter().map(|s| unquote(s)).join(" ")).as_str()),
     }
