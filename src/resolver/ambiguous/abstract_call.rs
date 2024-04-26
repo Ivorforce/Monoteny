@@ -59,4 +59,8 @@ impl ResolverAmbiguity for AmbiguousAbstractCall {
             }
         })
     }
+
+    fn get_position(&self) -> Range<usize> {
+        self.range.clone()
+    }
 }

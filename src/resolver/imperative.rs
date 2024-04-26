@@ -99,7 +99,7 @@ impl <'a> ImperativeResolver<'a> {
                     RuntimeError::error(format!("Ambiguous ({} times)", self.ambiguities.len()).as_str())
                         .with_notes(
                             self.ambiguities.iter()
-                                .map(|x| RuntimeError::info(x.to_string().as_str()))
+                                .map(|x| RuntimeError::warning(x.to_string().as_str()).in_range(x.get_position()))
                         )
                         .to_array()
                 );

@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::ops::Range;
 
 pub use abstract_call::AmbiguousAbstractCall;
 pub use function_call::{AmbiguousFunctionCall, AmbiguousFunctionCandidate};
@@ -16,4 +17,6 @@ pub enum AmbiguityResult<V> {
 
 pub trait ResolverAmbiguity: Display {
     fn attempt_to_resolve(&mut self, expressions: &mut ImperativeResolver) -> RResult<AmbiguityResult<()>>;
+
+    fn get_position(&self) -> Range<usize>;
 }

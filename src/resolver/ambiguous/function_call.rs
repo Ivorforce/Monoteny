@@ -69,7 +69,7 @@ impl AmbiguousFunctionCall {
 
 impl Display for AmbiguousFunctionCall {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Ambiguous function call ({} candidates): {}", self.candidates.len(), self.representation.name)
+        write!(f, "Ambiguous function call ({} candidates).", self.candidates.len())
     }
 }
 
@@ -143,5 +143,9 @@ impl ResolverAmbiguity for AmbiguousFunctionCall {
                 )
             }
         }
+    }
+
+    fn get_position(&self) -> Range<usize> {
+        self.range.clone()
     }
 }
