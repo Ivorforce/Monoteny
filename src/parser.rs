@@ -1,7 +1,10 @@
-use lalrpop_util::ErrorRecovery;
+use itertools::Itertools;
+use lalrpop_util::{ErrorRecovery, ParseError};
 
 use crate::error::{RResult, RuntimeError};
 use crate::monoteny_grammar;
+use crate::parser::error::Error;
+use crate::parser::lexer::Token;
 
 pub mod ast;
 pub mod strings;
@@ -9,12 +12,39 @@ pub mod lexer;
 pub mod error;
 mod tests;
 
+fn rem_first_and_last(value: &str) -> &str {
+    let mut chars = value.chars();
+    chars.next();
+    chars.next_back();
+    chars.as_str()
+}
+
 pub fn parse_program(content: &str) -> RResult<(ast::Block, Vec<ErrorRecovery<usize, lexer::Token<'_>, error::Error>>)> {
     let lexer = lexer::Lexer::new(content);
     let mut errors = vec![];
     let ast = monoteny_grammar::BlockParser::new()
         .parse(&mut errors, content, lexer)
-        .map_err(|e| RuntimeError::error(e.to_string().as_str()).to_array())?;
+        .map_err(|e| {
+            match e {
+                ParseError::InvalidToken { location } => {
+                    RuntimeError::error("Invalid token.").in_range(location..location)
+                },
+                ParseError::UnrecognizedEof { location, expected } => {
+                    RuntimeError::error("File ended too early.").in_range(location..location)
+                        .with_note(RuntimeError::note(format!("Expected one of: {}", expected.iter().map(|s| rem_first_and_last(s)).join(" ")).as_str()))
+                }
+                ParseError::UnrecognizedToken { token: (start, token, end), expected } => {
+                    RuntimeError::error("Unrecognized token.").in_range(start..end)
+                        .with_note(RuntimeError::note(format!("Expected one of: {}", expected.iter().map(|s| rem_first_and_last(s)).join(" ")).as_str()))
+                }
+                ParseError::ExtraToken { token: (start, token, end) } => {
+                    RuntimeError::error("Unrecognized token.").in_range(start..end)
+                }
+                ParseError::User { error } => {
+                    panic!()
+                }
+            }.to_array()
+        })?;
 
     Ok((ast, errors))
 }
