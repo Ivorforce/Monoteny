@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 
-use crate::error::{ErrInRange, RResult, RuntimeError};
+use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
 use crate::resolver::grammar::{OperatorAssociativity, Token};
 use crate::resolver::imperative::ImperativeResolver;
 use crate::resolver::scopes;
@@ -33,7 +33,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
         match &ast_token.value {
             ast::Term::Error(err) => return Err(vec![err.clone()]),
             ast::Term::Identifier(identifier) => {
-                match scope.resolve(FunctionTargetType::Global, identifier)? {
+                match scope.resolve(FunctionTargetType::Global, identifier).err_in_range(&ast_token.position)? {
                     scopes::Reference::Keyword(keyword) => {
                         tokens.push(ast_token.with_value(
                             Token::Keyword(keyword.clone())
@@ -47,7 +47,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                                 vec![],
                                 type_,
                                 ExpressionOperation::GetLocal(local.clone())
-                            )?)
+                            ).err_in_range(&ast_token.position)?)
                         ));
                     }
                     scopes::Reference::FunctionOverload(overload) => {
@@ -58,10 +58,11 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
 
                                     match next_token.map(|t| &t.value) {
                                         Some(ast::Term::Struct(s)) => {
+                                            let range = &next_token.unwrap().position;
                                             i += 1;
 
                                             // The next token is a struct; we can immediately call it!
-                                            let struct_ = resolver.resolve_struct(scope, s)?;
+                                            let struct_ = resolver.resolve_struct(scope, s).err_in_range(range)?;
 
                                             let expression_id = resolver.resolve_function_call(
                                                 overload.functions.iter(),
@@ -70,11 +71,11 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                                                 struct_.values.clone(),
                                                 scope,
                                                 ast_token.position.clone(),
-                                            )?;
+                                            ).err_in_range(range)?;
 
                                             Token::Value(expression_id)
                                         },
-                                        _ => Token::Value(resolver.resolve_function_reference(overload)?),
+                                        _ => Token::Value(resolver.resolve_function_reference(overload).err_in_range(&ast_token.position)?),
                                     }
                                 }
                                 FunctionCallExplicity::Implicit => {
@@ -86,7 +87,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                                             vec![],
                                             scope,
                                             ast_token.position.clone()
-                                        )?
+                                        ).err_in_range(&ast_token.position)?
                                     )
                                 }
                                 _ => unreachable!(),
@@ -109,8 +110,11 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                     return Err(RuntimeError::error("Dot notation requires a following identifier.").to_array())
                 };
 
-                let overload = scope.resolve(FunctionTargetType::Member, member)?
-                    .as_function_overload()?;
+                let range = &next.unwrap().position;
+
+                let overload = scope.resolve(FunctionTargetType::Member, member)
+                    .err_in_range(range)?
+                    .as_function_overload().err_in_range(range)?;
 
                 // TODO This is almost duplicated code from normal function calls above.
                 *tokens.last_mut().unwrap() = ast_token.with_value(match overload.representation.call_explicity {
@@ -120,8 +124,10 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
 
                         match next_token.map(|t| &t.value) {
                             Some(ast::Term::Struct(s)) => {
+                                let range = &next_token.unwrap().position;
+
                                 // The next token is a struct; we can immediately call it!
-                                let struct_ = resolver.resolve_struct(scope, s)?;
+                                let struct_ = resolver.resolve_struct(scope, s).err_in_range(range)?;
 
                                 let expression_id = resolver.resolve_function_call(
                                     overload.functions.iter(),
@@ -130,7 +136,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                                     [target.clone()].into_iter().chain(struct_.values.clone()).collect_vec(),
                                     scope,
                                     ast_token.position.clone(),
-                                )?;
+                                ).err_in_range(range)?;
 
                                 Token::Value(expression_id)
                             },
@@ -146,14 +152,14 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                                 vec![target.clone()],
                                 scope,
                                 ast_token.position.clone()
-                            )?
+                            ).err_in_range(range)?
                         )
                     }
                     _ => unreachable!(),
                 });
             }
             ast::Term::IntLiteral(string) => {
-                let string_expression_id = resolver.resolve_string_primitive(string)?;
+                let string_expression_id = resolver.resolve_string_primitive(string).err_in_range(&ast_token.position)?;
 
                 tokens.push(ast_token.with_value(
                     Token::Value(resolver.resolve_abstract_function_call(
@@ -162,11 +168,11 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                         Rc::clone(&resolver.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
                         scope.trait_conformance.clone(),
                         ast_token.position.clone(),
-                    )?)
+                    ).err_in_range(&ast_token.position).err_in_range(&ast_token.position)?)
                 ));
             }
             ast::Term::RealLiteral(string) => {
-                let string_expression_id = resolver.resolve_string_primitive(string)?;
+                let string_expression_id = resolver.resolve_string_primitive(string).err_in_range(&ast_token.position)?;
 
                 tokens.push(ast_token.with_value(
                     Token::Value(resolver.resolve_abstract_function_call(
@@ -175,24 +181,26 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                         Rc::clone(&resolver.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
                         scope.trait_conformance.clone(),
                         ast_token.position.clone(),
-                    )?)
+                    ).err_in_range(&ast_token.position)?)
                 ));
             }
             ast::Term::StringLiteral(parts) => {
                 tokens.push(ast_token.with_value(
-                    Token::Value(resolver.resolve_string_literal(scope, ast_token, parts)?)
+                    Token::Value(resolver.resolve_string_literal(scope, ast_token, parts).err_in_range(&ast_token.position)?)
                 ))
             }
             ast::Term::Struct(s) => {
-                let struct_ = resolver.resolve_struct(scope, s)?;
+                let struct_ = resolver.resolve_struct(scope, s).err_in_range(&ast_token.position)?;
 
                 let previous = tokens.last();
                 match previous.map(|v| &v.value) {
                     Some(Token::Value(expression)) => {
+                        let range = &previous.unwrap().position;
+
                         // Call previous token
                         let overload = scope
-                            .resolve(FunctionTargetType::Member, "call_as_function").err_in_range(&ast_token.position)?
-                            .as_function_overload().err_in_range(&ast_token.position)?;
+                            .resolve(FunctionTargetType::Member, "call_as_function").err_in_range(range)?
+                            .as_function_overload().err_in_range(range)?;
 
                         let expression_id = resolver.resolve_function_call(
                             overload.functions.iter(),
@@ -201,7 +209,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                             [expression].into_iter().chain(&struct_.values).cloned().collect(),
                             scope,
                             ast_token.position.clone(),
-                        )?;
+                        ).err_in_range(range)?;
 
                         *tokens.last_mut().unwrap() = ast_token.with_value(Token::Value(expression_id));
                     }
@@ -221,7 +229,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
             ast::Term::Array(array) => {
                 let values = array.arguments.iter().map(|x| {
                     resolver.resolve_expression_with_type(&x.value.value, &x.value.type_declaration, scope)
-                }).try_collect()?;
+                }).try_collect_many()?;
 
                 let previous = tokens.last();
                 match previous.map(|v| &v.value) {
