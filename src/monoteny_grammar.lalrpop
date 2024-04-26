@@ -81,7 +81,15 @@ Block: Block = {
 }
 
 InnerBlock: Block = {
-    <statements: Box<Decorated<Positioned<<Statement>>>>*> => Block { <> }
+    // ... statements, maybe erroring in between
+    <statements: Box<Decorated<Positioned<<Statement>>>>*> => Block { <> },
+    // ... statements, then an erroring statement without a ; to end it
+    <statements: Box<Decorated<Positioned<<Statement>>>>*> <e: Positioned<!>> => {
+        errors.push(e.value.clone());
+        let expression: Expression = Expression::from(vec![Box::new(e.with_value(Term::Error(derive_error(&e))))]);
+        let statement = Box::new(Decorated::undecorated(e.with_value(Statement::Expression(Box::new(expression)))));
+        Block { statements: statements.into_iter().chain([statement]).collect_vec() }
+   },
 };
 
 Struct: Struct = {
@@ -128,10 +136,6 @@ Conformance: TraitConformanceDeclaration = {
 // =============================== Statement =====================================
 
 Statement: Statement = {
-    <e: Positioned<!>> => {
-        errors.push(e.value.clone());
-        Statement::Error(derive_error(&e))
-    },
     <StatementNoSemicolon> ";",
 };
 
@@ -166,6 +170,10 @@ ExpressionNoIfThenElse: Expression = {
 }
 
 Term: Term = {
+    <e: Positioned<!>> => {
+        errors.push(e.value.clone());
+        Term::Error(derive_error(&e))
+    },
     AnyIdentifier => Term::Identifier(<>),
     MacroIdentifier => Term::MacroIdentifier(<>),
     IntLiteral => Term::IntLiteral(<>),

@@ -80,7 +80,6 @@ impl <'a> TraitResolver<'a> {
                     RuntimeError::error(format!("Expression {} not valid in a trait context.", statement).as_str()).to_array()
                 );
             }
-            ast::Statement::Error(err) => Err(err.clone().to_array())?,
             _ => {
                 return Err(
                     RuntimeError::error(format!("Statement {} not valid in a trait context.", statement).as_str()).to_array()

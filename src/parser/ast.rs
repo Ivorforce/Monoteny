@@ -60,7 +60,6 @@ pub struct IfThenElse {
 
 #[derive(Eq, PartialEq, Clone)]
 pub enum Statement {
-    Error(RuntimeError),
     VariableDeclaration {
         mutability: Mutability,
         identifier: String,
@@ -77,6 +76,17 @@ pub enum Statement {
 
 #[derive(Eq, PartialEq, Clone)]
 pub struct Expression(Vec<Box<Positioned<Term>>>);
+
+impl Expression {
+    pub fn no_errors(&self) -> RResult<()> {
+        self.iter()
+            .map(|t| match &t.value {
+                Term::Error(e) => Err(e.clone().to_array()),
+                _ => Ok(())
+            })
+            .try_collect_many()
+    }
+}
 
 impl Deref for Expression {
     type Target = Vec<Box<Positioned<Term>>>;
@@ -100,6 +110,7 @@ impl From<Vec<Box<Positioned<Term>>>> for Expression {
 
 #[derive(Eq, PartialEq, Clone)]
 pub enum Term {
+    Error(RuntimeError),
     Identifier(String),
     MacroIdentifier(String),
     Dot,
@@ -227,7 +238,6 @@ impl Display for TraitConformanceDeclaration {
 impl Display for Statement {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
-            Statement::Error(error) => write!(fmt, "ERR"),
             Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment} => {
                 let mutability_string = mutability.variable_declaration_keyword();
                 write!(fmt, "{} {}", mutability_string, identifier)?;
@@ -262,6 +272,7 @@ impl Display for Expression {
 impl Display for Term {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
+            Term::Error(err) => write!(fmt, "ERR"),
             Term::Identifier(s) => write!(fmt, "{}", s),
             Term::MacroIdentifier(s) => write!(fmt, "{}!", s),
             Term::IntLiteral(s) => write!(fmt, "{}", s),

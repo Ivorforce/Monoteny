@@ -31,6 +31,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
         i += 1;
 
         match &ast_token.value {
+            ast::Term::Error(err) => Err(err.clone().to_array())?,
             ast::Term::Identifier(identifier) => {
                 match scope.resolve(FunctionTargetType::Global, identifier).err_in_range(&ast_token.position)? {
                     scopes::Reference::Keyword(keyword) => {
