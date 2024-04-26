@@ -5,7 +5,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 
-use crate::error::{ErrInRange, RResult, RuntimeError};
+use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
 use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
 use crate::resolver::grammar::parse::{resolve_expression_to_tokens, resolve_tokens_to_value};
@@ -186,7 +186,7 @@ impl <'a> ImperativeResolver<'a> {
         let statements: Vec<ExpressionID> = body.statements.iter().map(|pstatement| {
             self.resolve_statement(&mut scope, pstatement)
                 .err_in_range(&pstatement.value.position)
-        }).try_collect()?;
+        }).try_collect_many()?;
 
         let expression_id = self.register_new_expression(statements);
         self.expression_tree.values.insert(expression_id, ExpressionOperation::Block);
@@ -355,7 +355,7 @@ impl <'a> ImperativeResolver<'a> {
             _ => {
                 let mut parts: Vec<_> = parts.iter()
                     .map(|part| self.resolve_string_part(part, scope))
-                    .try_collect()?;
+                    .try_collect_many()?;
 
                 // TODO We should call concat() with an array instead.
                 let last = parts.pop().unwrap();
@@ -377,7 +377,7 @@ impl <'a> ImperativeResolver<'a> {
         let values = struct_.arguments.iter().map(|x| {
             self.resolve_expression_with_type(&x.value.value, &x.value.type_declaration, scope)
                 .err_in_range(&x.position)
-        }).try_collect()?;
+        }).try_collect_many()?;
 
         Ok(Struct {
             keys: struct_.arguments.iter()

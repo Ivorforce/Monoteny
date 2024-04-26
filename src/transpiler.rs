@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 
-use crate::error::RResult;
+use crate::error::{RResult, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
@@ -92,7 +92,7 @@ pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &d
 
     let exported_functions = refactor.explicit_functions.iter()
         .map(|head| fn_logic.get(head).unwrap().as_implementation())
-        .try_collect()?;
+        .try_collect_many()?;
     let mut implicit_functions = vec![];
     let mut native_functions = HashMap::new();
 

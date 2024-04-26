@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use itertools::Itertools;
 
-use crate::error::{RResult, RuntimeError};
+use crate::error::{RResult, RuntimeError, TryCollectMany};
 use crate::program::allocation::Mutability;
 use crate::program::functions::ParameterKey;
 use crate::util::fmt::write_separated_display;
@@ -371,7 +371,7 @@ impl<V> Decorated<V> {
             }
 
             Ok(&d.value.value)
-        }).try_collect()
+        }).try_collect_many()
     }
 
     pub fn no_decorations(&self) -> RResult<()> {

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 
-use crate::error::{RResult, RuntimeError};
+use crate::error::{RResult, RuntimeError, TryCollectMany};
 use crate::resolver::grammar::{Pattern, PatternPart};
 use crate::resolver::scopes;
 use crate::parser::ast;
@@ -49,7 +49,7 @@ pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead
                         _ => Err(RuntimeError::error("Bad pattern.").to_array()),
                     }
                 })
-                .try_collect()?;
+                .try_collect_many()?;
 
             Ok(Rc::new(Pattern {
                 id: Uuid::new_v4(),

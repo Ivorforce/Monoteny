@@ -4,7 +4,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use try_map::FallibleMapExt;
 
-use crate::error::{RResult, RuntimeError};
+use crate::error::{RResult, RuntimeError, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
 use crate::resolver::scopes;
 use crate::resolver::type_factory::TypeFactory;
@@ -124,7 +124,7 @@ pub fn _resolve_function_interface<'a>(representation: FunctionRepresentation, p
 
     let parameters = parameters
         .map(|p| resolve_function_parameter(p, &mut type_factory))
-        .try_collect()?;
+        .try_collect_many()?;
 
     let mut generics = generics.clone();
     generics.extend(type_factory.generics);

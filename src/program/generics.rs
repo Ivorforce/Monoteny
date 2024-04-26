@@ -5,7 +5,7 @@ use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
 use uuid::Uuid;
 
-use crate::error::{RResult, RuntimeError};
+use crate::error::{RResult, RuntimeError, TryCollectMany};
 use crate::program::traits::Trait;
 use crate::program::types::{TypeProto, TypeUnit};
 
@@ -59,7 +59,7 @@ impl TypeForest {
             TypeUnit::Generic(alias) => self.resolve_binding_alias(alias).map(|x| x.clone()),
             _ => Ok(Rc::new(TypeProto {
                 unit: type_.unit.clone(),
-                arguments: type_.arguments.iter().map(|x| self.resolve_type(x)).try_collect()?
+                arguments: type_.arguments.iter().map(|x| self.resolve_type(x)).try_collect_many()?
             }))
         }
     }
@@ -77,7 +77,7 @@ impl TypeForest {
             unit: binding.clone(),
             arguments: self.identity_to_arguments.get(&identity).unwrap().iter()
                 .map(|x| self.resolve_binding_alias(x))
-                .try_collect()?
+                .try_collect_many()?
         }))
     }
 
