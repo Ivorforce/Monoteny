@@ -76,7 +76,6 @@ impl <'a> TraitResolver<'a> {
                 fields::add_to_trait(&mut self.trait_, field);
             }
             ast::Statement::Expression(e) => {
-                e.no_errors()?;
                 return Err(
                     RuntimeError::error(format!("Expression {} not valid in a trait context.", statement).as_str()).to_array()
                 );

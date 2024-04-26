@@ -44,7 +44,6 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
                 });
             }
             ast::Statement::Expression(e) => {
-                e.no_errors()?;
                 return Err(
                     RuntimeError::error(format!("Expression {} not valid in a conformance context.", statement).as_str()).to_array()
                 );

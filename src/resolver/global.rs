@@ -197,7 +197,6 @@ impl <'a> GlobalResolver<'a> {
             }
             ast::Statement::Expression(e) => {
                 pstatement.no_decorations()?;
-                e.no_errors()?;
 
                 match &e[..] {
                     [l, r] => {

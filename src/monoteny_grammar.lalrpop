@@ -72,8 +72,15 @@ AnyIdentifier: String = {
 
 // =============================== Global =====================================
 
+pub File: Block = {
+    InnerBlock,
+}
 
-pub Block: Block = {
+Block: Block = {
+    "{" <InnerBlock> "}",
+}
+
+InnerBlock: Block = {
     <statements: Box<Decorated<Positioned<(<Statement> ";")>>>*> => Block { <> }
 };
 
@@ -111,11 +118,11 @@ FunctionBody: Expression = {
 // =============================== Trait =====================================
 
 Trait: TraitDefinition = {
-    "trait" <name: Identifier> "{" <block: Box<Block>> "}" => TraitDefinition { <> },
+    "trait" <name: Identifier> <block: Box<Block>> => TraitDefinition { <> },
 }
 
 Conformance: TraitConformanceDeclaration = {
-    "declare" <declared_for: Expression> "is" <declared: Expression> "::" "{" <block: Box<Block>> "}" => TraitConformanceDeclaration { <> },
+    "declare" <declared_for: Expression> "is" <declared: Expression> "::" <block: Box<Block>> => TraitConformanceDeclaration { <> },
 }
 
 // =============================== Statement =====================================
@@ -159,9 +166,8 @@ Term: Term = {
     "." => Term::Dot,
     Box<Array> => Term::Array(<>),
     Box<Struct> => Term::Struct(<>),
+    Box<Block> => Term::Block(<>),
     "\"" <Box<Positioned<StringPart>>*> "\"" => Term::StringLiteral(<>),
-    "{" <Box<Block>> "}" => Term::Block(<>),
-    <start:@L> <e: !> <end:@R> => { errors.push(e.clone()); Term::Error(derive_error(&e, start, end)) },
 }
 
 StringPart: StringPart = {

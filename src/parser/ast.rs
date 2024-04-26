@@ -77,17 +77,6 @@ pub enum Statement {
 #[derive(Eq, PartialEq, Clone)]
 pub struct Expression(Vec<Box<Positioned<Term>>>);
 
-impl Expression {
-    pub fn no_errors(&self) -> RResult<()> {
-        self.iter()
-            .map(|t| match &t.value {
-                Term::Error(e) => Err(e.clone().to_array()),
-                _ => Ok(())
-            })
-            .try_collect_many()
-    }
-}
-
 impl Deref for Expression {
     type Target = Vec<Box<Positioned<Term>>>;
 
@@ -110,7 +99,6 @@ impl From<Vec<Box<Positioned<Term>>>> for Expression {
 
 #[derive(Eq, PartialEq, Clone)]
 pub enum Term {
-    Error(RuntimeError),
     Identifier(String),
     MacroIdentifier(String),
     Dot,
@@ -272,7 +260,6 @@ impl Display for Expression {
 impl Display for Term {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         match self {
-            Term::Error(_) => write!(fmt, "ERR"),
             Term::Identifier(s) => write!(fmt, "{}", s),
             Term::MacroIdentifier(s) => write!(fmt, "{}!", s),
             Term::IntLiteral(s) => write!(fmt, "{}", s),
@@ -354,6 +341,13 @@ impl<V: Display> Display for Decorated<V> {
 }
 
 impl<V> Decorated<V> {
+    pub fn undecorated(t: V) -> Decorated<V> {
+        Decorated {
+            decorations: Array { arguments: vec![] },
+            value: t,
+        }
+    }
+
     pub fn decorations_as_vec(&self) -> RResult<Vec<&Expression>> {
         return self.decorations.arguments.iter().map(|d| {
             if d.value.key.is_some() {

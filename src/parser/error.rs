@@ -3,12 +3,14 @@ use lalrpop_util::{ErrorRecovery, ParseError};
 
 use crate::error::RuntimeError;
 use crate::parser::lexer::Token;
+use crate::util::position::Positioned;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Error(pub String);
 
-pub fn derive_error(error: &ErrorRecovery<usize, Token<'_>, Error>, start: usize, end: usize) -> RuntimeError {
-    map_parse_error(&error.error)
+pub fn derive_error(error: &Positioned<ErrorRecovery<usize, Token<'_>, Error>>) -> RuntimeError {
+    map_parse_error(&error.value.error)
+        .in_range(error.position.clone())
 }
 
 pub fn map_parse_error(e: &ParseError<usize, Token, Error>) -> RuntimeError {
