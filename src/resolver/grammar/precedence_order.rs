@@ -21,7 +21,7 @@ pub fn resolve_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<Preced
         return Err(error);
     };
 
-    let order = array.arguments.iter().map(|arg| {
+    let order: Vec<Rc<PrecedenceGroup>> = array.arguments.iter().map(|arg| {
         if arg.value.key.is_some() || arg.value.type_declaration.is_some() {
             return Err(error.clone())
         }

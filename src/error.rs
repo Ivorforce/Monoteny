@@ -150,11 +150,11 @@ impl<V> ErrInRange<RResult<V>> for RResult<V> {
 }
 
 pub trait TryCollectMany<R> {
-    fn try_collect_many(self) -> RResult<Vec<R>>;
+    fn try_collect_many(self) -> RResult<R>;
 }
 
-impl<V, I: Iterator<Item=RResult<V>>> TryCollectMany<V> for I {
-    fn try_collect_many(self) -> RResult<Vec<V>> {
+impl<V, I: Iterator<Item=RResult<V>>, R: FromIterator<V>> TryCollectMany<R> for I {
+    fn try_collect_many(self) -> RResult<R> {
         let mut values = vec![];
         let mut errors = vec![];
 
@@ -166,7 +166,7 @@ impl<V, I: Iterator<Item=RResult<V>>> TryCollectMany<V> for I {
         }
 
         return match errors.is_empty() {
-            true => Ok(values),
+            true => Ok(R::from_iter(values)),
             false => Err(errors),
         }
     }
