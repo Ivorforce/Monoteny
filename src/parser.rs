@@ -30,7 +30,7 @@ pub fn parse_program(content: &str) -> RResult<(ast::Block, Vec<ErrorRecovery<us
                     RuntimeError::error("Invalid token.").in_range(location..location)
                 },
                 ParseError::UnrecognizedEof { location, expected } => {
-                    RuntimeError::error("File ended too early.").in_range(location..location)
+                    RuntimeError::error("File ended unexpectedly.").in_range(location..location)
                         .with_note(RuntimeError::note(format!("Expected one of: {}", expected.iter().map(|s| rem_first_and_last(s)).join(" ")).as_str()))
                 }
                 ParseError::UnrecognizedToken { token: (start, token, end), expected } => {
