@@ -14,7 +14,7 @@ pub fn parse_program(content: &str) -> RResult<(ast::Block, Vec<ErrorRecovery<us
     let mut errors = vec![];
     let ast = monoteny_grammar::BlockParser::new()
         .parse(&mut errors, content, lexer)
-        .map_err(|e| RuntimeError::new(e.to_string()))?;
+        .map_err(|e| RuntimeError::error(e.to_string().as_str()).to_array())?;
 
     Ok((ast, errors))
 }

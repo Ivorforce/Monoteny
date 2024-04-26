@@ -19,22 +19,22 @@ pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead
             Positioned { position: p2, value: ast::Term::Struct(call_struct)}
         ] => {
             if i != "pattern" {
-                return Err(RuntimeError::new("Unrecognized decoration.".to_string()))
+                return Err(RuntimeError::error("Unrecognized decoration.").to_array())
             }
 
             let [a, b] = &call_struct.arguments[..] else {
-                return Err(RuntimeError::new("pattern decoration needs two arguments.".to_string()))
+                return Err(RuntimeError::error("pattern decoration needs two arguments.").to_array())
             };
 
             if a.value.key != ParameterKey::Positional || a.value.type_declaration.is_some() ||
                 b.value.key != ParameterKey::Positional || b.value.type_declaration.is_some() {
-                return Err(RuntimeError::new("pattern decoration arguments are faulty.".to_string()))
+                return Err(RuntimeError::error("pattern decoration arguments are faulty.").to_array())
             }
 
             let precedence_group = match &b.value.value.iter().map(|p| p.as_ref()).collect_vec()[..] {
                 [Positioned { position, value: ast::Term::Identifier(precedence) }] =>
                     scope.resolve_precedence_group(&precedence)?,
-                _ => return Err(RuntimeError::new("Second argument to pattern needs to be a precedence name.".to_string()))
+                _ => return Err(RuntimeError::error("Second argument to pattern needs to be a precedence name.").to_array())
             };
 
             let parts: Vec<Box<PatternPart>> = a.value.value.iter()
@@ -46,7 +46,7 @@ pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead
                                 .map(|p| PatternPart::Parameter(p))
                                 .unwrap_or(PatternPart::Keyword(i.clone()))))
                         },
-                        _ => Err(RuntimeError::new("Bad pattern.".to_string())),
+                        _ => Err(RuntimeError::error("Bad pattern.").to_array()),
                     }
                 })
                 .try_collect()?;
@@ -58,6 +58,6 @@ pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead
                 head: function,
             }))
         }
-        _ => Err(RuntimeError::new("Unrecognized decoration.".to_string()))
+        _ => Err(RuntimeError::error("Unrecognized decoration.").to_array())
     }
 }

@@ -95,10 +95,14 @@ impl <'a> ImperativeResolver<'a> {
         let mut has_changed = true;
         while !self.ambiguities.is_empty() {
             if !has_changed {
-                // TODO Output which parts are ambiguous, and how, by asking the objects
-                return Err(RuntimeError::new(
-                    format!("Ambiguous ({} times): \n{}\n\n", self.ambiguities.len(), self.ambiguities.iter().map(|x| x.to_string()).join("\n"))
-                ))
+                return Err(
+                    RuntimeError::error(format!("Ambiguous ({} times)", self.ambiguities.len()).as_str())
+                        .with_notes(
+                            self.ambiguities.iter()
+                                .map(|x| RuntimeError::info(x.to_string().as_str()))
+                        )
+                        .to_array()
+                );
             }
 
             has_changed = false;
@@ -198,7 +202,9 @@ impl <'a> ImperativeResolver<'a> {
                 pstatement.no_decorations()?;
 
                 let Some(assignment) = assignment else {
-                    return Err(RuntimeError::new(format!("Value {} must be assigned on declaration.", identifier)))
+                    return Err(
+                        RuntimeError::error(format!("Value {} must be assigned on declaration.", identifier).as_str()).to_array()
+                    )
                 };
                 let assignment: ExpressionID = self.resolve_expression(&assignment, &scope)?;
 
@@ -248,7 +254,9 @@ impl <'a> ImperativeResolver<'a> {
                             pstatement.value.position.clone()
                         )?
                     }
-                    _ => return Err(RuntimeError::new("upd keyword must be followed by an identifier or a single member.".to_string()))
+                    _ => return Err(
+                        RuntimeError::error("upd keyword must be followed by an identifier or a single member.").to_array()
+                    )
                 }
             }
             ast::Statement::Return(expression) => {
@@ -256,7 +264,9 @@ impl <'a> ImperativeResolver<'a> {
 
                 if let Some(expression) = expression {
                     if self.function.interface.return_type.unit.is_void() {
-                        return Err(RuntimeError::new(format!("Return statement offers a value when the function declares void.")))
+                        return Err(
+                            RuntimeError::error("Return statement offers a value when the function declares void.").to_array()
+                        )
                     }
 
                     let result: ExpressionID = self.resolve_expression(expression, &scope)?;
@@ -268,7 +278,9 @@ impl <'a> ImperativeResolver<'a> {
                     expression_id
                 } else {
                     if !self.function.interface.return_type.unit.is_void() {
-                        return Err(RuntimeError::new(format!("Return statement offers no value when the function declares an object.")))
+                        return Err(
+                            RuntimeError::error("Return statement offers no value when the function declares an object.").to_array()
+                        )
                     }
 
                     let expression_id = self.register_new_expression(vec![]);
@@ -283,7 +295,9 @@ impl <'a> ImperativeResolver<'a> {
                 self.resolve_expression(&expression, &scope)?
             }
             statement => {
-                return Err(RuntimeError::new(format!("Statement {} is not supported in an imperative context.", statement)))
+                return Err(
+                    RuntimeError::error(format!("Statement {} is not supported in an imperative context.", statement).as_str()).to_array()
+                )
             }
         };
         Ok(expression_id)
@@ -451,18 +465,27 @@ impl <'a> ImperativeResolver<'a> {
             arguments: argument_expressions.clone(),
             types: &self.types,
         };
+
+        let mut error = RuntimeError::error(
+            format!("function {} could not be resolved.", signature).as_str());
+
         match &candidates_with_failed_signature[..] {
             [candidate] => {
                 // TODO Print passed arguments like a signature, not array
-                Err(RuntimeError::new(format!("function {} could not be resolved.\nCandidate has mismatching signature: {:?}", signature, candidate)))
+                error = error.with_note(
+                    RuntimeError::info(format!("Candidate has mismatching signature: {:?}", candidate).as_str())
+                );
             }
-            [] => {
-                Err(RuntimeError::new(format!("function {} could not be resolved.", signature)))
-            }
+            [] => {}
             candidates => {
-                Err(RuntimeError::new(format!("function {} could not be resolved.\n{} candidates have mismatching signatures.", signature, candidates.len())))
+                // TODO Output all?
+                error = error.with_note(
+                    RuntimeError::info(format!("{} candidates have mismatching signatures.", candidates.len()).as_str())
+                );
             }
         }
+
+        return Err(error.to_array());
     }
 
     pub fn resolve_function_reference(&mut self, overload: &Rc<FunctionOverload>) -> RResult<ExpressionID> {
@@ -478,9 +501,9 @@ impl <'a> ImperativeResolver<'a> {
 
                 Ok(expression_id)
             }
-            _ => return Err(RuntimeError::new(
-                String::from("References to overloaded functions are not yet supported (need syntax to distinguish which to choose).")
-            ))?,
+            _ => return Err(
+                RuntimeError::error("References to overloaded functions are not yet supported (need syntax to distinguish which to choose).").to_array()
+            )?,
         }
     }
 }

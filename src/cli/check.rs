@@ -2,8 +2,9 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{arg, ArgMatches, Command};
+use crate::cli::logging::{dump_named_failure, dump_start, dump_success};
 
-use crate::error::{dump_named_failure, dump_start, dump_success, RResult};
+use crate::error::RResult;
 use crate::interpreter::runtime::Runtime;
 use crate::program::module::module_name;
 

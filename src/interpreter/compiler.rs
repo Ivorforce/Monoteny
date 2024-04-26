@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::rc::Rc;
 use itertools::Itertools;
-use crate::error::{RResult, RuntimeError};
+use crate::error::{RuntimeError, RResult};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{string_to_ptr, Value};
 use crate::interpreter::disassembler::disassemble;
@@ -28,7 +28,7 @@ pub struct FunctionCompiler<'a> {
 
 pub fn compile_deep(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Chunk> {
     let FunctionLogic::Implementation(implementation) = runtime.source.fn_logic[function].clone() else {
-        return Err(RuntimeError::new(format!("main! function was somehow internal.")));
+        return Err(RuntimeError::error("main! function was somehow internal.").to_array());
     };
     let function_representation = runtime.source.fn_representations[function].clone();
 
@@ -41,6 +41,8 @@ pub fn compile_deep(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResu
     let needed_functions = refactor.gather_needed_functions();
     let fn_logic = refactor.fn_logic;
 
+    let mut errors = vec![];
+
     for function in needed_functions {
         match &fn_logic[&function] {
             FunctionLogic::Descriptor(d) => {
@@ -51,18 +53,29 @@ pub fn compile_deep(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResu
                 compile_descriptor(&function, d, runtime);
             }
             FunctionLogic::Implementation(implementation) => {
-                let compiled = compile_function(runtime, implementation)?;
-                runtime.function_evaluators.insert(function.function_id, compiled);
+                match compile_function(runtime, implementation) {
+                    Ok(compiled) => drop(runtime.function_evaluators.insert(function.function_id, compiled)),
+                    Err(err) => errors.extend(err),
+                };
             }
         }
     }
 
     let FunctionLogic::Implementation(implementation) = &fn_logic[function] else {
-        return Err(RuntimeError::new(format!("main! function was somehow internal after refactor.")));
+        errors.push(RuntimeError::error("main! function was somehow internal after refactor."));
+        return Err(errors);
     };
 
-    compile_function(runtime, implementation)
-
+    match compile_function(runtime, implementation) {
+        Ok(compiled) => {
+            if !errors.is_empty() { Err(errors) }
+            else { Ok(compiled) }
+        },
+        Err(err) => {
+            errors.extend(err);
+            Err(errors)
+        },
+    }
 }
 
 fn compile_function(runtime: &mut Runtime, implementation: &FunctionImplementation) -> RResult<Chunk> {

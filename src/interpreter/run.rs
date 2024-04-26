@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::error::{RResult, RuntimeError};
+use crate::error::{RuntimeError, RResult};
 use crate::interpreter::compiler::compile_deep;
 use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::VM;
@@ -11,7 +11,8 @@ use crate::program::module::Module;
 use crate::transpiler::{TranspiledArtifact, Transpiler};
 
 pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
-    let entry_function = get_main_function(&module)?;
+    let entry_function = get_main_function(&module)?
+        .ok_or(RuntimeError::error("No main! function declared.").to_array())?;
 
     // TODO Should gather all used functions and compile them
     let compiled = compile_deep(runtime, entry_function)?;
@@ -25,28 +26,24 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
     Ok(())
 }
 
-pub fn get_main_function(module: &Module) -> RResult<&Rc<FunctionHead>> {
+pub fn get_main_function(module: &Module) -> RResult<Option<&Rc<FunctionHead>>> {
     let entry_function = match &module.main_functions[..] {
-        [] => return Err(RuntimeError::new(format!("No main! function declared."))),
+        [] => return Ok(None),
         [f] => f,
-        functions => return Err(RuntimeError::new(format!("Too many @main functions declared: {:?}", functions))),
+        functions => return Err(RuntimeError::error(format!("Too many @main functions declared: {:?}", functions).as_str()).to_array()),
     };
     if !entry_function.interface.parameters.is_empty() {
-        return Err(RuntimeError::new(format!("main! function has parameters.")));
+        return Err(RuntimeError::error("main! function has parameters.").to_array());
     }
     if !entry_function.interface.return_type.unit.is_void() {
-        return Err(RuntimeError::new(format!("main! function has a return value.")));
+        return Err(RuntimeError::error("main! function has a return value.").to_array());
     }
-    Ok(entry_function)
+    Ok(Some(entry_function))
 }
 
 // The function is written like this
 pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpiler>> {
-    let entry_function = match &module.transpile_functions[..] {
-        [] => return Err(RuntimeError::new(format!("No transpile! function declared."))),
-        [f] => f,
-        functions => return Err(RuntimeError::new(format!("Too many main! functions declared: {:?}", functions))),
-    };
+    let entry_function = get_transpile_function(module)?;
     assert!(entry_function.interface.return_type.unit.is_void(), "transpile! function has a return value.");
 
     // Set the transpiler object.
@@ -62,11 +59,17 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
 
     Ok(Box::new(Transpiler {
         // TODO This should be one of the exported artifacts
-        main_function: module.main_functions.iter().at_most_one()
-            .map_err(|_| RuntimeError::new(format!("Too many main! functions declared: {:?}", module.main_functions)))?
-            .cloned(),
+        main_function: get_main_function(module)?.map(Rc::clone),
         exported_artifacts,
     }))
+}
+
+fn get_transpile_function(module: &Module) -> RResult<&Rc<FunctionHead>> {
+    match &module.transpile_functions[..] {
+        [] => Err(RuntimeError::error("No transpile! function declared.").to_array()),
+        [f] => Ok(f),
+        functions => Err(RuntimeError::error(format!("Too many main! functions declared: {:?}", functions).as_str()).to_array()),
+    }
 }
 
 pub fn gather_functions_logic(runtime: &Runtime, transpile_functions: &Vec<Uuid>) -> Vec<TranspiledArtifact> {

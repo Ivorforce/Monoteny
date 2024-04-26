@@ -8,7 +8,7 @@ use std::process::ExitCode;
 use clap::Command;
 use itertools::Itertools;
 
-use crate::error::dump_failure;
+use cli::logging::dump_failure;
 
 lalrpop_mod!(pub monoteny_grammar);
 pub mod interpreter;

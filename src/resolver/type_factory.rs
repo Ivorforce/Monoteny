@@ -36,9 +36,9 @@ impl <'a> TypeFactory<'a> {
         let overload = reference.as_function_overload()?;
 
         let function = overload.functions.iter().exactly_one()
-            .map_err(|_| RuntimeError::new("Function overload cannot be resolved to a type.".to_string()))?;
+            .map_err(|_| RuntimeError::error("Function overload cannot be resolved to a type.").to_array())?;
         let trait_ = self.runtime.source.trait_references.get(function)
-            .ok_or_else(|| RuntimeError::new(format!("Interpreted types aren't supported yet; please use an explicit type for now.\n{}", name)))?;
+            .ok_or_else(|| RuntimeError::error(format!("Interpreted types aren't supported yet; please use an explicit type for now.\n{}", name).as_str()).to_array())?;
 
         return Ok(Rc::clone(trait_))
     }
@@ -55,14 +55,14 @@ impl <'a> TypeFactory<'a> {
 
     pub fn resolve_type(&mut self, syntax: &ast::Expression, allow_anonymous_generics: bool) -> RResult<Rc<TypeProto>> {
         let Ok(pterm) = syntax.iter().exactly_one() else {
-            return Err(RuntimeError::new("Interpreted types aren't supported yet; please use an explicit type for now. 2 ".to_string()));
+            return Err(RuntimeError::error("Interpreted types aren't supported yet; please use an explicit type for now. 2 ").to_array());
         };
 
         let term: &ast::Term = &pterm.value;
         let arguments = vec![];
 
         let ast::Term::Identifier(type_name) = term else {
-            return Err(RuntimeError::new("Interpreted types aren't supported yet; please use an explicit type for now. 4".to_string()))
+            return Err(RuntimeError::error("Interpreted types aren't supported yet; please use an explicit type for now. 4").to_array())
         };
 
         if let Some(type_) = self.generics.get(type_name) {

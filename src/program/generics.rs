@@ -66,7 +66,7 @@ impl TypeForest {
 
     pub fn resolve_binding_alias(&self, alias: &GenericAlias) -> RResult<Rc<TypeProto>> {
         let Some(identity) = self.alias_to_identity.get(alias) else {
-            return Err(RuntimeError::new(format!("Unknown generic: {}", alias)))
+            return Err(RuntimeError::error(format!("Unknown generic: {}", alias).as_str()).to_array())
         };
 
         let Some(binding) = self.identity_to_type.get(identity) else {
@@ -228,7 +228,7 @@ impl TypeForest {
             (Entry::Occupied(lhs_entry), Some(rhs_type)) => {
                 // Need to merge.
                 if lhs_entry.get() != &rhs_type {
-                    return Err(RuntimeError::new(format!("Cannot merge types: {:?} and {:?}", lhs_entry.get(), rhs_type)))
+                    return Err(RuntimeError::error(format!("Cannot merge types: {:?} and {:?}", lhs_entry.get(), rhs_type).as_str()).to_array())
                 }
 
                 // TODO This might fall into a trap of recursion circles

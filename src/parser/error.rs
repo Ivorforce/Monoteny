@@ -1,6 +1,7 @@
+use annotate_snippets::Level;
 use lalrpop_util::{ErrorRecovery, ParseError};
 
-use crate::error::{FilePosition, RuntimeError};
+use crate::error::RuntimeError;
 use crate::parser::lexer::Token;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -8,11 +9,10 @@ pub struct Error(pub String);
 
 pub fn derive_error(error: &ErrorRecovery<usize, Token<'_>, Error>, start: usize, end: usize) -> RuntimeError {
     RuntimeError {
-        position: FilePosition {
-            file: None,
-            range: Some(start..end),
-        },
-        msg: match &error.error {
+        level: Level::Error,
+        path: None,
+        range: Some(start..end),
+        title: match &error.error {
             ParseError::InvalidToken { .. } => {
                 format!("Invalid token")
             }
@@ -29,5 +29,6 @@ pub fn derive_error(error: &ErrorRecovery<usize, Token<'_>, Error>, start: usize
                 format!("{}", error.0)
             }
         },
+        notes: vec![],
     }
 }

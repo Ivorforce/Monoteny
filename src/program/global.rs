@@ -69,14 +69,14 @@ impl FunctionLogic {
     pub fn to_implementation(self) -> RResult<Box<FunctionImplementation>> {
         match self {
             FunctionLogic::Implementation(i) => Ok(i),
-            FunctionLogic::Descriptor(_) => Err(RuntimeError::new(format!("Cannot use a function with described logic as an implementation."))),
+            FunctionLogic::Descriptor(_) => Err(RuntimeError::error("Cannot use a function with described logic as an implementation.").to_array()),
         }
     }
 
     pub fn as_implementation(&self) -> RResult<&FunctionImplementation> {
         match self {
             FunctionLogic::Implementation(i) => Ok(i),
-            FunctionLogic::Descriptor(_) => Err(RuntimeError::new(format!("Cannot use a function with described logic as an implementation."))),
+            FunctionLogic::Descriptor(_) => Err(RuntimeError::error("Cannot use a function with described logic as an implementation.").to_array()),
         }
     }
 }

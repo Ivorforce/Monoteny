@@ -45,10 +45,14 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
             }
             ast::Statement::Expression(e) => {
                 e.no_errors()?;
-                return Err(RuntimeError::new(format!("Expression {} not valid in a conformance context.", statement)));
+                return Err(
+                    RuntimeError::error(format!("Expression {} not valid in a conformance context.", statement).as_str()).to_array()
+                );
             }
             _ => {
-                return Err(RuntimeError::new(format!("Statement {} not valid in a conformance context.", statement)));
+                return Err(
+                    RuntimeError::error(format!("Statement {} not valid in a conformance context.", statement).as_str()).to_array()
+                );
             }
         }
 
@@ -70,10 +74,14 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
                 .collect_vec();
 
             if matching_implementations.len() == 0 {
-                return Err(RuntimeError::new(format!("Function {:?} missing for conformance.", with_options(&expected_interface, abstract_representation))));
+                return Err(
+                    RuntimeError::error(format!("Function {:?} missing for conformance.", with_options(&expected_interface, abstract_representation)).as_str()).to_array()
+                );
             }
             else if matching_implementations.len() > 1 {
-                return Err(RuntimeError::new(format!("Function {:?} is implemented multiple times.", with_options(&expected_interface, abstract_representation))));
+                return Err(
+                    RuntimeError::error(format!("Function {:?} is implemented multiple times.", with_options(&expected_interface, abstract_representation)).as_str()).to_array()
+                );
             }
             else {
                 function_bindings.insert(
@@ -84,7 +92,9 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
         }
 
         if unmatched_implementations.len() > 0 {
-            return Err(RuntimeError::new(format!("Unrecognized functions for declaration {:?}: {:?}.", binding, unmatched_implementations)));
+            return Err(
+                RuntimeError::error(format!("Unrecognized functions for declaration {:?}: {:?}.", binding, unmatched_implementations).as_str()).to_array()
+            );
         }
 
         Ok(TraitConformance::new(Rc::clone(&binding), function_bindings.clone()))

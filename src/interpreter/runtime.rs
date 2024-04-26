@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use uuid::Uuid;
 use itertools::Itertools;
-use crate::error::{RResult, RuntimeError};
 use crate::interpreter::builtins;
 use crate::{parser, program, resolver};
+use crate::error::{ErrInRange, RuntimeError, RResult};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::compiler::InlineFunction;
 use crate::parser::ast;
@@ -60,10 +60,6 @@ impl Runtime {
     }
 
     pub fn get_or_load_module(&mut self, name: &ModuleName) -> RResult<&Module> {
-        let Some(first_part) = name.first() else {
-            return Err(RuntimeError::new(format!("{:?} is not a valid module name.", name)))
-        };
-
         // FIXME this should be if let Some( ... but the compiler bugs out
         if self.source.module_by_name.contains_key(name) {
             // Module is already loaded!
@@ -79,7 +75,7 @@ impl Runtime {
 
     pub fn load_file_as_module(&mut self, path: &PathBuf, name: ModuleName) -> RResult<Box<Module>> {
         let content = std::fs::read_to_string(&path)
-            .map_err(|e| RuntimeError::new(format!("Error loading {:?}: {}", path, e)))?;
+            .map_err(|e| RuntimeError::error(format!("Error loading {:?}: {}", path, e).as_str()).to_array())?;
         self.load_text_as_module(&content, name)
             .map_err(|errs| {
                 errs.into_iter().map(|e| {

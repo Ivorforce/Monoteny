@@ -31,21 +31,29 @@ impl <'a> TraitResolver<'a> {
             ast::Statement::FunctionDeclaration(syntax) => {
                 let (fun, representation) = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
                 if !syntax.body.is_none() {
-                    return Err(RuntimeError::new(format!("Abstract function {:?} cannot have a body.", with_options(fun.as_ref(), &representation))));
+                    return Err(
+                        RuntimeError::error(format!("Abstract function {:?} cannot have a body.", with_options(fun.as_ref(), &representation)).as_str()).to_array()
+                    );
                 };
 
                 self.trait_.insert_function(fun, representation);
             }
             ast::Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment } => {
                 if let Some(_) = assignment {
-                    return Err(RuntimeError::new(format!("Trait variables cannot have defaults until default monads are supported.")));
+                    return Err(
+                        RuntimeError::error("Trait variables cannot have defaults until default monads are supported.").to_array()
+                    );
                 }
                 if !requirements.is_empty() {
-                    return Err(RuntimeError::new(format!("Trait variables cannot have requirements.")));
+                    return Err(
+                        RuntimeError::error("Trait variables cannot have requirements.").to_array()
+                    );
                 }
 
                 let Some(type_declaration) = type_declaration else {
-                    return Err(RuntimeError::new(format!("Trait variables must have explicit types.")));
+                    return Err(
+                        RuntimeError::error("Trait variables must have explicit types.").to_array()
+                    );
                 };
 
                 let mut type_factory = TypeFactory::new(scope, &self.runtime);
@@ -53,7 +61,9 @@ impl <'a> TraitResolver<'a> {
                 let variable_type = type_factory.resolve_type(type_declaration, true)?;
 
                 if TypeProto::contains_generics([&variable_type].into_iter()) {
-                    return Err(RuntimeError::new(format!("Variables cannot be generic: {}", identifier)));
+                    return Err(
+                        RuntimeError::error(format!("Variables cannot be generic: {}", identifier).as_str()).to_array()
+                    );
                 }
 
                 let field = fields::make(
@@ -67,10 +77,14 @@ impl <'a> TraitResolver<'a> {
             }
             ast::Statement::Expression(e) => {
                 e.no_errors()?;
-                return Err(RuntimeError::new(format!("Expression {} not valid in a trait context.", statement)));
+                return Err(
+                    RuntimeError::error(format!("Expression {} not valid in a trait context.", statement).as_str()).to_array()
+                );
             }
             _ => {
-                return Err(RuntimeError::new(format!("Statement {} not valid in a trait context.", statement)));
+                return Err(
+                    RuntimeError::error(format!("Statement {} not valid in a trait context.", statement).as_str()).to_array()
+                );
             }
         }
 

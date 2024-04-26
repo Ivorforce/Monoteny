@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-
 use crate::error::{RResult, RuntimeError};
+
 use crate::program::module::ModuleName;
 
 pub struct Repository {
@@ -21,13 +21,13 @@ impl Repository {
 
     pub fn resolve_module_path(&self, name: &ModuleName) -> RResult<PathBuf> {
         let Some(first_part) = name.first() else {
-            return Err(RuntimeError::new(format!("Module name is empty...")));
+            return Err(RuntimeError::error("Module name is empty...").to_array());
         };
 
         let Some(base_path) = self.entries.get(first_part) else {
-            return Err(RuntimeError::new(format!("Module not in repository: {}", first_part)));
+            return Err(RuntimeError::error(format!("Module not in repository: {}", first_part).as_str()).to_array());
         };
 
-        Ok(base_path.join(PathBuf::from(format!("{}.monoteny", name.join("/")))))
+        Ok(base_path.join(PathBuf::from(format!("{}.monoteny", name.join("/").as_str()))))
     }
 }

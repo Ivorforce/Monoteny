@@ -9,7 +9,7 @@ use crate::resolver::scopes;
 use crate::parser::ast;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::{function_object, primitives};
+use crate::program::primitives;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::types::{TypeProto, TypeUnit};
@@ -33,7 +33,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
         match &ast_token.value {
             ast::Term::Error(err) => return Err(vec![err.clone()]),
             ast::Term::Identifier(identifier) => {
-                match scope.resolve(function_object::FunctionTargetType::Global, identifier)? {
+                match scope.resolve(FunctionTargetType::Global, identifier)? {
                     scopes::Reference::Keyword(keyword) => {
                         tokens.push(ast_token.with_value(
                             Token::Keyword(keyword.clone())
@@ -96,20 +96,20 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                 }
             }
             ast::Term::MacroIdentifier(_) => {
-                return Err(RuntimeError::new(format!("Macro not supported here.")))
+                return Err(RuntimeError::error("Macro not supported here.").to_array())
             }
             ast::Term::Dot => {
                 let previous = tokens.last();
                 let Some(Token::Value(target)) = previous.map(|v| &v.value) else {
-                    return Err(RuntimeError::new(format!("Dot notation requires a preceding object.")))
+                    return Err(RuntimeError::error("Dot notation requires a preceding object.").to_array())
                 };
                 let next = syntax.get(i);
                 i += 1;
                 let Some(ast::Term::Identifier(member)) = next.map(|v| &v.value) else {
-                    return Err(RuntimeError::new(format!("Dot notation requires a following identifier.")))
+                    return Err(RuntimeError::error("Dot notation requires a following identifier.").to_array())
                 };
 
-                let overload = scope.resolve(function_object::FunctionTargetType::Member, member)?
+                let overload = scope.resolve(FunctionTargetType::Member, member)?
                     .as_function_overload()?;
 
                 // TODO This is almost duplicated code from normal function calls above.
@@ -134,7 +134,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
 
                                 Token::Value(expression_id)
                             },
-                            _ => return Err(RuntimeError::new(format!("Member function references are not yet supported."))),
+                            _ => return Err(RuntimeError::error("Member function references are not yet supported.").to_array()),
                         }
                     }
                     FunctionCallExplicity::Implicit => {
@@ -191,7 +191,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                     Some(Token::Value(expression)) => {
                         // Call previous token
                         let overload = scope
-                            .resolve(function_object::FunctionTargetType::Member, "call_as_function").err_in_range(&ast_token.position)?
+                            .resolve(FunctionTargetType::Member, "call_as_function").err_in_range(&ast_token.position)?
                             .as_function_overload().err_in_range(&ast_token.position)?;
 
                         let expression_id = resolver.resolve_function_call(
@@ -213,7 +213,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                                 Token::Value(expression_id)
                             ));
                         } else {
-                            return Err(RuntimeError::new(String::from("Anonymous struct literals are not yet supported.")))
+                            return Err(RuntimeError::error("Anonymous struct literals are not yet supported.").to_array())
                         }
                     }
                 }
@@ -226,11 +226,11 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                 let previous = tokens.last();
                 match previous.map(|v| &v.value) {
                     Some(Token::Value(expression)) => {
-                        return Err(RuntimeError::new(String::from("Object subscript is not yet supported.")))
+                        return Err(RuntimeError::error("Object subscript is not yet supported.").to_array())
                     }
                     _ => {
                         let supertype = resolver.types.merge_all(&values)?.clone();
-                        return Err(RuntimeError::new(String::from("Array literals are not yet supported.")))
+                        return Err(RuntimeError::error("Array literals are not yet supported.").to_array())
 
                         // tokens.push(ast_token.with_value(
                         //     Token::Expression(resolver.resolve_unambiguous_expression(
@@ -283,7 +283,7 @@ pub fn resolve_tokens_to_value(mut tokens: Vec<Positioned<Token>>, scope: &scope
         values.push(final_ptoken.with_value(*expression));
     }
     else {
-        return Err(RuntimeError::new_in_range(String::from("Expected expression."), final_ptoken.position))
+        return Err(RuntimeError::error("Expected expression.").in_range(final_ptoken.position).to_array())
     }
 
     // Reduce all unary operators, and build interspersed arguments / operators list.
@@ -294,7 +294,7 @@ pub fn resolve_tokens_to_value(mut tokens: Vec<Positioned<Token>>, scope: &scope
 
         while let Some(ptoken) = tokens.pop() {
             let Token::Keyword(keyword) = ptoken.value else {
-                return Err(RuntimeError::new(String::from("Got two consecutive values; expected an operator in between.")))
+                return Err(RuntimeError::error("Got two consecutive values; expected an operator in between.").to_array())
             };
 
             if let Some(ptoken) = tokens.last() {

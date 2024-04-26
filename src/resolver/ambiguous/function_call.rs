@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use itertools::{Itertools, zip_eq};
 
-use crate::error::{format_errors, RResult, RuntimeError};
+use crate::error::{RResult, RuntimeError};
 use crate::resolver::ambiguous::{AmbiguityResult, ResolverAmbiguity};
 use crate::resolver::imperative::ImperativeResolver;
 use crate::program::calls::FunctionBinding;
@@ -122,7 +122,14 @@ impl ResolverAmbiguity for AmbiguousFunctionCall {
             [] => panic!(),
             [(candidate, err)] => {
                 // TODO How so?
-                Err(RuntimeError::new(format!("function {:?} could not be resolved. Candidate failed type / requirements test with error:\n{}", &candidate.function, format_errors(err))))
+                Err(
+                    RuntimeError::error(format!("function {:?} could not be resolved.", &candidate.function).as_str())
+                        .with_note(
+                            RuntimeError::info("Candidate failed type / requirements test.")
+                                .with_notes(err.iter().cloned())
+                        )
+                        .to_array()
+                )
             }
             cs => {
                 let signature = MockFunctionInterface {
@@ -131,7 +138,9 @@ impl ResolverAmbiguity for AmbiguousFunctionCall {
                     arguments: self.arguments.clone(),
                     types: &resolver.types,
                 };
-                Err(RuntimeError::new(format!("function {} could not be resolved. {} candidates failed type / requirements test.", signature, cs.len())))
+                Err(
+                    RuntimeError::error(format!("function {} could not be resolved. {} candidates failed type / requirements test.", signature, cs.len()).as_str()).to_array()
+                )
             }
         }
     }

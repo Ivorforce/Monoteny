@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use crate::error::{ErrInRange, RResult, RuntimeError};
+use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
 use crate::resolver::{interpreter_mock, scopes};
 use crate::parser::ast;
@@ -26,72 +26,73 @@ impl Import {
 pub fn resolve_imports(body: &Vec<Box<Positioned<ast::StructArgument>>>) -> RResult<Vec<Import>> {
     body.iter().map(|arg| {
         if arg.value.key != ParameterKey::Positional {
-            return Err(RuntimeError::new(format!("Imports cannot be renamed for now.")));
+            return Err(
+                RuntimeError::error("Imports cannot be renamed for now.").to_array()
+            );
         }
         if arg.value.type_declaration.is_some() {
-            return Err(RuntimeError::new(format!("Imports cannot have type declarations.")));
+            return Err(
+                RuntimeError::error("Imports cannot have type declarations.").to_array()
+            );
         }
 
         resolve_module(&arg.value.value)
-    }).try_collect()
+    }).try_collect_many()
 }
 
 pub fn resolve_module(body: &ast::Expression) -> RResult<Import> {
-    let error = RuntimeError::new(format!("Import parameter is not a module."));
+    let error = RuntimeError::error("Import parameter is not a module.").to_array();
 
-    match &body[..] {
-        [l, r] => {
-            match (&l.value, &r.value) {
-                (ast::Term::MacroIdentifier(name), ast::Term::Struct(macro_struct)) => {
-                    if name != "module" {
-                        return Err(error).err_in_range(&l.position);
-                    }
-                    let body = interpreter_mock::plain_parameter("module!", macro_struct)?;
-                    let pterm = body.iter().exactly_one()
-                        .map_err(|_| error.clone()).err_in_range(&r.position)?;
+    let [l, r] = &body[..] else {
+        return Err(error);
+    };
 
-                    match &pterm.value {
-                        ast::Term::StringLiteral(string) => {
-                            let literal = interpreter_mock::plain_string_literal("module!", string).err_in_range(&pterm.position)?;
+    let (ast::Term::MacroIdentifier(name), ast::Term::Struct(macro_struct)) = (&l.value, &r.value) else {
+        return Err(error).err_in_range(&l.position);
+    };
 
-                            if literal == "." {
-                                return Ok(Import {
-                                    is_relative: true,
-                                    elements: vec![],
-                                })
-                            }
+    if name != "module" {
+        return Err(error).err_in_range(&l.position);
+    }
+    let body = interpreter_mock::plain_parameter("module!", macro_struct)?;
+    let pterm = body.iter().exactly_one()
+        .map_err(|_| error.clone()).err_in_range(&r.position)?;
 
-                            let mut elements = literal.split(".").collect_vec();
-                            let is_relative = match elements.first() {
-                                Some(p) => {
-                                    if p == &"" {
-                                        elements.remove(0);
-                                        true
-                                    }
-                                    else {
-                                        false
-                                    }
-                                }
-                                None => return Err(error).err_in_range(&l.position),
-                            };
+    let ast::Term::StringLiteral(string) = &pterm.value else {
+        return Err(error).err_in_range(&l.position);
+    };
 
-                            if !elements.iter().skip(1).all(|p| p.chars().all(|c| c.is_alphanumeric())) {
-                                return Err(error).err_in_range(&l.position);
-                            }
+    let literal = interpreter_mock::plain_string_literal("module!", string).err_in_range(&pterm.position)?;
 
-                            Ok(Import {
-                                is_relative,
-                                elements: elements.iter().map(|e| e.to_string()).collect_vec(),
-                            })
-                        }
-                        _ => Err(error).err_in_range(&l.position),
-                    }
-                }
-                _ => Err(error).err_in_range(&l.position)
+    if literal == "." {
+        return Ok(Import {
+            is_relative: true,
+            elements: vec![],
+        })
+    }
+
+    let mut elements = literal.split(".").collect_vec();
+    let is_relative = match elements.first() {
+        Some(p) => {
+            if p == &"" {
+                elements.remove(0);
+                true
+            }
+            else {
+                false
             }
         }
-        _ => Err(error),
+        None => return Err(error).err_in_range(&l.position),
+    };
+
+    if !elements.iter().skip(1).all(|p| p.chars().all(|c| c.is_alphanumeric())) {
+        return Err(error).err_in_range(&l.position);
     }
+
+    Ok(Import {
+        is_relative,
+        elements: elements.iter().map(|e| e.to_string()).collect_vec(),
+    })
 }
 
 pub fn deep(runtime: &Runtime, module_name: ModuleName, scope: &mut scopes::Scope) -> RResult<()> {

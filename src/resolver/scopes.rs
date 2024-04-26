@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
+use crate::error::{RuntimeError, RResult};
 
-use crate::error::{RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
 use crate::resolver::grammar::{Grammar, Pattern, PrecedenceGroup};
 use crate::program::allocation::ObjectReference;
@@ -180,7 +180,7 @@ impl <'a> Scope<'a> {
                     FunctionTargetType::Member => "."
                 };
 
-                return Err(RuntimeError::new(format!("Cannot find '{}{}' in this scope", env_part, name)))
+                return Err(RuntimeError::error(format!("Cannot find '{}{}' in this scope", env_part, name).as_str()).to_array())
             }
         }
     }
@@ -192,7 +192,9 @@ impl <'a> Scope<'a> {
             }
         }
 
-        return Err(RuntimeError::new(format!("Precedence group could not be resolved: {}", name)))
+        return Err(
+            RuntimeError::error(format!("Precedence group could not be resolved: {}", name).as_str()).to_array()
+        )
     }
 }
 
@@ -214,7 +216,7 @@ pub enum Reference {
 impl Reference {
     pub fn as_local(&self, require_mutable: bool) -> RResult<&Rc<ObjectReference>> {
         let Reference::Local(obj_ref) = self else {
-            return Err(RuntimeError::new(format!("Reference is not a local.")));
+            return Err(RuntimeError::error("Reference is not a local.").to_array());
         };
 
         Ok(&obj_ref)
@@ -223,7 +225,7 @@ impl Reference {
     pub fn as_function_overload(&self) -> RResult<Rc<FunctionOverload>> {
         match self {
             Reference::FunctionOverload(overload) => Ok(Rc::clone(overload)),
-            _ => Err(RuntimeError::new(format!("Reference is not a function.")))
+            _ => Err(RuntimeError::error("Reference is not a function.").to_array())
         }
     }
 }

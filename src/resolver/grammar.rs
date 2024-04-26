@@ -87,7 +87,7 @@ impl Grammar {
         };
 
         let keywords = match &pattern.parts.iter().map(|x| x.as_ref()).collect_vec()[..] {
-            [_] => return Err(RuntimeError::new("Pattern is too short.".to_string())),
+            [_] => return Err(RuntimeError::error("Pattern is too short.").to_array()),
             [
                 PatternPart::Keyword(keyword),
                 PatternPart::Parameter { .. },
@@ -111,7 +111,7 @@ impl Grammar {
                 keyword_map.insert(keyword.clone(), Rc::clone(&pattern.head));
                 vec![keyword.clone()]
             }
-            _ => return Err(RuntimeError::new(String::from("This pattern form is not supported; try using unary or binary patterns."))),
+            _ => return Err(RuntimeError::error("This pattern form is not supported; try using unary or binary patterns.").to_array()),
         };
 
         self.patterns.insert(pattern);

@@ -79,7 +79,7 @@ pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &sc
                 call_explicity: FunctionCallExplicity::Explicit,
             }, Some(target).into_iter().chain(call_struct.arguments.iter().map(|a| &a.value)), &interface.return_type, type_factory, requirements, generics)
         }
-        _ => Err(RuntimeError::new("Cannot have non-function definition.".to_string())),
+        _ => Err(RuntimeError::error("Cannot have non-function definition.").to_array()),
     }
 }
 
@@ -111,7 +111,9 @@ fn resolve_macro_function_interface(module: Option<&mut Module>, runtime: &Runti
             }
             Ok((fun, representation))
         },
-        _ => Err(RuntimeError::new(format!("Function macro could not be resolved: {}", m))),
+        _ => Err(
+            RuntimeError::error(format!("Function macro could not be resolved: {}", m).as_str()).to_array()
+        ),
     }
 }
 
@@ -147,13 +149,17 @@ pub fn _resolve_function_interface<'a>(representation: FunctionRepresentation, p
 
 pub fn resolve_function_parameter(parameter: &ast::StructArgument, type_factory: &mut TypeFactory) -> RResult<Parameter> {
     let Some(type_declaration) = &parameter.type_declaration else {
-        return Err(RuntimeError::new("Parameters must have a type.".to_string()));
+        return Err(
+            RuntimeError::error("Parameters must have a type.").to_array()
+        );
     };
 
     let [
         Positioned { position, value: ast::Term::Identifier(internal_name) }
     ] = parameter.value.iter().map(|a| a.as_ref()).collect_vec()[..] else {
-        return Err(RuntimeError::new("Cannot have non-identifier internal name.".to_string()))
+        return Err(
+            RuntimeError::error("Cannot have non-identifier internal name.").to_array()
+        )
     };
 
     Ok(Parameter {
@@ -165,7 +171,9 @@ pub fn resolve_function_parameter(parameter: &ast::StructArgument, type_factory:
 
 pub fn get_as_target_parameter(term: &ast::Struct) -> RResult<&ast::StructArgument> {
     let [target] = &term.arguments[..] else {
-        return Err(RuntimeError::new("Target of member function must be one-element struct.".to_string()))
+        return Err(
+            RuntimeError::error("Target of member function must be one-element struct.").to_array()
+        )
     };
 
     Ok(&target.value)

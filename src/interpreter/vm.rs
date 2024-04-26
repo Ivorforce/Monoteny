@@ -3,7 +3,7 @@ use monoteny_macro::{bin_expr, pop_ip, pop_sp, un_expr};
 use std::ptr::{read_unaligned, write_unaligned};
 use uuid::Uuid;
 use std::ops::Neg;
-use crate::error::{RResult, RuntimeError};
+use crate::error::{RuntimeError, RResult};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{string_to_ptr, Value};
 use crate::interpreter::opcode::{OpCode, Primitive};
@@ -47,7 +47,7 @@ impl<'a, 'b> VM<'a, 'b> {
 
                 match code {
                     OpCode::NOOP => {},
-                    OpCode::PANIC => return Err(RuntimeError::new("panic".to_string())),
+                    OpCode::PANIC => return Err(RuntimeError::error("panic").to_array()),
                     OpCode::RETURN => return Ok(()),
                     OpCode::LOAD8 => {
                         (*sp).u8 = pop_ip!(u8);
@@ -112,7 +112,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => bin_expr!(i64, i64, lhs.wrapping_add(rhs)),
                             Primitive::F32 => bin_expr!(f32, f32, lhs+rhs),
                             Primitive::F64 => bin_expr!(f64, f64, lhs+rhs),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     },
                     OpCode::SUB => {
@@ -129,7 +129,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => bin_expr!(i64, i64, lhs.wrapping_sub(rhs)),
                             Primitive::F32 => bin_expr!(f32, f32, lhs-rhs),
                             Primitive::F64 => bin_expr!(f64, f64, lhs-rhs),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     },
                     OpCode::MUL => {
@@ -146,7 +146,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => bin_expr!(i64, i64, lhs.wrapping_mul(rhs)),
                             Primitive::F32 => bin_expr!(f32, f32, lhs*rhs),
                             Primitive::F64 => bin_expr!(f64, f64, lhs*rhs),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     },
                     OpCode::DIV => {
@@ -163,7 +163,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => bin_expr!(i64, i64, lhs/rhs),
                             Primitive::F32 => bin_expr!(f32, f32, lhs/rhs),
                             Primitive::F64 => bin_expr!(f64, f64, lhs/rhs),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     },
                     OpCode::EQ => {
@@ -214,7 +214,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => bin_expr!(i64, bool, lhs>rhs),
                             Primitive::F32 => bin_expr!(f32, bool, lhs>rhs),
                             Primitive::F64 => bin_expr!(f64, bool, lhs>rhs),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     },
                     OpCode::GR_EQ => {
@@ -231,7 +231,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => bin_expr!(i64, bool, lhs>=rhs),
                             Primitive::F32 => bin_expr!(f32, bool, lhs>=rhs),
                             Primitive::F64 => bin_expr!(f64, bool, lhs>=rhs),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     },
                     OpCode::LE => {
@@ -248,7 +248,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => bin_expr!(i64, bool, lhs<rhs),
                             Primitive::F32 => bin_expr!(f32, bool, lhs<rhs),
                             Primitive::F64 => bin_expr!(f64, bool, lhs<rhs),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     },
                     OpCode::LE_EQ => {
@@ -265,7 +265,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => bin_expr!(i64, bool, lhs<=rhs),
                             Primitive::F32 => bin_expr!(f32, bool, lhs<=rhs),
                             Primitive::F64 => bin_expr!(f64, bool, lhs<=rhs),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     },
                     OpCode::TRANSPILE_ADD => {
@@ -280,7 +280,7 @@ impl<'a, 'b> VM<'a, 'b> {
                         // TODO Shouldn't need to copy it
                         let string: String = read_unaligned(pop_sp!().ptr as *mut String);
                         writeln!(self.pipe_out, "{}", string)
-                            .map_err(|e| RuntimeError::new(e.to_string()))?;
+                            .map_err(|e| RuntimeError::error(&e.to_string()).to_array())?;
                     }
                     OpCode::NEG => {
                         let arg: Primitive = transmute(pop_ip!(u8));
@@ -296,7 +296,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => un_expr!(i64, i64, val.wrapping_neg()),
                             Primitive::F32 => un_expr!(f32, f32, val.neg()),
                             Primitive::F64 => un_expr!(f64, f64, val.neg()),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     }
                     OpCode::MOD => {
@@ -313,7 +313,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => bin_expr!(i64, i64, lhs%rhs),
                             Primitive::F32 => bin_expr!(f32, f32, lhs%rhs),
                             Primitive::F64 => bin_expr!(f64, f64, lhs%rhs),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     }
                     OpCode::EXP => {
@@ -330,7 +330,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => bin_expr!(i64, i64, lhs.wrapping_pow(rhs.try_into().unwrap())),
                             Primitive::F32 => bin_expr!(f32, f32, lhs.powf(rhs)),
                             Primitive::F64 => bin_expr!(f64, f64, lhs.powf(rhs)),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     }
                     OpCode::LOG => {
@@ -339,7 +339,7 @@ impl<'a, 'b> VM<'a, 'b> {
                         match arg {
                             Primitive::F32 => bin_expr!(f32, f32, lhs.log(rhs)),
                             Primitive::F64 => bin_expr!(f64, f64, lhs.log(rhs)),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     }
                     OpCode::PARSE => {
@@ -360,7 +360,7 @@ impl<'a, 'b> VM<'a, 'b> {
                             Primitive::I64 => (*sp_last).i64 = string.parse().unwrap(),
                             Primitive::F32 => (*sp_last).f32 = string.parse().unwrap(),
                             Primitive::F64 => (*sp_last).f64 = string.parse().unwrap(),
-                            _ => return Err(RuntimeError::new("Unexpected primitive.".to_string())),
+                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     }
                     OpCode::TO_STRING => {

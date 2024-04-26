@@ -7,7 +7,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 
-use crate::error::{format_errors, RResult, RuntimeError};
+use crate::error::{RResult, RuntimeError};
 use crate::resolver::ambiguous::AmbiguityResult;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType};
@@ -176,13 +176,17 @@ impl TraitGraph {
         if let Some(state) = self.conformance_cache.get(&resolved_binding) {
             // In cache
             return match state {
-                None => Err(RuntimeError::new(String::from(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding)))),
+                None => Err(
+                    RuntimeError::error(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding).as_str()).to_array()
+                ),
                 Some(declaration) => Ok(AmbiguityResult::Ok(declaration.clone())),
             };
         }
 
         let Some(relevant_declarations) = self.conformance_rules.get(&resolved_binding.trait_) else {
-            return Err(RuntimeError::new(String::from(format!("No declarations found for trait: {:?}", resolved_binding.trait_))));
+            return Err(
+                RuntimeError::error(format!("No declarations found for trait: {:?}", resolved_binding.trait_).as_str()).to_array()
+            );
         };
 
         let mut compatible_conformances = vec![];
@@ -211,7 +215,10 @@ impl TraitGraph {
 
                 let resolved_type = &resolved_binding.generic_to_type[key];
                 if let Err(err) = rule_mapping.bind(tmp_id, resolved_type) {
-                    bind_errors.push(err);
+                    bind_errors.push(
+                        RuntimeError::error(format!("{:?} failed type check.", type_).as_str())
+                            .with_notes(err.into_iter())
+                    );
                     // Binding failed; this rule is not compatible.
                     continue 'rule;
                 }
@@ -219,7 +226,10 @@ impl TraitGraph {
 
             match self.test_requirements(&rule.requirements, &rule_generics_map, &rule_mapping) {
                 // Can't use this candidate: While it is compatible, its requirements are not fulfilled.
-                Err(err) => requirements_errors.push(err),
+                Err(err) => requirements_errors.push(
+                    RuntimeError::error("Failed requirements test.")
+                        .with_notes(err.into_iter())
+                ),
                 Ok(AmbiguityResult::Ambiguous) => {
                     // This shouldn't happen because Ambiguous is only thrown when any requirements have
                     //  unbound generics. We resolved those generics using the binding from earlier.
@@ -253,12 +263,24 @@ impl TraitGraph {
 
         match compatible_conformances.as_slice() {
             [] => {
+                let error = RuntimeError::error(format!("No compatible declaration for trait conformance requirement: {:?}", resolved_binding).as_str());
+
                 self.conformance_cache.insert(Rc::clone(&resolved_binding), None);
                 if !requirements_errors.is_empty() {
-                    Err(RuntimeError::new(String::from(format!("No compatible declaration for trait conformance requirement: {:?}\n{} rule(s) match types, but their requirements were not satisfied: \n{}", resolved_binding, requirements_errors.len(), requirements_errors.iter().map(|e| format_errors(e)).join("\n")))))
+                    Err(
+                        error.with_note(
+                            RuntimeError::info(format!("{} rule(s) match types, but their requirements were not satisfied.", requirements_errors.len()).as_str())
+                                .with_notes(requirements_errors.into_iter())
+                        ).to_array()
+                    )
                 }
                 else {
-                    Err(RuntimeError::new(String::from(format!("No compatible declaration for trait conformance requirement: {:?}\n{} rule(s) failed the type check: \n{}", resolved_binding, bind_errors.len(), bind_errors.iter().map(|e| format_errors(e)).join("\n")))))
+                    Err(
+                        error.with_note(
+                            RuntimeError::info(format!("{} rule(s) failed the type check.", bind_errors.len()).as_str())
+                                .with_notes(bind_errors.into_iter())
+                        ).to_array()
+                    )
                 }
             }
             [declaration] => {
@@ -266,7 +288,12 @@ impl TraitGraph {
                 Ok(AmbiguityResult::Ok(Rc::clone(declaration)))
             }
             _ => {
-                Err(RuntimeError::new(String::from(format!("Conflicting declarations for trait conformance requirement: {:?}\n{} rules failed the check: \n{:?}", resolved_binding, cloned_declarations.len(), cloned_declarations))))
+                Err(
+                    RuntimeError::error(format!("Conflicting declarations for trait conformance requirement: {:?}", resolved_binding).as_str()).with_note(
+                        RuntimeError::info(format!("{} matching rule(s).", cloned_declarations.len()).as_str())
+                            .with_notes(cloned_declarations.iter().map(|c| RuntimeError::info(format!("{:?}", c).as_str())))
+                    ).to_array()
+                )
             }
         }
     }

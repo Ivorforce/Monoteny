@@ -12,6 +12,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "annotate-snippets"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "238760b2324c811147d933e41f1743e4a8e309c8f3a15f417232e5980e5ce765"
+dependencies = [
+ "anstyle",
+ "unicode-width",
+]
+
+[[package]]
 name = "anstream"
 version = "0.6.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -361,6 +371,7 @@ checksum = "6c8640c5d730cb13ebd907d8d04b52f55ac9a2eec55b440c8892f40d56c76c1d"
 name = "monoteny"
 version = "0.1.0"
 dependencies = [
+ "annotate-snippets",
  "clap",
  "colored",
  "custom_error",
@@ -659,6 +670,12 @@ name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
+
+[[package]]
+name = "unicode-width"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e51733f11c9c4f72aa0c160008246859e340b00807569a0da0e7a1079b27ba85"
 
 [[package]]
 name = "unicode-xid"

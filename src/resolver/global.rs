@@ -72,7 +72,7 @@ pub fn resolve_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Ru
                 runtime.source.fn_logic.insert(Rc::clone(&head), FunctionLogic::Implementation(implementation));
             }
             Err(e) => {
-                errors.extend(e.iter().map(|e| e.in_range(pbody.position.clone())));
+                errors.extend(e.iter().map(|e| e.clone().in_range(pbody.position.clone())));
             }
         }
     }
@@ -219,7 +219,9 @@ impl <'a> GlobalResolver<'a> {
                                         }
                                         return Ok(())
                                     }
-                                    _ => return Err(RuntimeError::new(format!("Unrecognized macro: {}!", macro_name)))
+                                    _ => return Err(
+                                        RuntimeError::error(format!("Unrecognized macro: {}!", macro_name).as_str()).to_array()
+                                    )
                                 }
                             }
                             _ => {}
@@ -228,10 +230,14 @@ impl <'a> GlobalResolver<'a> {
                     _ => {},
                 }
 
-                return Err(RuntimeError::new(format!("Expression {} is not supported in a global context.", e)))
+                return Err(
+                    RuntimeError::error(format!("Expression {} is not supported in a global context.", e).as_str()).to_array()
+                )
             }
             statement => {
-                return Err(RuntimeError::new(format!("Statement {} is not supported in a global context.", statement)))
+                return Err(
+                    RuntimeError::error(format!("Statement {} is not supported in a global context.", statement).as_str()).to_array()
+                )
             }
         }
 
@@ -253,7 +259,9 @@ impl <'a> GlobalResolver<'a> {
 
     pub fn add_function_interface(&mut self, pointer: Rc<FunctionHead>, representation: FunctionRepresentation, decorators: &Vec<String>) -> RResult<()> {
         for decorator in decorators.iter() {
-            return Err(RuntimeError::new(format!("Decorator could not be resolved: {}", decorator)))
+            return Err(
+                RuntimeError::error(format!("Decorator could not be resolved: {}", decorator).as_str()).to_array()
+            )
         }
 
         referencible::add_function(self.runtime, &mut self.module, Some(&mut self.global_variables), pointer, representation)?;
