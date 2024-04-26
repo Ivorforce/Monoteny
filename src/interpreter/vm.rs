@@ -8,7 +8,8 @@ use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{string_to_ptr, Value};
 use crate::interpreter::opcode::{OpCode, Primitive};
 
-pub struct VM<'a> {
+pub struct VM<'a, 'b> {
+    pub pipe_out: &'b mut dyn std::io::Write,
     pub chunk: &'a Chunk,
     pub stack: Vec<Value>,
     pub locals: Vec<Value>,
@@ -20,10 +21,11 @@ pub unsafe fn to_str_ptr<A: ToString>(a: A) -> *mut () {
     string_to_ptr(&string)
 }
 
-impl<'a> VM<'a> {
-    pub fn new(chunk: &'a Chunk) -> VM {
+impl<'a, 'b> VM<'a, 'b> {
+    pub fn new(chunk: &'a Chunk, pipe_out: &'b mut dyn std::io::Write) -> VM<'a, 'b> {
         VM {
             chunk,
+            pipe_out,
             stack: vec![Value::alloc(); 1024],
             locals: vec![Value::alloc(); usize::try_from(chunk.locals_count).unwrap()],
             transpile_functions: vec![],
@@ -45,7 +47,7 @@ impl<'a> VM<'a> {
 
                 match code {
                     OpCode::NOOP => {},
-                    OpCode::PANIC => panic!(),
+                    OpCode::PANIC => return Err(RuntimeError::new("panic".to_string())),
                     OpCode::RETURN => return Ok(()),
                     OpCode::LOAD8 => {
                         (*sp).u8 = pop_ip!(u8);
@@ -277,7 +279,8 @@ impl<'a> VM<'a> {
                     OpCode::PRINT => {
                         // TODO Shouldn't need to copy it
                         let string: String = read_unaligned(pop_sp!().ptr as *mut String);
-                        println!("{}", string);
+                        writeln!(self.pipe_out, "{}", string)
+                            .map_err(|e| RuntimeError::new(e.to_string()))?;
                     }
                     OpCode::NEG => {
                         let arg: Primitive = transmute(pop_ip!(u8));

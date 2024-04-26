@@ -6,6 +6,7 @@ mod tests {
     use crate::error::RResult;
     use crate::interpreter;
     use crate::interpreter::chunks::Chunk;
+    use crate::interpreter::compiler::compile_deep;
     use crate::interpreter::opcode::{OpCode, Primitive};
     use crate::interpreter::runtime::Runtime;
     use crate::interpreter::vm::VM;
@@ -28,7 +29,8 @@ mod tests {
         chunk.push_with_u8(OpCode::EQ, Primitive::U32 as u8);
         chunk.push(OpCode::RETURN);
 
-        let mut vm = VM::new(&chunk);
+        let mut out: Vec<u8> = vec![];
+        let mut vm = VM::new(&chunk, &mut out);
         vm.run()?;
 
         unsafe {
@@ -39,30 +41,40 @@ mod tests {
         Ok(())
     }
 
-    fn test_runs(path: &str) -> RResult<Box<Module>> {
+    fn test_runs(path: &str) -> RResult<String> {
         let mut runtime = Runtime::new()?;
         runtime.repository.add("common", PathBuf::from("monoteny"));
 
         let module = runtime.load_file_as_module(&PathBuf::from(path), module_name("main"))?;
 
-        interpreter::run::main(&module, &mut runtime)?;
+        let entry_function = interpreter::run::get_main_function(&module)?;
 
-        Ok(module)
+        // TODO Should gather all used functions and compile them
+        let compiled = compile_deep(&mut runtime, entry_function)?;
+
+        let mut out: Vec<u8> = vec![];
+        let mut vm = VM::new(&compiled, &mut out);
+        unsafe {
+            vm.run()?;
+        }
+
+        Ok(std::str::from_utf8(&out).unwrap().to_string())
     }
 
     /// This tests the transpiler, interpreter and function calls.
     #[test]
     fn hello_world() -> RResult<()> {
-        // TODO Pass a pipe and monitor that "Hello World!" is printed.
-        let module = test_runs("test-code/hello_world.monoteny")?;
-        assert_eq!(module.exposed_functions.len(), 2);
+        let out = test_runs("test-code/hello_world.monoteny")?;
+        assert_eq!(out, "Hello World!\n");
 
         Ok(())
     }
 
     #[test]
     fn custom_grammar() -> RResult<()> {
-        test_runs("test-code/grammar/custom_grammar.monoteny")?;
+        let out = test_runs("test-code/grammar/custom_grammar.monoteny")?;
+        assert_eq!(out, "5\n");
+
         Ok(())
     }
 
@@ -86,7 +98,9 @@ mod tests {
 
     #[test]
     fn string_interpolation() -> RResult<()> {
-        test_runs("test-code/grammar/string_interpolation.monoteny")?;
+        let out = test_runs("test-code/grammar/string_interpolation.monoteny")?;
+        assert_eq!(out, "Left: String, Right: 2\n");
+
         Ok(())
     }
 }

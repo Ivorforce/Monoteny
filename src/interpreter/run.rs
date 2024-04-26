@@ -1,14 +1,31 @@
+use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compiler::compile_deep;
 use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::VM;
+use crate::program::functions::FunctionHead;
 use crate::program::global::FunctionLogic;
 use crate::program::module::Module;
 use crate::transpiler::{TranspiledArtifact, Transpiler};
 
 pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
+    let entry_function = get_main_function(&module)?;
+
+    // TODO Should gather all used functions and compile them
+    let compiled = compile_deep(runtime, entry_function)?;
+
+    let mut out = std::io::stdout();
+    let mut vm = VM::new(&compiled, &mut out);
+    unsafe {
+        vm.run()?;
+    }
+
+    Ok(())
+}
+
+pub fn get_main_function(module: &Module) -> RResult<&Rc<FunctionHead>> {
     let entry_function = match &module.main_functions[..] {
         [] => return Err(RuntimeError::new(format!("No main! function declared."))),
         [f] => f,
@@ -20,16 +37,7 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
     if !entry_function.interface.return_type.unit.is_void() {
         return Err(RuntimeError::new(format!("main! function has a return value.")));
     }
-
-    // TODO Should gather all used functions and compile them
-    let compiled = compile_deep(runtime, entry_function)?;
-
-    let mut vm = VM::new(&compiled);
-    unsafe {
-        vm.run()?;
-    }
-
-    Ok(())
+    Ok(entry_function)
 }
 
 // The function is written like this
@@ -44,7 +52,8 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     // Set the transpiler object.
     let compiled = compile_deep(runtime, entry_function)?;
 
-    let mut vm = VM::new(&compiled);
+    let mut out = std::io::stdout();
+    let mut vm = VM::new(&compiled, &mut out);
     unsafe {
         vm.run()?;
     }
