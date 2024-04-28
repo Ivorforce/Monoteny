@@ -29,13 +29,6 @@ pub struct FunctionInterface {
 }
 
 #[derive(Eq, PartialEq, Clone)]
-pub struct KeyedParameter {
-    pub key: ParameterKey,
-    pub internal_name: String,
-    pub param_type: Expression,
-}
-
-#[derive(Eq, PartialEq, Clone)]
 pub struct TraitDefinition {
     pub name: String,
     pub block: Box<Block>,
@@ -155,12 +148,6 @@ pub struct ArrayArgument {
     pub type_declaration: Option<Expression>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum FunctionCallType {
-    Call,
-    Subscript,
-}
-
 #[derive(PartialEq, Eq, Clone)]
 pub enum StringPart {
     Literal(String),
@@ -202,7 +189,7 @@ impl Display for Array {
 
 impl Display for Block {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write_separated_display(fmt, "\n\n", self.statements.iter())
+        write_separated_display(fmt, "\n", self.statements.iter())
     }
 }
 
@@ -231,16 +218,13 @@ impl Display for FunctionInterface {
 
 impl Display for TraitDefinition {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "trait {} {{", self.name)?;
-
-        Ok(())
+        write!(fmt, "trait {} {{\n{}}}", self.name, self.block)
     }
 }
 
 impl Display for TraitConformanceDeclaration {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "declare {} is {} {{}} :: ", self.declared_for, self.declared)?;
-        Ok(())
+        write!(fmt, "declare {} is {} {{}} :: {{\n{}}}", self.declared_for, self.declared, self.block)
     }
 }
 
@@ -264,7 +248,6 @@ impl Display for Statement {
             Statement::Return(Some(expression)) => write!(fmt, "return {}", expression),
             Statement::Return(None) => write!(fmt, "return"),
             Statement::Expression(ref expression) => write!(fmt, "{}", expression),
-
             Statement::FunctionDeclaration(function) => write!(fmt, "{}", function),
             Statement::Trait(trait_) => write!(fmt, "{}", trait_),
             Statement::Conformance(conformance) => write!(fmt, "{}", conformance),
@@ -293,15 +276,9 @@ impl Display for Term {
                 }
                 write!(fmt, "\"")
             },
-            Term::Struct(struct_) => {
-                write!(fmt, "{}", struct_)
-            }
-            Term::Array(array) => {
-                write!(fmt, "{}", array)
-            }
-            Term::Block(block) => {
-                write!(fmt, "{{\n{}}}", block)
-            }
+            Term::Struct(struct_) => write!(fmt, "{}", struct_),
+            Term::Array(array) => write!(fmt, "{}", array),
+            Term::Block(block) => write!(fmt, "{{\n{}}}", block),
             Term::Dot => write!(fmt, "."),
             Term::IfThenElse(if_then_else) => {
                 write!(fmt, "if {} :: {}", if_then_else.condition, if_then_else.consequent)?;
@@ -326,21 +303,6 @@ impl Display for ArrayArgument {
             write!(fmt, "{}: ", key)?;
         }
         write!(fmt, "{}", self.value)
-    }
-}
-
-impl Display for KeyedParameter {
-    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        write!(fmt, "{}{} '{}", self.key, self.internal_name, self.param_type)
-    }
-}
-
-impl FunctionCallType {
-    fn bracket_str(&self) -> &str {
-        return match *self {
-            FunctionCallType::Call => "()",
-            FunctionCallType::Subscript => "[]",
-        };
     }
 }
 
