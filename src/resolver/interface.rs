@@ -4,17 +4,16 @@ use std::rc::Rc;
 use itertools::Itertools;
 use try_map::FallibleMapExt;
 
+use crate::ast;
 use crate::error::{RResult, RuntimeError, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
-use crate::resolver::scopes;
-use crate::resolver::type_factory::TypeFactory;
-use crate::parser::ast;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface, Parameter};
 use crate::program::module::{Module, module_name};
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::TypeProto;
-use crate::resolver::grammar::Struct;
+use crate::resolver::scopes;
+use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
 pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {

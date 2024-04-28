@@ -23,6 +23,7 @@ pub mod refactor;
 pub mod source;
 pub mod cli;
 pub mod static_analysis;
+pub mod ast;
 
 fn cli() -> Command {
     Command::new("monoteny")

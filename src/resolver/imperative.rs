@@ -5,25 +5,25 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 
+use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
-use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
-use crate::resolver::grammar::parse::{resolve_expression_to_tokens, resolve_tokens_to_value};
-use crate::resolver::grammar::Struct;
-use crate::resolver::scopes;
-use crate::resolver::type_factory::TypeFactory;
-use crate::parser::ast;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::debug::MockFunctionInterface;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
-use crate::program::{function_object, primitives};
+use crate::program::function_object;
 use crate::program::function_object::{FunctionCallExplicity, FunctionOverload, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::{RequirementsAssumption, Trait, TraitConformanceRule, TraitGraph};
 use crate::program::types::*;
+use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
+use crate::resolver::grammar::parse::{resolve_expression_to_tokens, resolve_tokens_to_value};
+use crate::resolver::grammar::Struct;
+use crate::resolver::scopes;
+use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
 pub struct ImperativeResolver<'a> {

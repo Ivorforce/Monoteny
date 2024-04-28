@@ -1,10 +1,9 @@
 use itertools::Itertools;
 use lalrpop_util::ErrorRecovery;
 
+use crate::{ast, monoteny_grammar};
 use crate::error::RResult;
-use crate::monoteny_grammar;
 
-pub mod ast;
 pub mod strings;
 pub mod lexer;
 pub mod error;

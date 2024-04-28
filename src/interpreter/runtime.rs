@@ -1,14 +1,15 @@
-use std::rc::Rc;
-use std::path::PathBuf;
 use std::collections::HashMap;
-use uuid::Uuid;
+use std::path::PathBuf;
+use std::rc::Rc;
+
 use itertools::Itertools;
+use uuid::Uuid;
+
+use crate::{ast, parser, program, resolver};
+use crate::error::{RResult, RuntimeError};
 use crate::interpreter::builtins;
-use crate::{parser, program, resolver};
-use crate::error::{ErrInRange, RuntimeError, RResult};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::compiler::InlineFunction;
-use crate::parser::ast;
 use crate::program::functions::FunctionHead;
 use crate::program::module::{Module, module_name, ModuleName};
 use crate::program::traits::Trait;

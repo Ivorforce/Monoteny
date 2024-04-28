@@ -3,11 +3,11 @@ use std::rc::Rc;
 use itertools::Itertools;
 use uuid::Uuid;
 
+use crate::ast;
 use crate::error::{RResult, RuntimeError, TryCollectMany};
+use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::resolver::grammar::{Pattern, PatternPart};
 use crate::resolver::scopes;
-use crate::parser::ast;
-use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::util::position::Positioned;
 
 pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead>, scope: &scopes::Scope) -> RResult<Rc<Pattern>> {

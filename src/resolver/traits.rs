@@ -1,22 +1,22 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use display_with_options::with_options;
 
+use display_with_options::with_options;
 use itertools::Itertools;
 
+use crate::ast;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
-use crate::resolver::{fields, scopes};
-use crate::resolver::global::GlobalResolver;
-use crate::resolver::interface::resolve_function_interface;
-use crate::resolver::type_factory::TypeFactory;
-use crate::parser::ast;
 use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::TypeProto;
+use crate::resolver::{fields, scopes};
+use crate::resolver::global::GlobalResolver;
+use crate::resolver::interface::resolve_function_interface;
+use crate::resolver::type_factory::TypeFactory;
 use crate::source::StructInfo;
 
 pub struct TraitResolver<'a> {

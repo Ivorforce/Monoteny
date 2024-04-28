@@ -1,19 +1,19 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
-use display_with_options::with_options;
 
+use display_with_options::with_options;
 use itertools::Itertools;
 
+use crate::ast;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
-use crate::resolver::interface::resolve_function_interface;
-use crate::resolver::scopes;
-use crate::parser::ast;
 use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
 use crate::program::traits::{Trait, TraitBinding, TraitConformance};
 use crate::refactor::monomorphize::map_interface_types;
+use crate::resolver::interface::resolve_function_interface;
+use crate::resolver::scopes;
 
 pub struct UnresolvedFunctionImplementation<'a> {
     pub function: Rc<FunctionHead>,

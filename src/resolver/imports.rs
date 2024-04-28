@@ -1,11 +1,11 @@
 use itertools::Itertools;
 
+use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
-use crate::resolver::{interpreter_mock, scopes};
-use crate::parser::ast;
 use crate::program::functions::ParameterKey;
 use crate::program::module::ModuleName;
+use crate::resolver::{interpreter_mock, scopes};
 use crate::util::iter::omega;
 use crate::util::position::Positioned;
 

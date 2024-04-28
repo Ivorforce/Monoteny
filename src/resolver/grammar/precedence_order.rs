@@ -4,11 +4,10 @@ use itertools::Itertools;
 use strum::IntoEnumIterator;
 use uuid::Uuid;
 
+use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
 use crate::resolver::grammar::{OperatorAssociativity, PrecedenceGroup};
 use crate::resolver::interpreter_mock;
-use crate::parser::ast;
-use crate::parser::ast::Term;
 
 pub fn resolve_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<PrecedenceGroup>>> {
     let error = RuntimeError::error("@precedence_order needs an array literal body.").to_array();
@@ -17,7 +16,7 @@ pub fn resolve_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<Preced
         return Err(error);
     };
 
-    let Term::Array(array) = &term.value else {
+    let ast::Term::Array(array) = &term.value else {
         return Err(error);
     };
 
@@ -44,7 +43,7 @@ pub fn resolve_precedence_group(body: &ast::Expression) -> RResult<Rc<Precedence
         return Err(error);
     };
 
-    let (Term::Identifier(name), Term::Struct(struct_args)) = (&l.value, &r.value) else {
+    let (ast::Term::Identifier(name), ast::Term::Struct(struct_args)) = (&l.value, &r.value) else {
         return Err(error).err_in_range(&l.position);
     };
 
@@ -67,7 +66,7 @@ pub fn resolve_associativity(body: &ast::Expression) -> RResult<OperatorAssociat
         return Err(error);
     };
 
-    let Term::Identifier(name) = &arg.value else {
+    let ast::Term::Identifier(name) = &arg.value else {
         return Err(error)
     };
 

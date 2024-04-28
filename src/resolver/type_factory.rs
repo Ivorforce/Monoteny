@@ -3,13 +3,13 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 
+use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
-use crate::resolver::scopes;
 use crate::program::function_object::FunctionTargetType;
-use crate::parser::ast;
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
+use crate::resolver::scopes;
 
 pub struct TypeFactory<'a> {
     pub runtime: &'a Runtime,

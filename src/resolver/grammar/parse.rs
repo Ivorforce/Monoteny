@@ -2,17 +2,17 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 
+use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
+use crate::program::allocation::ObjectReference;
+use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
+use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
+use crate::program::functions::{FunctionHead, ParameterKey};
+use crate::program::primitives;
+use crate::program::types::{TypeProto, TypeUnit};
 use crate::resolver::grammar::{OperatorAssociativity, Token};
 use crate::resolver::imperative::ImperativeResolver;
 use crate::resolver::scopes;
-use crate::parser::ast;
-use crate::program::allocation::ObjectReference;
-use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::primitives;
-use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
-use crate::program::functions::{FunctionHead, ParameterKey};
-use crate::program::types::{TypeProto, TypeUnit};
 use crate::util::position::Positioned;
 
 pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<Vec<Positioned<Token>>> {

@@ -12,6 +12,15 @@ pub enum Mutability {
     Mutable,
 }
 
+impl Mutability {
+    pub fn variable_declaration_keyword(&self) -> &str {
+        match *self {
+            Mutability::Mutable => "var",
+            Mutability::Immutable => "let",
+        }
+    }
+}
+
 #[derive(Clone, Eq)]
 pub struct ObjectReference {
     pub id: Uuid,
