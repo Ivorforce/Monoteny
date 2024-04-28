@@ -1,7 +1,8 @@
-use std::time::Instant;
 use std::process::ExitCode;
+use std::time::Instant;
+
 use colored::Colorize;
-use crate::error;
+
 use crate::error::{print_errors, RResult, RuntimeError};
 
 pub fn dump_start(name: &str) -> Instant {
