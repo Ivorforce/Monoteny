@@ -202,10 +202,7 @@ impl Display for Array {
 
 impl Display for Block {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
-        for item in self.statements.iter() {
-            write!(fmt, "{}\n\n", item)?
-        };
-        return Ok(())
+        write_separated_display(fmt, "\n\n", self.statements.iter())
     }
 }
 
