@@ -40,8 +40,8 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         let representation = &runtime.source.fn_representations[function];
 
         runtime.function_inlines.insert(Rc::clone(function), match representation.name.as_str() {
-            "true" => inline_fn_push_with_u8(OpCode::TRANSPILE_ADD, true as u8),
-            "false" => inline_fn_push_with_u8(OpCode::TRANSPILE_ADD, false as u8),
+            "true" => inline_fn_push_with_u8(OpCode::LOAD8, true as u8),
+            "false" => inline_fn_push_with_u8(OpCode::LOAD8, false as u8),
             _ => continue,
         });
     }

@@ -121,6 +121,8 @@ impl FunctionCompiler<'_> {
                 self.chunk.push_with_u32(OpCode::LOAD_LOCAL, slot);
             },
             ExpressionOperation::SetLocal(local) => {
+                assert_eq!(children.len(), 1);
+                self.compile_expression(&children[0])?;
                 let slot = self.get_variable_slot(local);
                 self.chunk.push_with_u32(OpCode::STORE_LOCAL, slot);
             },
