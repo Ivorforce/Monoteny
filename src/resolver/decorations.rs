@@ -5,12 +5,12 @@ use uuid::Uuid;
 
 use crate::ast;
 use crate::error::{RResult, RuntimeError, TryCollectMany};
+use crate::parser::grammar::{Pattern, PatternPart};
 use crate::program::functions::{FunctionHead, ParameterKey};
-use crate::resolver::grammar::{Pattern, PatternPart};
 use crate::resolver::scopes;
 use crate::util::position::Positioned;
 
-pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead>, scope: &scopes::Scope) -> RResult<Rc<Pattern>> {
+pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead>, scope: &scopes::Scope) -> RResult<Rc<Pattern<Rc<FunctionHead>>>> {
     let parameters = function.interface.parameters.iter().map(|p| p.internal_name.clone()).collect_vec();
 
     return match &decoration.iter().map(|a| a.as_ref()).collect_vec()[..] {
@@ -55,7 +55,7 @@ pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead
                 id: Uuid::new_v4(),
                 precedence_group,
                 parts,
-                head: function,
+                function: function,
             }))
         }
         _ => Err(RuntimeError::error("Unrecognized decoration.").to_array())

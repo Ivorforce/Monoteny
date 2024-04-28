@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
-use crate::resolver::grammar::{OperatorAssociativity, PrecedenceGroup};
+use crate::parser::grammar::{OperatorAssociativity, PrecedenceGroup};
 use crate::resolver::interpreter_mock;
 
 pub fn resolve_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<PrecedenceGroup>>> {

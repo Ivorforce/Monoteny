@@ -3,8 +3,8 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 use uuid::Uuid;
+use crate::parser::grammar::{Pattern, PrecedenceGroup};
 
-use crate::resolver::grammar::{Pattern, PrecedenceGroup};
 use crate::program::functions::FunctionHead;
 use crate::program::traits::TraitGraph;
 use crate::source::Source;
@@ -23,7 +23,7 @@ pub struct Module {
     pub included_modules: Vec<Vec<String>>,
 
     pub precedence_order: Option<Vec<Rc<PrecedenceGroup>>>,
-    pub patterns: HashSet<Rc<Pattern>>,
+    pub patterns: HashSet<Rc<Pattern<Rc<FunctionHead>>>>,
     pub trait_conformance: Box<TraitGraph>,
 
     /// Functions that are directly referencible.

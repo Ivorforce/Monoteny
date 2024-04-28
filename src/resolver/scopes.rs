@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
-use crate::error::{RuntimeError, RResult};
+use crate::error::{RResult, RuntimeError};
 
 use crate::interpreter::runtime::Runtime;
-use crate::resolver::grammar::{Grammar, Pattern, PrecedenceGroup};
+use crate::parser::grammar::{Grammar, Pattern, PrecedenceGroup};
 use crate::program::allocation::ObjectReference;
-use crate::program::function_object::{FunctionTargetType, FunctionOverload, FunctionRepresentation};
+use crate::program::function_object::{FunctionOverload, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::FunctionHead;
 use crate::program::module::Module;
 use crate::program::traits::TraitGraph;
@@ -20,7 +20,7 @@ pub struct Scope<'a> {
     pub parent: Option<&'a Scope<'a>>,
 
     pub trait_conformance: TraitGraph,
-    pub grammar: Grammar,
+    pub grammar: Grammar<Rc<FunctionHead>>,
 
     pub global: RefPool,
     pub member: RefPool,
@@ -144,7 +144,7 @@ impl <'a> Scope<'a> {
         }
     }
 
-    pub fn add_pattern(&mut self, pattern: Rc<Pattern>) -> RResult<()> {
+    pub fn add_pattern(&mut self, pattern: Rc<Pattern<Rc<FunctionHead>>>) -> RResult<()> {
         for keyword in self.grammar.add_pattern(pattern)? {
             self.insert_keyword(&keyword);
         }
