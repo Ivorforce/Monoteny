@@ -30,7 +30,7 @@ pub fn get_main_function(module: &Module) -> RResult<Option<&Rc<FunctionHead>>> 
     let entry_function = match &module.main_functions[..] {
         [] => return Ok(None),
         [f] => f,
-        functions => return Err(RuntimeError::error(format!("Too many @main functions declared: {:?}", functions).as_str()).to_array()),
+        functions => return Err(RuntimeError::error(format!("Too many !main functions declared: {:?}", functions).as_str()).to_array()),
     };
     if !entry_function.interface.parameters.is_empty() {
         return Err(RuntimeError::error("main! function has parameters.").to_array());

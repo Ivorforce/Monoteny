@@ -124,10 +124,8 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
 
                         match next_token.map(|t| &t.value) {
                             Some(ast::Term::Struct(s)) => {
-                                let range = &next_token.unwrap().position;
-
                                 // The next token is a struct; we can immediately call it!
-                                let struct_ = resolver.resolve_struct(scope, s).err_in_range(range)?;
+                                let struct_ = resolver.resolve_struct(scope, s).err_in_range(&next_token.unwrap().position)?;
 
                                 let expression_id = resolver.resolve_function_call(
                                     overload.functions.iter(),
@@ -135,7 +133,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                                     [ParameterKey::Positional].into_iter().chain(struct_.keys.clone()).collect_vec(),
                                     [target.clone()].into_iter().chain(struct_.values.clone()).collect_vec(),
                                     scope,
-                                    ast_token.position.clone(),
+                                    range.clone(),
                                 ).err_in_range(range)?;
 
                                 Token::Value(expression_id)
@@ -151,7 +149,7 @@ pub fn resolve_expression_to_tokens(resolver: &mut ImperativeResolver, syntax: &
                                 vec![ParameterKey::Positional],
                                 vec![target.clone()],
                                 scope,
-                                ast_token.position.clone()
+                                range.clone()
                             ).err_in_range(range)?
                         )
                     }

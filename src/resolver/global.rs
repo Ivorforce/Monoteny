@@ -96,7 +96,7 @@ impl <'a> GlobalResolver<'a> {
                     self.global_variables.add_pattern(pattern)?;
                 }
                 self.schedule_function_body(&fun, syntax.body.as_ref(), pstatement.value.position.clone());
-                self.add_function_interface(fun, representation, &vec![])?;
+                self.add_function_interface(fun, representation)?;
             }
             ast::Statement::Trait(syntax) => {
                 pstatement.no_decorations()?;
@@ -192,7 +192,7 @@ impl <'a> GlobalResolver<'a> {
                     self.schedule_function_body(&fun.function, fun.body.as_ref(), pstatement.value.position.clone());
                     // TODO Instead of adding conformance functions statically, we should add the abstract function to the scope.
                     //  This will allow the compiler to determine "function exists but no declaration exists" in the future.
-                    self.add_function_interface(fun.function, fun.representation.clone(), &fun.decorators)?;
+                    self.add_function_interface(fun.function, fun.representation.clone())?;
                 }
             }
             ast::Statement::Expression(e) => {
@@ -237,12 +237,12 @@ impl <'a> GlobalResolver<'a> {
                 }
 
                 return Err(
-                    RuntimeError::error(format!("Expression {} is not supported in a global context.", e).as_str()).to_array()
+                    RuntimeError::error("Expression is not supported in a global context.").to_array()
                 )
             }
-            statement => {
+            _ => {
                 return Err(
-                    RuntimeError::error(format!("Statement {} is not supported in a global context.", statement).as_str()).to_array()
+                    RuntimeError::error("Statement is not supported in a global context.").to_array()
                 )
             }
         }
@@ -263,13 +263,7 @@ impl <'a> GlobalResolver<'a> {
         Ok(())
     }
 
-    pub fn add_function_interface(&mut self, pointer: Rc<FunctionHead>, representation: FunctionRepresentation, decorators: &Vec<String>) -> RResult<()> {
-        for decorator in decorators.iter() {
-            return Err(
-                RuntimeError::error(format!("Decorator could not be resolved: {}", decorator).as_str()).to_array()
-            )
-        }
-
+    pub fn add_function_interface(&mut self, pointer: Rc<FunctionHead>, representation: FunctionRepresentation) -> RResult<()> {
         referencible::add_function(self.runtime, &mut self.module, Some(&mut self.global_variables), pointer, representation)?;
 
         Ok(())

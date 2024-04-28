@@ -77,12 +77,12 @@ impl <'a> TraitResolver<'a> {
             }
             ast::Statement::Expression(e) => {
                 return Err(
-                    RuntimeError::error(format!("Expression {} not valid in a trait context.", statement).as_str()).to_array()
+                    RuntimeError::error("Expression not valid in a trait context.").to_array()
                 );
             }
             _ => {
                 return Err(
-                    RuntimeError::error(format!("Statement {} not valid in a trait context.", statement).as_str()).to_array()
+                    RuntimeError::error("Statement not valid in a trait context.").to_array()
                 );
             }
         }
@@ -180,7 +180,6 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
     resolver.add_function_interface(
         Rc::clone(&struct_.constructor),
         FunctionRepresentation::new("call_as_function", FunctionTargetType::Member, FunctionCallExplicity::Explicit),
-        &vec![],
     )?;
 
     for (ref_, head) in struct_.field_getters.iter() {
@@ -193,8 +192,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
         resolver.add_function_interface(
             Rc::clone(head),
             FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit),
-            &vec![])?
-        ;
+        )?;
     }
 
     for (ref_, head) in struct_.field_setters.iter() {
@@ -207,7 +205,6 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
         resolver.add_function_interface(
             Rc::clone(head),
             FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit),
-            &vec![]
         )?;
     }
 

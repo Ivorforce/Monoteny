@@ -139,7 +139,11 @@ impl ResolverAmbiguity for AmbiguousFunctionCall {
                     types: &resolver.types,
                 };
                 Err(
-                    RuntimeError::error(format!("function {} could not be resolved. {} candidates failed type / requirements test.", signature, cs.len()).as_str()).to_array()
+                    RuntimeError::error(format!("function {} could not be resolved. ", signature).as_str())
+                        .with_note(
+                            RuntimeError::info(format!("{} candidates failed type / requirements test.", cs.len()).as_str())
+                        )
+                        .to_array()
                 )
             }
         }

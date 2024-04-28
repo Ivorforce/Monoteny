@@ -108,6 +108,18 @@ impl From<Vec<Box<Positioned<Term>>>> for Expression {
     }
 }
 
+impl Array {
+    pub fn empty() -> Array {
+        Array { arguments: vec![] }
+    }
+}
+
+impl Struct {
+    pub fn empty() -> Struct {
+        Struct { arguments: vec![] }
+    }
+}
+
 #[derive(Eq, PartialEq, Clone)]
 pub enum Term {
     Error(RuntimeError),

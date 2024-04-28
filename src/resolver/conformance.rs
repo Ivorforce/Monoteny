@@ -18,7 +18,6 @@ use crate::refactor::monomorphize::map_interface_types;
 pub struct UnresolvedFunctionImplementation<'a> {
     pub function: Rc<FunctionHead>,
     pub representation: FunctionRepresentation,
-    pub decorators: Vec<String>,
     pub body: &'a Option<ast::Expression>,
 }
 
@@ -40,17 +39,16 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
                     function,
                     representation,
                     body: &syntax.body,
-                    decorators: vec![],
                 });
             }
             ast::Statement::Expression(e) => {
                 return Err(
-                    RuntimeError::error(format!("Expression {} not valid in a conformance context.", statement).as_str()).to_array()
+                    RuntimeError::error("Expression not valid in a conformance context.").to_array()
                 );
             }
             _ => {
                 return Err(
-                    RuntimeError::error(format!("Statement {} not valid in a conformance context.", statement).as_str()).to_array()
+                    RuntimeError::error("Statement {} not valid in a conformance context.").to_array()
                 );
             }
         }
