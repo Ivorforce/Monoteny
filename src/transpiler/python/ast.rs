@@ -124,6 +124,7 @@ impl<'a> DisplayWithOptions<IndentOptions<'a>> for Function {
         let options = options.deeper();
         let mut f = IndentingFormatter::new(f, &options.full_indentation);
         let options = options.restart();
+        let indent_once = options.deeper();
 
         write!(f, "\"\"\"\n<DOCSTRING TODO>")?;
 
@@ -131,13 +132,13 @@ impl<'a> DisplayWithOptions<IndentOptions<'a>> for Function {
             write!(f, "\n\n{}Args:", options)?;
 
             for (idx, parameter) in self.parameters.iter().enumerate() {
-                write!(f, "\n{}: TODO", parameter.name)?;
+                write!(f, "\n{}{}: <TODO>", indent_once, parameter.name)?;
             }
         }
 
         if self.return_type.is_some() {
-            write!(f, "\n\n    Returns:\n")?;
-            write!(f, "        <TODO>")?;
+            write!(f, "\n\nReturns:\n")?;
+            write!(f, "{}<TODO>", indent_once)?;
         }
 
         write!(f, "\n\"\"\"\n")?;
