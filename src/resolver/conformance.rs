@@ -41,14 +41,13 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
                     body: &syntax.body,
                 });
             }
-            ast::Statement::Expression(e) => {
-                return Err(
-                    RuntimeError::error("Expression not valid in a conformance context.").to_array()
-                );
-            }
             _ => {
+                if let ast::Statement::Expression(exp) = statement {
+                    // It may still just be an error!
+                    exp.no_errors()?;
+                }
                 return Err(
-                    RuntimeError::error("Statement {} not valid in a conformance context.").to_array()
+                    RuntimeError::error("Statement not valid in a conformance context.").to_array()
                 );
             }
         }
