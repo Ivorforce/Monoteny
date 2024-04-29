@@ -8,6 +8,7 @@ pub mod strings;
 pub mod lexer;
 pub mod error;
 pub mod grammar;
+pub mod expressions;
 mod tests;
 
 pub fn parse_program(content: &str) -> RResult<(ast::Block, Vec<ErrorRecovery<usize, lexer::Token<'_>, error::Error>>)> {

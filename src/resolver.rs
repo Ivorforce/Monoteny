@@ -12,6 +12,7 @@ pub mod fields;
 pub mod imports;
 pub mod interpreter_mock;
 pub mod referencible;
-pub mod grammar;
+pub mod structs;
 pub mod decorations;
+pub mod precedence_order;
 

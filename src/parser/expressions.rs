@@ -162,7 +162,7 @@ pub fn parse_unary<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(mut toke
     return Ok((values, keywords))
 }
 
-pub fn resolve_expression<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(syntax: &'a[Box<Positioned<ast::Term>>], grammar: &'a Grammar<Function>) -> RResult<Box<Positioned<Value<'a, Function>>>> {
+pub fn parse_expression<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(syntax: &'a[Box<Positioned<ast::Term>>], grammar: &'a Grammar<Function>) -> RResult<Box<Positioned<Value<'a, Function>>>> {
     // Here's what this function does:
     // We go left to right through all the terms.
     // Many terms can just be evaluated to a token, like int literals or local references.

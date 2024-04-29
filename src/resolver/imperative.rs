@@ -9,6 +9,8 @@ use uuid::Uuid;
 use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
+use crate::parser::expressions;
+use crate::parser::expressions::parse_expression;
 use crate::program::{function_object, primitives};
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
@@ -21,10 +23,9 @@ use crate::program::global::FunctionImplementation;
 use crate::program::traits::{RequirementsAssumption, Trait, TraitConformanceRule, TraitGraph};
 use crate::program::types::*;
 use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
-use crate::resolver::grammar::{expressions, Struct};
-use crate::resolver::grammar::expressions::resolve_expression;
 use crate::resolver::scopes;
 use crate::resolver::scopes::Scope;
+use crate::resolver::structs::Struct;
 use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
@@ -323,7 +324,7 @@ impl <'a> ImperativeResolver<'a> {
 
     pub fn resolve_expression(&mut self, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<ExpressionID> {
         // First, resolve core grammar.
-        let token = resolve_expression(syntax, &scope.grammar)?;
+        let token = parse_expression(syntax, &scope.grammar)?;
         self.resolve_expression_token(&token, scope)
             .err_in_range(&token.position)
     }
