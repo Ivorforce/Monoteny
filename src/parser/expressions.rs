@@ -49,18 +49,18 @@ pub fn parse_to_tokens<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(synt
                 }
             }
             ast::Term::MacroIdentifier(_) => {
-                return Err(RuntimeError::error("Macro not supported here.").to_array())
+                return Err(RuntimeError::error("Macro not supported here.").in_range(ast_token.position.clone()).to_array())
             }
             ast::Term::Dot => {
                 let Some(Token::Value(target)) = tokens.pop() else {
-                    return Err(RuntimeError::error("Dot notation requires a preceding object.").to_array())
+                    return Err(RuntimeError::error("Dot notation requires a preceding object.").in_range(ast_token.position.clone()).to_array())
                 };
 
                 let Some(next_token) = syntax.get(i) else {
-                    return Err(RuntimeError::error("Dot notation requires a following identifier.").to_array())
+                    return Err(RuntimeError::error("Dot notation requires a following identifier.").in_range(ast_token.position.clone()).to_array())
                 };
                 let ast::Term::Identifier(member) = &next_token.value else {
-                    return Err(RuntimeError::error("Dot notation requires a following identifier.").to_array())
+                    return Err(RuntimeError::error("Dot notation requires a following identifier.").in_range(ast_token.position.clone()).to_array())
                 };
 
                 i += 1;
@@ -123,7 +123,7 @@ pub fn parse_unary<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(mut toke
     match tokens.pop() {
         Some(Token::Value(value)) => values.push(value),
         Some(Token::Keyword(keyword)) => {
-            return Err(RuntimeError::error("Expected expression.").in_range(keyword.position).to_array())
+            return Err(RuntimeError::error("Expected value.").in_range(keyword.position).to_array())
         }
         None => {
             return Err(RuntimeError::error("Expected expression.").to_array())
