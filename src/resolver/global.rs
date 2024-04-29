@@ -200,9 +200,7 @@ impl <'a> GlobalResolver<'a> {
 
                 match macro_name.as_str() {
                     "precedence_order" => {
-                        let body = interpreter_mock::plain_parameter(format!("{}!", macro_name).as_str(), call_struct)?;
-
-                        let precedence_order = resolve_precedence_order(body, &self.global_variables)?;
+                        let precedence_order = resolve_precedence_order(call_struct, &self.global_variables)?;
                         self.module.precedence_order = Some(precedence_order.clone());
                         self.global_variables.grammar.set_precedence_order(precedence_order);
                         return Ok(())

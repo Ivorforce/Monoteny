@@ -1,14 +1,15 @@
 -- This tests whether we can define a custom grammar.
 
-precedence_order!([
-    LeftUnaryPrecedence(LeftUnary),
-    ExponentiationPrecedence(Right),
-    MultiplicationPrecedence(Left),
-    AdditionPrecedence(Left),
-    ComparisonPrecedence(LeftConjunctivePairs),
-    LogicalConjunctionPrecedence(Left),
-    LogicalDisjunctionPrecedence(Left),
-]);
+precedence_order!(
+    LeftUnaryPrecedence: LeftUnary,
+    ExponentiationPrecedence: Right,
+    MultiplicationPrecedence: Left,
+    AdditionPrecedence: Left,
+    ComparisonPrecedence: LeftConjunctivePairs,
+    LogicalConjunctionPrecedence: Left,
+    LogicalDisjunctionPrecedence: Left,
+);
+
 
 ![pattern(- val, LeftUnaryPrecedence)]
 def _neg(val '$Number) -> $Number :: negative(val);
