@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::ops::Range;
 
 use itertools::Itertools;
 
@@ -25,7 +26,7 @@ pub enum Value<'a, Function> {
 }
 
 pub enum Token<'a, Function> {
-    Keyword(&'a String),
+    Keyword(Positioned<&'a String>),
     Value(Box<Positioned<Value<'a, Function>>>),
 }
 
@@ -41,7 +42,7 @@ pub fn parse_to_tokens<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(synt
             ast::Term::Error(err) => Err(err.clone().to_array())?,
             ast::Term::Identifier(identifier) => {
                 if grammar.keywords.contains(identifier) {
-                    tokens.push(ast_token.with_value(Token::Keyword(identifier)));
+                    tokens.push(ast_token.with_value(Token::Keyword(ast_token.with_value(identifier))));
                 }
                 else {
                     tokens.push(ast_token.with_value(Token::Value(Box::new(ast_token.with_value(Value::Identifier(identifier))))));
@@ -121,9 +122,9 @@ pub fn parse_to_tokens<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(synt
     Ok(tokens)
 }
 
-pub fn parse_unary<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(mut tokens: Vec<Positioned<Token<'a, Function>>>, functions: Option<&'a HashMap<String, Function>>) -> RResult<(Vec<Box<Positioned<Value<'a, Function>>>>, Vec<&'a str>)> {
-    let mut values: Vec<Box<Positioned<Value<Function>>>> = vec![];
-    let mut keywords: Vec<&str> = vec![];
+pub fn parse_unary<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(mut tokens: Vec<Positioned<Token<'a, Function>>>, functions: Option<&'a HashMap<String, Function>>) -> RResult<(Vec<Box<Positioned<Value<'a, Function>>>>, Vec<Positioned<&'a str>>)> {
+    let mut values = vec![];
+    let mut keywords = vec![];
 
     let final_ptoken = tokens.remove(tokens.len() - 1);
     if let Token::Value(value) = final_ptoken.value {
@@ -135,7 +136,7 @@ pub fn parse_unary<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(mut toke
 
     if let Some(functions) = functions {
         while let Some(ptoken) = tokens.pop() {
-            let Token::Keyword(keyword) = ptoken.value else {
+            let Token::Keyword(keyword) = &ptoken.value else {
                 return Err(
                     RuntimeError::error("Found two consecutive values; expected an operator in between.")
                         .in_range(ptoken.position.end..values.last().unwrap().position.start)
@@ -148,14 +149,14 @@ pub fn parse_unary<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(mut toke
 
                 // Binary Operator keyword, because left of operator is a value
                 values.insert(0, value);
-                keywords.insert(0, keyword);
+                keywords.insert(0, keyword.with_value(keyword.value.as_str()));
 
                 continue
             }
 
             // Unary operator, because left of operator is an operator
             let argument = values.remove(0);
-            values.insert(0, Box::new(ptoken.with_value(Value::Operation(functions[keyword].clone(), vec![argument]))));
+            values.insert(0, Box::new(ptoken.with_value(Value::Operation(functions[keyword.value.as_str()].clone(), vec![argument]))));
         }
     }
 
@@ -190,11 +191,9 @@ pub fn parse_expression<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(syn
     }
 
     // Resolve binary operators. At this point, we have only expressions interspersed with operators.
-    let join_binary_at = |arguments: &mut Vec<Box<Positioned<Value<Function>>>>, function: &Function, i: usize| -> RResult<()> {
+    let join_binary_at = |arguments: &mut Vec<Box<Positioned<Value<Function>>>>, function: &Function, range: &Range<usize>, i: usize| -> RResult<()> {
         let lhs = arguments.remove(i);
         let rhs = arguments.remove(i);
-
-        let range = lhs.position.start..rhs.position.end;
 
         Ok(arguments.insert(
             i,
@@ -211,9 +210,9 @@ pub fn parse_expression<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(syn
                 // Iterate left to right
                 let mut i = 0;
                 while i < keywords.len() {
-                    if let Some(function_head) = group_operators.get(keywords[i]) {
-                        keywords.remove(i);
-                        join_binary_at(&mut values, function_head, i)?;
+                    if let Some(function_head) = group_operators.get(keywords[i].value) {
+                        let keyword = keywords.remove(i);
+                        join_binary_at(&mut values, function_head, &keyword.position, i)?;
                     }
                     else {
                         i += 1;  // Skip
@@ -225,9 +224,9 @@ pub fn parse_expression<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(syn
                 let mut i = keywords.len();
                 while i > 0 {
                     i -= 1;
-                    if let Some(alias) = group_operators.get(keywords[i]) {
+                    if let Some(alias) = group_operators.get(keywords[i].value) {
                         keywords.remove(i);
-                        join_binary_at(&mut values, alias, i)?;
+                        join_binary_at(&mut values, alias, &keywords[i].position, i)?;
                     }
                 }
             }
@@ -235,13 +234,13 @@ pub fn parse_expression<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(syn
                 // Iteration direction doesn't matter here.
                 let mut i = 0;
                 while i < keywords.len() {
-                    if let Some(alias) = group_operators.get(keywords[i]) {
-                        if i + 1 < group_operators.len() && group_operators.contains_key(keywords[i + 1]) {
+                    if let Some(alias) = group_operators.get(keywords[i].value) {
+                        if i + 1 < group_operators.len() && group_operators.contains_key(keywords[i + 1].value) {
                             panic!("Cannot parse two neighboring {} operators because no associativity is defined.", keywords[i]);
                         }
 
                         keywords.remove(i);
-                        join_binary_at(&mut values, alias, i)?;
+                        join_binary_at(&mut values, alias, &keywords[i].position, i)?;
                     }
 
                     i += 1;
@@ -251,15 +250,16 @@ pub fn parse_expression<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(syn
                 // Iteration direction doesn't matter here.
                 let mut i = 0;
                 while i < keywords.len() {
-                    if !group_operators.contains_key(keywords[i]) {
+                    if !group_operators.contains_key(keywords[i].value) {
                         // Skip
                         i += 1;
                         continue;
                     }
 
-                    if i + 1 >= keywords.len() || !group_operators.contains_key(keywords[i + 1]) {
+                    if i + 1 >= keywords.len() || !group_operators.contains_key(keywords[i + 1].value) {
                         // Just one operation; let's use a binary operator.
-                        join_binary_at(&mut values, &group_operators[keywords.remove(i)], i)?;
+                        let keyword = keywords.remove(i);
+                        join_binary_at(&mut values, &group_operators[keyword.value], &keyword.position, i)?;
                         continue;
                     }
 
