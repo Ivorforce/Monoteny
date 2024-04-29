@@ -13,6 +13,7 @@ use crate::util::position::Positioned;
 pub enum Value<'a, Function> {
     Operation(Function, Vec<Box<Positioned<Self>>>),
     Identifier(&'a String),
+    MacroIdentifier(&'a String),
     RealLiteral(&'a String),
     IntLiteral(&'a String),
     StringLiteral(&'a Vec<Box<Positioned<ast::StringPart>>>),
@@ -48,8 +49,8 @@ pub fn parse_to_tokens<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(synt
                     tokens.push(Token::Value(Box::new(ast_token.with_value(Value::Identifier(identifier)))));
                 }
             }
-            ast::Term::MacroIdentifier(_) => {
-                return Err(RuntimeError::error("Macro not supported here.").in_range(ast_token.position.clone()).to_array())
+            ast::Term::MacroIdentifier(identifier) => {
+                tokens.push(Token::Value(Box::new(ast_token.with_value(Value::MacroIdentifier(identifier)))));
             }
             ast::Term::Dot => {
                 let Some(Token::Value(target)) = tokens.pop() else {
@@ -160,7 +161,7 @@ pub fn parse_unary<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(mut toke
     return Ok((values, keywords))
 }
 
-pub fn parse_expression<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(syntax: &'a[Box<Positioned<ast::Term>>], grammar: &'a Grammar<Function>) -> RResult<Box<Positioned<Value<'a, Function>>>> {
+pub fn parse<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(syntax: &'a[Box<Positioned<ast::Term>>], grammar: &'a Grammar<Function>) -> RResult<Box<Positioned<Value<'a, Function>>>> {
     // Here's what this function does:
     // We go left to right through all the terms.
     // Many terms can just be evaluated to a token, like int literals or local references.

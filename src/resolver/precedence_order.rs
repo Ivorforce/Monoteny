@@ -6,17 +6,16 @@ use uuid::Uuid;
 
 use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
+use crate::parser::expressions;
 use crate::parser::grammar::{OperatorAssociativity, PrecedenceGroup};
-use crate::resolver::interpreter_mock;
+use crate::resolver::{interpreter_mock, scopes};
 
-pub fn resolve_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<PrecedenceGroup>>> {
-    let error = RuntimeError::error("@precedence_order needs an array literal body.").to_array();
+pub fn resolve_precedence_order(body: &ast::Expression, scope: &scopes::Scope) -> RResult<Vec<Rc<PrecedenceGroup>>> {
+    let error = RuntimeError::error("precedence_order! needs an array literal body.").to_array();
 
-    let [term] = &body[..] else {
-        return Err(error);
-    };
+    let parsed = expressions::parse(body, &scope.grammar)?;
 
-    let ast::Term::Array(array) = &term.value else {
+    let expressions::Value::ArrayLiteral(array) = &parsed.value else {
         return Err(error);
     };
 
@@ -25,8 +24,8 @@ pub fn resolve_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<Preced
             return Err(error.clone())
         }
 
-        resolve_precedence_group(&arg.value.value)
-    }).try_collect_many().err_in_range(&term.position)?;
+        resolve_precedence_group(&arg.value.value, scope)
+    }).try_collect_many().err_in_range(&parsed.position)?;
 
     order.iter().filter(|x| x.associativity == OperatorAssociativity::LeftUnary).at_most_one()
         .map_err(|_| RuntimeError::error("Cannot declare two LeftUnary associativities.").to_array())?;
@@ -36,19 +35,21 @@ pub fn resolve_precedence_order(body: &ast::Expression) -> RResult<Vec<Rc<Preced
     Ok(order)
 }
 
-pub fn resolve_precedence_group(body: &ast::Expression) -> RResult<Rc<PrecedenceGroup>> {
+pub fn resolve_precedence_group(body: &ast::Expression, scope: &scopes::Scope) -> RResult<Rc<PrecedenceGroup>> {
     let error = RuntimeError::error("Precedence group needs form name(associativity).").to_array();
 
-    let [l, r] = &body[..] else {
+    let parsed = expressions::parse(body, &scope.grammar)?;
+
+    let expressions::Value::FunctionCall(target, call_struct) = &parsed.value else {
         return Err(error);
     };
 
-    let (ast::Term::Identifier(name), ast::Term::Struct(struct_args)) = (&l.value, &r.value) else {
-        return Err(error).err_in_range(&l.position);
+    let expressions::Value::Identifier(name) = &target.value else {
+        return Err(error);
     };
 
-    let body = interpreter_mock::plain_parameter("Precedence Group", struct_args)?;
-    let associativity = resolve_associativity(body).err_in_range(&r.position)?;
+    let body = interpreter_mock::plain_parameter("Precedence Group", call_struct)?;
+    let associativity = resolve_associativity(body, scope).err_in_range(&parsed.position)?;
 
     Ok(Rc::new(PrecedenceGroup {
         trait_id: Uuid::new_v4(),
@@ -57,20 +58,18 @@ pub fn resolve_precedence_group(body: &ast::Expression) -> RResult<Rc<Precedence
     }))
 }
 
-pub fn resolve_associativity(body: &ast::Expression) -> RResult<OperatorAssociativity> {
+pub fn resolve_associativity(body: &ast::Expression, scope: &scopes::Scope) -> RResult<OperatorAssociativity> {
     let error = RuntimeError::error(
         format!("Operator associativity needs to be one of {:?}.", OperatorAssociativity::iter().collect_vec()).as_str()
     ).to_array();
 
-    let [arg] = &body[..] else {
+    let parsed = expressions::parse(body, &scope.grammar)?;
+
+    let expressions::Value::Identifier(identifier) = &parsed.value else {
         return Err(error);
     };
 
-    let ast::Term::Identifier(name) = &arg.value else {
-        return Err(error)
-    };
-
-    let Ok(associativity) = OperatorAssociativity::iter().filter(|a| &a.to_string() == name).exactly_one() else {
+    let Ok(associativity) = OperatorAssociativity::iter().filter(|a| &a.to_string() == identifier.as_str()).exactly_one() else {
         return Err(error)
     };
 

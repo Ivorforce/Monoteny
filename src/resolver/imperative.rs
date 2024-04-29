@@ -10,8 +10,6 @@ use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
 use crate::parser::expressions;
-use crate::parser::expressions::parse_expression;
-use crate::program::{function_object, primitives};
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::debug::MockFunctionInterface;
@@ -19,6 +17,7 @@ use crate::program::expression_tree::{ExpressionID, ExpressionOperation, Express
 use crate::program::function_object::{FunctionCallExplicity, FunctionOverload, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
+use crate::program::primitives;
 use crate::program::traits::{Trait, TraitGraph};
 use crate::program::types::*;
 use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
@@ -181,7 +180,7 @@ impl <'a> ImperativeResolver<'a> {
 
                 let new_value: ExpressionID = self.resolve_expression(new_value, &scope)?;
 
-                let lhs = parse_expression(target, &scope.grammar)?;
+                let lhs = expressions::parse(target, &scope.grammar)?;
                 match &lhs.value {
                     expressions::Value::Identifier(identifier) => {
                         let object_ref = scope
@@ -269,7 +268,7 @@ impl <'a> ImperativeResolver<'a> {
 
     pub fn resolve_expression(&mut self, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<ExpressionID> {
         // First, resolve core grammar.
-        let token = parse_expression(syntax, &scope.grammar)?;
+        let token = expressions::parse(syntax, &scope.grammar)?;
         self.resolve_expression_token(&token, scope)
             .err_in_range(&token.position)
     }
@@ -292,6 +291,9 @@ impl <'a> ImperativeResolver<'a> {
                     scope,
                     range.clone()
                 )
+            }
+            expressions::Value::MacroIdentifier(identifier) => {
+                return Err(RuntimeError::error("Macro not supported here.").to_array())
             }
             expressions::Value::Identifier(identifier) => {
                 match self.resolve_global(scope, range, identifier)? {

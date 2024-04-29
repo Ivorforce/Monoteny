@@ -7,6 +7,7 @@ use try_map::FallibleMapExt;
 use crate::ast;
 use crate::error::{RResult, RuntimeError, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
+use crate::parser::expressions;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface, Parameter};
 use crate::program::module::{Module, module_name};
@@ -19,66 +20,57 @@ use crate::util::position::Positioned;
 pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
     let mut type_factory = TypeFactory::new(scope, runtime);
 
-    match interface.expression.iter().map(|a| a.as_ref()).collect_vec()[..] {
-        [
+    let parsed = expressions::parse(&interface.expression, &scope.grammar)?;
+
+    match &parsed.value {
+        expressions::Value::MacroIdentifier(macro_name) => {
             // Macro
-            Positioned { position, value: ast::Term::MacroIdentifier(m)}
-        ] => {
             if !requirements.is_empty() || !generics.is_empty() {
                 panic!();
             }
 
-            resolve_macro_function_interface(module, runtime, m)
+            resolve_macro_function_interface(module, runtime, macro_name)
         }
-        [
-            // Constant-like
-            Positioned { position: p1, value: ast::Term::Identifier(i)},
-        ] => {
+        expressions::Value::Identifier(identifier) => {
+            // Constant like
             _resolve_function_interface(FunctionRepresentation {
-                name: i.clone(),
+                name: identifier.to_string(),
                 target_type: FunctionTargetType::Global,
                 call_explicity: FunctionCallExplicity::Implicit,
             }, [].into_iter(), &interface.return_type, type_factory, requirements, generics)
         }
-        [
-            // Function-like
-            Positioned { position: p1, value: ast::Term::Identifier(i)},
-            Positioned { position: p2, value: ast::Term::Struct(struct_)}
-        ] => {
+        expressions::Value::MemberAccess(target, member) => {
+            // Member constant like
+            let target = get_as_target_parameter(&target.value)?;
             _resolve_function_interface(FunctionRepresentation {
-                name: i.clone(),
-                target_type: FunctionTargetType::Global,
-                call_explicity: FunctionCallExplicity::Explicit,
-            }, struct_.arguments.iter().map(|a| &a.value), &interface.return_type, type_factory, requirements, generics)
-        }
-        [
-            // Member-constant like
-            Positioned { position: p1, value: ast::Term::Struct(target) },
-            Positioned { position: p2, value: ast::Term::Dot },
-            Positioned { position: p3, value: ast::Term::Identifier(member) },
-        ] => {
-            let target = get_as_target_parameter(target)?;
-            _resolve_function_interface(FunctionRepresentation {
-                name: member.clone(),
+                name: member.to_string(),
                 target_type: FunctionTargetType::Member,
                 call_explicity: FunctionCallExplicity::Implicit,
             }, Some(target).into_iter(), &interface.return_type, type_factory, requirements, generics)
         }
-        [
-            // Member-function like
-            Positioned { position: p1, value: ast::Term::Struct(target) },
-            Positioned { position: p2, value: ast::Term::Dot },
-            Positioned { position: p3, value: ast::Term::Identifier(member) },
-            Positioned { position: p4, value: ast::Term::Struct(call_struct)}
-        ] => {
-            let target = get_as_target_parameter(&target)?;
-            _resolve_function_interface(FunctionRepresentation {
-                name: member.clone(),
-                target_type: FunctionTargetType::Member,
-                call_explicity: FunctionCallExplicity::Explicit,
-            }, Some(target).into_iter().chain(call_struct.arguments.iter().map(|a| &a.value)), &interface.return_type, type_factory, requirements, generics)
+        expressions::Value::FunctionCall(target, call_struct) => {
+            match &target.value {
+                expressions::Value::Identifier(identifier) => {
+                    // Function like
+                    _resolve_function_interface(FunctionRepresentation {
+                        name: identifier.to_string(),
+                        target_type: FunctionTargetType::Global,
+                        call_explicity: FunctionCallExplicity::Explicit,
+                    }, call_struct.arguments.iter().map(|a| &a.value), &interface.return_type, type_factory, requirements, generics)
+                }
+                expressions::Value::MemberAccess(target, member) => {
+                    // Member function like
+                    let target = get_as_target_parameter(&target.value)?;
+                    _resolve_function_interface(FunctionRepresentation {
+                        name: member.to_string(),
+                        target_type: FunctionTargetType::Member,
+                        call_explicity: FunctionCallExplicity::Explicit,
+                    }, Some(target).into_iter().chain(call_struct.arguments.iter().map(|a| &a.value)), &interface.return_type, type_factory, requirements, generics)
+                }
+                _ => return Err(RuntimeError::error("Invalid function definition.").to_array()),
+            }
         }
-        _ => Err(RuntimeError::error("Cannot have non-function definition.").to_array()),
+        _ => return Err(RuntimeError::error("Invalid function definition.").to_array()),
     }
 }
 
@@ -168,11 +160,13 @@ pub fn resolve_function_parameter(parameter: &ast::StructArgument, type_factory:
     })
 }
 
-pub fn get_as_target_parameter(term: &ast::Struct) -> RResult<&ast::StructArgument> {
-    let [target] = &term.arguments[..] else {
-        return Err(
-            RuntimeError::error("Target of member function must be one-element struct.").to_array()
-        )
+pub fn get_as_target_parameter<'a>(term: &'a expressions::Value<Rc<FunctionHead>>) -> RResult<&'a ast::StructArgument> {
+    let expressions::Value::StructLiteral(struct_) = term else {
+        return Err(RuntimeError::error("Target of member function must be one-element struct.").to_array())
+    };
+
+    let [target] = &struct_.arguments[..] else {
+        return Err(RuntimeError::error("Target of member function must be one-element struct.").to_array())
     };
 
     Ok(&target.value)

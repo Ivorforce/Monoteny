@@ -6,7 +6,7 @@ use itertools::Itertools;
 use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
-use crate::parser::expressions::{parse_expression, Value};
+use crate::parser::expressions;
 use crate::program::function_object::FunctionTargetType;
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
@@ -57,9 +57,9 @@ impl <'a> TypeFactory<'a> {
     pub fn resolve_type(&mut self, syntax: &ast::Expression, allow_anonymous_generics: bool) -> RResult<Rc<TypeProto>> {
         syntax.no_errors()?;
 
-        let parsed = parse_expression(syntax, &self.scope.grammar)?;
+        let parsed = expressions::parse(syntax, &self.scope.grammar)?;
 
-        let Value::Identifier(identifier) = &parsed.value else {
+        let expressions::Value::Identifier(identifier) = &parsed.value else {
             return Err(RuntimeError::error("Interpreted types aren't supported yet; please use an explicit type for now.").in_range(parsed.position).to_array())
         };
 

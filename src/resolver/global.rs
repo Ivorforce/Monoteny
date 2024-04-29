@@ -7,6 +7,7 @@ use itertools::Itertools;
 use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
+use crate::parser::expressions;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
@@ -187,47 +188,43 @@ impl <'a> GlobalResolver<'a> {
                 pstatement.no_decorations()?;
                 e.no_errors()?;
 
-                match &e[..] {
-                    [l, r] => {
-                        match (&l.value, &r.value) {
-                            (ast::Term::MacroIdentifier(macro_name), ast::Term::Struct(args)) => {
-                                match macro_name.as_str() {
-                                    "precedence_order" => {
-                                        let body = interpreter_mock::plain_parameter(format!("{}!", macro_name).as_str(), args)?;
+                let parsed = expressions::parse(e, &self.global_variables.grammar)?;
 
-                                        let precedence_order = resolve_precedence_order(body)?;
-                                        self.module.precedence_order = Some(precedence_order.clone());
-                                        self.global_variables.grammar.set_precedence_order(precedence_order);
-                                        return Ok(())
-                                    }
-                                    "use" => {
-                                        for import in resolve_imports(&args.arguments)? {
-                                            self.import(&&import.relative_to(&self.module.name))?;
-                                        }
-                                        return Ok(())
-                                    }
-                                    "include" => {
-                                        for import in resolve_imports(&args.arguments)? {
-                                            let import = import.relative_to(&self.module.name);
-                                            self.import(&import)?;
-                                            self.module.included_modules.push(import);
-                                        }
-                                        return Ok(())
-                                    }
-                                    _ => return Err(
-                                        RuntimeError::error(format!("Unrecognized macro: {}!", macro_name).as_str()).to_array()
-                                    )
-                                }
-                            }
-                            _ => {}
-                        }
+                let expressions::Value::FunctionCall(target, call_struct) = &parsed.value else {
+                    return Err(RuntimeError::error("Statement is not supported in a global context.").to_array())
+                };
+
+                let expressions::Value::MacroIdentifier(macro_name) = &target.value else {
+                    return Err(RuntimeError::error("Statement is not supported in a global context.").to_array())
+                };
+
+                match macro_name.as_str() {
+                    "precedence_order" => {
+                        let body = interpreter_mock::plain_parameter(format!("{}!", macro_name).as_str(), call_struct)?;
+
+                        let precedence_order = resolve_precedence_order(body, &self.global_variables)?;
+                        self.module.precedence_order = Some(precedence_order.clone());
+                        self.global_variables.grammar.set_precedence_order(precedence_order);
+                        return Ok(())
                     }
-                    _ => {},
+                    "use" => {
+                        for import in resolve_imports(&call_struct.arguments)? {
+                            self.import(&&import.relative_to(&self.module.name))?;
+                        }
+                        return Ok(())
+                    }
+                    "include" => {
+                        for import in resolve_imports(&call_struct.arguments)? {
+                            let import = import.relative_to(&self.module.name);
+                            self.import(&import)?;
+                            self.module.included_modules.push(import);
+                        }
+                        return Ok(())
+                    }
+                    _ => return Err(
+                        RuntimeError::error(format!("Unrecognized macro: {}!", macro_name).as_str()).to_array()
+                    )
                 }
-
-                return Err(
-                    RuntimeError::error("Statement is not supported in a global context.").to_array()
-                )
             }
             _ => {
                 return Err(
