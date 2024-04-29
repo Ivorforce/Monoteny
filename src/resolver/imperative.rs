@@ -43,7 +43,7 @@ impl <'a> ImperativeResolver<'a> {
         while !self.ambiguities.is_empty() {
             if !has_changed {
                 return Err(
-                    RuntimeError::error(format!("Ambiguous ({} times)", self.ambiguities.len()).as_str())
+                    RuntimeError::error(format!("Function is ambiguous ({} times)", self.ambiguities.len()).as_str())
                         .with_notes(
                             self.ambiguities.iter()
                                 .map(|x| RuntimeError::warning(x.to_string().as_str()).in_range(x.get_position()))
