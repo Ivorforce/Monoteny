@@ -12,7 +12,6 @@ use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionImplementation, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::transpiler::python::{ast, types};
 use crate::transpiler::python::representations::{FunctionForm, Representations};
-use crate::util::strings;
 
 pub struct FunctionContext<'a> {
     pub names: &'a HashMap<Uuid, String>,
@@ -278,20 +277,6 @@ pub fn try_transpile_optimization(function: &Rc<FunctionHead>, expression_id: &E
             }
         }
         _ => return None,
-    })
-}
-
-pub fn escape_string(string: &str) -> String {
-    strings::map_chars(string, |ch| {
-        Some(match ch {
-            '\\' => "\\\\",
-            '\n' => "\\n",
-            '\0' => "\\0",
-            '\t' => "\\t",
-            '\r' => "\\r",
-            '\"' => "\\\"",
-            _ => return None,
-        })
     })
 }
 

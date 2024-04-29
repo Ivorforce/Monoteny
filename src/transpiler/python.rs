@@ -23,6 +23,7 @@ pub mod ast;
 pub mod imperative;
 pub mod representations;
 pub mod keywords;
+mod strings;
 
 pub struct Context {
     pub representations: Representations,

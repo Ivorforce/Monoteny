@@ -6,7 +6,7 @@ use itertools::Itertools;
 use display_with_options::{DisplayWithOptions, IndentingFormatter, IndentOptions, with_options};
 
 use crate::program::functions::ParameterKey;
-use crate::transpiler::python::imperative::escape_string;
+use crate::transpiler::python::strings::escape_string;
 
 pub struct Module {
     // TODO We should use Statement objects instead of 'hardcoding' our structure into this
