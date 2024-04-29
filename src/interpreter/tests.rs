@@ -111,4 +111,12 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn and_or() -> RResult<()> {
+        let out = test_runs("test-code/control_flow/and_or.monoteny")?;
+        assert_eq!(out, "true and true\ntrue or true\nfalse or true\ntrue or false\n");
+
+        Ok(())
+    }
 }

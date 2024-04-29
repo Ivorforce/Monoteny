@@ -24,7 +24,7 @@ pub fn disassemble_one(ip: *const u8) -> usize {
         match code {
             OpCode::NEG | OpCode::ADD | OpCode::SUB | OpCode::MUL | OpCode::DIV |
             OpCode::EQ | OpCode::NEQ | OpCode::GR | OpCode::GR_EQ  | OpCode::LE  | OpCode::LE_EQ |
-            OpCode::MOD | OpCode::EXP | OpCode::LOG | OpCode::PARSE | OpCode::TO_STRING => {
+            OpCode::MOD | OpCode::EXP | OpCode::LOG | OpCode::PARSE | OpCode::TO_STRING | OpCode::DUP64 => {
                 print!("\t{:?}", transmute::<u8, Primitive>(*ip.add(1)));
                 return 1 + 1;
             },

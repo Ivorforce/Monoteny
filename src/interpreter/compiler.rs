@@ -6,7 +6,6 @@ use itertools::Itertools;
 use crate::error::{RuntimeError, RResult};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{string_to_ptr, Value};
-use crate::interpreter::disassembler::disassemble;
 use crate::interpreter::opcode::OpCode;
 use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::ObjectReference;
@@ -17,7 +16,7 @@ use crate::refactor::Refactor;
 use crate::refactor::simplify::Simplify;
 use crate::transpiler;
 
-pub type InlineFunction = Rc<dyn Fn(&mut FunctionCompiler)>;
+pub type InlineFunction = Rc<dyn Fn(&mut FunctionCompiler, &ExpressionID) -> RResult<()>>;
 
 pub struct FunctionCompiler<'a> {
     pub runtime: &'a Runtime,
@@ -105,10 +104,10 @@ fn compile_function(runtime: &mut Runtime, implementation: &FunctionImplementati
 impl FunctionCompiler<'_> {
     pub fn compile_expression(&mut self, expression: &ExpressionID) -> RResult<()> {
         let operation = &self.implementation.expression_tree.values[expression];
-        let arguments = &self.implementation.expression_tree.children[expression];
 
         match operation {
             ExpressionOperation::Block => {
+                let arguments = &self.implementation.expression_tree.children[expression];
                 for expr in arguments {
                     self.compile_expression(expr)?;
                     let type_ = &self.implementation.type_forest.resolve_binding_alias(expr)?;
@@ -122,6 +121,7 @@ impl FunctionCompiler<'_> {
                 self.chunk.push_with_u32(OpCode::LOAD_LOCAL, slot);
             },
             ExpressionOperation::SetLocal(local) => {
+                let arguments = &self.implementation.expression_tree.children[expression];
                 assert_eq!(arguments.len(), 1);
                 self.compile_expression(&arguments[0])?;
                 let slot = self.get_variable_slot(local);
@@ -129,12 +129,8 @@ impl FunctionCompiler<'_> {
             },
             ExpressionOperation::Return => todo!(),
             ExpressionOperation::FunctionCall(function) => {
-                for expr in arguments.iter() {
-                    self.compile_expression(expr)?;
-                }
-
                 if let Some(inline_fn) = self.runtime.function_inlines.get(&function.function) {
-                    inline_fn(self);
+                    inline_fn(self, expression);
                 }
                 else {
                     todo!()
@@ -149,6 +145,8 @@ impl FunctionCompiler<'_> {
                 }
             },
             ExpressionOperation::IfThenElse => {
+                let arguments = &self.implementation.expression_tree.children[expression];
+
                 // Condition
                 self.compile_expression(&arguments[0])?;
 
@@ -173,7 +171,7 @@ impl FunctionCompiler<'_> {
         Ok(())
     }
 
-    fn fix_jump_location_i32(&mut self, jump_location: usize) {
+    pub fn fix_jump_location_i32(&mut self, jump_location: usize) {
         // +5 because opcode and argument were popped
         let distance_skip_consequence = self.chunk.code.len() - (jump_location + 5);
         unsafe {
@@ -199,8 +197,9 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
         FunctionLogicDescriptor::TraitProvider(_) => todo!(),
         FunctionLogicDescriptor::FunctionProvider(f) => {
             let uuid = f.function_id;
-            runtime.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler| {
+            runtime.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
                 compiler.chunk.push_with_u128(OpCode::LOAD128, uuid.as_u128());
+                Ok(())
             }));
         }
         FunctionLogicDescriptor::PrimitiveOperation { .. } => todo!("{:?}", descriptor),

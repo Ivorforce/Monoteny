@@ -98,14 +98,22 @@ pub fn primitive_from_primitive(primitive: &primitives::Type) -> Primitive {
 }
 
 pub fn inline_fn_push(opcode: OpCode) -> InlineFunction {
-    Rc::new(move |compiler| {{
+    Rc::new(move |compiler, expression| {{
+        let arguments = &compiler.implementation.expression_tree.children[expression];
+        for arg in arguments { compiler.compile_expression(arg)? }
+
         compiler.chunk.push(opcode);
+        Ok(())
     }})
 }
 
 pub fn inline_fn_push_with_u8(opcode: OpCode, arg: u8) -> InlineFunction {
-    Rc::new(move |compiler| {{
+    Rc::new(move |compiler, expression| {{
+        let arguments = &compiler.implementation.expression_tree.children[expression];
+        for arg in arguments { compiler.compile_expression(arg)? }
+
         compiler.chunk.push_with_u8(opcode, arg);
+        Ok(())
     }})
 }
 
@@ -113,8 +121,43 @@ pub fn compile_primitive_operation(operation: &PrimitiveOperation, type_: &primi
     let primitive = primitive_from_primitive(type_) as u8;
 
     match operation {
-        PrimitiveOperation::And => inline_fn_push(OpCode::AND),
-        PrimitiveOperation::Or => inline_fn_push(OpCode::OR),
+        PrimitiveOperation::And => Rc::new(move |compiler, expression| {
+            let arguments = &compiler.implementation.expression_tree.children[&expression];
+
+            // lhs
+            compiler.compile_expression(&arguments[0])?;
+
+            compiler.chunk.push(OpCode::DUP64);
+            let jump_location_skip_rhs = compiler.chunk.code.len();
+            compiler.chunk.push_with_u32(OpCode::JUMP_IF_FALSE, 0);
+
+            // rhs
+            compiler.compile_expression(&arguments[1])?;
+            compiler.chunk.push(OpCode::AND);
+
+            compiler.fix_jump_location_i32(jump_location_skip_rhs);
+
+            Ok(())
+        }),
+        PrimitiveOperation::Or => Rc::new(move |compiler, expression| {
+            let arguments = &compiler.implementation.expression_tree.children[&expression];
+
+            // lhs
+            compiler.compile_expression(&arguments[0])?;
+            compiler.chunk.push(OpCode::DUP64);
+            compiler.chunk.push(OpCode::NOT);
+
+            let jump_location_skip_rhs = compiler.chunk.code.len();
+            compiler.chunk.push_with_u32(OpCode::JUMP_IF_FALSE, 0);
+
+            // rhs
+            compiler.compile_expression(&arguments[1])?;
+            compiler.chunk.push(OpCode::OR);
+
+            compiler.fix_jump_location_i32(jump_location_skip_rhs);
+
+            Ok(())
+        }),
         PrimitiveOperation::Not => inline_fn_push(OpCode::NOT),
         PrimitiveOperation::Negative => inline_fn_push_with_u8(OpCode::NEG, primitive),
         PrimitiveOperation::Add => inline_fn_push_with_u8(OpCode::ADD, primitive),

@@ -89,6 +89,10 @@ impl<'a, 'b> VM<'a, 'b> {
                         *sp = self.chunk.constants[usize::try_from(constant_idx).unwrap()];
                         sp = sp.add(8);
                     }
+                    OpCode::DUP64 => {
+                        *sp = *sp.offset(-8);
+                        sp = sp.offset(8);
+                    }
                     OpCode::POP64 => {
                         sp = sp.offset(-8);
                     },

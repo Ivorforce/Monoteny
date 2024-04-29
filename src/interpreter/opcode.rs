@@ -17,6 +17,7 @@ pub enum OpCode {
     LOAD_LOCAL,
     STORE_LOCAL,
     LOAD_CONSTANT,
+    DUP64,
     POP64,
     POP128,
     JUMP,

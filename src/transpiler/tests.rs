@@ -118,4 +118,11 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn and_or() -> RResult<()> {
+        let py_file = test_transpiles("test-code/control_flow/and_or.monoteny")?;
+
+        Ok(())
+    }
 }

@@ -1,0 +1,17 @@
+use!(module!("common"));
+
+def main! :: {
+    if true and true :: _write_line("true and true");
+    if false and true :: _write_line("false and true");
+    if true and false :: _write_line("true and false");
+    if false and false :: _write_line("false and false");
+
+    if true or true :: _write_line("true or true");
+    if false or true :: _write_line("false or true");
+    if true or false :: _write_line("true or false");
+    if false or false :: _write_line("false or false");
+};
+
+def transpile! :: {
+    transpiler.add(main);
+};
