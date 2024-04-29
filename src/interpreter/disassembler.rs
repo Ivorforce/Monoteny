@@ -24,7 +24,7 @@ pub fn disassemble_one(ip: *const u8) -> usize {
         match code {
             OpCode::NEG | OpCode::ADD | OpCode::SUB | OpCode::MUL | OpCode::DIV |
             OpCode::EQ | OpCode::NEQ | OpCode::GR | OpCode::GR_EQ  | OpCode::LE  | OpCode::LE_EQ |
-            OpCode::MOD | OpCode::EXP | OpCode::LOG | OpCode::PARSE | OpCode::TO_STRING | OpCode::DUP64 => {
+            OpCode::MOD | OpCode::EXP | OpCode::LOG | OpCode::PARSE | OpCode::TO_STRING => {
                 print!("\t{:?}", transmute::<u8, Primitive>(*ip.add(1)));
                 return 1 + 1;
             },
@@ -52,7 +52,9 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("\t{:?}", read_unaligned(ip.add(1) as *mut i32));
                 return 1 + 4;
             }
-            OpCode::NOOP | OpCode::PANIC | OpCode::RETURN | OpCode::TRANSPILE_ADD | OpCode::AND | OpCode::OR | OpCode::POP64 | OpCode::POP128 | OpCode::PRINT | OpCode::NOT | OpCode::ADD_STRING => {
+            OpCode::NOOP | OpCode::PANIC | OpCode::RETURN | OpCode::TRANSPILE_ADD | OpCode::AND |
+            OpCode::OR | OpCode::POP64 | OpCode::POP128 | OpCode::PRINT | OpCode::NOT |
+            OpCode::ADD_STRING | OpCode::DUP64 => {
                 return 1;
             },
         }
