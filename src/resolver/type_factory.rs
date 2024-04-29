@@ -54,6 +54,8 @@ impl <'a> TypeFactory<'a> {
     }
 
     pub fn resolve_type(&mut self, syntax: &ast::Expression, allow_anonymous_generics: bool) -> RResult<Rc<TypeProto>> {
+        syntax.no_errors()?;
+
         let Ok(pterm) = syntax.iter().exactly_one() else {
             return Err(RuntimeError::error("Interpreted types aren't supported yet; please use an explicit type for now. 2 ").to_array());
         };
