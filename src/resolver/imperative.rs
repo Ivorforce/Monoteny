@@ -414,11 +414,11 @@ impl <'a> ImperativeResolver<'a> {
                     }
                 }
             }
-            expressions::Value::FunctionCall(target, struct_) => {
+            expressions::Value::FunctionCall(call_target, struct_) => {
                 let struct_ = self.resolve_struct(scope, struct_)?;
 
                 // Check if we can do a direct function call
-                let target_expression = match &target.value {
+                let target_expression = match &call_target.value {
                     expressions::Value::Identifier(identifier) => {
                         // Found an identifier target. We may just be calling a global function!
                         match self.resolve_global(scope, range, identifier)? {
@@ -436,13 +436,13 @@ impl <'a> ImperativeResolver<'a> {
                             }
                         }
                     }
-                    expressions::Value::MemberAccess(target, member) => {
+                    expressions::Value::MemberAccess(member_target, member) => {
                         // Found a member access. We may just be calling a member function!
 
-                        let target_expression = self.resolve_expression_token(&target, scope)
-                            .err_in_range(&target.position)?;
+                        let target_expression = self.resolve_expression_token(&member_target, scope)
+                            .err_in_range(&member_target.position)?;
 
-                        match self.resolve_member(scope, range, member, target_expression)? {
+                        match self.resolve_member(scope, &call_target.position, member, target_expression)? {
                             Left(expr) => expr, // It was more complicated after all.
                             Right(overload) => {
                                 // It IS a member function reference. Let's shortcut and call it directly.
@@ -458,8 +458,8 @@ impl <'a> ImperativeResolver<'a> {
                         }
                     }
                     _ => {
-                        self.resolve_expression_token(&target, scope)
-                            .err_in_range(&target.position)?
+                        self.resolve_expression_token(&call_target, scope)
+                            .err_in_range(&call_target.position)?
                     }
                 };
 
@@ -509,8 +509,9 @@ impl <'a> ImperativeResolver<'a> {
     }
 
     fn resolve_member(&mut self, scope: &scopes::Scope, range: &Range<usize>, member: &&String, target: ExpressionID) -> RResult<Either<ExpressionID, Rc<FunctionOverload>>> {
-        let overload = scope.resolve(FunctionTargetType::Member, member)?
-            .as_function_overload()?;
+        let overload = scope.resolve(FunctionTargetType::Member, member)
+            .err_in_range(range)?
+            .as_function_overload().err_in_range(range)?;
 
         Ok(match overload.representation.call_explicity {
             FunctionCallExplicity::Explicit => {

@@ -30,8 +30,8 @@ pub enum Token<'a, Function> {
     Value(Box<Positioned<Value<'a, Function>>>),
 }
 
-pub fn parse_to_tokens<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(syntax: &'a[Box<Positioned<ast::Term>>], grammar: &'a Grammar<Function>) -> RResult<Vec<Positioned<Token<'a, Function>>>> {
-    let mut tokens = vec![];
+pub fn parse_to_tokens<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(syntax: &'a[Box<Positioned<ast::Term>>], grammar: &'a Grammar<Function>) -> RResult<Vec<Token<'a, Function>>> {
+    let mut tokens: Vec<Token<'a, Function>> = vec![];
 
     let mut i = 0;
     while i < syntax.len() {
@@ -42,79 +42,73 @@ pub fn parse_to_tokens<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(synt
             ast::Term::Error(err) => Err(err.clone().to_array())?,
             ast::Term::Identifier(identifier) => {
                 if grammar.keywords.contains(identifier) {
-                    tokens.push(ast_token.with_value(Token::Keyword(ast_token.with_value(identifier))));
+                    tokens.push(Token::Keyword(ast_token.with_value(identifier)));
                 }
                 else {
-                    tokens.push(ast_token.with_value(Token::Value(Box::new(ast_token.with_value(Value::Identifier(identifier))))));
+                    tokens.push(Token::Value(Box::new(ast_token.with_value(Value::Identifier(identifier)))));
                 }
             }
             ast::Term::MacroIdentifier(_) => {
                 return Err(RuntimeError::error("Macro not supported here.").to_array())
             }
             ast::Term::Dot => {
-                let Some(target_token) = tokens.pop() else {
-                    return Err(RuntimeError::error("Dot notation requires a preceding object.").to_array())
-                };
-                let Token::Value(target) = target_token.value else {
+                let Some(Token::Value(target)) = tokens.pop() else {
                     return Err(RuntimeError::error("Dot notation requires a preceding object.").to_array())
                 };
 
-                let Some(next) = syntax.get(i) else {
+                let Some(next_token) = syntax.get(i) else {
                     return Err(RuntimeError::error("Dot notation requires a following identifier.").to_array())
                 };
-                let ast::Term::Identifier(member) = &next.value else {
+                let ast::Term::Identifier(member) = &next_token.value else {
                     return Err(RuntimeError::error("Dot notation requires a following identifier.").to_array())
                 };
 
                 i += 1;
-                tokens.push(Positioned {
-                    position: target_token.position,
-                    value: Token::Value(Box::new(Positioned {
-                        position: next.position.clone(),
-                        value: Value::MemberAccess(target, member)
-                    }))
-                });
+                tokens.push(Token::Value(Box::new(next_token.with_value(Value::MemberAccess(target, member)))));
             }
             ast::Term::IntLiteral(string) => {
-                tokens.push(ast_token.with_value(Token::Value(Box::new(ast_token.with_value(Value::IntLiteral(string))))));
+                tokens.push(Token::Value(Box::new(ast_token.with_value(Value::IntLiteral(string)))));
             }
             ast::Term::RealLiteral(string) => {
-                tokens.push(ast_token.with_value(Token::Value(Box::new(ast_token.with_value(Value::RealLiteral(string))))));
+                tokens.push(Token::Value(Box::new(ast_token.with_value(Value::RealLiteral(string)))));
             }
             ast::Term::StringLiteral(parts) => {
-                tokens.push(ast_token.with_value(Token::Value(Box::new(ast_token.with_value(Value::StringLiteral(parts))))));
+                tokens.push(Token::Value(Box::new(ast_token.with_value(Value::StringLiteral(parts)))));
             }
             ast::Term::Struct(s) => {
-                if let Some(Token::Value(_)) = tokens.last().map(|t| &t.value) {
-                    // Previous token; we've got a direct call!
-                    let Token::Value(previous) = tokens.pop().unwrap().value else { panic!() };
-                    let previous_position = previous.position.clone();
+                if let Some(Token::Value(_)) = tokens.last() {
+                    // Previous token; we've got a call!
+                    let Token::Value(previous) = tokens.pop().unwrap() else { panic!() };
 
-                    tokens.push(Positioned {
-                        position: previous_position.start..ast_token.position.end,
-                        value: Token::Value(Box::new(ast_token.with_value(Value::FunctionCall(previous, s))))
-                    });
+                    let position = previous.position.start..ast_token.position.end;
+                    tokens.push(Token::Value(
+                        Box::new(Positioned {
+                            position,
+                            value: Value::FunctionCall(previous, s),
+                        })
+                    ));
                     continue;
                 }
 
-                tokens.push(ast_token.with_value(Token::Value(Box::new(ast_token.with_value(Value::StructLiteral(s))))));
+                // No call, just a struct literal.
+                tokens.push(Token::Value(Box::new(ast_token.with_value(Value::StructLiteral(s)))));
             }
             ast::Term::Array(array) => {
-                if let Some(Token::Value(_)) = tokens.last().map(|t| &t.value) {
+                if let Some(Token::Value(_)) = tokens.last() {
                     // Previous token; we've got a direct call!
-                    let Token::Value(previous) = tokens.pop().unwrap().value else { panic!() };
+                    let Token::Value(previous) = tokens.pop().unwrap() else { panic!() };
 
-                    tokens.push(ast_token.with_value(Token::Value(Box::new(ast_token.with_value(Value::Subscript(previous, array))))));
+                    tokens.push(Token::Value(Box::new(ast_token.with_value(Value::Subscript(previous, array)))));
                     continue;
                 }
 
-                tokens.push(ast_token.with_value(Token::Value(Box::new(ast_token.with_value(Value::ArrayLiteral(array))))));
+                tokens.push(Token::Value(Box::new(ast_token.with_value(Value::ArrayLiteral(array)))));
             }
             ast::Term::Block(block) => {
-                tokens.push(ast_token.with_value(Token::Value(Box::new(ast_token.with_value(Value::Block(block))))));
+                tokens.push(Token::Value(Box::new(ast_token.with_value(Value::Block(block)))));
             }
             ast::Term::IfThenElse(if_then_else) => {
-                tokens.push(ast_token.with_value(Token::Value(Box::new(ast_token.with_value(Value::IfThenElse(if_then_else))))));
+                tokens.push(Token::Value(Box::new(ast_token.with_value(Value::IfThenElse(if_then_else)))));
             }
         }
     }
@@ -122,30 +116,33 @@ pub fn parse_to_tokens<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(synt
     Ok(tokens)
 }
 
-pub fn parse_unary<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(mut tokens: Vec<Positioned<Token<'a, Function>>>, functions: Option<&'a HashMap<String, Function>>) -> RResult<(Vec<Box<Positioned<Value<'a, Function>>>>, Vec<Positioned<&'a str>>)> {
-    let mut values = vec![];
-    let mut keywords = vec![];
+pub fn parse_unary<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(mut tokens: Vec<Token<'a, Function>>, functions: Option<&'a HashMap<String, Function>>) -> RResult<(Vec<Box<Positioned<Value<'a, Function>>>>, Vec<Positioned<&'a str>>)> {
+    let mut values: Vec<Box<Positioned<Value<Function>>>> = vec![];
+    let mut keywords: Vec<Positioned<&'a str>> = vec![];
 
-    let final_ptoken = tokens.remove(tokens.len() - 1);
-    if let Token::Value(value) = final_ptoken.value {
-        values.push(value);
-    }
-    else {
-        return Err(RuntimeError::error("Expected expression.").in_range(final_ptoken.position).to_array())
+    match tokens.pop() {
+        Some(Token::Value(value)) => values.push(value),
+        Some(Token::Keyword(keyword)) => {
+            return Err(RuntimeError::error("Expected expression.").in_range(keyword.position).to_array())
+        }
+        None => {
+            return Err(RuntimeError::error("Expected expression.").to_array())
+        }
     }
 
     if let Some(functions) = functions {
-        while let Some(ptoken) = tokens.pop() {
-            let Token::Keyword(keyword) = &ptoken.value else {
+        while let Some(token) = tokens.pop() {
+            let Token::Keyword(keyword) = &token else {
+                let Token::Value(value) = &token else { panic!() };
                 return Err(
                     RuntimeError::error("Found two consecutive values; expected an operator in between.")
-                        .in_range(ptoken.position.end..values.last().unwrap().position.start)
+                        .in_range(value.position.end..values.last().unwrap().position.start)
                         .to_array()
                 )
             };
 
-            if let Some(Token::Value(_)) = tokens.last().map(|t| &t.value) {
-                let Token::Value(value) = tokens.pop().unwrap().value else { panic!() };
+            if let Some(Token::Value(_)) = tokens.last() {
+                let Token::Value(value) = tokens.pop().unwrap() else { panic!() };
 
                 // Binary Operator keyword, because left of operator is a value
                 values.insert(0, value);
@@ -156,7 +153,7 @@ pub fn parse_unary<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(mut toke
 
             // Unary operator, because left of operator is an operator
             let argument = values.remove(0);
-            values.insert(0, Box::new(ptoken.with_value(Value::Operation(functions[keyword.value.as_str()].clone(), vec![argument]))));
+            values.insert(0, Box::new(keyword.with_value(Value::Operation(functions[keyword.value.as_str()].clone(), vec![argument]))));
         }
     }
 
