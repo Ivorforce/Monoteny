@@ -78,7 +78,7 @@ impl ResolverAmbiguity for AmbiguousFunctionCall {
     fn attempt_to_resolve(&mut self, resolver: &mut ImperativeResolver) -> RResult<AmbiguityResult<()>> {
         let mut is_ambiguous = false;
         for candidate in self.candidates.drain(..).collect_vec() {
-            let mut types_copy = resolver.types.clone();
+            let mut types_copy = resolver.builder.types.clone();
             let result = self.attempt_with_candidate(&mut types_copy, &candidate);
 
             match result {
@@ -101,9 +101,9 @@ impl ResolverAmbiguity for AmbiguousFunctionCall {
         if self.candidates.len() == 1 {
             let candidate = self.candidates.drain(..).next().unwrap();
             // TODO We can just assign resolver.types to the candidate's result; it was literally just copied.
-            match self.attempt_with_candidate(&mut resolver.types, &candidate)? {
+            match self.attempt_with_candidate(&mut resolver.builder.types, &candidate)? {
                 AmbiguityResult::Ok(resolution) => {
-                    resolver.expression_tree.values.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
+                    resolver.builder.expression_tree.values.insert(self.expression_id, ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                         function: Rc::clone(&candidate.function),
                         requirements_fulfillment: resolution
                     })));
@@ -137,7 +137,7 @@ impl ResolverAmbiguity for AmbiguousFunctionCall {
                     representation: self.representation.clone(),
                     argument_keys: self.arguments.iter().map(|a| ParameterKey::Positional).collect_vec(),
                     arguments: self.arguments.clone(),
-                    types: &resolver.types,
+                    types: &resolver.builder.types,
                 };
                 Err(
                     RuntimeError::error(format!("function {} could not be resolved. ", signature).as_str())

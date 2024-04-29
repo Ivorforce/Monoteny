@@ -21,20 +21,16 @@ use crate::program::primitives;
 use crate::program::traits::{Trait, TraitGraph};
 use crate::program::types::*;
 use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
+use crate::resolver::imperative_builder::ImperativeBuilder;
 use crate::resolver::scopes;
 use crate::resolver::structs::Struct;
 use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
 pub struct ImperativeResolver<'a> {
-    pub runtime: &'a Runtime,
-
+    pub builder: ImperativeBuilder<'a>,
     pub return_type: Rc<TypeProto>,
-
-    pub types: Box<TypeForest>,
-    pub expression_tree: Box<ExpressionTree>,
     pub ambiguities: Vec<Box<dyn ResolverAmbiguity>>,
-    pub locals_names: HashMap<Rc<ObjectReference>, String>,
 }
 
 impl <'a> ImperativeResolver<'a> {
@@ -66,27 +62,6 @@ impl <'a> ImperativeResolver<'a> {
         Ok(())
     }
 
-    pub fn register_new_expression(&mut self, arguments: Vec<ExpressionID>) -> ExpressionID {
-        let id = ExpressionID::new_v4();
-
-        self.types.register(id);
-        for argument in arguments.iter() {
-            self.expression_tree.parents.insert(*argument, id);
-        }
-        self.expression_tree.children.insert(id, arguments);
-
-        id
-    }
-
-    pub fn resolve_unambiguous_expression(&mut self, arguments: Vec<ExpressionID>, return_type: &TypeProto, operation: ExpressionOperation) -> RResult<ExpressionID> {
-        let id = self.register_new_expression(arguments);
-
-        self.expression_tree.values.insert(id.clone(), operation);
-
-        self.types.bind(id, &return_type)
-            .map(|_| id)
-    }
-
     pub fn register_ambiguity(&mut self, mut ambiguity: Box<dyn ResolverAmbiguity>) -> RResult<()> {
         match ambiguity.attempt_to_resolve(self)? {
             AmbiguityResult::Ok(_) => {},
@@ -97,7 +72,7 @@ impl <'a> ImperativeResolver<'a> {
     }
 
     pub fn resolve_abstract_function_call(&mut self, arguments: Vec<ExpressionID>, interface: Rc<Trait>, abstract_function: Rc<FunctionHead>, traits: TraitGraph, range: Range<usize>) -> RResult<ExpressionID> {
-        let expression_id = self.register_new_expression(arguments.clone());
+        let expression_id = self.builder.make_expression(arguments.clone());
 
         self.register_ambiguity(Box::new(AmbiguousAbstractCall {
             expression_id,
@@ -111,28 +86,6 @@ impl <'a> ImperativeResolver<'a> {
         return Ok(expression_id);
     }
 
-    pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &ast::Expression, scope: &scopes::Scope) -> RResult<()> {
-        let mut type_factory = TypeFactory::new(&scope, &self.runtime);
-
-        let type_declaration = type_factory.resolve_type(&type_declaration,true)?;
-
-        for requirement in type_factory.requirements {
-            todo!("Implicit imperative requirements are not implemented yet")
-        }
-
-        for (name, generic) in type_factory.generics.into_iter() {
-            panic!("Anonymous type hints are not supported yet") // need a mut scope
-            // scope.insert_singleton(
-            //     scopes::Environment::Global,
-            //     Reference::make_immutable_type(TypeProto::unit(generic.clone())),
-            //     &name
-            // );
-        }
-
-        self.types.bind(value, type_declaration.as_ref())?;
-        Ok(())
-    }
-
     pub fn resolve_block(&mut self, body: &ast::Block, scope: &scopes::Scope) -> RResult<ExpressionID> {
         let mut scope = scope.subscope();
         let statements: Vec<ExpressionID> = body.statements.iter().map(|pstatement| {
@@ -143,10 +96,7 @@ impl <'a> ImperativeResolver<'a> {
         // This makes sense because an error may mean ambiguities or lacks of variable declarations.
         // Anything after the first error could just be a followup error.
 
-        let expression_id = self.register_new_expression(statements);
-        self.expression_tree.values.insert(expression_id, ExpressionOperation::Block);
-
-        Ok(expression_id)
+        Ok(self.builder.make_operation_expression(statements, ExpressionOperation::Block))
     }
 
     fn resolve_statement(&mut self, scope: &mut scopes::Scope, pstatement: &ast::Decorated<Positioned<ast::Statement>>) -> RResult<ExpressionID> {
@@ -168,12 +118,9 @@ impl <'a> ImperativeResolver<'a> {
                 }
 
                 let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(assignment)), mutability: mutability.clone() });
-                self.register_local(identifier, Rc::clone(&object_ref), scope)?;
+                self.builder.register_local(identifier, Rc::clone(&object_ref), scope)?;
 
-                let expression_id = self.register_new_expression(vec![assignment]);
-                self.expression_tree.values.insert(expression_id, ExpressionOperation::SetLocal(object_ref));
-                self.types.bind(expression_id, &TypeProto::void())?;
-                expression_id
+                self.builder.make_full_expression(vec![assignment], &TypeProto::void(), ExpressionOperation::SetLocal(object_ref))?
             },
             ast::Statement::VariableUpdate { target, new_value } => {
                 pstatement.no_decorations()?;
@@ -186,11 +133,9 @@ impl <'a> ImperativeResolver<'a> {
                         let object_ref = scope
                             .resolve(FunctionTargetType::Global, identifier)?
                             .as_local(true)?;
-                        self.types.bind(new_value, &object_ref.type_)?;
-                        let expression_id = self.register_new_expression(vec![new_value]);
-                        self.expression_tree.values.insert(expression_id, ExpressionOperation::SetLocal(Rc::clone(&object_ref)));
-                        self.types.bind(expression_id, &TypeProto::void())?;
-                        expression_id
+                        self.builder.types.bind(new_value, &object_ref.type_)?;
+
+                        self.builder.make_full_expression(vec![new_value], &TypeProto::void(), ExpressionOperation::SetLocal(Rc::clone(&object_ref)))?
                     }
                     expressions::Value::MemberAccess(target, member) => {
                         let target = self.resolve_expression_token(target, scope)?;
@@ -220,12 +165,9 @@ impl <'a> ImperativeResolver<'a> {
                     }
 
                     let result: ExpressionID = self.resolve_expression(expression, &scope)?;
-                    self.types.bind(result, &self.return_type)?;
+                    self.builder.types.bind(result, &self.return_type)?;
 
-                    let expression_id = self.register_new_expression(vec![result]);
-                    self.expression_tree.values.insert(expression_id, ExpressionOperation::Return);
-                    self.types.bind(expression_id, &TypeProto::void())?;
-                    expression_id
+                    self.builder.make_full_expression(vec![result], &TypeProto::void(), ExpressionOperation::Return)?
                 } else {
                     if !self.return_type.unit.is_void() {
                         return Err(
@@ -233,10 +175,7 @@ impl <'a> ImperativeResolver<'a> {
                         )
                     }
 
-                    let expression_id = self.register_new_expression(vec![]);
-                    self.expression_tree.values.insert(expression_id, ExpressionOperation::Return);
-                    self.types.bind(expression_id, &TypeProto::void())?;
-                    expression_id
+                    self.builder.make_full_expression(vec![], &TypeProto::void(), ExpressionOperation::Return)?
                 }
             },
             ast::Statement::Expression(expression) => {
@@ -251,11 +190,6 @@ impl <'a> ImperativeResolver<'a> {
             }
         };
         Ok(expression_id)
-    }
-
-    pub fn register_local(&mut self, identifier: &str, reference: Rc<ObjectReference>, scope: &mut scopes::Scope) -> RResult<()> {
-        self.locals_names.insert(Rc::clone(&reference), identifier.to_string());
-        scope.override_reference(FunctionTargetType::Global, scopes::Reference::Local(reference), identifier)
     }
 
     pub fn resolve_expression_with_type(&mut self, syntax: &ast::Expression, type_declaration: &Option<ast::Expression>, scope: &scopes::Scope) -> RResult<ExpressionID> {
@@ -285,7 +219,7 @@ impl <'a> ImperativeResolver<'a> {
 
                 self.resolve_function_call(
                     [function_head].into_iter(),
-                    self.runtime.source.fn_representations[function_head].clone(),
+                    self.builder.runtime.source.fn_representations[function_head].clone(),
                     vec![ParameterKey::Positional; args.len()],
                     args,
                     scope,
@@ -298,27 +232,27 @@ impl <'a> ImperativeResolver<'a> {
             expressions::Value::Identifier(identifier) => {
                 match self.resolve_global(scope, range, identifier)? {
                     Left(exp) => Ok(exp),
-                    Right(fun) => self.resolve_function_reference(&fun),
+                    Right(fun) => self.builder.add_function_reference(&fun),
                 }
             }
             expressions::Value::RealLiteral(s) => {
-                let string_expression_id = self.resolve_string_primitive(s)?;
+                let string_expression_id = self.builder.add_string_primitive(s)?;
 
                 self.resolve_abstract_function_call(
                     vec![string_expression_id],
-                    Rc::clone(&self.runtime.traits.as_ref().unwrap().ConstructableByRealLiteral),
-                    Rc::clone(&self.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
+                    Rc::clone(&self.builder.runtime.traits.as_ref().unwrap().ConstructableByRealLiteral),
+                    Rc::clone(&self.builder.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
                     scope.trait_conformance.clone(),
                     range.clone(),
                 )
             }
             expressions::Value::IntLiteral(s) => {
-                let string_expression_id = self.resolve_string_primitive(s)?;
+                let string_expression_id = self.builder.add_string_primitive(s)?;
 
                 self.resolve_abstract_function_call(
                     vec![string_expression_id],
-                    Rc::clone(&self.runtime.traits.as_ref().unwrap().ConstructableByIntLiteral),
-                    Rc::clone(&self.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
+                    Rc::clone(&self.builder.runtime.traits.as_ref().unwrap().ConstructableByIntLiteral),
+                    Rc::clone(&self.builder.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
                     scope.trait_conformance.clone(),
                     range.clone(),
                 )
@@ -341,7 +275,7 @@ impl <'a> ImperativeResolver<'a> {
                         .err_in_range(&x.position)
                 }).try_collect_many()?;
 
-                let supertype = self.types.merge_all(&values)?.clone();
+                let supertype = self.builder.types.merge_all(&values)?.clone();
                 return Err(RuntimeError::error("Array literals are not yet supported.").to_array());
             }
             expressions::Value::Block(block) => {
@@ -432,22 +366,18 @@ impl <'a> ImperativeResolver<'a> {
             }
             expressions::Value::IfThenElse(if_then_else) => {
                 let condition: ExpressionID = self.resolve_expression(&if_then_else.condition, &scope)?;
-                self.types.bind(condition, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.primitives.as_ref().unwrap()[&primitives::Type::Bool]))))?;
+                self.builder.types.bind(condition, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.builder.runtime.primitives.as_ref().unwrap()[&primitives::Type::Bool]))))?;
                 let consequent: ExpressionID = self.resolve_expression(&if_then_else.consequent, &scope)?;
 
                 let mut arguments = vec![condition, consequent];
 
                 if let Some(alternative) = &if_then_else.alternative {
                     let alternative: ExpressionID = self.resolve_expression(alternative, &scope)?;
-                    self.types.bind(alternative, &TypeProto::unit(TypeUnit::Generic(consequent)))?;
+                    self.builder.types.bind(alternative, &TypeProto::unit(TypeUnit::Generic(consequent)))?;
                     arguments.push(alternative);
                 }
 
-                let expression_id = self.register_new_expression(arguments);
-                self.expression_tree.values.insert(expression_id, ExpressionOperation::IfThenElse);
-                self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Generic(consequent)))?;
-
-                Ok(expression_id)
+                self.builder.make_full_expression(arguments, &TypeProto::unit(TypeUnit::Generic(consequent)), ExpressionOperation::IfThenElse)
             }
         }
     }
@@ -479,7 +409,7 @@ impl <'a> ImperativeResolver<'a> {
             scopes::Reference::Local(local) => {
                 let ObjectReference { id, type_, mutability } = local.as_ref();
 
-                Left(self.resolve_unambiguous_expression(
+                Left(self.builder.make_full_expression(
                     vec![],
                     type_,
                     ExpressionOperation::GetLocal(local.clone())
@@ -505,18 +435,10 @@ impl <'a> ImperativeResolver<'a> {
         })
     }
 
-    pub fn resolve_string_primitive(&mut self, value: &str) -> RResult<ExpressionID> {
-        self.resolve_unambiguous_expression(
-            vec![],
-            &TypeProto::unit_struct(&self.runtime.traits.as_ref().unwrap().String),
-            ExpressionOperation::StringLiteral(value.to_string())
-        )
-    }
-
     pub fn resolve_string_part(&mut self, part: &Positioned<ast::StringPart>, scope: &scopes::Scope) -> RResult<ExpressionID> {
         match &part.value {
             ast::StringPart::Literal(literal) => {
-                self.resolve_string_primitive(literal)
+                self.builder.add_string_primitive(literal)
             },
             ast::StringPart::Object(o) => {
                 let struct_ = self.resolve_struct(scope, o)?;
@@ -581,7 +503,7 @@ impl <'a> ImperativeResolver<'a> {
                     (FunctionTargetType::Global, FunctionCallExplicity::Explicit) => {
                         let expression_id = self.resolve_function_call(overload.functions.iter(), overload.representation.clone(), keys, args, scope, range)?;
                         // Make sure the return type is actually String.
-                        self.types.bind(expression_id, &TypeProto::unit_struct(&self.runtime.traits.as_ref().unwrap().String))?;
+                        self.builder.types.bind(expression_id, &TypeProto::unit_struct(&self.builder.runtime.traits.as_ref().unwrap().String))?;
                         Ok(expression_id)
                     }
                     // this could happen if somebody uses def format ... without parentheses.
@@ -627,7 +549,7 @@ impl <'a> ImperativeResolver<'a> {
         }
 
         if candidates.len() >= 1 {
-            let expression_id = self.register_new_expression(argument_expressions.clone());
+            let expression_id = self.builder.make_expression(argument_expressions.clone());
 
             self.register_ambiguity(Box::new(AmbiguousFunctionCall {
                 expression_id,
@@ -648,7 +570,7 @@ impl <'a> ImperativeResolver<'a> {
             representation,
             argument_keys: argument_keys.clone().into_iter().cloned().collect_vec(),
             arguments: argument_expressions.clone(),
-            types: &self.types,
+            types: &self.builder.types,
         };
 
         let mut error = RuntimeError::error(
@@ -672,22 +594,25 @@ impl <'a> ImperativeResolver<'a> {
         return Err(error.to_array());
     }
 
-    pub fn resolve_function_reference(&mut self, overload: &Rc<FunctionOverload>) -> RResult<ExpressionID> {
-        match overload.functions.iter().exactly_one() {
-            Ok(function) => {
-                let getter = &self.runtime.source.fn_getters[function];
-                let expression_id = self.resolve_unambiguous_expression(
-                    vec![],
-                    &getter.interface.return_type,
-                    // Call the getter of the function 'object' instead of the function itself.
-                    ExpressionOperation::FunctionCall(FunctionBinding::pure(Rc::clone(getter)))
-                )?;
+    pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &ast::Expression, scope: &scopes::Scope) -> RResult<()> {
+        let mut type_factory = TypeFactory::new(&scope, &self.builder.runtime);
 
-                Ok(expression_id)
-            }
-            _ => return Err(
-                RuntimeError::error("References to overloaded functions are not yet supported (need syntax to distinguish which to choose).").to_array()
-            )?,
+        let type_declaration = type_factory.resolve_type(&type_declaration,true)?;
+
+        for requirement in type_factory.requirements {
+            todo!("Implicit imperative requirements are not implemented yet")
         }
+
+        for (name, generic) in type_factory.generics.into_iter() {
+            panic!("Anonymous type hints are not supported yet") // need a mut scope
+            // scope.insert_singleton(
+            //     scopes::Environment::Global,
+            //     Reference::make_immutable_type(TypeProto::unit(generic.clone())),
+            //     &name
+            // );
+        }
+
+        self.builder.types.bind(value, type_declaration.as_ref())?;
+        Ok(())
     }
 }

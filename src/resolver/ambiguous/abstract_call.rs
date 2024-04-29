@@ -30,10 +30,10 @@ impl Display for AmbiguousAbstractCall {
 
 impl ResolverAmbiguity for AmbiguousAbstractCall {
     fn attempt_to_resolve(&mut self, resolver: &mut ImperativeResolver) -> RResult<AmbiguityResult<()>> {
-        let type_ = resolver.types.resolve_binding_alias(&self.expression_id)?;
+        let type_ = resolver.builder.types.resolve_binding_alias(&self.expression_id)?;
 
         let requirement = self.trait_.create_generic_binding(vec![("Self", type_.clone())]);
-        let trait_conformance = self.traits.satisfy_requirement(&requirement, &resolver.types)
+        let trait_conformance = self.traits.satisfy_requirement(&requirement, &resolver.builder.types)
             .err_in_range(&self.range)?;
         Ok(match trait_conformance {
             AmbiguityResult::Ambiguous => {
@@ -42,7 +42,7 @@ impl ResolverAmbiguity for AmbiguousAbstractCall {
             AmbiguityResult::Ok(trait_conformance) => {
                 let used_function = &trait_conformance.conformance.function_mapping[&self.abstract_function];
 
-                resolver.expression_tree.values.insert(
+                resolver.builder.expression_tree.values.insert(
                     self.expression_id.clone(),
                     ExpressionOperation::FunctionCall(Rc::new(FunctionBinding {
                         function: Rc::clone(used_function),
@@ -52,7 +52,7 @@ impl ResolverAmbiguity for AmbiguousAbstractCall {
                         }),
                     }))
                 );
-                resolver.types.bind(self.expression_id.clone(), type_.as_ref())
+                resolver.builder.types.bind(self.expression_id.clone(), type_.as_ref())
                     .err_in_range(&self.range)?;
 
                 AmbiguityResult::Ok(())

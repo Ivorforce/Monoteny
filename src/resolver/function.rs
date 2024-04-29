@@ -13,16 +13,19 @@ use crate::program::generics::TypeForest;
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::{RequirementsAssumption, TraitConformanceRule};
 use crate::resolver::imperative::ImperativeResolver;
+use crate::resolver::imperative_builder::ImperativeBuilder;
 use crate::resolver::scopes;
 
 pub fn resolve_function_body(head: Rc<FunctionHead>, body: &ast::Expression, scope: &scopes::Scope, runtime: &mut Runtime) -> RResult<Box<FunctionImplementation>> {
     let mut resolver = Box::new(ImperativeResolver {
         return_type: Rc::clone(&head.interface.return_type),
-        runtime,
-        types: Box::new(TypeForest::new()),
-        expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
+        builder: ImperativeBuilder {
+            runtime,
+            types: Box::new(TypeForest::new()),
+            expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
+            locals_names: Default::default(),
+        },
         ambiguities: vec![],
-        locals_names: Default::default(),
     });
     let mut scope = scope.subscope();
 
@@ -56,22 +59,22 @@ pub fn resolve_function_body(head: Rc<FunctionHead>, body: &ast::Expression, sco
     let mut parameter_variables = vec![];
     for parameter in head.interface.parameters.clone() {
         let parameter_variable = ObjectReference::new_immutable(parameter.type_.clone());
-        _ = resolver.register_local(&parameter.internal_name, Rc::clone(&parameter_variable), &mut scope)?;
+        _ = resolver.builder.register_local(&parameter.internal_name, Rc::clone(&parameter_variable), &mut scope)?;
         parameter_variables.push(parameter_variable);
     }
 
     let head_expression = resolver.resolve_expression(body, &scope)?;
-    resolver.types.bind(head_expression, &head.interface.return_type)?;
-    resolver.expression_tree.root = head_expression;  // TODO This is kinda dumb; but we can't write into an existing head expression
+    resolver.builder.types.bind(head_expression, &head.interface.return_type)?;
+    resolver.builder.expression_tree.root = head_expression;  // TODO This is kinda dumb; but we can't write into an existing head expression
 
     resolver.resolve_all_ambiguities()?;
 
     Ok(Box::new(FunctionImplementation {
         head,
         requirements_assumption: Box::new(RequirementsAssumption { conformance: HashMap::from_iter(granted_requirements.into_iter().map(|c| (Rc::clone(&c.binding), c))) }),
-        expression_tree: resolver.expression_tree,
-        type_forest: resolver.types,
+        expression_tree: resolver.builder.expression_tree,
+        type_forest: resolver.builder.types,
         parameter_locals: parameter_variables,
-        locals_names: resolver.locals_names,
+        locals_names: resolver.builder.locals_names,
     }))
 }
