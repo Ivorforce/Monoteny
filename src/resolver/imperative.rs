@@ -340,11 +340,7 @@ impl <'a> ImperativeResolver<'a> {
 
                 self.resolve_function_call(
                     [function_head].into_iter(),
-                    FunctionRepresentation {
-                        name: "fn".to_string(),
-                        target_type: FunctionTargetType::Global,
-                        call_explicity: FunctionCallExplicity::Explicit,
-                    },
+                    self.runtime.source.fn_representations[function_head].clone(),
                     vec![ParameterKey::Positional; args.len()],
                     args,
                     scope,
@@ -712,7 +708,6 @@ impl <'a> ImperativeResolver<'a> {
 
         match &candidates_with_failed_signature[..] {
             [candidate] => {
-                // TODO Print passed arguments like a signature, not array
                 error = error.with_note(
                     RuntimeError::info(format!("Candidate has mismatching signature: {:?}", candidate).as_str())
                 );
