@@ -6,6 +6,7 @@ use itertools::Itertools;
 use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
+use crate::parser::expressions::{parse_expression, Value};
 use crate::program::function_object::FunctionTargetType;
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
@@ -56,20 +57,18 @@ impl <'a> TypeFactory<'a> {
     pub fn resolve_type(&mut self, syntax: &ast::Expression, allow_anonymous_generics: bool) -> RResult<Rc<TypeProto>> {
         syntax.no_errors()?;
 
-        let Ok(pterm) = syntax.iter().exactly_one() else {
-            return Err(RuntimeError::error("Interpreted types aren't supported yet; please use an explicit type for now. 2 ").to_array());
+        let parsed = parse_expression(syntax, &self.scope.grammar)?;
+
+        let Value::Identifier(identifier) = &parsed.value else {
+            return Err(RuntimeError::error("Interpreted types aren't supported yet; please use an explicit type for now.").in_range(parsed.position).to_array())
         };
 
-        self.resolve_type_by_name(allow_anonymous_generics, &pterm.value)
-            .err_in_range(&pterm.position)
+        self.resolve_type_by_name(allow_anonymous_generics, &identifier)
+            .err_in_range(&parsed.position)
     }
 
-    fn resolve_type_by_name(&mut self, allow_anonymous_generics: bool, term: &ast::Term) -> RResult<Rc<TypeProto>> {
+    fn resolve_type_by_name(&mut self, allow_anonymous_generics: bool, type_name: &str) -> RResult<Rc<TypeProto>> {
         let arguments = vec![];
-
-        let ast::Term::Identifier(type_name) = term else {
-            return Err(RuntimeError::error("Interpreted types aren't supported yet; please use an explicit type for now. 4").to_array())
-        };
 
         if let Some(type_) = self.generics.get(type_name) {
             return Ok(TypeProto::unit_struct(type_))

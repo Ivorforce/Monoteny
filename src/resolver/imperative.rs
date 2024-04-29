@@ -164,7 +164,7 @@ impl <'a> ImperativeResolver<'a> {
     pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &ast::Expression, scope: &scopes::Scope) -> RResult<()> {
         let mut type_factory = TypeFactory::new(&scope, &self.runtime);
 
-        let type_declaration = type_factory.resolve_type(&type_declaration, true)?;
+        let type_declaration = type_factory.resolve_type(&type_declaration,true)?;
 
         for requirement in type_factory.requirements {
             todo!("Implicit imperative requirements are not implemented yet")
@@ -228,7 +228,7 @@ impl <'a> ImperativeResolver<'a> {
             ast::Statement::VariableUpdate { target, new_value } => {
                 pstatement.no_decorations()?;
 
-                let new_value: ExpressionID = self.resolve_expression(&new_value, &scope)?;
+                let new_value: ExpressionID = self.resolve_expression(new_value, &scope)?;
 
                 match &target.iter().map(|a| a.as_ref()).collect_vec()[..] {
                     [Positioned { position, value: ast::Term::Identifier(identifier) }] => {
