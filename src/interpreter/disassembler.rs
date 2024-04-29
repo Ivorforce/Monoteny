@@ -48,6 +48,10 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("\t{:?}", read_unaligned(ip.add(1) as *mut u128));
                 return 1 + 16;
             }
+            OpCode::JUMP | OpCode::JUMP_IF_FALSE => {
+                print!("\t{:?}", read_unaligned(ip.add(1) as *mut i32));
+                return 1 + 4;
+            }
             OpCode::NOOP | OpCode::PANIC | OpCode::RETURN | OpCode::TRANSPILE_ADD | OpCode::AND | OpCode::OR | OpCode::POP64 | OpCode::POP128 | OpCode::PRINT | OpCode::NOT | OpCode::ADD_STRING => {
                 return 1;
             },

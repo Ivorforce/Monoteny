@@ -19,6 +19,8 @@ pub enum OpCode {
     LOAD_CONSTANT,
     POP64,
     POP128,
+    JUMP,
+    JUMP_IF_FALSE,
     AND,
     OR,
     NOT,

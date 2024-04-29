@@ -68,4 +68,10 @@ impl Chunk {
             self.code.set_len(len + 1 + 16);
         }
     }
+
+    pub fn modify_u32(&mut self, position: usize, arg: u32) {
+        unsafe {
+            write_unaligned(self.code.as_mut_ptr().add(position) as *mut u32, arg);
+        }
+    }
 }

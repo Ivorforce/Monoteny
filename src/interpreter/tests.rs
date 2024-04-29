@@ -103,4 +103,12 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn if_then_else() -> RResult<()> {
+        let out = test_runs("test-code/control_flow/if_then_else.monoteny")?;
+        assert_eq!(out, "true\n");
+
+        Ok(())
+    }
 }

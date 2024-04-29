@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::mem::transmute;
 use std::rc::Rc;
 use itertools::Itertools;
 use crate::error::{RuntimeError, RResult};
@@ -104,11 +105,11 @@ fn compile_function(runtime: &mut Runtime, implementation: &FunctionImplementati
 impl FunctionCompiler<'_> {
     pub fn compile_expression(&mut self, expression: &ExpressionID) -> RResult<()> {
         let operation = &self.implementation.expression_tree.values[expression];
-        let children = &self.implementation.expression_tree.children[expression];
+        let arguments = &self.implementation.expression_tree.children[expression];
 
         match operation {
             ExpressionOperation::Block => {
-                for expr in children {
+                for expr in arguments {
                     self.compile_expression(expr)?;
                     let type_ = &self.implementation.type_forest.resolve_binding_alias(expr)?;
                     if !type_.unit.is_void() {
@@ -121,14 +122,14 @@ impl FunctionCompiler<'_> {
                 self.chunk.push_with_u32(OpCode::LOAD_LOCAL, slot);
             },
             ExpressionOperation::SetLocal(local) => {
-                assert_eq!(children.len(), 1);
-                self.compile_expression(&children[0])?;
+                assert_eq!(arguments.len(), 1);
+                self.compile_expression(&arguments[0])?;
                 let slot = self.get_variable_slot(local);
                 self.chunk.push_with_u32(OpCode::STORE_LOCAL, slot);
             },
             ExpressionOperation::Return => todo!(),
             ExpressionOperation::FunctionCall(function) => {
-                for expr in children.iter() {
+                for expr in arguments.iter() {
                     self.compile_expression(expr)?;
                 }
 
@@ -147,10 +148,37 @@ impl FunctionCompiler<'_> {
                     self.chunk.push_with_u32(OpCode::LOAD_CONSTANT, u32::try_from(self.constants.len() - 1).unwrap());
                 }
             },
-            ExpressionOperation::IfThenElse => todo!(),
+            ExpressionOperation::IfThenElse => {
+                // Condition
+                self.compile_expression(&arguments[0])?;
+
+                let jump_location_skip_consequent = self.chunk.code.len();
+                self.chunk.push_with_u32(OpCode::JUMP_IF_FALSE, 0);
+
+                // Consequent
+                self.compile_expression(&arguments[1])?;
+                self.fix_jump_location_i32(jump_location_skip_consequent);
+
+                if let Some(alternative) = arguments.get(2) {
+                    let jump_location_skip_alternative = self.chunk.code.len();
+                    self.chunk.push_with_u32(OpCode::JUMP, 0);
+
+                    // Alternative
+                    self.compile_expression(alternative)?;
+                    self.fix_jump_location_i32(jump_location_skip_alternative);
+                }
+            },
         }
 
         Ok(())
+    }
+
+    fn fix_jump_location_i32(&mut self, jump_location: usize) {
+        // +5 because opcode and argument were popped
+        let distance_skip_consequence = self.chunk.code.len() - (jump_location + 5);
+        unsafe {
+            self.chunk.modify_u32(jump_location + 1, transmute(i32::try_from(distance_skip_consequence).unwrap()));
+        }
     }
 
     pub fn get_variable_slot(&mut self, object: &Rc<ObjectReference>) -> u32 {

@@ -95,6 +95,17 @@ impl<'a, 'b> VM<'a, 'b> {
                     OpCode::POP128 => {
                         sp = sp.offset(-16);
                     },
+                    OpCode::JUMP => {
+                        let jump_distance: i32 = pop_ip!(i32);
+                        ip = ip.offset(isize::try_from(jump_distance).unwrap());
+                    }
+                    OpCode::JUMP_IF_FALSE => {
+                        let jump_distance: i32 = pop_ip!(i32);
+                        let condition = pop_sp!().bool;
+                        if !condition {
+                            ip = ip.offset(isize::try_from(jump_distance).unwrap());
+                        }
+                    }
                     OpCode::AND => bin_expr!(bool, bool, lhs&&rhs),
                     OpCode::OR => bin_expr!(bool, bool, lhs||rhs),
                     OpCode::NOT => un_expr!(bool, bool, !val),
