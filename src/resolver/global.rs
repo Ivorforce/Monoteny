@@ -93,7 +93,7 @@ impl <'a> GlobalResolver<'a> {
                 for decoration in pstatement.decorations_as_vec()? {
                     let pattern = try_parse_pattern(decoration, Rc::clone(&fun), &self.global_variables)?;
                     self.module.patterns.insert(Rc::clone(&pattern));
-                    self.global_variables.add_pattern(pattern)?;
+                    self.global_variables.grammar.add_pattern(pattern)?;
                 }
                 self.schedule_function_body(&fun, syntax.body.as_ref(), pstatement.value.position.clone());
                 self.add_function_interface(fun, representation)?;

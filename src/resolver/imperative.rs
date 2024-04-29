@@ -2,17 +2,18 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::rc::Rc;
 
-use itertools::Itertools;
+use itertools::{Either, Itertools};
+use itertools::Either::{Left, Right};
 use uuid::Uuid;
 
 use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
+use crate::program::{function_object, primitives};
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::debug::MockFunctionInterface;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
-use crate::program::function_object;
 use crate::program::function_object::{FunctionCallExplicity, FunctionOverload, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
@@ -20,9 +21,10 @@ use crate::program::global::FunctionImplementation;
 use crate::program::traits::{RequirementsAssumption, Trait, TraitConformanceRule, TraitGraph};
 use crate::program::types::*;
 use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
-use crate::resolver::grammar::parse::{resolve_expression_to_tokens, resolve_tokens_to_value};
-use crate::resolver::grammar::Struct;
+use crate::resolver::grammar::{expressions, Struct};
+use crate::resolver::grammar::expressions::resolve_expression;
 use crate::resolver::scopes;
+use crate::resolver::scopes::Scope;
 use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
@@ -84,7 +86,7 @@ impl <'a> ImperativeResolver<'a> {
         let mut parameter_variables = vec![];
         for parameter in self.function.interface.parameters.clone() {
             let parameter_variable = ObjectReference::new_immutable(parameter.type_.clone());
-            _ = self.register_local(&parameter.internal_name, Rc::clone(&parameter_variable), &mut scope);
+            _ = self.register_local(&parameter.internal_name, Rc::clone(&parameter_variable), &mut scope)?;
             parameter_variables.push(parameter_variable);
         }
 
@@ -186,7 +188,10 @@ impl <'a> ImperativeResolver<'a> {
         let statements: Vec<ExpressionID> = body.statements.iter().map(|pstatement| {
             self.resolve_statement(&mut scope, pstatement)
                 .err_in_range(&pstatement.value.position)
-        }).try_collect_many()?;
+        }).try_collect()?;
+        // try_collect means we stop after the first error.
+        // This makes sense because an error may mean ambiguities or lacks of variable declarations.
+        // Anything after the first error could just be a followup error.
 
         let expression_id = self.register_new_expression(statements);
         self.expression_tree.values.insert(expression_id, ExpressionOperation::Block);
@@ -213,7 +218,7 @@ impl <'a> ImperativeResolver<'a> {
                 }
 
                 let object_ref = Rc::new(ObjectReference { id: Uuid::new_v4(), type_: TypeProto::unit(TypeUnit::Generic(assignment)), mutability: mutability.clone() });
-                self.register_local(identifier, Rc::clone(&object_ref), scope);
+                self.register_local(identifier, Rc::clone(&object_ref), scope)?;
 
                 let expression_id = self.register_new_expression(vec![assignment]);
                 self.expression_tree.values.insert(expression_id, ExpressionOperation::SetLocal(object_ref));
@@ -303,9 +308,9 @@ impl <'a> ImperativeResolver<'a> {
         Ok(expression_id)
     }
 
-    fn register_local(&mut self, identifier: &str, reference: Rc<ObjectReference>, scope: &mut scopes::Scope) {
+    fn register_local(&mut self, identifier: &str, reference: Rc<ObjectReference>, scope: &mut scopes::Scope) -> RResult<()> {
         self.locals_names.insert(Rc::clone(&reference), identifier.to_string());
-        scope.override_reference(function_object::FunctionTargetType::Global, scopes::Reference::Local(reference), identifier);
+        scope.override_reference(FunctionTargetType::Global, scopes::Reference::Local(reference), identifier)
     }
 
     pub fn resolve_expression_with_type(&mut self, syntax: &ast::Expression, type_declaration: &Option<ast::Expression>, scope: &scopes::Scope) -> RResult<ExpressionID> {
@@ -318,9 +323,241 @@ impl <'a> ImperativeResolver<'a> {
 
     pub fn resolve_expression(&mut self, syntax: &[Box<Positioned<ast::Term>>], scope: &scopes::Scope) -> RResult<ExpressionID> {
         // First, resolve core grammar.
-        let tokens = resolve_expression_to_tokens(self, syntax, scope)?;
-        // Then, resolve configurable user grammar.
-        resolve_tokens_to_value(tokens, scope, self)
+        let token = resolve_expression(syntax, &scope.grammar)?;
+        self.resolve_expression_token(&token, scope)
+            .err_in_range(&token.position)
+    }
+
+    pub fn resolve_expression_token(&mut self, ptoken: &Box<Positioned<expressions::Value<Rc<FunctionHead>>>>, scope: &scopes::Scope) -> RResult<ExpressionID> {
+        let range = &ptoken.position;
+
+        match &ptoken.value {
+            expressions::Value::Operation(function_head, args) => {
+                let args = args.into_iter().map(|arg|
+                    self.resolve_expression_token(&arg, scope)
+                        .err_in_range(&arg.position)
+                ).try_collect_many()?;
+
+                self.resolve_function_call(
+                    [function_head].into_iter(),
+                    FunctionRepresentation {
+                        name: "fn".to_string(),
+                        target_type: FunctionTargetType::Global,
+                        call_explicity: FunctionCallExplicity::Explicit,
+                    },
+                    vec![ParameterKey::Positional, ParameterKey::Positional],
+                    args,
+                    scope,
+                    range.clone()
+                )
+            }
+            expressions::Value::Identifier(identifier) => {
+                match self.resolve_global(scope, range, identifier)? {
+                    Left(exp) => Ok(exp),
+                    Right(fun) => self.resolve_function_reference(&fun),
+                }
+            }
+            expressions::Value::RealLiteral(s) => {
+                let string_expression_id = self.resolve_string_primitive(s)?;
+
+                self.resolve_abstract_function_call(
+                    vec![string_expression_id],
+                    Rc::clone(&self.runtime.traits.as_ref().unwrap().ConstructableByRealLiteral),
+                    Rc::clone(&self.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
+                    scope.trait_conformance.clone(),
+                    range.clone(),
+                )
+            }
+            expressions::Value::IntLiteral(s) => {
+                let string_expression_id = self.resolve_string_primitive(s)?;
+
+                self.resolve_abstract_function_call(
+                    vec![string_expression_id],
+                    Rc::clone(&self.runtime.traits.as_ref().unwrap().ConstructableByIntLiteral),
+                    Rc::clone(&self.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
+                    scope.trait_conformance.clone(),
+                    range.clone(),
+                )
+            }
+            expressions::Value::StringLiteral(parts) => {
+                self.resolve_string_literal(scope, &range, parts)
+            }
+            expressions::Value::StructLiteral(struct_) => {
+                let struct_ = self.resolve_struct(scope, struct_)?;
+
+                if struct_.values.len() == 1 && struct_.keys[0] == ParameterKey::Positional {
+                    return Ok(struct_.values[0])
+                }
+
+                return Err(RuntimeError::error("Anonymous struct literals are not yet supported.").to_array())
+            }
+            expressions::Value::ArrayLiteral(array) => {
+                let values = array.arguments.iter().map(|x| {
+                    self.resolve_expression_with_type(&x.value.value, &x.value.type_declaration, scope)
+                        .err_in_range(&x.position)
+                }).try_collect_many()?;
+
+                let supertype = self.types.merge_all(&values)?.clone();
+                return Err(RuntimeError::error("Array literals are not yet supported.").to_array());
+            }
+            expressions::Value::Block(block) => {
+                self.resolve_block(block, scope)
+            }
+            expressions::Value::MemberAccess(target, member) => {
+                let target = self.resolve_expression_token(&target, scope)
+                    .err_in_range(&target.position)?;
+
+                match self.resolve_member(scope, range, member, target)? {
+                    Left(expr) => Ok(expr),
+                    Right(overload) => {
+                        return Err(RuntimeError::error("Member function references are not yet supported.").to_array());
+                    }
+                }
+            }
+            expressions::Value::FunctionCall(target, struct_) => {
+                let struct_ = self.resolve_struct(scope, struct_)?;
+
+                // Check if we can do a direct function call
+                let target_expression = match &target.value {
+                    expressions::Value::Identifier(identifier) => {
+                        // Found an identifier target. We may just be calling a global function!
+                        match self.resolve_global(scope, range, identifier)? {
+                            Left(expr) => expr, // It was more complicated after all.
+                            Right(overload) => {
+                                // It IS a function reference. Let's shortcut and call it directly.
+                                return self.resolve_function_call(
+                                    overload.functions.iter(),
+                                    overload.representation.clone(),
+                                    struct_.keys,
+                                    struct_.values,
+                                    scope,
+                                    range.clone(),
+                                )
+                            }
+                        }
+                    }
+                    expressions::Value::MemberAccess(target, member) => {
+                        // Found a member access. We may just be calling a member function!
+
+                        let target_expression = self.resolve_expression_token(&target, scope)
+                            .err_in_range(&target.position)?;
+
+                        match self.resolve_member(scope, range, member, target_expression)? {
+                            Left(expr) => expr, // It was more complicated after all.
+                            Right(overload) => {
+                                // It IS a member function reference. Let's shortcut and call it directly.
+                                return self.resolve_function_call(
+                                    overload.functions.iter(),
+                                    overload.representation.clone(),
+                                    [&ParameterKey::Positional].into_iter().chain(&struct_.keys).cloned().collect(),
+                                    [&target_expression].into_iter().chain(&struct_.values).cloned().collect(),
+                                    scope,
+                                    range.clone(),
+                                )
+                            }
+                        }
+                    }
+                    _ => {
+                        self.resolve_expression_token(&target, scope)
+                            .err_in_range(&target.position)?
+                    }
+                };
+
+                // The call target is something more complicated. We'll call it as a function.
+
+                let overload = scope
+                    .resolve(FunctionTargetType::Member, "call_as_function")?
+                    .as_function_overload()?;
+
+                self.resolve_function_call(
+                    overload.functions.iter(),
+                    overload.representation.clone(),
+                    [&ParameterKey::Positional].into_iter().chain(&struct_.keys).cloned().collect(),
+                    [&target_expression].into_iter().chain(&struct_.values).cloned().collect(),
+                    scope,
+                    range.clone(),
+                )
+            }
+            expressions::Value::Subscript(target, array) => {
+                let values: Vec<_> = array.arguments.iter().map(|x| {
+                    self.resolve_expression_with_type(&x.value.value, &x.value.type_declaration, scope)
+                        .err_in_range(&x.position)
+                }).try_collect_many()?;
+
+                return Err(RuntimeError::error("Object subscript is not yet supported.").to_array())
+            }
+            expressions::Value::IfThenElse(if_then_else) => {
+                let condition: ExpressionID = self.resolve_expression(&if_then_else.condition, &scope)?;
+                self.types.bind(condition, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&self.runtime.primitives.as_ref().unwrap()[&primitives::Type::Bool]))))?;
+                let consequent: ExpressionID = self.resolve_expression(&if_then_else.consequent, &scope)?;
+
+                let mut arguments = vec![condition, consequent];
+
+                if let Some(alternative) = &if_then_else.alternative {
+                    let alternative: ExpressionID = self.resolve_expression(alternative, &scope)?;
+                    self.types.bind(alternative, &TypeProto::unit(TypeUnit::Generic(consequent)))?;
+                    arguments.push(alternative);
+                }
+
+                let expression_id = self.register_new_expression(arguments);
+                self.expression_tree.values.insert(expression_id, ExpressionOperation::IfThenElse);
+                self.types.bind(expression_id, &TypeProto::unit(TypeUnit::Generic(consequent)))?;
+
+                Ok(expression_id)
+            }
+        }
+    }
+
+    fn resolve_member(&mut self, scope: &Scope, range: &Range<usize>, member: &&String, target: ExpressionID) -> RResult<Either<ExpressionID, Rc<FunctionOverload>>> {
+        let overload = scope.resolve(FunctionTargetType::Member, member)?
+            .as_function_overload()?;
+
+        Ok(match overload.representation.call_explicity {
+            FunctionCallExplicity::Explicit => {
+                Right(overload)
+            }
+            FunctionCallExplicity::Implicit => {
+                Left(self.resolve_function_call(
+                    overload.functions.iter(),
+                    overload.representation.clone(),
+                    vec![ParameterKey::Positional],
+                    vec![target],
+                    scope,
+                    range.clone()
+                )?)
+            }
+        })
+    }
+
+    fn resolve_global(&mut self, scope: &Scope, range: &Range<usize>, identifier: &String) -> RResult<Either<ExpressionID, Rc<FunctionOverload>>> {
+        Ok(match scope.resolve(FunctionTargetType::Global, identifier)? {
+            scopes::Reference::Local(local) => {
+                let ObjectReference { id, type_, mutability } = local.as_ref();
+
+                Left(self.resolve_unambiguous_expression(
+                    vec![],
+                    type_,
+                    ExpressionOperation::GetLocal(local.clone())
+                )?)
+            }
+            scopes::Reference::FunctionOverload(overload) => {
+                match overload.representation.call_explicity {
+                    FunctionCallExplicity::Explicit => {
+                        Right(Rc::clone(overload))
+                    }
+                    FunctionCallExplicity::Implicit => {
+                        Left(self.resolve_function_call(
+                            overload.functions.iter(),
+                            overload.representation.clone(),
+                            vec![],
+                            vec![],
+                            scope,
+                            range.clone()
+                        )?)
+                    }
+                }
+            }
+        })
     }
 
     pub fn resolve_string_primitive(&mut self, value: &str) -> RResult<ExpressionID> {
@@ -344,11 +581,14 @@ impl <'a> ImperativeResolver<'a> {
         }
     }
 
-    pub fn resolve_string_literal(&mut self, scope: &scopes::Scope, ast_token: &Box<Positioned<ast::Term>>, parts: &Vec<Box<Positioned<ast::StringPart>>>) -> Result<ExpressionID, Vec<RuntimeError>> {
+    pub fn resolve_string_literal(&mut self, scope: &scopes::Scope, range: &Range<usize>, parts: &Vec<Box<Positioned<ast::StringPart>>>) -> Result<ExpressionID, Vec<RuntimeError>> {
         Ok(match &parts[..] {
             // Simple case: Just one part means we can use it directly.
             [] => self.resolve_string_part(
-                &ast_token.with_value(ast::StringPart::Literal("".to_string())),
+                &Positioned {
+                    position: range.clone(),
+                    value: ast::StringPart::Literal("".to_string()),
+                },
                 scope
             )?,
             [part] => self.resolve_string_part(part, scope)?,
@@ -366,7 +606,7 @@ impl <'a> ImperativeResolver<'a> {
                         vec![ParameterKey::Positional, ParameterKey::Positional],
                         vec![lstring, rstring],
                         scope,
-                        ast_token.position.clone()
+                        range.clone()
                     )
                 })?
             }

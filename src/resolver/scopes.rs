@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
-use crate::error::{RResult, RuntimeError};
 
+use crate::error::{RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
-use crate::parser::grammar::{Grammar, Pattern, PrecedenceGroup};
+use crate::parser::grammar::{Grammar, PrecedenceGroup};
 use crate::program::allocation::ObjectReference;
 use crate::program::function_object::{FunctionOverload, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::FunctionHead;
@@ -68,6 +68,14 @@ impl <'a> Scope<'a> {
         }
     }
 
+    pub fn not_a_keyword(&self, keyword: &str) -> RResult<()> {
+        return if self.grammar.keywords.contains(keyword) {
+            Err(RuntimeError::error("Cannot shadow keyword.").to_array())
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn import(&mut self, module: &Module, runtime: &Runtime) -> RResult<()> {
         // This wipes any existing patterns, but I think that's what we want.
         if let Some(precedence) = &module.precedence_order {
@@ -75,7 +83,7 @@ impl <'a> Scope<'a> {
         }
 
         for pattern in module.patterns.iter() {
-            self.add_pattern(Rc::clone(pattern))?;
+            self.grammar.add_pattern(Rc::clone(pattern))?;
         }
 
         for function in module.exposed_functions.iter() {
@@ -90,6 +98,7 @@ impl <'a> Scope<'a> {
 
     pub fn overload_function(&mut self, fun: &Rc<FunctionHead>, representation: FunctionRepresentation) -> RResult<()> {
         let name = &representation.name;
+        self.not_a_keyword(name)?;
 
         let mut refs = self.references_mut(representation.target_type);
 
@@ -125,36 +134,22 @@ impl <'a> Scope<'a> {
         Ok(())
     }
 
-    pub fn insert_singleton(&mut self, target_type: FunctionTargetType, reference: Reference, name: &str) {
+    pub fn insert_singleton(&mut self, target_type: FunctionTargetType, reference: Reference, name: &str) -> RResult<()> {
+        self.not_a_keyword(name)?;
         let mut refs = self.references_mut(target_type);
 
         if let Some(other) = refs.insert(name.to_string(), reference) {
-            panic!("Multiple references with the same name: {}", name);
-        }
-    }
-
-    pub fn insert_keyword(&mut self, keyword: &str) {
-        let reference = Reference::Keyword(keyword.to_string());
-        let mut refs = self.references_mut(FunctionTargetType::Global);
-
-        if let Some(other) = refs.insert(keyword.to_string(), reference) {
-            if Reference::Keyword(keyword.to_string()) != other {
-                panic!("Multiple references with the same name: {}", keyword);
-            }
-        }
-    }
-
-    pub fn add_pattern(&mut self, pattern: Rc<Pattern<Rc<FunctionHead>>>) -> RResult<()> {
-        for keyword in self.grammar.add_pattern(pattern)? {
-            self.insert_keyword(&keyword);
+            return Err(RuntimeError::error(format!("Multiple references with this name: {}", name).as_str()).to_array());
         }
         Ok(())
     }
 
-    pub fn override_reference(&mut self, target_type: FunctionTargetType, reference: Reference, name: &str) {
+    pub fn override_reference(&mut self, target_type: FunctionTargetType, reference: Reference, name: &str) -> RResult<()> {
+        self.not_a_keyword(name)?;
         let mut refs = self.references_mut(target_type);
 
         refs.insert(name.to_string(), reference);
+        Ok(())
     }
 
     pub fn contains(&mut self, target_type: FunctionTargetType, name: &str) -> bool {
@@ -202,10 +197,6 @@ impl <'a> Scope<'a> {
 pub enum Reference {
     // TODO WE can probably get rid of locals if we replace them by getters and setters.
     Local(Rc<ObjectReference>),
-    // Keywords aren't really objects and can't be logically passed around.
-    // They aren't technically language keywords, but instead were defined in patterns.
-    // Yes, this implementation means they can be shadowed!
-    Keyword(String),
     // This COULD be an object, but only if it 'inherits' the callable interfaces
     //  from ALL included overloads. Overall, this is probably too confusing and thus not worth
     //  the effort. Rather, as in other languages, we should expect the user to resolve the overload
@@ -235,7 +226,6 @@ impl Debug for Reference {
         match self {
             Reference::Local(t) => write!(fmt, "{:?}", t.type_),
             Reference::FunctionOverload(f) => write!(fmt, "{}", &f.representation.name),
-            Reference::Keyword(s) => write!(fmt, "{}", s),
         }
     }
 }

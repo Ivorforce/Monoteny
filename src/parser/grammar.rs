@@ -1,11 +1,13 @@
-use uuid::Uuid;
-use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Error, Formatter};
-use linked_hash_map::LinkedHashMap;
 use std::hash::{Hash, Hasher};
-use strum::{Display, EnumIter};
+use std::rc::Rc;
+
 use itertools::Itertools;
+use linked_hash_map::LinkedHashMap;
+use strum::{Display, EnumIter};
+use uuid::Uuid;
+
 use crate::error::{RResult, RuntimeError};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Display, EnumIter)]
@@ -43,6 +45,7 @@ pub enum PatternPart {
 #[derive(Clone, PartialEq, Eq)]
 pub struct Grammar<Function: Clone + PartialEq + Eq + Hash + Debug> {
     pub patterns: HashSet<Rc<Pattern<Function>>>,
+    pub keywords: HashSet<String>,
     pub groups_and_keywords: LinkedHashMap<Rc<PrecedenceGroup>, HashMap<String, Function>>,
 }
 
@@ -50,6 +53,7 @@ impl<Function: Clone + PartialEq + Eq + Hash + Debug> Grammar<Function> where  {
     pub fn new() -> Self {
         Grammar {
             patterns: Default::default(),
+            keywords: Default::default(),
             groups_and_keywords: Default::default(),
         }
     }
@@ -59,6 +63,7 @@ impl<Function: Clone + PartialEq + Eq + Hash + Debug> Grammar<Function> where  {
             .map(|p| (p, HashMap::new()))
             .collect();
         self.patterns = HashSet::new();
+        self.keywords = HashSet::new();
     }
 
     pub fn add_pattern(&mut self, pattern: Rc<Pattern<Function>>) -> RResult<Vec<String>> {
@@ -74,6 +79,7 @@ impl<Function: Clone + PartialEq + Eq + Hash + Debug> Grammar<Function> where  {
             ] => {
                 assert_eq!(pattern.precedence_group.associativity, OperatorAssociativity::LeftUnary);
                 keyword_map.insert(keyword.clone(), pattern.function.clone());
+                self.keywords.insert(keyword.clone());
                 vec![keyword.clone()]
             },
             [
@@ -89,6 +95,7 @@ impl<Function: Clone + PartialEq + Eq + Hash + Debug> Grammar<Function> where  {
             ] => {
                 assert_ne!(pattern.precedence_group.associativity, OperatorAssociativity::LeftUnary);
                 keyword_map.insert(keyword.clone(), pattern.function.clone());
+                self.keywords.insert(keyword.clone());
                 vec![keyword.clone()]
             }
             _ => return Err(RuntimeError::error("This pattern form is not supported; try using unary or binary patterns.").to_array()),
