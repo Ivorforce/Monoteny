@@ -3,15 +3,12 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use itertools::Itertools;
-use uuid::Uuid;
 
 use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
-use crate::program::expression_tree::*;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface};
-use crate::program::generics::TypeForest;
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
@@ -19,7 +16,7 @@ use crate::program::types::*;
 use crate::resolver::{imports, interpreter_mock, referencible, scopes};
 use crate::resolver::conformance::ConformanceResolver;
 use crate::resolver::decorations::try_parse_pattern;
-use crate::resolver::imperative::ImperativeResolver;
+use crate::resolver::function::resolve_function_body;
 use crate::resolver::imports::resolve_imports;
 use crate::resolver::interface::resolve_function_interface;
 use crate::resolver::precedence_order::resolve_precedence_order;
@@ -55,21 +52,12 @@ pub fn resolve_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Ru
     // Resolve function bodies
     let mut errors = vec![];
     for (head, pbody) in global_resolver.function_bodies {
-        let mut resolver = Box::new(ImperativeResolver {
-            function: Rc::clone(&head),
-            runtime,
-            types: Box::new(TypeForest::new()),
-            expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
-            ambiguities: vec![],
-            locals_names: Default::default(),
-        });
-
-        match resolver.resolve_function_body(&pbody.value, &global_variable_scope).and_then(|mut imp| {
+        match resolve_function_body(head, pbody.value, &global_variable_scope, runtime).and_then(|mut imp| {
             static_analysis::check(&mut imp)?;
             Ok(imp)
         }) {
             Ok(implementation) => {
-                runtime.source.fn_logic.insert(Rc::clone(&head), FunctionLogic::Implementation(implementation));
+                runtime.source.fn_logic.insert(Rc::clone(&implementation.head), FunctionLogic::Implementation(implementation));
             }
             Err(e) => {
                 errors.extend(e.iter().map(|e| e.clone().in_range(pbody.position.clone())));

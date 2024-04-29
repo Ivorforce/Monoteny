@@ -19,8 +19,7 @@ use crate::program::expression_tree::{ExpressionID, ExpressionOperation, Express
 use crate::program::function_object::{FunctionCallExplicity, FunctionOverload, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, ParameterKey};
 use crate::program::generics::{GenericAlias, TypeForest};
-use crate::program::global::FunctionImplementation;
-use crate::program::traits::{RequirementsAssumption, Trait, TraitConformanceRule, TraitGraph};
+use crate::program::traits::{Trait, TraitGraph};
 use crate::program::types::*;
 use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
 use crate::resolver::scopes;
@@ -29,71 +28,18 @@ use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
 pub struct ImperativeResolver<'a> {
-    pub function: Rc<FunctionHead>,
-
     pub runtime: &'a Runtime,
+
+    pub return_type: Rc<TypeProto>,
 
     pub types: Box<TypeForest>,
     pub expression_tree: Box<ExpressionTree>,
     pub ambiguities: Vec<Box<dyn ResolverAmbiguity>>,
-
     pub locals_names: HashMap<Rc<ObjectReference>, String>,
 }
 
 impl <'a> ImperativeResolver<'a> {
-    pub fn register_new_expression(&mut self, arguments: Vec<ExpressionID>) -> ExpressionID {
-        let id = ExpressionID::new_v4();
-
-        self.types.register(id);
-        for argument in arguments.iter() {
-            self.expression_tree.parents.insert(*argument, id);
-        }
-        self.expression_tree.children.insert(id, arguments);
-
-        id
-    }
-
-    pub fn resolve_function_body(mut self, body: &ast::Expression, scope: &scopes::Scope) -> RResult<Box<FunctionImplementation>> {
-        let mut scope = scope.subscope();
-
-        let granted_requirements = scope.trait_conformance.assume_granted(
-            self.function.interface.requirements.iter().cloned()
-        );
-
-        // Let our scope know that our parameter types (all of type any!) conform to the requirements
-        for conformance in granted_requirements.iter() {
-            scope.trait_conformance.add_conformance_rule(TraitConformanceRule::direct(
-                Rc::clone(conformance),
-            ));
-        };
-
-        // Add abstract function mocks to our scope to be callable.
-        for conformance in granted_requirements.iter() {
-            for (abstract_function, function) in conformance.function_mapping.iter() {
-                // TODO Do we need to keep track of the object reference created by this trait conformance?
-                //  For the record, it SHOULD be created - an abstract function reference can still be passed around,
-                //  assigned and maybe called later.
-                scope.overload_function(
-                    function,
-                    conformance.binding.trait_.abstract_functions[abstract_function].clone(),
-                )?;
-            }
-        }
-
-        // TODO Register generic types as variables so they can be referenced in the function
-
-        // Register parameters as variables.
-        let mut parameter_variables = vec![];
-        for parameter in self.function.interface.parameters.clone() {
-            let parameter_variable = ObjectReference::new_immutable(parameter.type_.clone());
-            _ = self.register_local(&parameter.internal_name, Rc::clone(&parameter_variable), &mut scope)?;
-            parameter_variables.push(parameter_variable);
-        }
-
-        let head_expression = self.resolve_expression(body, &scope)?;
-        self.types.bind(head_expression, &self.function.interface.return_type)?;
-        self.expression_tree.root = head_expression;  // TODO This is kinda dumb; but we can't write into an existing head expression
-
+    pub fn resolve_all_ambiguities(&mut self) -> RResult<()> {
         let mut has_changed = true;
         while !self.ambiguities.is_empty() {
             if !has_changed {
@@ -111,21 +57,26 @@ impl <'a> ImperativeResolver<'a> {
 
             let callbacks: Vec<Box<dyn ResolverAmbiguity>> = self.ambiguities.drain(..).collect();
             for mut ambiguity in callbacks {
-                match ambiguity.attempt_to_resolve(&mut self)? {
+                match ambiguity.attempt_to_resolve(self)? {
                     AmbiguityResult::Ok(_) => has_changed = true,
                     AmbiguityResult::Ambiguous => self.ambiguities.push(ambiguity),
                 }
             }
         }
 
-        Ok(Box::new(FunctionImplementation {
-            head: self.function,
-            requirements_assumption: Box::new(RequirementsAssumption { conformance: HashMap::from_iter(granted_requirements.into_iter().map(|c| (Rc::clone(&c.binding), c))) }),
-            expression_tree: self.expression_tree,
-            type_forest: self.types,
-            parameter_locals: parameter_variables,
-            locals_names: self.locals_names,
-        }))
+        Ok(())
+    }
+
+    pub fn register_new_expression(&mut self, arguments: Vec<ExpressionID>) -> ExpressionID {
+        let id = ExpressionID::new_v4();
+
+        self.types.register(id);
+        for argument in arguments.iter() {
+            self.expression_tree.parents.insert(*argument, id);
+        }
+        self.expression_tree.children.insert(id, arguments);
+
+        id
     }
 
     pub fn resolve_unambiguous_expression(&mut self, arguments: Vec<ExpressionID>, return_type: &TypeProto, operation: ExpressionOperation) -> RResult<ExpressionID> {
@@ -268,21 +219,21 @@ impl <'a> ImperativeResolver<'a> {
                 pstatement.no_decorations()?;
 
                 if let Some(expression) = expression {
-                    if self.function.interface.return_type.unit.is_void() {
+                    if self.return_type.unit.is_void() {
                         return Err(
                             RuntimeError::error("Return statement offers a value when the function declares void.").to_array()
                         )
                     }
 
                     let result: ExpressionID = self.resolve_expression(expression, &scope)?;
-                    self.types.bind(result, &self.function.interface.return_type)?;
+                    self.types.bind(result, &self.return_type)?;
 
                     let expression_id = self.register_new_expression(vec![result]);
                     self.expression_tree.values.insert(expression_id, ExpressionOperation::Return);
                     self.types.bind(expression_id, &TypeProto::void())?;
                     expression_id
                 } else {
-                    if !self.function.interface.return_type.unit.is_void() {
+                    if !self.return_type.unit.is_void() {
                         return Err(
                             RuntimeError::error("Return statement offers no value when the function declares an object.").to_array()
                         )
@@ -308,7 +259,7 @@ impl <'a> ImperativeResolver<'a> {
         Ok(expression_id)
     }
 
-    fn register_local(&mut self, identifier: &str, reference: Rc<ObjectReference>, scope: &mut scopes::Scope) -> RResult<()> {
+    pub fn register_local(&mut self, identifier: &str, reference: Rc<ObjectReference>, scope: &mut scopes::Scope) -> RResult<()> {
         self.locals_names.insert(Rc::clone(&reference), identifier.to_string());
         scope.override_reference(FunctionTargetType::Global, scopes::Reference::Local(reference), identifier)
     }

@@ -15,4 +15,5 @@ pub mod referencible;
 pub mod structs;
 pub mod decorations;
 pub mod precedence_order;
+pub mod function;
 
