@@ -206,13 +206,13 @@ impl <'a> GlobalResolver<'a> {
                         return Ok(())
                     }
                     "use" => {
-                        for import in resolve_imports(&call_struct.arguments)? {
+                        for import in resolve_imports(call_struct, &self.global_variables)? {
                             self.import(&&import.relative_to(&self.module.name))?;
                         }
                         return Ok(())
                     }
                     "include" => {
-                        for import in resolve_imports(&call_struct.arguments)? {
+                        for import in resolve_imports(call_struct, &self.global_variables)? {
                             let import = import.relative_to(&self.module.name);
                             self.import(&import)?;
                             self.module.included_modules.push(import);
