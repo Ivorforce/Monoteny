@@ -1,21 +1,14 @@
 use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::CharIndices;
+
 use itertools::Itertools;
+
+pub use token::Token;
 
 use crate::parser::error::Error;
 
-/// Token returned by the lexers
-#[derive(Debug, Clone, PartialEq)]
-pub enum Token<'a> {
-    Identifier(&'a str),
-    MacroIdentifier(&'a str),
-    OperatorIdentifier(&'a str),
-    StringLiteral(String),
-    IntLiteral(&'a str),
-    RealLiteral(&'a str),
-    Symbol(&'a str),
-}
+mod token;
 
 /// A concrete lexer
 #[derive(Clone)]
@@ -262,25 +255,5 @@ fn peek_pos(input: &mut Peekable<CharIndices>, full_str: &str) -> usize {
     match input.peek() {
         Some((pos, _)) => *pos,
         None => full_str.len(),
-    }
-}
-
-impl<'i> Display for Token<'i> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Token::Identifier(s) => write!(f, "{}", s),
-            Token::MacroIdentifier(s) => write!(f, "{}", s),
-            Token::OperatorIdentifier(s) => write!(f, "{}", s),
-            Token::IntLiteral(s) => write!(f, "{}", s),
-            Token::RealLiteral(s) => write!(f, "{}", s),
-            Token::Symbol(s) => write!(f, "{}", s),
-            Token::StringLiteral(s) => write!(f, "{}", s),
-        }
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
     }
 }

@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use itertools::Itertools;
 use lalrpop_util::{ErrorRecovery, ParseError};
 
@@ -49,5 +50,11 @@ fn add_expected_note(error: RuntimeError, expected: &Vec<String>) -> RuntimeErro
         [] => error,
         [one] => error.with_note(RuntimeError::note(format!("Expected: {}", unquote(one)).as_str())),
         expected => error.with_note(RuntimeError::note(format!("Expected one of: {}", expected.iter().map(|s| unquote(s)).join(" ")).as_str())),
+    }
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
