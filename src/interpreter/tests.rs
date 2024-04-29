@@ -73,7 +73,7 @@ mod tests {
     #[test]
     fn custom_grammar() -> RResult<()> {
         let out = test_runs("test-code/grammar/custom_grammar.monoteny")?;
-        assert_eq!(out, "5\n");
+        assert_eq!(out, "-3\n");
 
         Ok(())
     }

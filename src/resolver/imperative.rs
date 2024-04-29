@@ -333,7 +333,7 @@ impl <'a> ImperativeResolver<'a> {
 
         match &ptoken.value {
             expressions::Value::Operation(function_head, args) => {
-                let args = args.into_iter().map(|arg|
+                let args: Vec<_> = args.into_iter().map(|arg|
                     self.resolve_expression_token(&arg, scope)
                         .err_in_range(&arg.position)
                 ).try_collect_many()?;
@@ -345,7 +345,7 @@ impl <'a> ImperativeResolver<'a> {
                         target_type: FunctionTargetType::Global,
                         call_explicity: FunctionCallExplicity::Explicit,
                     },
-                    vec![ParameterKey::Positional, ParameterKey::Positional],
+                    vec![ParameterKey::Positional; args.len()],
                     args,
                     scope,
                     range.clone()

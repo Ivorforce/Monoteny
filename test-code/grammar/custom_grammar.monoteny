@@ -10,6 +10,9 @@ precedence_order!([
     LogicalDisjunctionPrecedence(Left),
 ]);
 
+![pattern(- val, LeftUnaryPrecedence)]
+def _neg(val '$Number) -> $Number :: negative(val);
+
 ![pattern(lhs + rhs, AdditionPrecedence)]
 def _add(lhs '$Number, rhs '$Number) -> $Number :: add(lhs, rhs);
 
@@ -17,7 +20,7 @@ def _add(lhs '$Number, rhs '$Number) -> $Number :: add(lhs, rhs);
 def _multiply(lhs '$Number, rhs '$Number) -> $Number :: multiply(lhs, rhs);
 
 def main! :: {
-    _write_line(format(1 + 2 * 2 'Float32));
+    _write_line(format(1 + -2 * 2 'Int32));
 };
 
 def transpile! :: {

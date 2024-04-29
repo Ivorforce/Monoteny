@@ -77,7 +77,9 @@ impl<Function: Clone + PartialEq + Eq + Hash + Debug> Grammar<Function> where  {
                 PatternPart::Keyword(keyword),
                 PatternPart::Parameter { .. },
             ] => {
-                assert_eq!(pattern.precedence_group.associativity, OperatorAssociativity::LeftUnary);
+                if pattern.precedence_group.associativity != OperatorAssociativity::LeftUnary {
+                    return Err(RuntimeError::error("Unary pattern must use LeftUnary precedence.").to_array())
+                }
                 keyword_map.insert(keyword.clone(), pattern.function.clone());
                 self.keywords.insert(keyword.clone());
                 vec![keyword.clone()]
@@ -93,7 +95,10 @@ impl<Function: Clone + PartialEq + Eq + Hash + Debug> Grammar<Function> where  {
                 PatternPart::Keyword(keyword),
                 PatternPart::Parameter { .. },
             ] => {
-                assert_ne!(pattern.precedence_group.associativity, OperatorAssociativity::LeftUnary);
+                if pattern.precedence_group.associativity == OperatorAssociativity::LeftUnary {
+                    return Err(RuntimeError::error("Binary pattern must not use LeftUnary precedence.").to_array())
+                }
+
                 keyword_map.insert(keyword.clone(), pattern.function.clone());
                 self.keywords.insert(keyword.clone());
                 vec![keyword.clone()]

@@ -35,9 +35,9 @@ mod tests {
         let (parsed, errors) = parser::parse_program(file_contents.as_str())?;
         assert!(errors.is_empty());
 
-        assert_eq!(parsed.statements.len(), 5);
+        assert_eq!(parsed.statements.len(), 6);
 
-        let Statement::FunctionDeclaration(floor_div) = &parsed.statements[1].as_ref().value.value else {
+        let Statement::FunctionDeclaration(floor_div) = &parsed.statements[2].as_ref().value.value else {
             panic!();
         };
 
