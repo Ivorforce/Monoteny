@@ -181,10 +181,11 @@ impl <'a> ImperativeResolver<'a> {
 
                 let new_value: ExpressionID = self.resolve_expression(new_value, &scope)?;
 
-                match &target.iter().map(|a| a.as_ref()).collect_vec()[..] {
-                    [Positioned { position, value: ast::Term::Identifier(identifier) }] => {
+                let lhs = parse_expression(target, &scope.grammar)?;
+                match &lhs.value {
+                    expressions::Value::Identifier(identifier) => {
                         let object_ref = scope
-                            .resolve(function_object::FunctionTargetType::Global, identifier)?
+                            .resolve(FunctionTargetType::Global, identifier)?
                             .as_local(true)?;
                         self.types.bind(new_value, &object_ref.type_)?;
                         let expression_id = self.register_new_expression(vec![new_value]);
@@ -192,14 +193,10 @@ impl <'a> ImperativeResolver<'a> {
                         self.types.bind(expression_id, &TypeProto::void())?;
                         expression_id
                     }
-                    [
-                        ..,
-                        Positioned { value: ast::Term::Dot, .. },
-                        Positioned { value: ast::Term::Identifier(access), .. }
-                    ] => {
-                        let target = self.resolve_expression(&target[..target.len() - 2], scope)?;
+                    expressions::Value::MemberAccess(target, member) => {
+                        let target = self.resolve_expression_token(target, scope)?;
                         let overload = scope
-                            .resolve(function_object::FunctionTargetType::Member, &access)?
+                            .resolve(FunctionTargetType::Member, &member)?
                             .as_function_overload()?;
                         self.resolve_function_call(
                             overload.functions.iter(),
@@ -210,9 +207,7 @@ impl <'a> ImperativeResolver<'a> {
                             pstatement.value.position.clone()
                         )?
                     }
-                    _ => return Err(
-                        RuntimeError::error("upd keyword must be followed by an identifier or a single member.").to_array()
-                    )
+                    _ => return Err(RuntimeError::error("upd keyword must be followed by an identifier or a single member.").to_array())
                 }
             }
             ast::Statement::Return(expression) => {
@@ -279,7 +274,7 @@ impl <'a> ImperativeResolver<'a> {
             .err_in_range(&token.position)
     }
 
-    pub fn resolve_expression_token(&mut self, ptoken: &Box<Positioned<expressions::Value<Rc<FunctionHead>>>>, scope: &scopes::Scope) -> RResult<ExpressionID> {
+    pub fn resolve_expression_token(&mut self, ptoken: &Positioned<expressions::Value<Rc<FunctionHead>>>, scope: &scopes::Scope) -> RResult<ExpressionID> {
         let range = &ptoken.position;
 
         match &ptoken.value {
