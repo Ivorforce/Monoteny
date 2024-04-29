@@ -197,6 +197,7 @@ impl <'a> GlobalResolver<'a> {
             }
             ast::Statement::Expression(e) => {
                 pstatement.no_decorations()?;
+                e.no_errors()?;
 
                 match &e[..] {
                     [l, r] => {
@@ -237,7 +238,7 @@ impl <'a> GlobalResolver<'a> {
                 }
 
                 return Err(
-                    RuntimeError::error("Expression is not supported in a global context.").to_array()
+                    RuntimeError::error("Statement is not supported in a global context.").to_array()
                 )
             }
             _ => {
