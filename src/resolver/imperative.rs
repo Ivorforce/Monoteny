@@ -24,7 +24,6 @@ use crate::program::traits::{RequirementsAssumption, Trait, TraitConformanceRule
 use crate::program::types::*;
 use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
 use crate::resolver::scopes;
-use crate::resolver::scopes::Scope;
 use crate::resolver::structs::Struct;
 use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
@@ -509,7 +508,7 @@ impl <'a> ImperativeResolver<'a> {
         }
     }
 
-    fn resolve_member(&mut self, scope: &Scope, range: &Range<usize>, member: &&String, target: ExpressionID) -> RResult<Either<ExpressionID, Rc<FunctionOverload>>> {
+    fn resolve_member(&mut self, scope: &scopes::Scope, range: &Range<usize>, member: &&String, target: ExpressionID) -> RResult<Either<ExpressionID, Rc<FunctionOverload>>> {
         let overload = scope.resolve(FunctionTargetType::Member, member)?
             .as_function_overload()?;
 
@@ -530,7 +529,7 @@ impl <'a> ImperativeResolver<'a> {
         })
     }
 
-    fn resolve_global(&mut self, scope: &Scope, range: &Range<usize>, identifier: &String) -> RResult<Either<ExpressionID, Rc<FunctionOverload>>> {
+    fn resolve_global(&mut self, scope: &scopes::Scope, range: &Range<usize>, identifier: &String) -> RResult<Either<ExpressionID, Rc<FunctionOverload>>> {
         Ok(match scope.resolve(FunctionTargetType::Global, identifier)? {
             scopes::Reference::Local(local) => {
                 let ObjectReference { id, type_, mutability } = local.as_ref();
