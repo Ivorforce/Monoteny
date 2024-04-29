@@ -87,8 +87,12 @@ pub fn parse_to_tokens<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(synt
                 if let Some(Token::Value(_)) = tokens.last().map(|t| &t.value) {
                     // Previous token; we've got a direct call!
                     let Token::Value(previous) = tokens.pop().unwrap().value else { panic!() };
+                    let previous_position = previous.position.clone();
 
-                    tokens.push(ast_token.with_value(Token::Value(Box::new(ast_token.with_value(Value::FunctionCall(previous, s))))));
+                    tokens.push(Positioned {
+                        position: previous_position.start..ast_token.position.end,
+                        value: Token::Value(Box::new(ast_token.with_value(Value::FunctionCall(previous, s))))
+                    });
                     continue;
                 }
 
@@ -132,7 +136,11 @@ pub fn parse_unary<'a, Function: Clone + PartialEq + Eq + Hash + Debug>(mut toke
     if let Some(functions) = functions {
         while let Some(ptoken) = tokens.pop() {
             let Token::Keyword(keyword) = ptoken.value else {
-                return Err(RuntimeError::error("Got two consecutive values; expected an operator in between.").to_array())
+                return Err(
+                    RuntimeError::error("Found two consecutive values; expected an operator in between.")
+                        .in_range(ptoken.position.end..values.last().unwrap().position.start)
+                        .to_array()
+                )
             };
 
             if let Some(Token::Value(_)) = tokens.last().map(|t| &t.value) {
