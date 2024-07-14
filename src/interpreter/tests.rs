@@ -22,11 +22,14 @@ mod tests {
         let mut chunk = Chunk::new();
         chunk.push_with_u16(OpCode::LOAD16, 2);
         chunk.push_with_u16(OpCode::LOAD16, 6);
-        chunk.push_with_u8(OpCode::ADD, Primitive::U32 as u8);
+        chunk.push_with_u8(OpCode::ADD, Primitive::U16 as u8);
+        // stack: [8]
         chunk.push_with_u16(OpCode::LOAD16, 4);
-        chunk.push_with_u8(OpCode::DIV, Primitive::U32 as u8);
+        chunk.push_with_u8(OpCode::DIV, Primitive::U16 as u8);
+        // stack: [2]
         chunk.push_with_u16(OpCode::LOAD16, 2);
-        chunk.push_with_u8(OpCode::EQ, Primitive::U32 as u8);
+        chunk.push_with_u8(OpCode::EQ, Primitive::U16 as u8);
+        // stack: [true]
         chunk.push(OpCode::RETURN);
 
         let mut out: Vec<u8> = vec![];
@@ -34,8 +37,9 @@ mod tests {
         vm.run()?;
 
         unsafe {
-            let value = read_unaligned(vm.stack.as_ptr());
-            assert_eq!(value.i64, 1);
+            // There should be exactly one value left on the stack, at the very start, which is true
+            let value = (*vm.stack.as_ptr()).bool;
+            assert_eq!(value, true);
         }
 
         Ok(())
