@@ -9,6 +9,7 @@ use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOp
 use crate::program::module::module_name;
 use crate::program::primitives;
 use crate::program::types::TypeProto;
+use crate::transpiler::python::representations::FunctionForm;
 
 pub fn load(runtime: &mut Runtime) -> RResult<()> {
     // -------------------------------------- ------ --------------------------------------
@@ -67,7 +68,21 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
 
         runtime.function_inlines.insert(Rc::clone(function), match descriptor {
             FunctionLogicDescriptor::Stub => todo!(),
-            FunctionLogicDescriptor::Clone(_) => continue,  // Clones are full functions that aren't inlined
+            FunctionLogicDescriptor::Clone(type_) => {
+                if type_ == &TypeProto::unit_struct(&runtime.traits.as_ref().unwrap().String) {
+                    Rc::new(move |compiler, expression| {
+                        let arguments = &compiler.implementation.expression_tree.children[&expression];
+
+                        compiler.compile_expression(&arguments[0])?;
+                        todo!("String should be a type understood by us. Then we can just copy the memory region.");
+
+                        Ok(())
+                    })
+                }
+                else {
+                    todo!()
+                }
+            },
             FunctionLogicDescriptor::TraitProvider(_) => continue,
             FunctionLogicDescriptor::FunctionProvider(_) => continue,
             FunctionLogicDescriptor::PrimitiveOperation { type_, operation } => {
