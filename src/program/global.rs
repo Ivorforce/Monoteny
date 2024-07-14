@@ -8,6 +8,7 @@ use crate::program::functions::FunctionHead;
 use crate::program::generics::TypeForest;
 use crate::program::primitives;
 use crate::program::traits::{RequirementsAssumption, Trait};
+use crate::program::types::TypeProto;
 use crate::source::StructInfo;
 
 #[derive(Clone)]
@@ -37,6 +38,7 @@ pub enum FunctionLogicDescriptor {
     TraitProvider(Rc<Trait>),
     FunctionProvider(Rc<FunctionHead>),
     PrimitiveOperation { operation: PrimitiveOperation, type_: primitives::Type },
+    Clone(Rc<TypeProto>),
     Constructor(Rc<StructInfo>),
     GetMemberField(Rc<StructInfo>, Rc<ObjectReference>),
     SetMemberField(Rc<StructInfo>, Rc<ObjectReference>),
@@ -56,6 +58,7 @@ pub enum PrimitiveOperation {
     ParseIntString,
     ParseRealString,
     ToString,
+    Clone,
 }
 
 impl FunctionLogic {

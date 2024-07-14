@@ -8,8 +8,9 @@ use crate::ast;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::{Mutability, ObjectReference};
+use crate::program::builtins::traits::make_any_functions;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
-use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType, Parameter, ParameterKey};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::TypeProto;
@@ -156,11 +157,29 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
     resolver.module.trait_conformance.add_conformance_rule(trait_conformance_rule.clone());
     resolver.global_variables.trait_conformance.add_conformance_rule(trait_conformance_rule);
 
+    let clone_function = FunctionHead::new(
+        FunctionInterface::new_member(
+            struct_type.clone(),
+            [].into_iter(),
+            struct_type.clone()
+        ),
+        FunctionType::Static,
+    );
+    resolver.runtime.source.fn_logic.insert(
+        Rc::clone(&clone_function),
+        FunctionLogic::Descriptor(FunctionLogicDescriptor::Clone(struct_type.clone()))
+    );
+    resolver.add_function_interface(
+        Rc::clone(&clone_function),
+        FunctionRepresentation::new("clone", FunctionTargetType::Member, FunctionCallExplicity::Explicit),
+    )?;
+
     let traits = resolver.runtime.traits.as_ref().unwrap();
 
     let any_conformance_rule = TraitConformanceRule::manual(
         traits.Any.create_generic_binding(vec![("Self", struct_type.clone())]),
         vec![
+            (&traits.Any_functions.clone.target, &clone_function),
         ]
     );
     resolver.module.trait_conformance.add_conformance_rule(any_conformance_rule.clone());
@@ -168,6 +187,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
 
     let struct_ = Rc::new(StructInfo {
         trait_: Rc::clone(trait_),
+        clone: clone_function,
         constructor: FunctionHead::new_static(
             Rc::new(FunctionInterface {
                 parameters,

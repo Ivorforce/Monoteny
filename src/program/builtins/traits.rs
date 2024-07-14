@@ -4,6 +4,7 @@ use crate::interpreter::runtime::Runtime;
 use crate::resolver::referencible;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::functions::{FunctionHead, FunctionInterface};
+use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
 use crate::program::primitives;
 use crate::program::traits::{Trait, TraitConformanceRule};
@@ -60,6 +61,7 @@ pub fn insert_functions<'a, I>(module: &mut Trait, functions: I) where I: Iterat
 pub struct Traits {
     /// Supertype of all objects.
     pub Any: Rc<Trait>,
+    pub Any_functions: AnyFunctions,
 
     /// Supertype of all function objects.
     /// No requirements yet (will require call_as_function to return self!).
@@ -89,6 +91,24 @@ pub struct Traits {
 
     pub Int: Rc<Trait>,
     pub Natural: Rc<Trait>,
+}
+
+#[derive(Clone)]
+pub struct AnyFunctions {
+    pub clone: Rc<FunctionPointer>,
+}
+
+pub fn make_any_functions(type_: &Rc<TypeProto>) -> AnyFunctions {
+    AnyFunctions {
+        clone: FunctionPointer::new_member_function(
+            "clone",
+            FunctionInterface::new_member(
+                type_.clone(),
+                [].into_iter(),
+                type_.clone()
+            )
+        ),
+    }
 }
 
 #[derive(Clone)]
@@ -222,6 +242,10 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
 
     let mut Any = Trait::new_with_self("Any");
+    let any_functions = make_any_functions(&Any.create_generic_type("Self"));
+    insert_functions(&mut Any, [
+        &any_functions.clone,
+    ].into_iter());
     let Any = Rc::new(Any);
     referencible::add_trait(runtime, module, None, &Any).unwrap();
 
@@ -344,6 +368,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
 
     Traits {
         Any,
+        Any_functions: any_functions,
 
         Function,
 
@@ -380,9 +405,18 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
     // let primitive_traits = runtime.primitives.as_ref().unwrap().clone();
     // let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
 
+    let string_type = TypeProto::unit_struct(&traits.String);
+    let any_functions = make_any_functions(&string_type);
+    referencible::add_function(runtime, module, None, Rc::clone(&any_functions.clone.target), any_functions.clone.representation.clone()).unwrap();
+    runtime.source.fn_logic.insert(
+        Rc::clone(&any_functions.clone.target),
+        FunctionLogic::Descriptor(FunctionLogicDescriptor::Clone(string_type.clone())),
+    );
+
     module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
-        traits.Any.create_generic_binding(vec![("Self", TypeProto::unit_struct(&traits.String).clone())]),
+        traits.Any.create_generic_binding(vec![("Self", string_type)]),
         vec![
+            (&traits.Any_functions.clone.target, &any_functions.clone.target),
         ]
     ));
 }

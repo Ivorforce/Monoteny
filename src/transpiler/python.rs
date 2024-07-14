@@ -149,6 +149,7 @@ impl Context {
         for (native_function, descriptor) in transpile.used_native_functions.iter() {
             match descriptor {
                 FunctionLogicDescriptor::Stub => {}
+                FunctionLogicDescriptor::Clone(_) => {}
                 FunctionLogicDescriptor::TraitProvider(trait_) => {
                     representations.function_forms.insert(Rc::clone(&native_function), FunctionForm::Constant(trait_.id));
                 }

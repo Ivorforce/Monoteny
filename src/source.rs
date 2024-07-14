@@ -14,6 +14,7 @@ use crate::program::traits::Trait;
 pub struct StructInfo {
     pub trait_: Rc<Trait>,
 
+    pub clone: Rc<FunctionHead>,
     pub constructor: Rc<FunctionHead>,
     pub fields: Vec<Rc<ObjectReference>>,
 

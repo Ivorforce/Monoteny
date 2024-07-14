@@ -194,6 +194,7 @@ impl FunctionCompiler<'_> {
 pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogicDescriptor, runtime: &mut Runtime) {
     match descriptor {
         FunctionLogicDescriptor::Stub => todo!("{:?}", function),
+        FunctionLogicDescriptor::Clone(_) => todo!("{:?}", function),
         FunctionLogicDescriptor::TraitProvider(_) => todo!(),
         FunctionLogicDescriptor::FunctionProvider(f) => {
             let uuid = f.function_id;

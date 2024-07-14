@@ -57,9 +57,12 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         let primitive_type = *primitive_type;
 
         // Any!
+        let any_functions = traits::make_any_functions(&type_);
+        add_function(&any_functions.clone, primitive_type, PrimitiveOperation::Clone, module, runtime);
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.Any.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
+                (&traits.Any_functions.clone.target, &any_functions.clone.target),
             ]
         ));
 

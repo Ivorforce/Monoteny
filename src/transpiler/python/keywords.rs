@@ -78,6 +78,8 @@ lazy_static! {
         "float64",
         "str",
 
+        "copy.deepcopy",
+
         "np",
 
         "op",

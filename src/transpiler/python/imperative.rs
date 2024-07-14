@@ -25,6 +25,7 @@ pub struct FunctionContext<'a> {
 
 pub fn transpile_function(implementation: &FunctionImplementation, context: &FunctionContext) -> Box<ast::Statement> {
     match &context.representations.function_forms[&implementation.head] {
+        FunctionForm::Identity => panic!(),
         FunctionForm::Constant(id) => {
             Box::new(ast::Statement::VariableAssignment {
                 target: Box::new(ast::Expression::NamedReference(context.names[id].clone())),
@@ -224,6 +225,7 @@ fn transpile_function_call(context: &FunctionContext, function: &Rc<FunctionHead
     let mut parameters = function.interface.parameters.clone();
 
     let target = match form {
+        FunctionForm::Identity => return Left(transpile_expression(arguments[0], context)),
         FunctionForm::Constant(id) => {
             assert!(arguments.is_empty());
             return Left(Box::new(ast::Expression::NamedReference(context.names[id].clone())))

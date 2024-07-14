@@ -8,6 +8,7 @@ use crate::interpreter::runtime::Runtime;
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::module_name;
 use crate::program::primitives;
+use crate::program::types::TypeProto;
 
 pub fn load(runtime: &mut Runtime) -> RResult<()> {
     // -------------------------------------- ------ --------------------------------------
@@ -66,6 +67,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
 
         runtime.function_inlines.insert(Rc::clone(function), match descriptor {
             FunctionLogicDescriptor::Stub => todo!(),
+            FunctionLogicDescriptor::Clone(_) => continue,  // Clones are full functions that aren't inlined
             FunctionLogicDescriptor::TraitProvider(_) => continue,
             FunctionLogicDescriptor::FunctionProvider(_) => continue,
             FunctionLogicDescriptor::PrimitiveOperation { type_, operation } => {
@@ -95,6 +97,14 @@ pub fn primitive_from_primitive(primitive: &primitives::Type) -> Primitive {
         primitives::Type::Float(64) => Primitive::F64,
         _ => todo!("Unsupported type: {:?}", primitive)
     }
+}
+
+pub fn inline_fn_push_identity() -> InlineFunction {
+    Rc::new(move |compiler, expression| {{
+        let arguments = &compiler.implementation.expression_tree.children[expression];
+        for arg in arguments { compiler.compile_expression(arg)? }
+        Ok(())
+    }})
 }
 
 pub fn inline_fn_push(opcode: OpCode) -> InlineFunction {
@@ -176,5 +186,6 @@ pub fn compile_primitive_operation(operation: &PrimitiveOperation, type_: &primi
         PrimitiveOperation::ParseIntString => inline_fn_push_with_u8(OpCode::PARSE, primitive),
         PrimitiveOperation::ParseRealString => inline_fn_push_with_u8(OpCode::PARSE, primitive),
         PrimitiveOperation::ToString => inline_fn_push_with_u8(OpCode::TO_STRING, primitive),
+        PrimitiveOperation::Clone => inline_fn_push_identity(),  // Primitives are already pass-by-value.
     }
 }

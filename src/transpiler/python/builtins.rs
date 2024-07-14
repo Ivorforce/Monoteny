@@ -40,6 +40,10 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
         };
 
         let (higher_order_ref_name, representation) = match descriptor {
+            FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::Clone, type_ } => {
+                // FIXME id() isn't correct, it's not the identity function
+                ("id", FunctionForm::Identity)
+            }
             FunctionLogicDescriptor::PrimitiveOperation { operation: PrimitiveOperation::EqualTo, type_ } => {
                 ("op.eq", FunctionForm::Binary(KEYWORD_IDS["=="]))
             }
@@ -117,6 +121,15 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
             FunctionLogicDescriptor::GetMemberField(_, _) => continue,
             FunctionLogicDescriptor::SetMemberField(_, _) => continue,
             FunctionLogicDescriptor::Stub => continue,
+            FunctionLogicDescriptor::Clone(type_) => {
+                if type_ == &TypeProto::unit_struct(&runtime.traits.as_ref().unwrap().String) {
+                    // FIXME id() isn't correct, it's not the identity function
+                    ("id", FunctionForm::Identity)
+                }
+                else {
+                    todo!()
+                }
+            },
             FunctionLogicDescriptor::TraitProvider(_) => continue,
             FunctionLogicDescriptor::FunctionProvider(_) => continue,
         };
