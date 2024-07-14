@@ -9,6 +9,7 @@ pub fn create_builtins(runtime: &mut Runtime) -> Box<Module> {
 
     runtime.primitives = Some(primitives::create_traits(runtime, &mut module));
     runtime.traits = Some(traits::create(runtime, &mut module));
+    traits::create_functions(runtime, &mut module);
     primitives::create_functions(runtime, &mut module);
     module
 }

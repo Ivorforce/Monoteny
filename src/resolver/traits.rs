@@ -152,9 +152,19 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
         trait_.create_generic_binding(vec![("Self", struct_type.clone())]),
         function_mapping,
     );
-    let conformance_rule = TraitConformanceRule::direct(conformance);
-    resolver.module.trait_conformance.add_conformance_rule(conformance_rule.clone());
-    resolver.global_variables.trait_conformance.add_conformance_rule(conformance_rule);
+    let trait_conformance_rule = TraitConformanceRule::direct(conformance);
+    resolver.module.trait_conformance.add_conformance_rule(trait_conformance_rule.clone());
+    resolver.global_variables.trait_conformance.add_conformance_rule(trait_conformance_rule);
+
+    let traits = resolver.runtime.traits.as_ref().unwrap();
+
+    let any_conformance_rule = TraitConformanceRule::manual(
+        traits.Any.create_generic_binding(vec![("Self", struct_type.clone())]),
+        vec![
+        ]
+    );
+    resolver.module.trait_conformance.add_conformance_rule(any_conformance_rule.clone());
+    resolver.global_variables.trait_conformance.add_conformance_rule(any_conformance_rule);
 
     let struct_ = Rc::new(StructInfo {
         trait_: Rc::clone(trait_),

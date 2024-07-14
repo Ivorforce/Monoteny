@@ -92,6 +92,8 @@ impl <'a> GlobalResolver<'a> {
 
                 let mut trait_ = Trait::new_with_self(&syntax.name);
 
+                trait_.add_simple_parent_requirement(&self.runtime.traits.as_ref().unwrap().Any);
+
                 let generic_self_type = trait_.create_generic_type("Self");
                 let generic_self_meta_type = TypeProto::one_arg(&self.runtime.Metatype, generic_self_type.clone());
                 // This is not the same reference as what module.add_trait returns - that reference is for the global metatype getter.

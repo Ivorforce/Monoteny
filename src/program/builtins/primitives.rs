@@ -56,6 +56,13 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         let type_ = TypeProto::unit_struct(&primitive_traits[primitive_type]);
         let primitive_type = *primitive_type;
 
+        // Any!
+        module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
+            traits.Any.create_generic_binding(vec![("Self", type_.clone())]),
+            vec![
+            ]
+        ));
+
         // Pair-Associative
         let eq_functions = traits::make_eq_functions(&type_, &bool_type);
         add_function(&eq_functions.equal_to, primitive_type, PrimitiveOperation::EqualTo, module, runtime);

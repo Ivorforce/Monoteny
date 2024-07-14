@@ -6,7 +6,7 @@ use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentat
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::traits::Trait;
+use crate::program::traits::{Trait, TraitConformanceRule};
 use crate::program::types::TypeProto;
 
 pub struct FunctionPointer {
@@ -58,6 +58,9 @@ pub fn insert_functions<'a, I>(module: &mut Trait, functions: I) where I: Iterat
 #[allow(non_snake_case)]
 #[derive(Clone)]
 pub struct Traits {
+    /// Supertype of all objects.
+    pub Any: Rc<Trait>,
+
     /// Supertype of all function objects.
     /// No requirements yet (will require call_as_function to return self!).
     pub Function: Rc<Trait>,
@@ -218,7 +221,12 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     let primitive_traits = runtime.primitives.as_ref().unwrap();
     let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
 
+    let mut Any = Trait::new_with_self("Any");
+    let Any = Rc::new(Any);
+    referencible::add_trait(runtime, module, None, &Any).unwrap();
+
     let mut Function = Trait::new_with_self("Function");
+    Function.add_simple_parent_requirement(&Any);
     let Function = Rc::new(Function);
     referencible::add_trait(runtime, module, None, &Function).unwrap();
 
@@ -228,6 +236,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
         &eq_functions.equal_to,
         &eq_functions.not_equal_to,
     ].into_iter());
+    Eq.add_simple_parent_requirement(&Any);
     let Eq = Rc::new(Eq);
     referencible::add_trait(runtime, module, None, &Eq).unwrap();
 
@@ -239,6 +248,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
         &ord_functions.lesser_than,
         &ord_functions.lesser_than_or_equal_to,
     ].into_iter());
+    Ord.add_simple_parent_requirement(&Any);
     Ord.add_simple_parent_requirement(&Eq);
     let Ord = Rc::new(Ord);
     referencible::add_trait(runtime, module, None, &Ord).unwrap();
@@ -253,11 +263,13 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
         &number_functions.negative,
         &number_functions.modulo,
     ].into_iter());
+    Number.add_simple_parent_requirement(&Any);
     Number.add_simple_parent_requirement(&Ord);
     let Number = Rc::new(Number);
     referencible::add_trait(runtime, module, None, &Number).unwrap();
 
     let mut String = Trait::new_with_self("String");
+    String.add_simple_parent_requirement(&Any);
     let String = Rc::new(String);
     referencible::add_trait(runtime, module, None, &String).unwrap();
 
@@ -268,6 +280,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     insert_functions(&mut ToString, [
         &to_string_function
     ].into_iter());
+    ToString.add_simple_parent_requirement(&Any);
     let ToString = Rc::new(ToString);
     referencible::add_trait(runtime, module, None, &ToString).unwrap();
 
@@ -282,6 +295,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     insert_functions(&mut ConstructableByIntLiteral, [
         &parse_int_literal_function
     ].into_iter());
+    ConstructableByIntLiteral.add_simple_parent_requirement(&Any);
     let ConstructableByIntLiteral = Rc::new(ConstructableByIntLiteral);
     referencible::add_trait(runtime, module, None, &ConstructableByIntLiteral).unwrap();
 
@@ -297,6 +311,7 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     insert_functions(&mut ConstructableByRealLiteral, [
         &parse_real_literal_function
     ].into_iter());
+    ConstructableByRealLiteral.add_simple_parent_requirement(&Any);
     let ConstructableByRealLiteral = Rc::new(ConstructableByRealLiteral);
     referencible::add_trait(runtime, module, None, &ConstructableByRealLiteral).unwrap();
 
@@ -310,21 +325,26 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     Real.add_simple_parent_requirement(&Number);
     Real.add_simple_parent_requirement(&ConstructableByRealLiteral);
     Real.add_simple_parent_requirement(&ConstructableByIntLiteral);
+    Real.add_simple_parent_requirement(&Any);
     let Real = Rc::new(Real);
     referencible::add_trait(runtime, module, None, &Real).unwrap();
 
     let mut Int = Trait::new_with_self("Int");
     Int.add_simple_parent_requirement(&Number);
     Int.add_simple_parent_requirement(&ConstructableByIntLiteral);
+    Int.add_simple_parent_requirement(&Any);
     let Int = Rc::new(Int);
     referencible::add_trait(runtime, module, None, &Int).unwrap();
 
     let mut Natural = Trait::new_with_self("Natural");
+    Natural.add_simple_parent_requirement(&Any);
     Natural.add_simple_parent_requirement(&Int);
     let Natural = Rc::new(Natural);
     referencible::add_trait(runtime, module, None, &Natural).unwrap();
 
     Traits {
+        Any,
+
         Function,
 
         Eq,
@@ -351,4 +371,18 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
         Int,
         Natural,
     }
+}
+
+pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
+    // TODO Cloning is dumb but we can't hold a runtime reference.
+    //  It's not too bad because it's all Rcs though.
+    let traits = runtime.traits.as_ref().unwrap().clone();
+    // let primitive_traits = runtime.primitives.as_ref().unwrap().clone();
+    // let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
+
+    module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
+        traits.Any.create_generic_binding(vec![("Self", TypeProto::unit_struct(&traits.String).clone())]),
+        vec![
+        ]
+    ));
 }
