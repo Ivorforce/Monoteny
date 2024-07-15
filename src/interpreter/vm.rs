@@ -417,15 +417,15 @@ impl<'a, 'b> VM<'a, 'b> {
                     OpCode::GET_MEMBER_8 => {
                         let slot_idx = pop_ip!(u8);
                         let sp_last = sp.offset(-8);
-                        let slot_ptr = (*sp_last).ptr.offset(isize::from(slot_idx) * 8);
+                        let slot_ptr = (*sp_last).ptr.byte_add(usize::from(slot_idx) * 8);
 
-                        *sp_last = transmute(read_unaligned(slot_ptr as *mut Value));
+                        *sp_last = read_unaligned(slot_ptr as *mut Value);
                     }
                     OpCode::SET_MEMBER_8 => {
                         let slot_idx = pop_ip!(u8);
                         let value = pop_sp!();
                         let obj_ptr = pop_sp!().ptr;
-                        let slot_ptr = obj_ptr.offset(isize::from(slot_idx) * 8);
+                        let slot_ptr = obj_ptr.byte_add(usize::from(slot_idx) * 8);
 
                         write_unaligned(slot_ptr as *mut Value, value);
                     }

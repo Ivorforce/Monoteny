@@ -131,4 +131,12 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn traits_string_fields() -> RResult<()> {
+        let out = test_runs("test-code/traits/fields.monoteny")?;
+        assert_eq!(out, "Noir (Cat) was: 180cm\nAnd is now: 25cm\n");
+
+        Ok(())
+    }
 }

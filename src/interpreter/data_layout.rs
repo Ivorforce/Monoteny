@@ -19,12 +19,10 @@ pub fn create_data_layout(runtime: &mut Runtime, struct_info: Rc<StructInfo>) ->
             TypeUnit::Void => unreachable!(),
             TypeUnit::Generic(_) => todo!(),
             TypeUnit::Struct(s) => {
-                if let Some(_) = runtime.primitives.as_ref().unwrap().iter().filter_map(|(p, t)| (t == s).then_some(p)).next() {
-                    fields.push(Rc::clone(next));
-                }
-                else {
-                    todo!("Need to 'embed' its data type into ours at this point")
-                }
+                // TODO In the future, we probably want to merge nested structs into each
+                //  other to avoid indirection. For now, it's safer and easier to just accept the
+                //  indirection though.
+                fields.push(Rc::clone(next));
             }
         }
     }
