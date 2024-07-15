@@ -19,7 +19,7 @@ use crate::program::types::*;
 use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
 use crate::resolver::imperative_builder::ImperativeBuilder;
 use crate::resolver::scopes;
-use crate::resolver::structs::Struct;
+use crate::resolver::structs::AnonymousStruct;
 use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
@@ -476,13 +476,13 @@ impl <'a> ImperativeResolver<'a> {
         })
     }
 
-    pub fn resolve_struct(&mut self, scope: &scopes::Scope, struct_: &ast::Struct) -> RResult<Struct> {
+    pub fn resolve_struct(&mut self, scope: &scopes::Scope, struct_: &ast::Struct) -> RResult<AnonymousStruct> {
         let values = struct_.arguments.iter().map(|x| {
             self.resolve_expression_with_type(&x.value.value, &x.value.type_declaration, scope)
                 .err_in_range(&x.position)
         }).try_collect_many()?;
 
-        Ok(Struct {
+        Ok(AnonymousStruct {
             keys: struct_.arguments.iter()
                 .map(|x| x.value.key.clone())
                 .collect(),

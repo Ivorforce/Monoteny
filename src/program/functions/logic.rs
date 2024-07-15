@@ -4,9 +4,8 @@ use crate::error::{RResult, RuntimeError};
 use crate::program::allocation::ObjectReference;
 use crate::program::functions::{FunctionHead, FunctionImplementation};
 use crate::program::primitives;
-use crate::program::traits::Trait;
+use crate::program::traits::{StructInfo, Trait};
 use crate::program::types::TypeProto;
-use crate::source::StructInfo;
 
 #[derive(Clone)]
 pub enum FunctionLogic {
