@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-use display_with_options::with_options;
 use itertools::Itertools;
 
 use crate::ast;
@@ -10,7 +9,8 @@ use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::builtins::traits::make_any_functions;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
-use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType, Parameter, ParameterKey};
+use crate::program::function_pointer::FunctionPointer;
+use crate::program::functions::{FunctionInterface, Parameter, ParameterKey};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::TypeProto;
@@ -30,14 +30,14 @@ impl <'a> TraitResolver<'a> {
     pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
-                let (fun, representation) = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
+                let pointer = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
                 if !syntax.body.is_none() {
                     return Err(
-                        RuntimeError::error(format!("Abstract function {:?} cannot have a body.", with_options(fun.as_ref(), &representation)).as_str()).to_array()
+                        RuntimeError::error(format!("Abstract function {:?} cannot have a body.", pointer).as_str()).to_array()
                     );
                 };
 
-                self.trait_.insert_function(fun, representation);
+                self.trait_.insert_function(&pointer);
             }
             ast::Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment } => {
                 if let Some(_) = assignment {
@@ -157,22 +157,12 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
         &mut resolver.global_variables
     );
 
-    let clone_function = FunctionHead::new(
-        FunctionInterface::new_member(
-            struct_type.clone(),
-            [].into_iter(),
-            struct_type.clone()
-        ),
-        FunctionType::Static,
-    );
+    let any_functions = make_any_functions(&struct_type);
     resolver.runtime.source.fn_logic.insert(
-        Rc::clone(&clone_function),
+        Rc::clone(&any_functions.clone.target),
         FunctionLogic::Descriptor(FunctionLogicDescriptor::Clone(struct_type.clone()))
     );
-    resolver.add_function_interface(
-        Rc::clone(&clone_function),
-        FunctionRepresentation::new("clone", FunctionTargetType::Member, FunctionCallExplicity::Explicit),
-    )?;
+    resolver.add_function_interface(&any_functions.clone)?;
 
     let traits = resolver.runtime.traits.as_ref().unwrap();
 
@@ -180,23 +170,26 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
         TraitConformanceRule::manual(
             traits.Any.create_generic_binding(vec![("Self", struct_type.clone())]),
             vec![
-                (&traits.Any_functions.clone.target, &clone_function),
+                (&traits.Any_functions.clone.target, &any_functions.clone.target),
             ]
         ),
         &mut resolver.global_variables
     );
 
+    let constructor = FunctionPointer::new_member_function(
+        "call_as_function",
+        Rc::new(FunctionInterface {
+            parameters,
+            return_type: struct_type,
+            requirements: Default::default(),
+            generics: Default::default(),
+        }),
+    );
+
     let struct_ = Rc::new(StructInfo {
         trait_: Rc::clone(trait_),
-        clone: clone_function,
-        constructor: FunctionHead::new_static(
-            Rc::new(FunctionInterface {
-                parameters,
-                return_type: struct_type,
-                requirements: Default::default(),
-                generics: Default::default(),
-            }),
-        ),
+        clone: any_functions.clone.target.clone(),
+        constructor: Rc::clone(&constructor.target),
         fields,
         field_names,
         field_getters,
@@ -204,13 +197,10 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
     });
 
     resolver.runtime.source.fn_logic.insert(
-        Rc::clone(&struct_.constructor),
+        Rc::clone(&constructor.target),
         FunctionLogic::Descriptor(FunctionLogicDescriptor::Constructor(Rc::clone(&struct_)))
     );
-    resolver.add_function_interface(
-        Rc::clone(&struct_.constructor),
-        FunctionRepresentation::new("call_as_function", FunctionTargetType::Member, FunctionCallExplicity::Explicit),
-    )?;
+    resolver.add_function_interface(&constructor)?;
 
     for (ref_, head) in struct_.field_getters.iter() {
         let name = &struct_.field_names[ref_];
@@ -220,8 +210,10 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
             FunctionLogic::Descriptor(FunctionLogicDescriptor::GetMemberField(Rc::clone(&struct_), Rc::clone(ref_)))
         );
         resolver.add_function_interface(
-            Rc::clone(head),
-            FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit),
+            &FunctionPointer {
+                target: Rc::clone(head),
+                representation: FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit)
+            }
         )?;
     }
 
@@ -233,8 +225,10 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
             FunctionLogic::Descriptor(FunctionLogicDescriptor::SetMemberField(Rc::clone(&struct_), Rc::clone(ref_)))
         );
         resolver.add_function_interface(
-            Rc::clone(head),
-            FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit),
+            &FunctionPointer {
+                target: Rc::clone(head),
+                representation: FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit)
+            }
         )?;
     }
 

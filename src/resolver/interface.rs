@@ -9,6 +9,7 @@ use crate::error::{RResult, RuntimeError, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
 use crate::parser::expressions;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
+use crate::program::function_pointer::FunctionPointer;
 use crate::program::functions::{FunctionHead, FunctionInterface, Parameter};
 use crate::program::module::{Module, module_name};
 use crate::program::traits::{Trait, TraitBinding};
@@ -17,7 +18,7 @@ use crate::resolver::scopes;
 use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
-pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
+pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>) -> RResult<Rc<FunctionPointer>> {
     let mut type_factory = TypeFactory::new(scope, runtime);
 
     let parsed = expressions::parse(&interface.expression, &scope.grammar)?;
@@ -74,33 +75,37 @@ pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &sc
     }
 }
 
-fn resolve_macro_function_interface(module: Option<&mut Module>, runtime: &Runtime, m: &String) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
+fn resolve_macro_function_interface(module: Option<&mut Module>, runtime: &Runtime, m: &String) -> RResult<Rc<FunctionPointer>> {
     match m.as_str() {
         "main" => {
             let proto_function = runtime.source.module_by_name[&module_name("core.run")].explicit_functions(&runtime.source).into_iter()
                 .filter(|function| runtime.source.fn_representations[*function].name == "main")
                 .exactly_one().unwrap();
 
-            let fun = FunctionHead::new_static(Rc::clone(&proto_function.interface));
-            let representation = FunctionRepresentation::new("main", FunctionTargetType::Global, FunctionCallExplicity::Explicit);
+            let pointer = FunctionPointer::new_global_function(
+                "main",
+                Rc::clone(&proto_function.interface)
+            );
 
             if let Some(module) = module {
-                module.main_functions.push(Rc::clone(&fun));
+                module.main_functions.push(Rc::clone(&pointer.target));
             }
-            Ok((fun, representation))
+            Ok(pointer)
         },
         "transpile" => {
             let proto_function = runtime.source.module_by_name[&module_name("core.transpilation")].explicit_functions(&runtime.source).into_iter()
                 .filter(|function| runtime.source.fn_representations[*function].name == "transpile")
                 .exactly_one().unwrap();
 
-            let fun = FunctionHead::new_static(Rc::clone(&proto_function.interface));
-            let representation = FunctionRepresentation::new("transpile", FunctionTargetType::Global, FunctionCallExplicity::Explicit);
+            let pointer = FunctionPointer::new_global_function(
+                "transpile",
+                Rc::clone(&proto_function.interface)
+            );
 
             if let Some(module) = module {
-                module.transpile_functions.push(Rc::clone(&fun));
+                module.transpile_functions.push(Rc::clone(&pointer.target));
             }
-            Ok((fun, representation))
+            Ok(pointer)
         },
         _ => Err(
             RuntimeError::error(format!("Function macro could not be resolved: {}", m).as_str()).to_array()
@@ -108,7 +113,7 @@ fn resolve_macro_function_interface(module: Option<&mut Module>, runtime: &Runti
     }
 }
 
-pub fn _resolve_function_interface<'a>(representation: FunctionRepresentation, parameters: impl Iterator<Item=&'a ast::StructArgument>, return_type: &Option<ast::Expression>, mut type_factory: TypeFactory, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>) -> RResult<(Rc<FunctionHead>, FunctionRepresentation)> {
+pub fn _resolve_function_interface<'a>(representation: FunctionRepresentation, parameters: impl Iterator<Item=&'a ast::StructArgument>, return_type: &Option<ast::Expression>, mut type_factory: TypeFactory, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>) -> RResult<Rc<FunctionPointer>> {
     let return_type = return_type.as_ref()
         .try_map(|x| type_factory.resolve_type(&x, true))?
         .unwrap_or(TypeProto::void());
@@ -125,17 +130,19 @@ pub fn _resolve_function_interface<'a>(representation: FunctionRepresentation, p
         .map(Rc::clone)
         .collect();
 
-    Ok((
-        FunctionHead::new_static(
-            Rc::new(FunctionInterface {
-                parameters,
-                return_type,
-                requirements,
-                generics,
-            }),
+    let interface = FunctionInterface {
+        parameters,
+        return_type,
+        requirements,
+        generics,
+    };
+
+    Ok(Rc::new(FunctionPointer {
+        target: FunctionHead::new_static(
+            Rc::new(interface),
         ),
         representation
-    ))
+    }))
 }
 
 pub fn resolve_function_parameter(parameter: &ast::StructArgument, type_factory: &mut TypeFactory) -> RResult<Parameter> {

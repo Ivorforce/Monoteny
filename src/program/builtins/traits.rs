@@ -1,58 +1,19 @@
+use std::fmt::Debug;
 use std::rc::Rc;
 
 use crate::interpreter::runtime::Runtime;
-use crate::resolver::referencible;
-use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
-use crate::program::functions::{FunctionHead, FunctionInterface};
+use crate::program::function_pointer::FunctionPointer;
+use crate::program::functions::FunctionInterface;
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
 use crate::program::primitives;
 use crate::program::traits::{Trait, TraitConformanceRule};
 use crate::program::types::TypeProto;
-
-pub struct FunctionPointer {
-    pub target: Rc<FunctionHead>,
-    pub representation: FunctionRepresentation,
-}
-
-impl FunctionPointer {
-    pub fn new_global_function(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
-        Rc::new(FunctionPointer {
-            target: FunctionHead::new_static(interface),
-            representation: FunctionRepresentation {
-                name: name.to_string(),
-                target_type: FunctionTargetType::Global,
-                call_explicity: FunctionCallExplicity::Explicit,
-            },
-        })
-    }
-
-    pub fn new_member_function(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
-        Rc::new(FunctionPointer {
-            target: FunctionHead::new_static(interface),
-            representation: FunctionRepresentation {
-                name: name.to_string(),
-                target_type: FunctionTargetType::Member,
-                call_explicity: FunctionCallExplicity::Explicit,
-            },
-        })
-    }
-
-    pub fn new_global_implicit(name: &str, interface: Rc<FunctionInterface>) -> Rc<FunctionPointer> {
-        Rc::new(FunctionPointer {
-            target: FunctionHead::new_static(interface),
-            representation: FunctionRepresentation {
-                name: name.to_string(),
-                target_type: FunctionTargetType::Global,
-                call_explicity: FunctionCallExplicity::Implicit,
-            },
-        })
-    }
-}
+use crate::resolver::referencible;
 
 pub fn insert_functions<'a, I>(module: &mut Trait, functions: I) where I: Iterator<Item=&'a Rc<FunctionPointer>> {
     for ptr in functions {
-        module.insert_function(Rc::clone(&ptr.target), ptr.representation.clone())
+        module.insert_function(ptr)
     }
 }
 
@@ -407,11 +368,11 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
 
     let string_type = TypeProto::unit_struct(&traits.String);
     let any_functions = make_any_functions(&string_type);
-    referencible::add_function(runtime, module, None, Rc::clone(&any_functions.clone.target), any_functions.clone.representation.clone()).unwrap();
     runtime.source.fn_logic.insert(
         Rc::clone(&any_functions.clone.target),
         FunctionLogic::Descriptor(FunctionLogicDescriptor::Clone(string_type.clone())),
     );
+    referencible::add_function(runtime, module, None, &any_functions.clone).unwrap();
 
     module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
         traits.Any.create_generic_binding(vec![("Self", string_type)]),

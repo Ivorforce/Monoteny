@@ -8,16 +8,14 @@ use itertools::Itertools;
 use crate::ast;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
-use crate::program::function_object::FunctionRepresentation;
-use crate::program::functions::FunctionHead;
+use crate::program::function_pointer::FunctionPointer;
 use crate::program::traits::{Trait, TraitBinding, TraitConformance};
 use crate::refactor::monomorphize::map_interface_types;
 use crate::resolver::interface::resolve_function_interface;
 use crate::resolver::scopes;
 
 pub struct UnresolvedFunctionImplementation<'a> {
-    pub function: Rc<FunctionHead>,
-    pub representation: FunctionRepresentation,
+    pub pointer: Rc<FunctionPointer>,
     pub body: &'a Option<ast::Expression>,
 }
 
@@ -33,11 +31,10 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
                 //  to the ID of the parent abstract function. That way, we can avoid another
                 //  generic to generic mapping later.
-                let (function, representation) = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
+                let pointer = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
 
                 self.functions.push(UnresolvedFunctionImplementation {
-                    function,
-                    representation,
+                    pointer,
                     body: &syntax.body,
                 });
             }
@@ -65,7 +62,7 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
             expected_interface.generics.extend(conformance_generics.clone());
 
             let matching_implementations = unmatched_implementations.iter().enumerate()
-                .filter(|(i, imp)| &imp.representation == abstract_representation && imp.function.interface.as_ref() == &expected_interface)
+                .filter(|(i, imp)| &imp.pointer.representation == abstract_representation && imp.pointer.target.interface.as_ref() == &expected_interface)
                 .map(|(i, interface)| i)
                 .collect_vec();
 
@@ -82,7 +79,7 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
             else {
                 function_bindings.insert(
                     Rc::clone(abstract_function),
-                    Rc::clone(&unmatched_implementations.remove(matching_implementations[0]).function)
+                    Rc::clone(&unmatched_implementations.remove(matching_implementations[0]).pointer.target)
                 );
             }
         }
@@ -99,6 +96,6 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
 
 impl<'a> Debug for UnresolvedFunctionImplementation<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", with_options(self.function.as_ref(), &self.representation))
+        write!(f, "{:?}", self.pointer)
     }
 }

@@ -9,12 +9,13 @@ use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
 use crate::parser::expressions;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
+use crate::program::function_pointer::FunctionPointer;
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
 use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
 use crate::program::types::*;
-use crate::resolver::{imports, interpreter_mock, referencible, scopes};
+use crate::resolver::{imports, referencible, scopes};
 use crate::resolver::conformance::ConformanceResolver;
 use crate::resolver::decorations::try_parse_pattern;
 use crate::resolver::function::resolve_function_body;
@@ -77,15 +78,15 @@ impl <'a> GlobalResolver<'a> {
         match &pstatement.value.value {
             ast::Statement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
-                let (fun, representation) = resolve_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &HashMap::new())?;
+                let pointer = resolve_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &HashMap::new())?;
 
                 for decoration in pstatement.decorations_as_vec()? {
-                    let pattern = try_parse_pattern(decoration, Rc::clone(&fun), &self.global_variables)?;
+                    let pattern = try_parse_pattern(decoration, Rc::clone(&pointer.target), &self.global_variables)?;
                     self.module.patterns.insert(Rc::clone(&pattern));
                     self.global_variables.grammar.add_pattern(pattern)?;
                 }
-                self.schedule_function_body(&fun, syntax.body.as_ref(), pstatement.value.position.clone());
-                self.add_function_interface(fun, representation)?;
+                self.schedule_function_body(&pointer.target, syntax.body.as_ref(), pstatement.value.position.clone());
+                self.add_function_interface(&pointer)?;
             }
             ast::Statement::Trait(syntax) => {
                 pstatement.no_decorations()?;
@@ -182,10 +183,10 @@ impl <'a> GlobalResolver<'a> {
                 );
 
                 for fun in functions {
-                    self.schedule_function_body(&fun.function, fun.body.as_ref(), pstatement.value.position.clone());
+                    self.schedule_function_body(&fun.pointer.target, fun.body.as_ref(), pstatement.value.position.clone());
                     // TODO Instead of adding conformance functions statically, we should add the abstract function to the scope.
                     //  This will allow the compiler to determine "function exists but no declaration exists" in the future.
-                    self.add_function_interface(fun.function, fun.representation.clone())?;
+                    self.add_function_interface(&fun.pointer)?;
                 }
             }
             ast::Statement::Expression(e) => {
@@ -251,8 +252,8 @@ impl <'a> GlobalResolver<'a> {
         Ok(())
     }
 
-    pub fn add_function_interface(&mut self, pointer: Rc<FunctionHead>, representation: FunctionRepresentation) -> RResult<()> {
-        referencible::add_function(self.runtime, &mut self.module, Some(&mut self.global_variables), pointer, representation)?;
+    pub fn add_function_interface(&mut self, pointer: &FunctionPointer) -> RResult<()> {
+        referencible::add_function(self.runtime, &mut self.module, Some(&mut self.global_variables), pointer)?;
 
         Ok(())
     }

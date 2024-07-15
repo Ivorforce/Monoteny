@@ -6,6 +6,7 @@ use std::rc::Rc;
 use uuid::Uuid;
 
 use crate::program::function_object::FunctionRepresentation;
+use crate::program::function_pointer::FunctionPointer;
 use crate::program::functions::FunctionHead;
 use crate::program::traits::TraitBinding;
 use crate::program::types::TypeProto;
@@ -78,8 +79,8 @@ impl Trait {
         })
     }
 
-    pub fn insert_function(&mut self, function: Rc<FunctionHead>, representation: FunctionRepresentation) {
-        self.abstract_functions.insert(function, representation);
+    pub fn insert_function(&mut self, pointer: &FunctionPointer) {
+        self.abstract_functions.insert(Rc::clone(&pointer.target), pointer.representation.clone());
     }
 
     pub fn add_simple_parent_requirement(&mut self, parent_trait: &Rc<Trait>) {

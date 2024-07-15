@@ -2,15 +2,16 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::interpreter::runtime::Runtime;
-use crate::resolver::referencible;
 use crate::program::builtins::traits;
-use crate::program::builtins::traits::{FunctionPointer, make_to_string_function};
+use crate::program::builtins::traits::make_to_string_function;
+use crate::program::function_pointer::FunctionPointer;
 use crate::program::functions::FunctionInterface;
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::Module;
 use crate::program::primitives;
 use crate::program::traits::{Trait, TraitConformanceRule};
 use crate::program::types::{TypeProto, TypeUnit};
+use crate::resolver::referencible;
 
 pub fn create_traits(runtime: &mut Runtime, module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>> {
     let mut traits: HashMap<primitives::Type, Rc<Trait>> = Default::default();
@@ -45,7 +46,7 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
     let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
 
     let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module, runtime: &mut Runtime| {
-        referencible::add_function(runtime, module, None, Rc::clone(&function.target), function.representation.clone()).unwrap();
+        referencible::add_function(runtime, module, None, function).unwrap();
         runtime.source.fn_logic.insert(
             Rc::clone(&function.target),
             FunctionLogic::Descriptor(FunctionLogicDescriptor::PrimitiveOperation { type_: primitive_type, operation })
