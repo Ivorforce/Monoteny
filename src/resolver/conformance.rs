@@ -31,10 +31,10 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
                 //  to the ID of the parent abstract function. That way, we can avoid another
                 //  generic to generic mapping later.
-                let pointer = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
+                let function = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
 
                 self.functions.push(UnresolvedFunctionImplementation {
-                    function: pointer,
+                    function,
                     body: &syntax.body,
                 });
             }

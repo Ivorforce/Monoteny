@@ -81,30 +81,30 @@ fn resolve_macro_function_interface(module: Option<&mut Module>, runtime: &Runti
                 .filter(|function| function.declared_representation.name == "main")
                 .exactly_one().unwrap();
 
-            let pointer = FunctionHead::new_static(
+            let function = FunctionHead::new_static(
                 Rc::clone(&proto_function.interface),
                 proto_function.declared_representation.clone()
             );
 
             if let Some(module) = module {
-                module.main_functions.push(Rc::clone(&pointer));
+                module.main_functions.push(Rc::clone(&function));
             }
-            Ok(pointer)
+            Ok(function)
         },
         "transpile" => {
             let proto_function = runtime.source.module_by_name[&module_name("core.transpilation")].explicit_functions(&runtime.source).into_iter()
                 .filter(|function| function.declared_representation.name == "transpile")
                 .exactly_one().unwrap();
 
-            let pointer = FunctionHead::new_static(
+            let function = FunctionHead::new_static(
                 Rc::clone(&proto_function.interface),
                 proto_function.declared_representation.clone(),
             );
 
             if let Some(module) = module {
-                module.transpile_functions.push(Rc::clone(&pointer));
+                module.transpile_functions.push(Rc::clone(&function));
             }
-            Ok(pointer)
+            Ok(function)
         },
         _ => Err(
             RuntimeError::error(format!("Function macro could not be resolved: {}", m).as_str()).to_array()
