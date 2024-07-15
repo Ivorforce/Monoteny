@@ -7,7 +7,6 @@ use std::ops::Neg;
 use crate::error::{RuntimeError, RResult};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{string_to_ptr, Value};
-use crate::interpreter::data_layout::DataLayout;
 use crate::interpreter::opcode::{OpCode, Primitive};
 
 pub struct VM<'a, 'b> {
@@ -67,26 +66,17 @@ impl<'a, 'b> VM<'a, 'b> {
                         (*sp).u64 = pop_ip!(u64);
                         sp = sp.add(8);
                     },
-                    OpCode::LOAD128 => {
-                        let v = pop_ip!(u128);
-
-                        (*sp).u64 = (v >> 64) as u64;
-                        sp = sp.add(8);
-
-                        (*sp).u64 = v as u64;
-                        sp = sp.add(8);
-                    },
-                    OpCode::LOAD_LOCAL => {
+                    OpCode::LOAD_LOCAL_32 => {
                         let local_idx: u32 = pop_ip!(u32);
                         *sp = self.locals[usize::try_from(local_idx).unwrap()];
                         sp = sp.add(8);
                     }
-                    OpCode::STORE_LOCAL => {
+                    OpCode::STORE_LOCAL_32 => {
                         let local_idx: u32 = pop_ip!(u32);
                         sp = sp.offset(-8);
                         self.locals[usize::try_from(local_idx).unwrap()] = *sp;
                     }
-                    OpCode::LOAD_CONSTANT => {
+                    OpCode::LOAD_CONSTANT_32 => {
                         let constant_idx: u32 = pop_ip!(u32);
                         *sp = self.chunk.constants[usize::try_from(constant_idx).unwrap()];
                         sp = sp.add(8);
@@ -286,11 +276,10 @@ impl<'a, 'b> VM<'a, 'b> {
                         }
                     },
                     OpCode::TRANSPILE_ADD => {
-                        let lsb = pop_sp!().u64;
-                        let msb = pop_sp!().u64;
+                        let ptr = pop_sp!().ptr;
                         let transpiler = pop_sp!();
 
-                        let uuid = Uuid::from_u64_pair(msb, lsb);
+                        let uuid = *(ptr as *mut Uuid);
                         self.transpile_functions.push(uuid);
                     }
                     OpCode::PRINT => {

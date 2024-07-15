@@ -58,17 +58,6 @@ impl Chunk {
         }
     }
 
-    pub fn push_with_u128(&mut self, code: OpCode, arg: u128) {
-        let len = self.code.len();
-
-        unsafe {
-            self.code.reserve(1 + 16);
-            *self.code.as_mut_ptr().add(len) = code as u8;
-            write_unaligned(self.code.as_mut_ptr().add(len + 1) as *mut u128, arg);
-            self.code.set_len(len + 1 + 16);
-        }
-    }
-
     pub fn modify_u32(&mut self, position: usize, arg: u32) {
         unsafe {
             write_unaligned(self.code.as_mut_ptr().add(position) as *mut u32, arg);

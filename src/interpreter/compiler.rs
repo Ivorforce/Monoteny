@@ -8,7 +8,7 @@ use itertools::Itertools;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::builtins::vm::inline_fn_push_with_u8;
 use crate::interpreter::chunks::Chunk;
-use crate::interpreter::data::{string_to_ptr, Value};
+use crate::interpreter::data::{string_to_ptr, uuid_to_ptr, Value};
 use crate::interpreter::opcode::OpCode;
 use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::ObjectReference;
@@ -25,7 +25,6 @@ pub struct FunctionCompiler<'a> {
     pub implementation: &'a FunctionImplementation,
     pub chunk: Chunk,
     pub locals: HashMap<Rc<ObjectReference>, u32>,
-    pub constants: Vec<Value>,
 }
 
 pub fn compile_deep(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResult<Chunk> {
@@ -85,7 +84,6 @@ fn compile_function(runtime: &mut Runtime, implementation: &FunctionImplementati
         implementation,
         chunk: Chunk::new(),
         locals: HashMap::new(),
-        constants: vec![],
     };
 
     compiler.compile_expression(&implementation.expression_tree.root)?;
@@ -93,7 +91,6 @@ fn compile_function(runtime: &mut Runtime, implementation: &FunctionImplementati
     compiler.chunk.push(OpCode::RETURN);
 
     compiler.chunk.locals_count = u32::try_from(compiler.locals.len()).unwrap();
-    compiler.chunk.constants = compiler.constants;
 
     // println!("{:?}", implementation.head);
     // disassemble(&compiler.chunk);
@@ -119,14 +116,14 @@ impl FunctionCompiler<'_> {
             },
             ExpressionOperation::GetLocal(local) => {
                 let slot = self.get_variable_slot(local);
-                self.chunk.push_with_u32(OpCode::LOAD_LOCAL, slot);
+                self.chunk.push_with_u32(OpCode::LOAD_LOCAL_32, slot);
             },
             ExpressionOperation::SetLocal(local) => {
                 let arguments = &self.implementation.expression_tree.children[expression];
                 assert_eq!(arguments.len(), 1);
                 self.compile_expression(&arguments[0])?;
                 let slot = self.get_variable_slot(local);
-                self.chunk.push_with_u32(OpCode::STORE_LOCAL, slot);
+                self.chunk.push_with_u32(OpCode::STORE_LOCAL_32, slot);
             },
             ExpressionOperation::Return => todo!(),
             ExpressionOperation::FunctionCall(function) => {
@@ -141,8 +138,8 @@ impl FunctionCompiler<'_> {
             ExpressionOperation::ArrayLiteral => todo!(),
             ExpressionOperation::StringLiteral(string) => {
                 unsafe {
-                    self.constants.push(Value { ptr: string_to_ptr(string) });
-                    self.chunk.push_with_u32(OpCode::LOAD_CONSTANT, u32::try_from(self.constants.len() - 1).unwrap());
+                    self.chunk.constants.push(Value { ptr: string_to_ptr(string) });
+                    self.chunk.push_with_u32(OpCode::LOAD_CONSTANT_32, u32::try_from(self.chunk.constants.len() - 1).unwrap());
                 }
             },
             ExpressionOperation::IfThenElse => {
@@ -199,14 +196,16 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
         FunctionLogicDescriptor::TraitProvider(trait_) => {
             let uuid = trait_.id;
             runtime.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
-                compiler.chunk.push_with_u128(OpCode::LOAD128, uuid.as_u128());
+                unsafe { compiler.chunk.constants.push(Value { ptr: uuid_to_ptr(uuid) }); }
+                compiler.chunk.push_with_u32(OpCode::LOAD_CONSTANT_32, u32::try_from(compiler.chunk.constants.len() - 1).unwrap());
                 Ok(())
             }));
         },
         FunctionLogicDescriptor::FunctionProvider(f) => {
             let uuid = f.function_id;
             runtime.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
-                compiler.chunk.push_with_u128(OpCode::LOAD128, uuid.as_u128());
+                unsafe { compiler.chunk.constants.push(Value { ptr: uuid_to_ptr(uuid) }); }
+                compiler.chunk.push_with_u32(OpCode::LOAD_CONSTANT_32, u32::try_from(compiler.chunk.constants.len() - 1).unwrap());
                 Ok(())
             }));
         }
