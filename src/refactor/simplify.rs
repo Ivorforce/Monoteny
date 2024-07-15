@@ -2,7 +2,7 @@ use std::collections::hash_map::RandomState;
 
 use linked_hash_set::LinkedHashSet;
 
-use crate::program::global::FunctionLogic;
+use crate::program::functions::FunctionLogic;
 use crate::refactor::{locals, Refactor};
 use crate::transpiler::Config;
 

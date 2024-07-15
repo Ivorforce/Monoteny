@@ -3,7 +3,6 @@ pub mod builtins;
 pub mod expression_tree;
 pub mod functions;
 pub mod generics;
-pub mod global;
 pub mod primitives;
 pub mod traits;
 pub mod types;

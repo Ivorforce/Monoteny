@@ -1,4 +1,4 @@
-use crate::program::global::FunctionImplementation;
+use crate::program::functions::FunctionImplementation;
 
 pub fn explicitize_clones(implementation: &mut FunctionImplementation) {
     todo!()

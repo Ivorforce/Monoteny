@@ -2,16 +2,17 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::mem::transmute;
 use std::rc::Rc;
+
 use itertools::Itertools;
-use crate::error::{RuntimeError, RResult};
+
+use crate::error::{RResult, RuntimeError};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{string_to_ptr, Value};
 use crate::interpreter::opcode::OpCode;
 use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::functions::FunctionHead;
-use crate::program::global::{FunctionImplementation, FunctionLogic, FunctionLogicDescriptor};
+use crate::program::functions::{FunctionHead, FunctionImplementation, FunctionLogic, FunctionLogicDescriptor};
 use crate::refactor::Refactor;
 use crate::refactor::simplify::Simplify;
 use crate::transpiler;

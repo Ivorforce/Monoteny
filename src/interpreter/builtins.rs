@@ -1,15 +1,14 @@
 use std::path::PathBuf;
 use std::rc::Rc;
-use crate::error::RResult;
 
+use crate::error::RResult;
 use crate::interpreter::compiler::InlineFunction;
 use crate::interpreter::opcode::{OpCode, Primitive};
 use crate::interpreter::runtime::Runtime;
-use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
+use crate::program::functions::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::module_name;
 use crate::program::primitives;
 use crate::program::types::TypeProto;
-use crate::transpiler::python::representations::FunctionForm;
 
 pub fn load(runtime: &mut Runtime) -> RResult<()> {
     // -------------------------------------- ------ --------------------------------------

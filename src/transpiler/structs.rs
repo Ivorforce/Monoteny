@@ -4,8 +4,7 @@ use std::rc::Rc;
 use linked_hash_map::{Entry, LinkedHashMap};
 
 use crate::program::expression_tree::ExpressionOperation;
-use crate::program::functions::FunctionHead;
-use crate::program::global::{FunctionImplementation, FunctionLogicDescriptor};
+use crate::program::functions::{FunctionHead, FunctionImplementation, FunctionLogicDescriptor};
 use crate::program::types::TypeProto;
 use crate::source::StructInfo;
 

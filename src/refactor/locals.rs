@@ -5,8 +5,7 @@ use itertools::Itertools;
 
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::ExpressionOperation;
-use crate::program::functions::{FunctionHead, FunctionInterface};
-use crate::program::global::FunctionImplementation;
+use crate::program::functions::{FunctionHead, FunctionImplementation, FunctionInterface};
 
 pub fn swizzle_retaining_parameters(function: &FunctionImplementation, removed: &HashSet<Rc<ObjectReference>>) -> Vec<usize> {
     function.parameter_locals.iter().enumerate()

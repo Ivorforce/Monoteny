@@ -3,8 +3,7 @@ use std::rc::Rc;
 use linked_hash_set::LinkedHashSet;
 
 use crate::program::expression_tree::ExpressionOperation;
-use crate::program::functions::{FunctionBinding, resolve_binding};
-use crate::program::global::FunctionImplementation;
+use crate::program::functions::{FunctionBinding, FunctionImplementation, resolve_binding};
 
 pub fn gather_callees(implementation: &FunctionImplementation) -> LinkedHashSet<Rc<FunctionBinding>> {
     let mut callees = LinkedHashSet::new();

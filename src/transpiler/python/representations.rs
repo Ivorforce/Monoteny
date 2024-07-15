@@ -4,8 +4,7 @@ use std::rc::Rc;
 use uuid::Uuid;
 
 use crate::program::expression_tree::ExpressionOperation;
-use crate::program::functions::FunctionHead;
-use crate::program::global::FunctionImplementation;
+use crate::program::functions::{FunctionHead, FunctionImplementation};
 use crate::program::types::TypeProto;
 use crate::transpiler::namespaces;
 

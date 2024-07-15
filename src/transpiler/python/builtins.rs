@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::interpreter::runtime::Runtime;
-use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
+use crate::program::functions::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::module_name;
 use crate::program::primitives;
 use crate::program::types::TypeProto;

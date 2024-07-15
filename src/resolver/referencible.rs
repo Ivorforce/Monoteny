@@ -2,8 +2,7 @@ use std::rc::Rc;
 
 use crate::error::RResult;
 use crate::interpreter::runtime::Runtime;
-use crate::program::functions::{FunctionCallExplicity, FunctionHead, FunctionInterface, FunctionRepresentation};
-use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
+use crate::program::functions::{FunctionCallExplicity, FunctionHead, FunctionInterface, FunctionLogic, FunctionLogicDescriptor, FunctionRepresentation};
 use crate::program::module::Module;
 use crate::program::traits::{Trait, TraitConformanceRule};
 use crate::program::types::TypeProto;

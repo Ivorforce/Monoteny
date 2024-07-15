@@ -1,12 +1,12 @@
 use std::rc::Rc;
-use itertools::Itertools;
+
 use uuid::Uuid;
-use crate::error::{RuntimeError, RResult};
+
+use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compiler::compile_deep;
 use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::VM;
-use crate::program::functions::FunctionHead;
-use crate::program::global::FunctionLogic;
+use crate::program::functions::{FunctionHead, FunctionLogic};
 use crate::program::module::Module;
 use crate::transpiler::{TranspiledArtifact, Transpiler};
 

@@ -7,9 +7,8 @@ use regex;
 use uuid::Uuid;
 
 use crate::program::expression_tree::*;
-use crate::program::functions::{FunctionHead, ParameterKey};
+use crate::program::functions::{FunctionHead, FunctionImplementation, FunctionLogicDescriptor, ParameterKey, PrimitiveOperation};
 use crate::program::generics::TypeForest;
-use crate::program::global::{FunctionImplementation, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::transpiler::python::{ast, types};
 use crate::transpiler::python::representations::{FunctionForm, Representations};
 

@@ -1,13 +1,13 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
-use display_with_options::{IndentOptions, with_options};
 
+use display_with_options::{IndentOptions, with_options};
 use itertools::Itertools;
 use linked_hash_map::LinkedHashMap;
 
 use crate::error::RResult;
 use crate::interpreter::runtime::Runtime;
-use crate::program::global::FunctionLogicDescriptor;
+use crate::program::functions::FunctionLogicDescriptor;
 use crate::refactor::Refactor;
 use crate::transpiler;
 use crate::transpiler::{namespaces, structs, TranspilePackage};
