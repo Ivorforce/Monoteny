@@ -1,0 +1,11 @@
+-- Tests that assertions can fail.
+
+use!(module!("common"));
+
+def main! :: {
+    assert(false);
+};
+
+def transpile! :: {
+    transpiler.add(main);
+};

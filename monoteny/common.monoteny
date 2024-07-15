@@ -1,5 +1,5 @@
 include!(
     module!(".precedence"),
-    module!(".debug"),
     module!(".math"),
+    module!(".debug"),
 );

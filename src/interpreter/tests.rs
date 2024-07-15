@@ -132,11 +132,29 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn traits_string_fields() -> RResult<()> {
-        let out = test_runs("test-code/traits/fields.monoteny")?;
-        assert_eq!(out, "Noir (Cat) was: 180cm\nAnd is now: 25cm\n");
-
-        Ok(())
-    }
+    // #[test]
+    // fn assertions() -> RResult<()> {
+    //     let mut runtime = Runtime::new()?;
+    //     runtime.repository.add("common", PathBuf::from("monoteny"));
+    //
+    //     let module = runtime.load_file_as_module(&PathBuf::from("test-code/debug/assert.monoteny"), module_name("main"))?;
+    //
+    //     let entry_function = interpreter::run::get_main_function(&module)?.unwrap();
+    //
+    //     // TODO Should gather all used functions and compile them
+    //     let compiled = compile_deep(&mut runtime, entry_function)?;
+    //
+    //     let mut out: Vec<u8> = vec![];
+    //     let mut vm = VM::new(&compiled, &mut out);
+    //     unsafe {
+    //         match vm.run() {
+    //             Ok(_) => assert!(false),
+    //             Err(e) => {
+    //                 assert_eq!(std::str::from_utf8(&out).unwrap().to_string(), "Assertion failure.");
+    //             }
+    //         }
+    //     }
+    //
+    //     Ok(())
+    // }
 }

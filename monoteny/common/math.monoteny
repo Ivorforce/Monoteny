@@ -1,6 +1,5 @@
 use!(
     module!("common.precedence"),
-    module!("common.debug"),
 );
 
 def pi -> $Real :: 3.141592653589793;

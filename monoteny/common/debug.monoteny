@@ -1,5 +1,6 @@
 use!(
     module!("common.precedence"),
+    module!("common.math"),
 );
 
 def exit_with_error(error '$ToString) -> # :: {
@@ -15,3 +16,7 @@ def unreachable() -> # :: panic("entered unreachable code");
 def unreachable(error '$ToString) -> # :: panic("entered unreachable code: \(error)");
 
 def write_line(value '$ToString) :: _write_line(value.to_string());
+
+def assert(value 'Bool) :: {
+    if not value :: exit_with_error("Assertion failure.");
+};
