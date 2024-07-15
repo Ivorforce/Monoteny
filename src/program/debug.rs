@@ -1,12 +1,11 @@
 use std::fmt::{Display, Formatter};
-use display_with_options::with_options;
 
+use display_with_options::with_options;
 use itertools::Itertools;
 use uuid::Uuid;
 
 use crate::program::expression_tree::ExpressionID;
-use crate::program::function_object::FunctionRepresentation;
-use crate::program::functions::{FunctionInterface, Parameter, ParameterKey};
+use crate::program::functions::{FunctionInterface, FunctionRepresentation, Parameter, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::types::{TypeProto, TypeUnit};
 

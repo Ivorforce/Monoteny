@@ -4,7 +4,6 @@ use std::rc::Rc;
 use uuid::Uuid;
 
 use crate::program::allocation::ObjectReference;
-use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
 use crate::program::global::FunctionLogic;
 use crate::program::module::{Module, ModuleName};

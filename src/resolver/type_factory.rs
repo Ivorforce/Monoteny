@@ -7,7 +7,7 @@ use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
 use crate::parser::expressions;
-use crate::program::function_object::FunctionTargetType;
+use crate::program::functions::FunctionTargetType;
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::resolver::scopes;

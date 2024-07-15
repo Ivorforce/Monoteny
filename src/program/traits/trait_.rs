@@ -5,7 +5,6 @@ use std::rc::Rc;
 
 use uuid::Uuid;
 
-use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
 use crate::program::traits::TraitBinding;
 use crate::program::types::TypeProto;

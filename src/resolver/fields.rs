@@ -1,6 +1,6 @@
 use std::rc::Rc;
-use crate::program::function_object::FunctionRepresentation;
-use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
+
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionRepresentation, Parameter, ParameterKey};
 use crate::program::traits::{FieldHint, Trait};
 use crate::program::types::TypeProto;
 

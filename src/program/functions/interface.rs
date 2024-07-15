@@ -1,8 +1,10 @@
-use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
+use std::rc::Rc;
+
 use display_with_options::DebugWithOptions;
-use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
+
+use crate::program::functions::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::TypeProto;
 use crate::util::fmt::write_separated_debug;

@@ -7,7 +7,6 @@ use linked_hash_set::LinkedHashSet;
 
 use crate::interpreter::runtime::Runtime;
 use crate::program::calls::FunctionBinding;
-use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionType};
 use crate::program::global::{FunctionImplementation, FunctionLogic, FunctionLogicDescriptor};
 use crate::refactor::call_graph::CallGraph;

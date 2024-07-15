@@ -5,7 +5,6 @@ use itertools::Itertools;
 
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::ExpressionOperation;
-use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::FunctionImplementation;
 

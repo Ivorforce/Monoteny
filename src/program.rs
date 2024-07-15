@@ -10,4 +10,3 @@ pub mod types;
 pub mod module;
 pub mod calls;
 pub mod debug;
-pub mod function_object;

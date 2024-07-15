@@ -2,8 +2,7 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 use crate::interpreter::runtime::Runtime;
-use crate::program::function_object::FunctionRepresentation;
-use crate::program::functions::{FunctionHead, FunctionInterface};
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionRepresentation};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
 use crate::program::primitives;

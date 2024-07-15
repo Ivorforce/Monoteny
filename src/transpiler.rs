@@ -5,7 +5,6 @@ use itertools::Itertools;
 
 use crate::error::{RResult, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
-use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::FunctionHead;
 use crate::program::global::{FunctionImplementation, FunctionLogic, FunctionLogicDescriptor};
 use crate::refactor::Refactor;

@@ -1,10 +1,11 @@
 use std::fmt::{Debug, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
+
 use display_with_options::with_options;
 use uuid::Uuid;
-use crate::program::function_object::FunctionRepresentation;
-use crate::program::functions::FunctionInterface;
+
+use crate::program::functions::{FunctionInterface, FunctionRepresentation};
 use crate::program::traits::TraitBinding;
 
 #[derive(Clone, PartialEq, Eq)]

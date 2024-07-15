@@ -6,8 +6,7 @@ use crate::error::{RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
 use crate::parser::grammar::{Grammar, PrecedenceGroup};
 use crate::program::allocation::ObjectReference;
-use crate::program::function_object::{FunctionOverload, FunctionRepresentation, FunctionTargetType};
-use crate::program::functions::FunctionHead;
+use crate::program::functions::{FunctionHead, FunctionOverload, FunctionRepresentation, FunctionTargetType};
 use crate::program::module::Module;
 use crate::program::traits::TraitGraph;
 

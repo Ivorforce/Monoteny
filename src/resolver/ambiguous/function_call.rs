@@ -2,21 +2,19 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
 use std::rc::Rc;
-use display_with_options::with_options;
 
 use itertools::{Itertools, zip_eq};
 
 use crate::error::{RResult, RuntimeError};
-use crate::resolver::ambiguous::{AmbiguityResult, ResolverAmbiguity};
-use crate::resolver::imperative::ImperativeResolver;
 use crate::program::calls::FunctionBinding;
 use crate::program::debug::MockFunctionInterface;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::function_object::FunctionRepresentation;
-use crate::program::functions::{FunctionHead, ParameterKey};
+use crate::program::functions::{FunctionHead, FunctionRepresentation, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::traits::{RequirementsFulfillment, Trait, TraitBinding, TraitGraph};
 use crate::program::types::TypeProto;
+use crate::resolver::ambiguous::{AmbiguityResult, ResolverAmbiguity};
+use crate::resolver::imperative::ImperativeResolver;
 
 pub struct AmbiguousFunctionCandidate {
     pub function: Rc<FunctionHead>,

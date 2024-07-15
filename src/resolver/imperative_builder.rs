@@ -8,7 +8,7 @@ use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::ObjectReference;
 use crate::program::calls::FunctionBinding;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation, ExpressionTree};
-use crate::program::function_object::{FunctionOverload, FunctionTargetType};
+use crate::program::functions::{FunctionOverload, FunctionTargetType};
 use crate::program::generics::TypeForest;
 use crate::program::types::TypeProto;
 use crate::resolver::scopes;
