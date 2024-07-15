@@ -50,7 +50,6 @@ pub struct TranspilePackage<'a> {
     pub explicit_functions: Vec<&'a FunctionImplementation>,
     pub implicit_functions: Vec<&'a FunctionImplementation>,
     pub used_native_functions: HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>,
-    pub fn_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>
 }
 
 pub trait LanguageContext {
@@ -71,10 +70,7 @@ pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &d
     for artifact in transpiler.exported_artifacts {
         match artifact {
             TranspiledArtifact::Function(implementation) => {
-                let head = Rc::clone(&implementation.head);
-                let representation = refactor.runtime.source.fn_representations[&head].clone();
-
-                refactor.add(implementation, representation);
+                refactor.add(implementation);
             }
         }
     }
@@ -87,7 +83,6 @@ pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &d
 
     // TODO The call_graph doesn't know about calls made outside the refactor. If there was no monomorphization, some functions may not even be caught by this.
     let deep_calls = refactor.gather_needed_functions();
-    let fn_representations = refactor.fn_representations;
     let mut fn_logic = refactor.fn_logic;
 
     let exported_functions = refactor.explicit_functions.iter()
@@ -113,6 +108,5 @@ pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &d
         explicit_functions: exported_functions,
         implicit_functions,
         used_native_functions: native_functions,
-        fn_representations,
     })
 }

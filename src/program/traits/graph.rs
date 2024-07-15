@@ -263,7 +263,7 @@ impl TraitGraph {
         for requirement in deep_requirements.iter() {
             let mut binding_resolution = HashMap::new();
 
-            for abstract_fun in requirement.trait_.abstract_functions.keys() {
+            for abstract_fun in requirement.trait_.abstract_functions.iter() {
                 let mapped_head = FunctionHead::new(
                     Rc::new(FunctionInterface {
                         parameters: abstract_fun.interface.parameters.iter().map(|x| {
@@ -279,7 +279,8 @@ impl TraitGraph {
                     FunctionType::Polymorphic {
                         assumed_requirement: Rc::clone(&requirement),
                         abstract_function: Rc::clone(abstract_fun)
-                    }
+                    },
+                    abstract_fun.declared_representation.clone(),
                 );
                 binding_resolution.insert(
                     Rc::clone(&abstract_fun),

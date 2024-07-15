@@ -5,6 +5,7 @@ use itertools::Itertools;
 
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::ExpressionOperation;
+use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::FunctionImplementation;
 
@@ -62,12 +63,15 @@ pub fn remove_locals(implementation: &mut FunctionImplementation, removed_locals
         let swizzle = swizzle_retaining_parameters(implementation, removed_locals);
 
         // TODO We may be able to remove some generics and requirements.
-        let new_head = FunctionHead::new(Rc::new(FunctionInterface {
-            parameters: swizzle.iter().map(|idx| implementation.head.interface.parameters[*idx].clone()).collect_vec(),
-            return_type: implementation.head.interface.return_type.clone(),
-            requirements: implementation.head.interface.requirements.clone(),
-            generics: implementation.head.interface.generics.clone(),
-        }), implementation.head.function_type.clone());
+        let new_head = FunctionHead::new(
+            Rc::new(FunctionInterface {
+                parameters: swizzle.iter().map(|idx| implementation.head.interface.parameters[*idx].clone()).collect_vec(),
+                return_type: implementation.head.interface.return_type.clone(),
+                requirements: implementation.head.interface.requirements.clone(),
+                generics: implementation.head.interface.generics.clone(),
+            }), implementation.head.function_type.clone(),
+            implementation.head.declared_representation.clone(),
+        );
 
         implementation.head = new_head;
         implementation.parameter_locals = swizzle.iter().map(|idx| implementation.parameter_locals[*idx].clone()).collect_vec();

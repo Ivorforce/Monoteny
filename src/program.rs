@@ -11,4 +11,3 @@ pub mod module;
 pub mod calls;
 pub mod debug;
 pub mod function_object;
-pub mod function_pointer;

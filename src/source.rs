@@ -40,8 +40,6 @@ pub struct Source {
     /// For referencible functions, a way to load it. The getter itself does not get a getter.
     pub fn_getters: HashMap<Rc<FunctionHead>, Rc<FunctionHead>>,
     
-    /// For all functions, the 'default' representation for syntax.
-    pub fn_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
     /// For all functions, their logic.
     pub fn_logic: HashMap<Rc<FunctionHead>, FunctionLogic>,
 }
@@ -55,7 +53,6 @@ impl Source {
             struct_by_trait: Default::default(),
             fn_heads: Default::default(),
             fn_getters: Default::default(),
-            fn_representations: Default::default(),
             fn_logic: Default::default(),
         }
     }

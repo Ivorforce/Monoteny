@@ -87,8 +87,7 @@ impl <'a> Scope<'a> {
         }
 
         for function in module.exposed_functions.iter() {
-            let representation = &runtime.source.fn_representations[function];
-            self.overload_function(function, representation.clone())?;
+            self.overload_function(function, function.declared_representation.clone())?;
         }
 
         self.trait_conformance.add_graph(&module.trait_conformance);

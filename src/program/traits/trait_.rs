@@ -6,7 +6,6 @@ use std::rc::Rc;
 use uuid::Uuid;
 
 use crate::program::function_object::FunctionRepresentation;
-use crate::program::function_pointer::FunctionPointer;
 use crate::program::functions::FunctionHead;
 use crate::program::traits::TraitBinding;
 use crate::program::types::TypeProto;
@@ -26,8 +25,7 @@ pub struct Trait {
     pub requirements: HashSet<Rc<TraitBinding>>,
 
     // Functions required by this trait specifically (not its requirements).
-    // The head of each function to its pointer (how it is defined).
-    pub abstract_functions: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
+    pub abstract_functions: HashSet<Rc<FunctionHead>>,
     pub field_hints: Vec<FieldHint>,
 }
 
@@ -77,10 +75,6 @@ impl Trait {
                     .map(|(generic_name, type_)| (Rc::clone(&self.generics[generic_name]), type_))
             ),
         })
-    }
-
-    pub fn insert_function(&mut self, pointer: &FunctionPointer) {
-        self.abstract_functions.insert(Rc::clone(&pointer.target), pointer.representation.clone());
     }
 
     pub fn add_simple_parent_requirement(&mut self, parent_trait: &Rc<Trait>) {

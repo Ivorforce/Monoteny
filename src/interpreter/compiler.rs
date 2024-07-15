@@ -30,10 +30,9 @@ pub fn compile_deep(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResu
     let FunctionLogic::Implementation(implementation) = runtime.source.fn_logic[function].clone() else {
         return Err(RuntimeError::error("main! function was somehow internal.").to_array());
     };
-    let function_representation = runtime.source.fn_representations[function].clone();
 
     let mut refactor = Refactor::new(runtime);
-    refactor.add(implementation, function_representation);
+    refactor.add(implementation);
 
     let mut simplify = Simplify::new(&mut refactor, &transpiler::Config::default());
     simplify.run();

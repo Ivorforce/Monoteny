@@ -4,8 +4,8 @@ use std::rc::Rc;
 use crate::interpreter::runtime::Runtime;
 use crate::program::builtins::traits;
 use crate::program::builtins::traits::make_to_string_function;
-use crate::program::function_pointer::FunctionPointer;
-use crate::program::functions::FunctionInterface;
+use crate::program::function_object::FunctionRepresentation;
+use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::Module;
 use crate::program::primitives;
@@ -45,10 +45,10 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
     let primitive_traits = runtime.primitives.as_ref().unwrap().clone();
     let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
 
-    let mut add_function = |function: &Rc<FunctionPointer>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module, runtime: &mut Runtime| {
+    let mut add_function = |function: &Rc<FunctionHead>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module, runtime: &mut Runtime| {
         referencible::add_function(runtime, module, None, function).unwrap();
         runtime.source.fn_logic.insert(
-            Rc::clone(&function.target),
+            Rc::clone(&function),
             FunctionLogic::Descriptor(FunctionLogicDescriptor::PrimitiveOperation { type_: primitive_type, operation })
         );
     };
@@ -63,7 +63,7 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.Any.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
-                (&traits.Any_functions.clone.target, &any_functions.clone.target),
+                (&traits.Any_functions.clone, &any_functions.clone),
             ]
         ));
 
@@ -75,8 +75,8 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.Eq.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
-                (&traits.Eq_functions.equal_to.target, &eq_functions.equal_to.target),
-                (&traits.Eq_functions.not_equal_to.target, &eq_functions.not_equal_to.target),
+                (&traits.Eq_functions.equal_to, &eq_functions.equal_to),
+                (&traits.Eq_functions.not_equal_to, &eq_functions.not_equal_to),
             ]
         ));
 
@@ -85,7 +85,7 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.ToString.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
-                (&traits.to_string_function.target, &to_string_function.target),
+                (&traits.to_string_function, &to_string_function),
             ]
         ));
 
@@ -103,10 +103,10 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.Ord.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
-                (&traits.Ord_functions.greater_than.target, &ord_functions.greater_than.target),
-                (&traits.Ord_functions.greater_than_or_equal_to.target, &ord_functions.greater_than_or_equal_to.target),
-                (&traits.Ord_functions.lesser_than.target, &ord_functions.lesser_than.target),
-                (&traits.Ord_functions.lesser_than_or_equal_to.target, &ord_functions.lesser_than_or_equal_to.target),
+                (&traits.Ord_functions.greater_than, &ord_functions.greater_than),
+                (&traits.Ord_functions.greater_than_or_equal_to, &ord_functions.greater_than_or_equal_to),
+                (&traits.Ord_functions.lesser_than, &ord_functions.lesser_than),
+                (&traits.Ord_functions.lesser_than_or_equal_to, &ord_functions.lesser_than_or_equal_to),
             ]
         ));
 
@@ -119,27 +119,27 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         add_function(&number_functions.modulo, primitive_type, PrimitiveOperation::Modulo, module, runtime);
         add_function(&number_functions.negative, primitive_type, PrimitiveOperation::Negative, module, runtime);
 
-        let _parse_int_literal = FunctionPointer::new_global_function(
-            "parse_int_literal",
-            FunctionInterface::new_operator(1, &TypeProto::unit_struct(&traits.String), &type_)
+        let _parse_int_literal = FunctionHead::new_static(
+            FunctionInterface::new_operator(1, &TypeProto::unit_struct(&traits.String), &type_),
+            FunctionRepresentation::new_global_function("parse_int_literal"),
         );
         add_function(&_parse_int_literal, primitive_type, PrimitiveOperation::ParseIntString, module, runtime);
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.ConstructableByIntLiteral.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
-                (&traits.parse_int_literal_function.target, &_parse_int_literal.target),
+                (&traits.parse_int_literal_function, &_parse_int_literal),
             ]
         ));
 
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.Number.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
-                (&traits.Number_functions.add.target, &number_functions.add.target),
-                (&traits.Number_functions.subtract.target, &number_functions.subtract.target),
-                (&traits.Number_functions.multiply.target, &number_functions.multiply.target),
-                (&traits.Number_functions.divide.target, &number_functions.divide.target),
-                (&traits.Number_functions.modulo.target, &number_functions.modulo.target),
-                (&traits.Number_functions.negative.target, &number_functions.negative.target),
+                (&traits.Number_functions.add, &number_functions.add),
+                (&traits.Number_functions.subtract, &number_functions.subtract),
+                (&traits.Number_functions.multiply, &number_functions.multiply),
+                (&traits.Number_functions.divide, &number_functions.divide),
+                (&traits.Number_functions.modulo, &number_functions.modulo),
+                (&traits.Number_functions.negative, &number_functions.negative),
             ]
         ));
 
@@ -165,42 +165,42 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         add_function(&real_functions.pow, primitive_type, PrimitiveOperation::Exp, module, runtime);
         add_function(&real_functions.log, primitive_type, PrimitiveOperation::Log, module, runtime);
 
-        let _parse_real_literal = FunctionPointer::new_global_function(
-            "parse_real_literal",
-            FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_)
+        let _parse_real_literal = FunctionHead::new_static(
+            FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_),
+            FunctionRepresentation::new_global_function("parse_real_literal"),
         );
         add_function(&_parse_real_literal, primitive_type, PrimitiveOperation::ParseRealString, module, runtime);
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.ConstructableByRealLiteral.create_generic_binding(vec![("Self", type_.clone())]),
             vec![
-                (&traits.parse_real_literal_function.target, &_parse_real_literal.target),
+                (&traits.parse_real_literal_function, &_parse_real_literal),
             ]
         ));
 
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
             traits.Real.create_generic_binding(vec![("Self", type_)]),
             vec![
-                (&traits.Real_functions.pow.target, &real_functions.pow.target),
-                (&traits.Real_functions.log.target, &real_functions.log.target),
+                (&traits.Real_functions.pow, &real_functions.pow),
+                (&traits.Real_functions.log, &real_functions.log),
             ]
         ));
     }
 
-    let and_op = FunctionPointer::new_global_function(
-        "and_f",
-        FunctionInterface::new_operator(2, &bool_type, &bool_type)
+    let and_op = FunctionHead::new_static(
+        FunctionInterface::new_operator(2, &bool_type, &bool_type),
+        FunctionRepresentation::new_global_function("and_f"),
     );
     add_function(&and_op, primitives::Type::Bool, PrimitiveOperation::And, module, runtime);
 
-    let or__op = FunctionPointer::new_global_function(
-        "or_f",
-        FunctionInterface::new_operator(2, &bool_type, &bool_type)
+    let or__op = FunctionHead::new_static(
+        FunctionInterface::new_operator(2, &bool_type, &bool_type),
+        FunctionRepresentation::new_global_function("or_f"),
     );
     add_function(&or__op, primitives::Type::Bool, PrimitiveOperation::Or, module, runtime);
 
-    let not_op = FunctionPointer::new_global_function(
-        "not_f",
-        FunctionInterface::new_operator(1, &bool_type, &bool_type)
+    let not_op = FunctionHead::new_static(
+        FunctionInterface::new_operator(1, &bool_type, &bool_type),
+        FunctionRepresentation::new_global_function("not_f"),
     );
     add_function(&not_op, primitives::Type::Bool, PrimitiveOperation::Not, module, runtime);
 }

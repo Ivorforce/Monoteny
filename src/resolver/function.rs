@@ -79,7 +79,7 @@ fn add_conformances_to_scope(scope: &mut scopes::Scope, granted_requirements: &V
             //  assigned and maybe called later.
             scope.overload_function(
                 function,
-                conformance.binding.trait_.abstract_functions[abstract_function].clone(),
+                abstract_function.declared_representation.clone(),
             )?;
         }
     }

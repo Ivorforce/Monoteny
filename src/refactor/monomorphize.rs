@@ -174,6 +174,7 @@ pub fn monomorphize_head(binding: &FunctionBinding) -> Rc<FunctionHead> {
     FunctionHead::new(
         Rc::new(map_interface_types(&binding.function.interface, &binding.requirements_fulfillment.generic_mapping)),
         binding.function.function_type.clone(),
+        binding.function.declared_representation.clone(),
     )
 }
 

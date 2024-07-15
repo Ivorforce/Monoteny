@@ -124,7 +124,7 @@ impl ResolverAmbiguity for AmbiguousFunctionCall {
             [(candidate, err)] => {
                 // TODO How so?
                 Err(
-                    RuntimeError::error(format!("function {:?} could not be resolved.", &with_options(candidate.function.as_ref(), &self.representation)).as_str())
+                    RuntimeError::error(format!("function {:?} could not be resolved.", &candidate.function).as_str())
                         .with_note(
                             RuntimeError::info("Candidate failed type / requirements test.")
                                 .with_notes(err.iter().cloned())

@@ -85,7 +85,6 @@ impl Context {
                 &mut representations.function_forms,
                 &mut exports_namespace,
                 implementation,
-                &transpile.fn_representations[&implementation.head]
             )
         }
 
@@ -124,8 +123,7 @@ impl Context {
         for (type_, struct_) in structs.iter() {
             let namespace = member_namespace.add_sublevel();
             for (field, getter) in struct_.field_getters.iter() {
-                let ptr = &transpile.fn_representations[getter];
-                namespace.insert_name(field.id, ptr.name.as_str());
+                namespace.insert_name(field.id, getter.declared_representation.name.as_str());
                 representations.function_forms.insert(Rc::clone(getter), FunctionForm::GetMemberField(field.id));
             }
             for (field, getter) in struct_.field_setters.iter() {
@@ -137,12 +135,10 @@ impl Context {
 
         // Internal / generated functions
         for implementation in transpile.implicit_functions.iter() {
-            let representation = &transpile.fn_representations[&implementation.head];
-
             representations::find_for_function(
                 &mut representations.function_forms,
                 &mut internals_namespace,
-                implementation, representation
+                implementation,
             )
         }
 

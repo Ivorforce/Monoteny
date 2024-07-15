@@ -40,6 +40,37 @@ impl FunctionRepresentation {
             call_explicity: explicity,
         }
     }
+
+    pub fn new_global_function(name: &str) -> FunctionRepresentation {
+        FunctionRepresentation {
+            name: name.into(),
+            target_type: FunctionTargetType::Global,
+            call_explicity: FunctionCallExplicity::Explicit,
+        }
+    }
+
+    pub fn new_global_implicit(name: &str) -> FunctionRepresentation {
+        FunctionRepresentation {
+            name: name.into(),
+            target_type: FunctionTargetType::Global,
+            call_explicity: FunctionCallExplicity::Implicit,
+        }
+    }
+    pub fn new_member_function(name: &str) -> FunctionRepresentation {
+        FunctionRepresentation {
+            name: name.into(),
+            target_type: FunctionTargetType::Member,
+            call_explicity: FunctionCallExplicity::Explicit,
+        }
+    }
+
+    pub fn new_member_implicit(name: &str) -> FunctionRepresentation {
+        FunctionRepresentation {
+            name: name.into(),
+            target_type: FunctionTargetType::Member,
+            call_explicity: FunctionCallExplicity::Implicit,
+        }
+    }
 }
 
 impl FunctionOverload {

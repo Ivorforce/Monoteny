@@ -2,8 +2,8 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 use crate::interpreter::runtime::Runtime;
-use crate::program::function_pointer::FunctionPointer;
-use crate::program::functions::FunctionInterface;
+use crate::program::function_object::FunctionRepresentation;
+use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
 use crate::program::primitives;
@@ -11,9 +11,9 @@ use crate::program::traits::{Trait, TraitConformanceRule};
 use crate::program::types::TypeProto;
 use crate::resolver::referencible;
 
-pub fn insert_functions<'a, I>(module: &mut Trait, functions: I) where I: Iterator<Item=&'a Rc<FunctionPointer>> {
+pub fn insert_functions<'a, I>(trait_: &mut Trait, functions: I) where I: Iterator<Item=&'a Rc<FunctionHead>> {
     for ptr in functions {
-        module.insert_function(ptr)
+        trait_.abstract_functions.insert(Rc::clone(ptr));
     }
 }
 
@@ -36,13 +36,13 @@ pub struct Traits {
 
     pub String: Rc<Trait>,
     pub ToString: Rc<Trait>,
-    pub to_string_function: Rc<FunctionPointer>,
+    pub to_string_function: Rc<FunctionHead>,
 
     pub ConstructableByIntLiteral: Rc<Trait>,
-    pub parse_int_literal_function: Rc<FunctionPointer>,
+    pub parse_int_literal_function: Rc<FunctionHead>,
 
     pub ConstructableByRealLiteral: Rc<Trait>,
-    pub parse_real_literal_function: Rc<FunctionPointer>,
+    pub parse_real_literal_function: Rc<FunctionHead>,
 
     pub Number: Rc<Trait>,
     pub Number_functions: NumberFunctions,
@@ -56,144 +56,144 @@ pub struct Traits {
 
 #[derive(Clone)]
 pub struct AnyFunctions {
-    pub clone: Rc<FunctionPointer>,
+    pub clone: Rc<FunctionHead>,
 }
 
 pub fn make_any_functions(type_: &Rc<TypeProto>) -> AnyFunctions {
     AnyFunctions {
-        clone: FunctionPointer::new_member_function(
-            "clone",
+        clone: FunctionHead::new_static(
             FunctionInterface::new_member(
                 type_.clone(),
                 [].into_iter(),
                 type_.clone()
-            )
+            ),
+            FunctionRepresentation::new_member_function("clone")
         ),
     }
 }
 
 #[derive(Clone)]
 pub struct EqFunctions {
-    pub equal_to: Rc<FunctionPointer>,
-    pub not_equal_to: Rc<FunctionPointer>,
+    pub equal_to: Rc<FunctionHead>,
+    pub not_equal_to: Rc<FunctionHead>,
 }
 
 pub fn make_eq_functions(type_: &Rc<TypeProto>, bool_type: &Rc<TypeProto>) -> EqFunctions {
     EqFunctions {
-        equal_to: FunctionPointer::new_global_function(
-            "is_equal",
-            FunctionInterface::new_operator(2, type_, bool_type)
+        equal_to: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionRepresentation::new_global_function("is_equal"),
         ),
-        not_equal_to: FunctionPointer::new_global_function(
-            "is_not_equal",
-            FunctionInterface::new_operator(2, type_, bool_type)
+        not_equal_to: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionRepresentation::new_global_function("is_not_equal"),
         ),
     }
 }
 
 #[derive(Clone)]
 pub struct OrdFunctions {
-    pub greater_than: Rc<FunctionPointer>,
-    pub greater_than_or_equal_to: Rc<FunctionPointer>,
-    pub lesser_than: Rc<FunctionPointer>,
-    pub lesser_than_or_equal_to: Rc<FunctionPointer>,
+    pub greater_than: Rc<FunctionHead>,
+    pub greater_than_or_equal_to: Rc<FunctionHead>,
+    pub lesser_than: Rc<FunctionHead>,
+    pub lesser_than_or_equal_to: Rc<FunctionHead>,
 }
 
 pub fn make_ord_functions(type_: &Rc<TypeProto>, bool_type: &Rc<TypeProto>) -> OrdFunctions {
     OrdFunctions {
-        greater_than: FunctionPointer::new_global_function(
-            "is_greater",
-            FunctionInterface::new_operator(2, type_, bool_type)
+        greater_than: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionRepresentation::new_global_function("is_greater"),
         ),
-        greater_than_or_equal_to: FunctionPointer::new_global_function(
-            "is_greater_or_equal",
-            FunctionInterface::new_operator(2, type_, bool_type)
+        greater_than_or_equal_to: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionRepresentation::new_global_function("is_greater_or_equal"),
         ),
-        lesser_than: FunctionPointer::new_global_function(
-            "is_lesser",
-            FunctionInterface::new_operator(2, type_, bool_type)
+        lesser_than: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionRepresentation::new_global_function("is_lesser"),
         ),
-        lesser_than_or_equal_to: FunctionPointer::new_global_function(
-            "is_lesser_or_equal",
-            FunctionInterface::new_operator(2, type_, bool_type)
+        lesser_than_or_equal_to: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionRepresentation::new_global_function("is_lesser_or_equal"),
         ),
     }
 }
 
 #[derive(Clone)]
 pub struct NumberFunctions {
-    pub add: Rc<FunctionPointer>,
-    pub subtract: Rc<FunctionPointer>,
-    pub multiply: Rc<FunctionPointer>,
-    pub divide: Rc<FunctionPointer>,
+    pub add: Rc<FunctionHead>,
+    pub subtract: Rc<FunctionHead>,
+    pub multiply: Rc<FunctionHead>,
+    pub divide: Rc<FunctionHead>,
 
-    pub modulo: Rc<FunctionPointer>,
+    pub modulo: Rc<FunctionHead>,
 
     /// You may argue that unsigned numbers should not need to support negative.
     /// However, all unsigned numbers have rollover. That means that e.g. -1 = MAX, and
     ///  it's generally a perfectly valid operation.
-    pub negative: Rc<FunctionPointer>,
+    pub negative: Rc<FunctionHead>,
 }
 
 pub fn make_number_functions(type_: &Rc<TypeProto>) -> NumberFunctions {
     NumberFunctions {
-        add: FunctionPointer::new_global_function(
-            "add",
-            FunctionInterface::new_operator(2, type_, type_)
+        add: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, type_),
+            FunctionRepresentation::new_global_function("add"),
         ),
-        subtract: FunctionPointer::new_global_function(
-            "subtract",
-            FunctionInterface::new_operator(2, type_, type_)
+        subtract: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, type_),
+            FunctionRepresentation::new_global_function("subtract"),
         ),
-        multiply: FunctionPointer::new_global_function(
-            "multiply",
-            FunctionInterface::new_operator(2, type_, type_)
+        multiply: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, type_),
+            FunctionRepresentation::new_global_function("multiply"),
         ),
-        divide: FunctionPointer::new_global_function(
-            "divide",
-            FunctionInterface::new_operator(2, type_, type_)
-        ),
-
-        negative: FunctionPointer::new_global_function(
-            "negative",
-            FunctionInterface::new_operator(1, type_, type_)
+        divide: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, type_),
+            FunctionRepresentation::new_global_function("divide"),
         ),
 
-        modulo: FunctionPointer::new_global_function(
-            "modulo",
-            FunctionInterface::new_operator(2, type_, type_)
+        negative: FunctionHead::new_static(
+            FunctionInterface::new_operator(1, type_, type_),
+            FunctionRepresentation::new_global_function("negative"),
+        ),
+
+        modulo: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, type_),
+            FunctionRepresentation::new_global_function("modulo"),
         ),
     }
 }
 
 #[derive(Clone)]
 pub struct RealFunctions {
-    pub pow: Rc<FunctionPointer>,
-    pub log: Rc<FunctionPointer>,
+    pub pow: Rc<FunctionHead>,
+    pub log: Rc<FunctionHead>,
 }
 
 pub fn make_real_functions(type_: &Rc<TypeProto>) -> RealFunctions {
     RealFunctions {
-        pow: FunctionPointer::new_global_function(
-            "pow",
-            FunctionInterface::new_operator(2, type_, type_)
+        pow: FunctionHead::new_static(
+            FunctionInterface::new_operator(2, type_, type_),
+            FunctionRepresentation::new_global_function("pow"),
         ),
-        log: FunctionPointer::new_global_function(
-            "log",
-            FunctionInterface::new_operator(1, type_, type_)
+        log: FunctionHead::new_static(
+            FunctionInterface::new_operator(1, type_, type_),
+            FunctionRepresentation::new_global_function("log"),
         ),
     }
 }
 
 #[allow(non_snake_case)]
-pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<FunctionPointer> {
-    FunctionPointer::new_member_function(
-        "to_string",
+pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<FunctionHead> {
+    FunctionHead::new_static(
         FunctionInterface::new_member(
             type_.create_generic_type("Self"),
             [].into_iter(),
             TypeProto::unit_struct(&String)
-        )
+        ),
+        FunctionRepresentation::new_member_function("to_string"),
     )
 }
 
@@ -270,12 +270,12 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     referencible::add_trait(runtime, module, None, &ToString).unwrap();
 
     let mut ConstructableByIntLiteral = Trait::new_with_self("ConstructableByIntLiteral");
-    let parse_int_literal_function = FunctionPointer::new_global_function(
-        "parse_int_literal",
+    let parse_int_literal_function = FunctionHead::new_static(
         FunctionInterface::new_simple(
             [TypeProto::unit_struct(&String)].into_iter(),
             ConstructableByIntLiteral.create_generic_type("Self"),
-        )
+        ),
+        FunctionRepresentation::new_global_function("parse_int_literal"),
     );
     insert_functions(&mut ConstructableByIntLiteral, [
         &parse_int_literal_function
@@ -286,12 +286,12 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
 
 
     let mut ConstructableByRealLiteral = Trait::new_with_self("ConstructableByRealLiteral");
-    let parse_real_literal_function = FunctionPointer::new_global_function(
-        "parse_real_literal",
+    let parse_real_literal_function = FunctionHead::new_static(
         FunctionInterface::new_simple(
             [TypeProto::unit_struct(&String)].into_iter(),
             ConstructableByRealLiteral.create_generic_type("Self")
         ),
+        FunctionRepresentation::new_global_function("parse_real_literal"),
     );
     insert_functions(&mut ConstructableByRealLiteral, [
         &parse_real_literal_function
@@ -369,7 +369,7 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
     let string_type = TypeProto::unit_struct(&traits.String);
     let any_functions = make_any_functions(&string_type);
     runtime.source.fn_logic.insert(
-        Rc::clone(&any_functions.clone.target),
+        Rc::clone(&any_functions.clone),
         FunctionLogic::Descriptor(FunctionLogicDescriptor::Clone(string_type.clone())),
     );
     referencible::add_function(runtime, module, None, &any_functions.clone).unwrap();
@@ -377,7 +377,7 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
     module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
         traits.Any.create_generic_binding(vec![("Self", string_type)]),
         vec![
-            (&traits.Any_functions.clone.target, &any_functions.clone.target),
+            (&traits.Any_functions.clone, &any_functions.clone),
         ]
     ));
 }

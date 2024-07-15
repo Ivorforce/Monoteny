@@ -32,6 +32,7 @@ pub struct FunctionHead {
     pub function_id: Uuid,
     pub function_type: FunctionType,
     pub interface: Rc<FunctionInterface>,
+    pub declared_representation: FunctionRepresentation,
 }
 
 /// A parameter as visible from the outside.
@@ -141,15 +142,16 @@ impl FunctionInterface {
 }
 
 impl FunctionHead {
-    pub fn new_static(interface: Rc<FunctionInterface>) -> Rc<FunctionHead> {
-        Self::new(interface, FunctionType::Static)
+    pub fn new_static(interface: Rc<FunctionInterface>, declared_representation: FunctionRepresentation) -> Rc<FunctionHead> {
+        Self::new(interface, FunctionType::Static, declared_representation)
     }
 
-    pub fn new(interface: Rc<FunctionInterface>, function_type: FunctionType) -> Rc<FunctionHead> {
+    pub fn new(interface: Rc<FunctionInterface>, function_type: FunctionType, declared_representation: FunctionRepresentation) -> Rc<FunctionHead> {
         Rc::new(FunctionHead {
             function_id: Uuid::new_v4(),
             interface,
-            function_type
+            function_type,
+            declared_representation
         })
     }
 
@@ -185,12 +187,6 @@ impl Hash for FunctionHead {
     }
 }
 
-impl Debug for FunctionHead {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "{:?}", with_options(self, &FunctionRepresentation::new("fn", FunctionTargetType::Global, FunctionCallExplicity::Explicit)))
-    }
-}
-
 impl Display for ParameterKey {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -217,13 +213,13 @@ impl Debug for Parameter {
     }
 }
 
-impl DebugWithOptions<FunctionRepresentation> for FunctionHead {
-    fn fmt(&self, fmt: &mut Formatter<'_>, representation: &FunctionRepresentation) -> std::fmt::Result {
+impl Debug for FunctionHead {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
         let call_type_symbol = match self.function_type {
             FunctionType::Static => "|",
             FunctionType::Polymorphic { .. } => "?"
         };
-        write!(fmt, "-{}({})--> {:?}", call_type_symbol, &self.function_id, with_options(self.interface.as_ref(), representation))
+        write!(fmt, "-{}({})--> {:?}", call_type_symbol, &self.function_id, with_options(self.interface.as_ref(), &self.declared_representation))
     }
 }
 

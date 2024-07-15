@@ -9,8 +9,7 @@ use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::builtins::traits::make_any_functions;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
-use crate::program::function_pointer::FunctionPointer;
-use crate::program::functions::{FunctionInterface, Parameter, ParameterKey};
+use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::TypeProto;
@@ -30,14 +29,14 @@ impl <'a> TraitResolver<'a> {
     pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
-                let pointer = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
+                let function = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
                 if !syntax.body.is_none() {
                     return Err(
-                        RuntimeError::error(format!("Abstract function {:?} cannot have a body.", pointer).as_str()).to_array()
+                        RuntimeError::error(format!("Abstract function {:?} cannot have a body.", function).as_str()).to_array()
                     );
                 };
 
-                self.trait_.insert_function(&pointer);
+                self.trait_.abstract_functions.insert(function);
             }
             ast::Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment } => {
                 if let Some(_) = assignment {
@@ -92,7 +91,7 @@ impl <'a> TraitResolver<'a> {
 }
 
 pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RResult<Option<Rc<StructInfo>>> {
-    let mut unaccounted_for_abstract_functions: HashSet<_> = trait_.abstract_functions.keys().collect();
+    let mut unaccounted_for_abstract_functions = trait_.abstract_functions.clone();
     trait_.field_hints.iter().for_each(|hint| {
         [&hint.getter, &hint.setter].into_iter().flatten().map(|g| unaccounted_for_abstract_functions.remove(g)).collect_vec();
     });
@@ -159,7 +158,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
 
     let any_functions = make_any_functions(&struct_type);
     resolver.runtime.source.fn_logic.insert(
-        Rc::clone(&any_functions.clone.target),
+        Rc::clone(&any_functions.clone),
         FunctionLogic::Descriptor(FunctionLogicDescriptor::Clone(struct_type.clone()))
     );
     resolver.add_function_interface(&any_functions.clone)?;
@@ -170,26 +169,26 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
         TraitConformanceRule::manual(
             traits.Any.create_generic_binding(vec![("Self", struct_type.clone())]),
             vec![
-                (&traits.Any_functions.clone.target, &any_functions.clone.target),
+                (&traits.Any_functions.clone, &any_functions.clone),
             ]
         ),
         &mut resolver.global_variables
     );
 
-    let constructor = FunctionPointer::new_member_function(
-        "call_as_function",
+    let constructor = FunctionHead::new_static(
         Rc::new(FunctionInterface {
             parameters,
             return_type: struct_type,
             requirements: Default::default(),
             generics: Default::default(),
         }),
+        FunctionRepresentation::new_member_function("call_as_function"),
     );
 
     let struct_ = Rc::new(StructInfo {
         trait_: Rc::clone(trait_),
-        clone: any_functions.clone.target.clone(),
-        constructor: Rc::clone(&constructor.target),
+        clone: any_functions.clone.clone(),
+        constructor: Rc::clone(&constructor),
         fields,
         field_names,
         field_getters,
@@ -197,7 +196,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
     });
 
     resolver.runtime.source.fn_logic.insert(
-        Rc::clone(&constructor.target),
+        Rc::clone(&constructor),
         FunctionLogic::Descriptor(FunctionLogicDescriptor::Constructor(Rc::clone(&struct_)))
     );
     resolver.add_function_interface(&constructor)?;
@@ -209,12 +208,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
             Rc::clone(head),
             FunctionLogic::Descriptor(FunctionLogicDescriptor::GetMemberField(Rc::clone(&struct_), Rc::clone(ref_)))
         );
-        resolver.add_function_interface(
-            &FunctionPointer {
-                target: Rc::clone(head),
-                representation: FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit)
-            }
-        )?;
+        resolver.add_function_interface(head)?;
     }
 
     for (ref_, head) in struct_.field_setters.iter() {
@@ -224,12 +218,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
             Rc::clone(&head),
             FunctionLogic::Descriptor(FunctionLogicDescriptor::SetMemberField(Rc::clone(&struct_), Rc::clone(ref_)))
         );
-        resolver.add_function_interface(
-            &FunctionPointer {
-                target: Rc::clone(head),
-                representation: FunctionRepresentation::new(name, FunctionTargetType::Member, FunctionCallExplicity::Implicit)
-            }
-        )?;
+        resolver.add_function_interface(head )?;
     }
 
     Ok(Some(struct_))

@@ -27,7 +27,6 @@ pub struct Refactor<'a> {
     pub explicit_functions: Vec<Rc<FunctionHead>>,
     pub invented_functions: HashSet<Rc<FunctionHead>>,
 
-    pub fn_representations: HashMap<Rc<FunctionHead>, FunctionRepresentation>,
     pub fn_logic: HashMap<Rc<FunctionHead>, FunctionLogic>,
     pub fn_inline_hints: HashMap<Rc<FunctionHead>, InlineHint>,
     pub fn_optimizations: HashMap<Rc<FunctionBinding>, Rc<FunctionHead>>,
@@ -41,7 +40,6 @@ impl<'a> Refactor<'a> {
             runtime,
             explicit_functions: vec![],
             invented_functions: HashSet::new(),
-            fn_representations: Default::default(),
             fn_logic: Default::default(),
             fn_inline_hints: Default::default(),
             fn_optimizations: Default::default(),
@@ -49,16 +47,15 @@ impl<'a> Refactor<'a> {
         }
     }
 
-    pub fn add(&mut self, mut implementation: Box<FunctionImplementation>, representation: FunctionRepresentation) {
+    pub fn add(&mut self, mut implementation: Box<FunctionImplementation>) {
         self.explicit_functions.push(Rc::clone(&implementation.head));
-        self._add(implementation, representation)
+        self._add(implementation)
     }
 
-    fn _add(&mut self, mut implementation: Box<FunctionImplementation>, representation: FunctionRepresentation) {
+    fn _add(&mut self, mut implementation: Box<FunctionImplementation>) {
         let head = Rc::clone(&implementation.head);
 
         self.fn_logic.insert(Rc::clone(&head), FunctionLogic::Implementation(implementation));
-        self.fn_representations.insert(Rc::clone(&head), representation);
         self.update_callees(&head);
 
         // New function; it may call functions that were already inlined!
@@ -148,8 +145,6 @@ impl<'a> Refactor<'a> {
         self.fn_optimizations.insert(Rc::clone(binding), Rc::clone(&mono_head));
 
         self.fn_logic.insert(Rc::clone(&mono_head), FunctionLogic::Implementation(new_implementation));
-        let representation = self.fn_representations.get(&binding.function).or_else(|| self.runtime.source.fn_representations.get(&binding.function)).unwrap().clone();
-        self.fn_representations.insert(Rc::clone(&mono_head), representation);
 
         // Set the initial callees (none if it's a stub)
         self.update_callees(&mono_head);
@@ -181,7 +176,6 @@ impl<'a> Refactor<'a> {
             self.invented_functions.insert(Rc::clone(&new_head));
             self.fn_inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&implementation.head), swizzle));
             self.fn_logic.insert(Rc::clone(&new_head), FunctionLogic::Implementation(implementation));
-            self.fn_representations.insert(Rc::clone(&new_head), self.fn_representations[function].clone());
 
             // Find the initial callees.
             self.update_callees(&new_head);
@@ -211,7 +205,6 @@ impl<'a> Refactor<'a> {
         for callee in callees.iter() {
             if !self.fn_logic.contains_key(callee) {
                 self.fn_logic.insert(Rc::clone(callee), self.runtime.source.fn_logic[callee].clone());
-                self.fn_representations.insert(Rc::clone(callee), self.runtime.source.fn_representations[callee].clone());
             }
         }
         callees

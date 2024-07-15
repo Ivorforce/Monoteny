@@ -1,7 +1,5 @@
 use std::rc::Rc;
-
-use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
-use crate::program::function_pointer::FunctionPointer;
+use crate::program::function_object::FunctionRepresentation;
 use crate::program::functions::{FunctionHead, FunctionInterface, Parameter, ParameterKey};
 use crate::program::traits::{FieldHint, Trait};
 use crate::program::types::TypeProto;
@@ -20,6 +18,7 @@ pub fn make(name: &str, self_type: &Rc<TypeProto>, field_type: &Rc<TypeProto>, a
                 requirements: Default::default(),
                 generics: Default::default(),
             }),
+            FunctionRepresentation::new_member_implicit(name),
         );
         head
     });
@@ -40,6 +39,7 @@ pub fn make(name: &str, self_type: &Rc<TypeProto>, field_type: &Rc<TypeProto>, a
                 requirements: Default::default(),
                 generics: Default::default(),
             }),
+            FunctionRepresentation::new_member_implicit(name),
         );
         head
     });
@@ -54,20 +54,10 @@ pub fn make(name: &str, self_type: &Rc<TypeProto>, field_type: &Rc<TypeProto>, a
 
 pub fn add_to_trait(trait_: &mut Trait, field: FieldHint) {
     if let Some(getter) = &field.getter {
-        trait_.insert_function(
-            &FunctionPointer {
-                target: Rc::clone(getter),
-                representation: FunctionRepresentation::new(&field.name, FunctionTargetType::Member, FunctionCallExplicity::Implicit)
-            }
-        )
+        trait_.abstract_functions.insert(Rc::clone(getter));
     }
     if let Some(setter) = &field.setter {
-        trait_.insert_function(
-            &FunctionPointer {
-                target: Rc::clone(setter),
-                representation: FunctionRepresentation::new(&field.name, FunctionTargetType::Member, FunctionCallExplicity::Implicit)
-            }
-        )
+        trait_.abstract_functions.insert(Rc::clone(setter));
     }
     trait_.field_hints.push(field)
 }

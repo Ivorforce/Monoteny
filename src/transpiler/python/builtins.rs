@@ -151,9 +151,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     // TODO Some of these sneakily convert the type - especially float to int and vice versa.
     if let Some(common) = runtime.source.module_by_name.get(&module_name("common.math")) {
         for function in common.explicit_functions(&runtime.source) {
-            let representation = &runtime.source.fn_representations[function];
-
-            let id = match representation.name.as_str() {
+            let id = match function.declared_representation.name.as_str() {
                 "factorial" => PSEUDO_KEYWORD_IDS["math.factorial"],
                 "sin" => PSEUDO_KEYWORD_IDS["math.sin"],
                 "cos" => PSEUDO_KEYWORD_IDS["math.cos"],
@@ -182,9 +180,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     }
 
     for function in runtime.source.module_by_name[&module_name("core.debug")].explicit_functions(&runtime.source) {
-        let representation = &runtime.source.fn_representations[function];
-
-        let id = match representation.name.as_str() {
+        let id = match function.declared_representation.name.as_str() {
             "_write_line" => PSEUDO_KEYWORD_IDS["print"],
             "_exit_with_error" => PSEUDO_KEYWORD_IDS["exit"],
             _ => continue,
@@ -194,9 +190,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     }
 
     for function in runtime.source.module_by_name[&module_name("core.strings")].explicit_functions(&runtime.source) {
-        let representation = &runtime.source.fn_representations[function];
-
-        let (higher_order_name, id) = match representation.name.as_str() {
+        let (higher_order_name, id) = match function.declared_representation.name.as_str() {
             "add" => ("op.add", FunctionForm::Binary(KEYWORD_IDS["+"])),
             _ => continue,
         };
@@ -205,9 +199,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
     }
 
     for function in runtime.source.module_by_name[&module_name("core.bool")].explicit_functions(&runtime.source) {
-        let representation = &runtime.source.fn_representations[function];
-
-        let (higher_order_name, id) = match representation.name.as_str() {
+        let (higher_order_name, id) = match function.declared_representation.name.as_str() {
             "true" => ("True", FunctionForm::Constant(KEYWORD_IDS["True"])),
             "false" => ("False", FunctionForm::Constant(KEYWORD_IDS["False"])),
             _ => continue,

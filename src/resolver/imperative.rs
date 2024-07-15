@@ -219,7 +219,7 @@ impl <'a> ImperativeResolver<'a> {
 
                 self.resolve_function_call(
                     [function_head].into_iter(),
-                    self.builder.runtime.source.fn_representations[function_head].clone(),
+                    function_head.declared_representation.clone(),
                     vec![ParameterKey::Positional; args.len()],
                     args,
                     scope,
@@ -241,7 +241,7 @@ impl <'a> ImperativeResolver<'a> {
                 self.resolve_abstract_function_call(
                     vec![string_expression_id],
                     Rc::clone(&self.builder.runtime.traits.as_ref().unwrap().ConstructableByRealLiteral),
-                    Rc::clone(&self.builder.runtime.traits.as_ref().unwrap().parse_real_literal_function.target),
+                    Rc::clone(&self.builder.runtime.traits.as_ref().unwrap().parse_real_literal_function),
                     scope.trait_conformance.clone(),
                     range.clone(),
                 )
@@ -252,7 +252,7 @@ impl <'a> ImperativeResolver<'a> {
                 self.resolve_abstract_function_call(
                     vec![string_expression_id],
                     Rc::clone(&self.builder.runtime.traits.as_ref().unwrap().ConstructableByIntLiteral),
-                    Rc::clone(&self.builder.runtime.traits.as_ref().unwrap().parse_int_literal_function.target),
+                    Rc::clone(&self.builder.runtime.traits.as_ref().unwrap().parse_int_literal_function),
                     scope.trait_conformance.clone(),
                     range.clone(),
                 )

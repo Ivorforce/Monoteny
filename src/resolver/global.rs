@@ -9,7 +9,6 @@ use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
 use crate::parser::expressions;
 use crate::program::function_object::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
-use crate::program::function_pointer::FunctionPointer;
 use crate::program::functions::{FunctionHead, FunctionInterface};
 use crate::program::global::{FunctionLogic, FunctionLogicDescriptor};
 use crate::program::module::Module;
@@ -78,15 +77,15 @@ impl <'a> GlobalResolver<'a> {
         match &pstatement.value.value {
             ast::Statement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
-                let pointer = resolve_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &HashMap::new())?;
+                let function = resolve_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &HashMap::new())?;
 
                 for decoration in pstatement.decorations_as_vec()? {
-                    let pattern = try_parse_pattern(decoration, Rc::clone(&pointer.target), &self.global_variables)?;
+                    let pattern = try_parse_pattern(decoration, Rc::clone(&function), &self.global_variables)?;
                     self.module.patterns.insert(Rc::clone(&pattern));
                     self.global_variables.grammar.add_pattern(pattern)?;
                 }
-                self.schedule_function_body(&pointer.target, syntax.body.as_ref(), pstatement.value.position.clone());
-                self.add_function_interface(&pointer)?;
+                self.schedule_function_body(&function, syntax.body.as_ref(), pstatement.value.position.clone());
+                self.add_function_interface(&function)?;
             }
             ast::Statement::Trait(syntax) => {
                 pstatement.no_decorations()?;
@@ -101,10 +100,11 @@ impl <'a> GlobalResolver<'a> {
                 //  Inside, we use the Self getter.
                 let generic_self_self_getter = FunctionHead::new_static(
                     FunctionInterface::new_provider(&generic_self_meta_type, vec![]),
+                    FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit)
                 );
 
                 let mut scope = self.global_variables.subscope();
-                scope.overload_function(&generic_self_self_getter, FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit))?;
+                scope.overload_function(&generic_self_self_getter, generic_self_self_getter.declared_representation.clone())?;
                 self.runtime.source.trait_references.insert(Rc::clone(&generic_self_self_getter), Rc::clone(&trait_.generics["Self"]));
 
                 let mut resolver = TraitResolver {
@@ -153,11 +153,12 @@ impl <'a> GlobalResolver<'a> {
                 let self_meta_type = TypeProto::one_arg(&self.runtime.Metatype, self_type.clone());
                 let self_getter = FunctionHead::new_static(
                     FunctionInterface::new_provider(&self_meta_type, vec![]),
+                    FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit)
                 );
                 let self_binding = declared.create_generic_binding(vec![("Self", self_type)]);
 
                 let mut scope = self.global_variables.subscope();
-                scope.overload_function(&self_getter, FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit))?;
+                scope.overload_function(&self_getter, self_getter.declared_representation.clone())?;
                 self.runtime.source.trait_references.insert(Rc::clone(&self_getter), self_trait);
 
                 let mut resolver = ConformanceResolver { runtime: &self.runtime, functions: vec![], };
@@ -183,10 +184,10 @@ impl <'a> GlobalResolver<'a> {
                 );
 
                 for fun in functions {
-                    self.schedule_function_body(&fun.pointer.target, fun.body.as_ref(), pstatement.value.position.clone());
+                    self.schedule_function_body(&fun.function, fun.body.as_ref(), pstatement.value.position.clone());
                     // TODO Instead of adding conformance functions statically, we should add the abstract function to the scope.
                     //  This will allow the compiler to determine "function exists but no declaration exists" in the future.
-                    self.add_function_interface(&fun.pointer)?;
+                    self.add_function_interface(&fun.function)?;
                 }
             }
             ast::Statement::Expression(e) => {
@@ -252,8 +253,8 @@ impl <'a> GlobalResolver<'a> {
         Ok(())
     }
 
-    pub fn add_function_interface(&mut self, pointer: &FunctionPointer) -> RResult<()> {
-        referencible::add_function(self.runtime, &mut self.module, Some(&mut self.global_variables), pointer)?;
+    pub fn add_function_interface(&mut self, function: &Rc<FunctionHead>) -> RResult<()> {
+        referencible::add_function(self.runtime, &mut self.module, Some(&mut self.global_variables), function)?;
 
         Ok(())
     }
