@@ -6,6 +6,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 
 use crate::error::{RResult, RuntimeError};
+use crate::interpreter::builtins::vm::inline_fn_push_with_u8;
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{string_to_ptr, Value};
 use crate::interpreter::opcode::OpCode;
@@ -195,7 +196,13 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
     match descriptor {
         FunctionLogicDescriptor::Stub => todo!("{:?}", function),
         FunctionLogicDescriptor::Clone(_) => todo!("{:?}", function),
-        FunctionLogicDescriptor::TraitProvider(_) => todo!(),
+        FunctionLogicDescriptor::TraitProvider(trait_) => {
+            let uuid = trait_.id;
+            runtime.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
+                compiler.chunk.push_with_u128(OpCode::LOAD128, uuid.as_u128());
+                Ok(())
+            }));
+        },
         FunctionLogicDescriptor::FunctionProvider(f) => {
             let uuid = f.function_id;
             runtime.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
@@ -204,8 +211,56 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
             }));
         }
         FunctionLogicDescriptor::PrimitiveOperation { .. } => todo!("{:?}", descriptor),
-        FunctionLogicDescriptor::Constructor(_) => todo!(),
-        FunctionLogicDescriptor::GetMemberField(_, _) => todo!(),
-        FunctionLogicDescriptor::SetMemberField(_, _) => todo!(),
+        FunctionLogicDescriptor::Constructor(struct_info) => {
+            let data_layout = runtime.get_data_layout(struct_info);
+
+            runtime.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
+                let arguments = &compiler.implementation.expression_tree.children[&expression];
+                assert_eq!(arguments.len(), data_layout.fields.len() + 1);
+
+                compiler.chunk.push_with_u8(OpCode::ALLOC_8, u8::try_from(data_layout.fields.len()).unwrap());
+                for (idx, arg) in arguments.iter().skip(1).enumerate() {
+                    // If needed, duplicate the object pointer.
+                    if idx < arguments.len() - 1 {
+                        compiler.chunk.push(OpCode::DUP64);
+                    }
+
+                    // Evaluate the field at the given index.
+                    compiler.compile_expression(arg)?;
+                    compiler.chunk.push_with_u8(OpCode::SET_MEMBER_8, u8::try_from(idx).unwrap());
+                }
+
+                Ok(())
+            }));
+        },
+        FunctionLogicDescriptor::GetMemberField(struct_info, ref_) => {
+            let data_layout = runtime.get_data_layout(struct_info);
+            let slot_index = data_layout.fields.iter().position(|r| r == ref_).unwrap();
+
+            runtime.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
+                let arguments = &compiler.implementation.expression_tree.children[&expression];
+
+                compiler.compile_expression(&arguments[0])?;
+
+                compiler.chunk.push_with_u8(OpCode::GET_MEMBER_8, u8::try_from(slot_index).unwrap());
+
+                Ok(())
+            }));
+        },
+        FunctionLogicDescriptor::SetMemberField(struct_info, ref_) => {
+            let data_layout = runtime.get_data_layout(struct_info);
+            let slot_index = data_layout.fields.iter().position(|r| r == ref_).unwrap();
+
+            runtime.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
+                let arguments = &compiler.implementation.expression_tree.children[&expression];
+
+                compiler.compile_expression(&arguments[0])?;
+                compiler.compile_expression(&arguments[1])?;
+
+                compiler.chunk.push_with_u8(OpCode::SET_MEMBER_8, u8::try_from(slot_index).unwrap());
+
+                Ok(())
+            }));
+        },
     }
 }

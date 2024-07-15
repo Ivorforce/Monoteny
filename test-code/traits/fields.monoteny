@@ -20,7 +20,7 @@ def main! :: {
 
     -- We can set height_cm, but not species or name.
     upd animal.height_cm = 25;
-    write_line("And is now: \(animal.height_cm)");
+    write_line("And is now: \(animal.height_cm)cm");
 };
 
 def transpile! :: {

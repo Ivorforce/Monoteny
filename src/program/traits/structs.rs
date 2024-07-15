@@ -1,5 +1,6 @@
 use std::rc::Rc;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use crate::program::allocation::ObjectReference;
 use crate::program::functions::FunctionHead;
 use crate::program::traits::Trait;
@@ -15,4 +16,10 @@ pub struct StructInfo {
     pub field_names: HashMap<Rc<ObjectReference>, String>,
     pub field_getters: HashMap<Rc<ObjectReference>, Rc<FunctionHead>>,
     pub field_setters: HashMap<Rc<ObjectReference>, Rc<FunctionHead>>,
+}
+
+impl Hash for StructInfo {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.trait_.hash(state)
+    }
 }

@@ -1,0 +1,21 @@
+-- Tests traits with fields.
+
+use!(module!("common"));
+
+trait Animal {
+    var height_cm 'Float32;
+};
+
+def main! :: {
+    -- Create a cat with pre-defined name and height.
+    var animal = Animal(height_cm: 180);
+
+    write_line("Height 1: \(animal.height_cm)cm");
+
+    upd animal.height_cm = 150;
+    write_line("Height 2: \(animal.height_cm)cm");
+};
+
+def transpile! :: {
+    transpiler.add(main);
+};

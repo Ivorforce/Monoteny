@@ -123,4 +123,12 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn traits_and_fields() -> RResult<()> {
+        let out = test_runs("test-code/traits/simple.monoteny")?;
+        assert_eq!(out, "Height 1: 180cm\nHeight 2: 150cm\n");
+
+        Ok(())
+    }
 }

@@ -43,6 +43,11 @@ pub enum OpCode {
     TO_STRING,
     // TODO This can probably be done in-code some time (?)
     ADD_STRING,
+
+    // Member
+    ALLOC_8,
+    SET_MEMBER_8,
+    GET_MEMBER_8,
 }
 
 #[repr(u8)]

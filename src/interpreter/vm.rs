@@ -1,3 +1,4 @@
+use std::alloc::{alloc, Layout};
 use std::mem::transmute;
 use monoteny_macro::{bin_expr, pop_ip, pop_sp, un_expr};
 use std::ptr::{read_unaligned, write_unaligned};
@@ -6,6 +7,7 @@ use std::ops::Neg;
 use crate::error::{RuntimeError, RResult};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{string_to_ptr, Value};
+use crate::interpreter::data_layout::DataLayout;
 use crate::interpreter::opcode::{OpCode, Primitive};
 
 pub struct VM<'a, 'b> {
@@ -404,6 +406,28 @@ impl<'a, 'b> VM<'a, 'b> {
                         let lhs = read_unaligned((*sp_last).ptr as *mut String);
 
                         (*sp_last).ptr = to_str_ptr(lhs.to_string() + &rhs);
+                    }
+                    OpCode::ALLOC_8 => {
+                        let size = pop_ip!(u8);
+                        let layout = Layout::from_size_align(usize::from(size) * 8, 8).unwrap();
+
+                        (*sp).ptr = alloc(layout) as *mut ();
+                        sp = sp.offset(8);
+                    }
+                    OpCode::GET_MEMBER_8 => {
+                        let slot_idx = pop_ip!(u8);
+                        let sp_last = sp.offset(-8);
+                        let slot_ptr = (*sp_last).ptr.offset(isize::from(slot_idx) * 8);
+
+                        *sp_last = transmute(read_unaligned(slot_ptr as *mut Value));
+                    }
+                    OpCode::SET_MEMBER_8 => {
+                        let slot_idx = pop_ip!(u8);
+                        let value = pop_sp!();
+                        let obj_ptr = pop_sp!().ptr;
+                        let slot_ptr = obj_ptr.offset(isize::from(slot_idx) * 8);
+
+                        write_unaligned(slot_ptr as *mut Value, value);
                     }
                 }
             }
