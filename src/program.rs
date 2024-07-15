@@ -8,5 +8,4 @@ pub mod primitives;
 pub mod traits;
 pub mod types;
 pub mod module;
-pub mod calls;
 pub mod debug;

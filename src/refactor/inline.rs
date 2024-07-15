@@ -3,9 +3,8 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 
-use crate::program::calls::{FunctionBinding, resolve_binding};
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::functions::FunctionHead;
+use crate::program::functions::{FunctionBinding, FunctionHead, resolve_binding};
 use crate::program::global::FunctionImplementation;
 use crate::program::traits::RequirementsFulfillment;
 

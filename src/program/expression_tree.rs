@@ -2,12 +2,11 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 use crate::program::allocation::ObjectReference;
-use crate::program::calls::FunctionBinding;
+use crate::program::functions::FunctionBinding;
 use crate::program::generics::GenericAlias;
 use crate::util::graphs::node_tree::NodeTree;
 
 pub type ExpressionID = GenericAlias;
-
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum ExpressionOperation {

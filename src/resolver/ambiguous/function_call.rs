@@ -6,10 +6,9 @@ use std::rc::Rc;
 use itertools::{Itertools, zip_eq};
 
 use crate::error::{RResult, RuntimeError};
-use crate::program::calls::FunctionBinding;
 use crate::program::debug::MockFunctionInterface;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::functions::{FunctionHead, FunctionRepresentation, ParameterKey};
+use crate::program::functions::{FunctionBinding, FunctionHead, FunctionRepresentation, ParameterKey};
 use crate::program::generics::TypeForest;
 use crate::program::traits::{RequirementsFulfillment, Trait, TraitBinding, TraitGraph};
 use crate::program::types::TypeProto;

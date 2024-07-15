@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use linked_hash_set::LinkedHashSet;
 
-use crate::program::calls::{FunctionBinding, resolve_binding};
 use crate::program::expression_tree::ExpressionOperation;
+use crate::program::functions::{FunctionBinding, resolve_binding};
 use crate::program::global::FunctionImplementation;
 
 pub fn gather_callees(implementation: &FunctionImplementation) -> LinkedHashSet<Rc<FunctionBinding>> {

@@ -5,8 +5,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 use linked_hash_set::LinkedHashSet;
 
-use crate::program::calls::FunctionBinding;
-use crate::program::functions::FunctionHead;
+use crate::program::functions::{FunctionBinding, FunctionHead};
 use crate::util::multimap::{insert_into_multimap, remove_from_multimap};
 
 pub struct CallGraph {

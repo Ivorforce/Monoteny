@@ -6,9 +6,8 @@ use std::rc::Rc;
 use crate::error::{ErrInRange, RResult};
 use crate::resolver::ambiguous::{AmbiguityResult, ResolverAmbiguity};
 use crate::resolver::imperative::ImperativeResolver;
-use crate::program::calls::FunctionBinding;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::functions::FunctionHead;
+use crate::program::functions::{FunctionBinding, FunctionHead};
 use crate::program::traits::{RequirementsFulfillment, Trait, TraitGraph};
 
 pub struct AmbiguousAbstractCall {
