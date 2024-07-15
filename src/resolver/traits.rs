@@ -5,9 +5,9 @@ use itertools::Itertools;
 
 use crate::ast;
 use crate::error::{RResult, RuntimeError};
+use crate::interpreter::builtins::traits::make_any_functions;
 use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::{Mutability, ObjectReference};
-use crate::program::builtins::traits::make_any_functions;
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionLogicDescriptor, FunctionRepresentation, Parameter, ParameterKey};
 use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::TypeProto;

@@ -21,7 +21,7 @@ pub struct Runtime {
     #[allow(non_snake_case)]
     pub Metatype: Rc<Trait>,
     pub primitives: Option<HashMap<program::primitives::Type, Rc<Trait>>>,
-    pub traits: Option<program::builtins::traits::Traits>,
+    pub traits: Option<builtins::traits::Traits>,
 
     // These are optimized for running and may not reflect the source code itself.
     // They are also only loaded on demand.
@@ -51,11 +51,17 @@ impl Runtime {
             repository: Repository::new(),
         });
 
-        let mut builtins_module = program::builtins::create_builtins(&mut runtime);
+        let mut builtins_module = Box::new(Module::new(module_name("builtins")));
+
+        runtime.primitives = Some(builtins::primitives::create_traits(&mut runtime, &mut builtins_module));
+        runtime.traits = Some(builtins::traits::create(&mut runtime, &mut builtins_module));
+        builtins::traits::create_functions(&mut runtime, &mut builtins_module);
+        builtins::primitives::create_functions(&mut runtime, &mut builtins_module);
+
         referencible::add_trait(&mut runtime, &mut builtins_module, None, &Metatype).unwrap();
 
         runtime.source.module_by_name.insert(builtins_module.name.clone(), builtins_module);
-        builtins::load(&mut runtime)?;
+        builtins::vm::load(&mut runtime)?;
 
         Ok(runtime)
     }

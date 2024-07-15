@@ -1,5 +1,4 @@
 pub mod allocation;
-pub mod builtins;
 pub mod expression_tree;
 pub mod functions;
 pub mod generics;

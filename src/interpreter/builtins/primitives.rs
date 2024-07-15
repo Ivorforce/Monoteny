@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use crate::interpreter::builtins::traits;
+use crate::interpreter::builtins::traits::make_to_string_function;
 use crate::interpreter::runtime::Runtime;
-use crate::program::builtins::traits;
-use crate::program::builtins::traits::make_to_string_function;
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionLogicDescriptor, FunctionRepresentation, PrimitiveOperation};
 use crate::program::module::Module;
 use crate::program::primitives;
