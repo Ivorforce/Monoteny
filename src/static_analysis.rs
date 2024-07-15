@@ -1,3 +1,5 @@
+pub mod implicit_clones;
+
 use crate::error::RResult;
 use crate::program::global::FunctionImplementation;
 

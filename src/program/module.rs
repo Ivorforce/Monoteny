@@ -6,7 +6,8 @@ use uuid::Uuid;
 use crate::parser::grammar::{Pattern, PrecedenceGroup};
 
 use crate::program::functions::FunctionHead;
-use crate::program::traits::TraitGraph;
+use crate::program::traits::{TraitConformanceRule, TraitGraph};
+use crate::resolver::scopes;
 use crate::source::Source;
 
 pub type ModuleName = Vec<String>;
@@ -56,5 +57,11 @@ impl Module {
 impl Module {
     pub fn explicit_functions<'a>(&'a self, source: &'a Source) -> Vec<&'a Rc<FunctionHead>> {
         self.exposed_functions.iter().collect_vec()
+    }
+
+    /// Add the rule to our conformance, but also the scope.
+    pub fn add_conformance_rule(&mut self, rule: Rc<TraitConformanceRule>, scope: &mut scopes::Scope) {
+        self.trait_conformance.add_conformance_rule(rule.clone());
+        scope.trait_conformance.add_conformance_rule(rule);
     }
 }

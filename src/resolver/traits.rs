@@ -149,13 +149,13 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
         fields.push(variable_as_object);
     }
 
-    let conformance = TraitConformance::new(
-        trait_.create_generic_binding(vec![("Self", struct_type.clone())]),
-        function_mapping,
+    resolver.module.add_conformance_rule(
+        TraitConformanceRule::direct(TraitConformance::new(
+            trait_.create_generic_binding(vec![("Self", struct_type.clone())]),
+            function_mapping,
+        )),
+        &mut resolver.global_variables
     );
-    let trait_conformance_rule = TraitConformanceRule::direct(conformance);
-    resolver.module.trait_conformance.add_conformance_rule(trait_conformance_rule.clone());
-    resolver.global_variables.trait_conformance.add_conformance_rule(trait_conformance_rule);
 
     let clone_function = FunctionHead::new(
         FunctionInterface::new_member(
@@ -176,14 +176,15 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
 
     let traits = resolver.runtime.traits.as_ref().unwrap();
 
-    let any_conformance_rule = TraitConformanceRule::manual(
-        traits.Any.create_generic_binding(vec![("Self", struct_type.clone())]),
-        vec![
-            (&traits.Any_functions.clone.target, &clone_function),
-        ]
+    resolver.module.add_conformance_rule(
+        TraitConformanceRule::manual(
+            traits.Any.create_generic_binding(vec![("Self", struct_type.clone())]),
+            vec![
+                (&traits.Any_functions.clone.target, &clone_function),
+            ]
+        ),
+        &mut resolver.global_variables
     );
-    resolver.module.trait_conformance.add_conformance_rule(any_conformance_rule.clone());
-    resolver.global_variables.trait_conformance.add_conformance_rule(any_conformance_rule);
 
     let struct_ = Rc::new(StructInfo {
         trait_: Rc::clone(trait_),

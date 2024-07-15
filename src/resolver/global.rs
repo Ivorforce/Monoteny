@@ -170,16 +170,18 @@ impl <'a> GlobalResolver<'a> {
                 // TODO To be order independent, we should finalize after sorting...
                 //  ... Or check inconsistencies only at the very end.
                 let conformance = resolver.finalize_conformance(self_binding, &conformance_requirements, &generics)?;
+                let functions = resolver.functions;
 
-                let rule = Rc::new(TraitConformanceRule {
-                    generics,
-                    requirements: conformance_requirements,
-                    conformance,
-                });
-                self.module.trait_conformance.add_conformance_rule(rule.clone());
-                self.global_variables.trait_conformance.add_conformance_rule(rule);
+                self.module.add_conformance_rule(
+                    Rc::new(TraitConformanceRule {
+                        generics,
+                        requirements: conformance_requirements,
+                        conformance,
+                    }),
+                    &mut self.global_variables,
+                );
 
-                for fun in resolver.functions {
+                for fun in functions {
                     self.schedule_function_body(&fun.function, fun.body.as_ref(), pstatement.value.position.clone());
                     // TODO Instead of adding conformance functions statically, we should add the abstract function to the scope.
                     //  This will allow the compiler to determine "function exists but no declaration exists" in the future.
