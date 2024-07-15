@@ -73,8 +73,8 @@ pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &sc
     }
 }
 
-fn resolve_macro_function_interface(module: Option<&mut Module>, runtime: &Runtime, m: &String) -> RResult<Rc<FunctionHead>> {
-    match m.as_str() {
+fn resolve_macro_function_interface(module: Option<&mut Module>, runtime: &Runtime, macro_name: &str) -> RResult<Rc<FunctionHead>> {
+    match macro_name {
         "main" => {
             let proto_function = runtime.source.module_by_name[&module_name("core.run")].explicit_functions(&runtime.source).into_iter()
                 .filter(|function| function.declared_representation.name == "main")
@@ -106,7 +106,7 @@ fn resolve_macro_function_interface(module: Option<&mut Module>, runtime: &Runti
             Ok(function)
         },
         _ => Err(
-            RuntimeError::error(format!("Function macro could not be resolved: {}", m).as_str()).to_array()
+            RuntimeError::error(format!("Function macro could not be resolved: {}", macro_name).as_str()).to_array()
         ),
     }
 }

@@ -378,7 +378,7 @@ impl <'a> ImperativeResolver<'a> {
         }
     }
 
-    fn resolve_member(&mut self, scope: &scopes::Scope, range: &Range<usize>, member: &&String, target: ExpressionID) -> RResult<Either<ExpressionID, Rc<FunctionOverload>>> {
+    fn resolve_member(&mut self, scope: &scopes::Scope, range: &Range<usize>, member: &str, target: ExpressionID) -> RResult<Either<ExpressionID, Rc<FunctionOverload>>> {
         let overload = scope.resolve(FunctionTargetType::Member, member)
             .err_in_range(range)?
             .as_function_overload().err_in_range(range)?;
@@ -400,7 +400,7 @@ impl <'a> ImperativeResolver<'a> {
         })
     }
 
-    fn resolve_global(&mut self, scope: &scopes::Scope, range: &Range<usize>, identifier: &String) -> RResult<Either<ExpressionID, Rc<FunctionOverload>>> {
+    fn resolve_global(&mut self, scope: &scopes::Scope, range: &Range<usize>, identifier: &str) -> RResult<Either<ExpressionID, Rc<FunctionOverload>>> {
         Ok(match scope.resolve(FunctionTargetType::Global, identifier)? {
             scopes::Reference::Local(local) => {
                 let ObjectReference { id, type_, mutability } = local.as_ref();
