@@ -51,21 +51,23 @@ impl CompileServer {
         self.simplify.run(source);
 
         let needed_functions = self.simplify.refactor.gather_needed_functions(source);
-        let fn_logic = self.simplify.refactor.fn_logic.clone();
 
         let mut errors = vec![];
 
         for function in needed_functions {
-            match &fn_logic[&function] {
+            // FIXME We shouldn't clone it here... But compile_descriptor needs a mutable ref to self
+            //  because it needs to insert inlines AND data layouts. Which means the mutable ref can
+            //  get invalidated.
+            match self.simplify.refactor.fn_logic[&function].clone() {
                 FunctionLogic::Descriptor(d) => {
                     if self.function_inlines.contains_key(&function) || self.function_evaluators.contains_key(&function.function_id) {
                         continue
                     }
 
-                    compile_descriptor(&function, d, self);
+                    compile_descriptor(&function, &d, self);
                 }
                 FunctionLogic::Implementation(implementation) => {
-                    match compile_function(self, implementation) {
+                    match compile_function(self, &implementation) {
                         Ok(compiled) => drop(self.function_evaluators.insert(function.function_id, compiled)),
                         Err(err) => errors.extend(err),
                     };
@@ -73,7 +75,7 @@ impl CompileServer {
             }
         }
 
-        let FunctionLogic::Implementation(implementation) = &fn_logic[function] else {
+        let FunctionLogic::Implementation(implementation) = &self.simplify.refactor.fn_logic[function] else {
             errors.push(RuntimeError::error("main! function was somehow internal after refactor."));
             return Err(errors);
         };
