@@ -4,7 +4,6 @@ use crate::interpreter::opcode::OpCode;
 
 pub struct Chunk {
     pub code: Vec<u8>,
-    pub locals_count: u32,
     pub constants: Vec<Value>,
 }
 
@@ -12,7 +11,6 @@ impl Chunk {
     pub fn new() -> Chunk {
         Chunk {
             code: vec![],
-            locals_count: 0,
             constants: vec![],
         }
     }
@@ -55,6 +53,17 @@ impl Chunk {
             *self.code.as_mut_ptr().add(len) = code as u8;
             write_unaligned(self.code.as_mut_ptr().add(len + 1) as *mut u64, arg);
             self.code.set_len(len + 1 + 8);
+        }
+    }
+
+    pub fn push_with_u128(&mut self, code: OpCode, arg: u128) {
+        let len = self.code.len();
+
+        unsafe {
+            self.code.reserve(1 + 16);
+            *self.code.as_mut_ptr().add(len) = code as u8;
+            write_unaligned(self.code.as_mut_ptr().add(len + 1) as *mut u128, arg);
+            self.code.set_len(len + 1 + 16);
         }
     }
 

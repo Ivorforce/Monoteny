@@ -48,9 +48,9 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("\t{:?}", read_unaligned(ip.add(1) as *mut i32));
                 return 1 + 4;
             }
-            OpCode::NOOP | OpCode::PANIC | OpCode::RETURN | OpCode::TRANSPILE_ADD | OpCode::AND |
-            OpCode::OR | OpCode::POP64 | OpCode::POP128 | OpCode::PRINT | OpCode::NOT |
-            OpCode::ADD_STRING | OpCode::DUP64 => {
+            OpCode::NOOP | OpCode::PANIC | OpCode::RETURN | OpCode::CALL | OpCode::TRANSPILE_ADD | OpCode::AND |
+            OpCode::OR | OpCode::POP64 | OpCode::PRINT | OpCode::NOT |
+            OpCode::ADD_STRING | OpCode::DUP64 | OpCode::LOAD0 | OpCode::SWAP64 => {
                 return 1;
             },
         }

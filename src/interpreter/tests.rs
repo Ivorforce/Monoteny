@@ -2,11 +2,12 @@
 mod tests {
     use std::path::PathBuf;
     use std::ptr::read_unaligned;
-
+    use std::rc::Rc;
     use crate::error::RResult;
     use crate::interpreter;
     use crate::interpreter::chunks::Chunk;
     use crate::interpreter::compiler::compile_deep;
+    use crate::interpreter::data::Value;
     use crate::interpreter::opcode::{OpCode, Primitive};
     use crate::interpreter::runtime::Runtime;
     use crate::interpreter::vm::VM;
@@ -33,14 +34,10 @@ mod tests {
         chunk.push(OpCode::RETURN);
 
         let mut out: Vec<u8> = vec![];
-        let mut vm = VM::new(&chunk, &mut out);
-        vm.run()?;
+        let mut vm = VM::new(&mut out);
+        let result = vm.run(Rc::new(chunk), &mut runtime, vec![])?;
 
-        unsafe {
-            // There should be exactly one value left on the stack, at the very start, which is true
-            let value = (*vm.stack.as_ptr()).bool;
-            assert_eq!(value, true);
-        }
+        unsafe { assert_eq!(result.unwrap().bool, true); }
 
         Ok(())
     }
@@ -57,9 +54,9 @@ mod tests {
         let compiled = compile_deep(&mut runtime, entry_function)?;
 
         let mut out: Vec<u8> = vec![];
-        let mut vm = VM::new(&compiled, &mut out);
+        let mut vm = VM::new(&mut out);
         unsafe {
-            vm.run()?;
+            vm.run(compiled, &mut runtime, vec![])?;
         }
 
         Ok(std::str::from_utf8(&out).unwrap().to_string())
@@ -132,29 +129,29 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    // fn assertions() -> RResult<()> {
-    //     let mut runtime = Runtime::new()?;
-    //     runtime.repository.add("common", PathBuf::from("monoteny"));
-    //
-    //     let module = runtime.load_file_as_module(&PathBuf::from("test-code/debug/assert.monoteny"), module_name("main"))?;
-    //
-    //     let entry_function = interpreter::run::get_main_function(&module)?.unwrap();
-    //
-    //     // TODO Should gather all used functions and compile them
-    //     let compiled = compile_deep(&mut runtime, entry_function)?;
-    //
-    //     let mut out: Vec<u8> = vec![];
-    //     let mut vm = VM::new(&compiled, &mut out);
-    //     unsafe {
-    //         match vm.run() {
-    //             Ok(_) => assert!(false),
-    //             Err(e) => {
-    //                 assert_eq!(std::str::from_utf8(&out).unwrap().to_string(), "Assertion failure.");
-    //             }
-    //         }
-    //     }
-    //
-    //     Ok(())
-    // }
+    #[test]
+    fn assertions() -> RResult<()> {
+        let mut runtime = Runtime::new()?;
+        runtime.repository.add("common", PathBuf::from("monoteny"));
+
+        let module = runtime.load_file_as_module(&PathBuf::from("test-code/debug/assert.monoteny"), module_name("main"))?;
+
+        let entry_function = interpreter::run::get_main_function(&module)?.unwrap();
+
+        // TODO Should gather all used functions and compile them
+        let compiled = compile_deep(&mut runtime, entry_function)?;
+
+        let mut out: Vec<u8> = vec![];
+        let mut vm = VM::new(&mut out);
+        unsafe {
+            let result = vm.run(compiled, &mut runtime, vec![]);
+            assert_eq!(std::str::from_utf8(&out).unwrap().to_string(), "Assertion failure.\n");
+
+            if let Ok(_) = result {
+                assert!(false)
+            }
+        }
+
+        Ok(())
+    }
 }

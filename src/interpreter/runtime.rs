@@ -27,7 +27,7 @@ pub struct Runtime {
 
     // These are optimized for running and may not reflect the source code itself.
     // They are also only loaded on demand.
-    pub function_evaluators: HashMap<Uuid, Chunk>,
+    pub function_evaluators: HashMap<Uuid, Rc<Chunk>>,
     // TODO We'll need these only in the future when we compile functions to constants.
     // pub global_assignments: HashMap<Uuid, Value>,
     pub function_inlines: HashMap<Rc<FunctionHead>, InlineFunction>,

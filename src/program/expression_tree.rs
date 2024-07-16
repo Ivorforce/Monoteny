@@ -23,7 +23,6 @@ pub enum ExpressionOperation {
     Block,
     IfThenElse,
 
-    // TODO We can remove these operations if we just add a getter and setter for every global.
     GetLocal(Rc<ObjectReference>),
     SetLocal(Rc<ObjectReference>),
 

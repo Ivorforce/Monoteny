@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compiler::compile_deep;
+use crate::interpreter::data::Value;
 use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::VM;
 use crate::program::functions::{FunctionHead, FunctionLogic};
@@ -18,9 +19,9 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
     let compiled = compile_deep(runtime, entry_function)?;
 
     let mut out = std::io::stdout();
-    let mut vm = VM::new(&compiled, &mut out);
+    let mut vm = VM::new(&mut out);
     unsafe {
-        vm.run()?;
+        vm.run(compiled, runtime, vec![])?;
     }
 
     Ok(())
@@ -50,9 +51,9 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     let compiled = compile_deep(runtime, entry_function)?;
 
     let mut out = std::io::stdout();
-    let mut vm = VM::new(&compiled, &mut out);
+    let mut vm = VM::new(&mut out);
     unsafe {
-        vm.run()?;
+        vm.run(compiled, runtime, vec![Value { u8: 0 }])?;
     }
 
     let exported_artifacts = gather_functions_logic(runtime, &vm.transpile_functions);
@@ -68,7 +69,7 @@ fn get_transpile_function(module: &Module) -> RResult<&Rc<FunctionHead>> {
     match &module.transpile_functions[..] {
         [] => Err(RuntimeError::error("No transpile! function declared.").to_array()),
         [f] => Ok(f),
-        functions => Err(RuntimeError::error(format!("Too many main! functions declared: {:?}", functions).as_str()).to_array()),
+        functions => Err(RuntimeError::error(format!("Too many transpile! functions declared: {:?}", functions).as_str()).to_array()),
     }
 }
 

@@ -1,20 +1,25 @@
+pub mod call_frame;
+
 use std::alloc::{alloc, Layout};
-use std::mem::transmute;
+use std::mem::{swap, transmute};
 use monoteny_macro::{bin_expr, pop_ip, pop_sp, un_expr};
 use std::ptr::{read_unaligned, write_unaligned};
 use uuid::Uuid;
 use std::ops::Neg;
+use std::rc::Rc;
 use crate::error::{RuntimeError, RResult};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{string_to_ptr, Value};
+use crate::interpreter::disassembler::disassemble_one;
 use crate::interpreter::opcode::{OpCode, Primitive};
+use crate::interpreter::runtime::Runtime;
+use crate::interpreter::vm::call_frame::CallFrame;
 
-pub struct VM<'a, 'b> {
+pub struct VM<'b> {
     pub pipe_out: &'b mut dyn std::io::Write,
-    pub chunk: &'a Chunk,
     pub stack: Vec<Value>,
-    pub locals: Vec<Value>,
     pub transpile_functions: Vec<Uuid>,
+    pub call_frames: Vec<CallFrame>,
 }
 
 pub unsafe fn to_str_ptr<A: ToString>(a: A) -> *mut () {
@@ -22,26 +27,34 @@ pub unsafe fn to_str_ptr<A: ToString>(a: A) -> *mut () {
     string_to_ptr(&string)
 }
 
-impl<'a, 'b> VM<'a, 'b> {
-    pub fn new(chunk: &'a Chunk, pipe_out: &'b mut dyn std::io::Write) -> VM<'a, 'b> {
+impl<'b> VM<'b> {
+    pub fn new(pipe_out: &'b mut dyn std::io::Write) -> VM<'b> {
         VM {
-            chunk,
             pipe_out,
-            stack: vec![Value::alloc(); 1024],
-            locals: vec![Value::alloc(); usize::try_from(chunk.locals_count).unwrap()],
+            // TODO This should dynamically resize probably.
+            stack: vec![Value::alloc(); 1024 * 1024],
             transpile_functions: vec![],
+            call_frames: Default::default(),
         }
     }
 
-    pub fn run(&mut self) -> RResult<()> {
+    pub fn run(&mut self, initial_chunk: Rc<Chunk>, runtime: &mut Runtime, parameters: Vec<Value>) -> RResult<Option<Value>> {
         unsafe {
-            let mut ip: *const u8 = transmute(&self.chunk.code[0]);
             let mut sp: *mut Value = &mut self.stack[0] as *mut Value;
+            for parameter in parameters {
+                *sp = parameter;
+                sp = sp.add(8);
+            }
+
+            let mut fp = sp;
+
+            let mut ip: *const u8 = transmute(&initial_chunk.code[0]);
+            let mut current_chunk = initial_chunk;
 
             loop {
-                // println!("sp: {:?}; ip: {:?}", sp, ip);
-                // disassemble_one(ip);
-                // print!("\n");
+                println!("sp: {:?}; ip: {:?}", sp, ip);
+                disassemble_one(ip);
+                print!("\n");
 
                 let code = transmute::<u8, OpCode>(*ip);
                 ip = ip.add(1);
@@ -49,7 +62,41 @@ impl<'a, 'b> VM<'a, 'b> {
                 match code {
                     OpCode::NOOP => {},
                     OpCode::PANIC => return Err(RuntimeError::error("panic").to_array()),
-                    OpCode::RETURN => return Ok(()),
+                    OpCode::RETURN => {
+                        if let Some(return_frame) = self.call_frames.pop() {
+                            ip = return_frame.ip;
+                            fp = return_frame.fp;
+                            current_chunk = return_frame.chunk;
+                        }
+                        else {
+                            if sp == &mut self.stack[0] as *mut Value {
+                                // No return
+                                return Ok(None)
+                            }
+                            else if sp == (&mut self.stack[0] as *mut Value).offset(8) {
+                                // Value return
+                                return Ok(Some(*(&mut self.stack[0] as *mut Value)))
+                            }
+                            else {
+                                return Err(RuntimeError::error("Stack was larger than one object at final return.").to_array());
+                            }
+                        }
+                    },
+                    OpCode::CALL => {
+                        let uuid = Uuid::from_u128(pop_ip!(u128));
+                        let chunk = Rc::clone(&runtime.function_evaluators[&uuid]);
+                        self.call_frames.push(CallFrame {
+                            chunk: current_chunk,
+                            fp,
+                            ip
+                        });
+                        ip = transmute(&chunk.code[0]);
+                        fp = sp;
+                        current_chunk = chunk;
+                    }
+                    OpCode::LOAD0 => {
+                        sp = sp.add(8);
+                    }
                     OpCode::LOAD8 => {
                         (*sp).u8 = pop_ip!(u8);
                         sp = sp.add(8);
@@ -67,18 +114,18 @@ impl<'a, 'b> VM<'a, 'b> {
                         sp = sp.add(8);
                     },
                     OpCode::LOAD_LOCAL_32 => {
-                        let local_idx: u32 = pop_ip!(u32);
-                        *sp = self.locals[usize::try_from(local_idx).unwrap()];
+                        let local_idx: i32 = pop_ip!(i32);
+                        *sp = *fp.offset(isize::try_from(local_idx).unwrap() * 8);
                         sp = sp.add(8);
                     }
                     OpCode::STORE_LOCAL_32 => {
-                        let local_idx: u32 = pop_ip!(u32);
+                        let local_idx: i32 = pop_ip!(i32);
                         sp = sp.offset(-8);
-                        self.locals[usize::try_from(local_idx).unwrap()] = *sp;
+                        *fp.offset(isize::try_from(local_idx).unwrap() * 8) = *sp;
                     }
                     OpCode::LOAD_CONSTANT_32 => {
                         let constant_idx: u32 = pop_ip!(u32);
-                        *sp = self.chunk.constants[usize::try_from(constant_idx).unwrap()];
+                        *sp = current_chunk.constants[usize::try_from(constant_idx).unwrap()];
                         sp = sp.add(8);
                     }
                     OpCode::DUP64 => {
@@ -88,9 +135,11 @@ impl<'a, 'b> VM<'a, 'b> {
                     OpCode::POP64 => {
                         sp = sp.offset(-8);
                     },
-                    OpCode::POP128 => {
-                        sp = sp.offset(-16);
-                    },
+                    OpCode::SWAP64 => {
+                        println!("{} {}", (*sp.offset(-8)).u64, (*sp.offset(-16)).u64);
+                        std::ptr::swap(sp.offset(-16), sp.offset(-8));
+                        println!("{} {}", (*sp.offset(-8)).u64, (*sp.offset(-16)).u64);
+                    }
                     OpCode::JUMP => {
                         let jump_distance: i32 = pop_ip!(i32);
                         ip = ip.offset(isize::try_from(jump_distance).unwrap());

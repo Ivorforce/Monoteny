@@ -4,11 +4,11 @@
 pub enum OpCode {
     NOOP,
     PANIC,
-    RETURN,
     // TODO Replace with function call?
     TRANSPILE_ADD,
     // TODO Replace with function call?
     PRINT,
+    LOAD0,
     LOAD8,
     LOAD16,
     LOAD32,
@@ -18,7 +18,7 @@ pub enum OpCode {
     LOAD_CONSTANT_32,
     DUP64,
     POP64,
-    POP128,
+    SWAP64,
     JUMP,
     JUMP_IF_FALSE,
     AND,
@@ -47,6 +47,9 @@ pub enum OpCode {
     ALLOC_8,
     SET_MEMBER_8,
     GET_MEMBER_8,
+
+    CALL,
+    RETURN,
 }
 
 #[repr(u8)]
