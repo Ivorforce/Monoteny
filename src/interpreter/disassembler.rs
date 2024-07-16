@@ -37,7 +37,7 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("\t{:?}", read_unaligned(ip.add(1) as *mut u16));
                 return 1 + 2;
             }
-            OpCode::LOAD32 | OpCode::LOAD_LOCAL_32 | OpCode::STORE_LOCAL_32 | OpCode::LOAD_CONSTANT_32 => {
+            OpCode::LOAD32 | OpCode::LOAD_CONSTANT_32 => {
                 print!("\t{:?}", read_unaligned(ip.add(1) as *mut u32));
                 return 1 + 4;
             }
@@ -45,7 +45,7 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("\t{:?}", read_unaligned(ip.add(1) as *mut u64));
                 return 1 + 8;
             }
-            OpCode::JUMP | OpCode::JUMP_IF_FALSE => {
+            OpCode::JUMP | OpCode::JUMP_IF_FALSE | OpCode::LOAD_LOCAL_32 | OpCode::STORE_LOCAL_32 => {
                 print!("\t{:?}", read_unaligned(ip.add(1) as *mut i32));
                 return 1 + 4;
             }
