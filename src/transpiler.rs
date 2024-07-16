@@ -33,7 +33,7 @@ impl Config {
 }
 
 pub enum TranspiledArtifact {
-    Function(Box<FunctionImplementation>)
+    Function(Rc<FunctionHead>)
 }
 
 pub struct Transpiler {
@@ -45,8 +45,8 @@ pub struct Transpiler {
 pub struct TranspilePackage<'a> {
     // In the future, this should all be accessible by monoteny code itself - including the context.
     pub main_function: Option<Rc<FunctionHead>>,
-    pub explicit_functions: Vec<&'a FunctionImplementation>,
-    pub implicit_functions: Vec<&'a FunctionImplementation>,
+    pub explicit_functions: Vec<(Rc<FunctionHead>, &'a FunctionImplementation)>,
+    pub implicit_functions: Vec<(Rc<FunctionHead>, &'a FunctionImplementation)>,
     pub used_native_functions: HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>,
 }
 
@@ -67,8 +67,13 @@ pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &d
 
     for artifact in transpiler.exported_artifacts {
         match artifact {
-            TranspiledArtifact::Function(implementation) => {
-                refactor.add(implementation);
+            TranspiledArtifact::Function(function_head) => {
+                match &runtime.source.fn_logic[&function_head] {
+                    FunctionLogic::Implementation(implementation) => {
+                        refactor.add(function_head, implementation.clone());
+                    }
+                    FunctionLogic::Descriptor(_) => panic!("Cannot transpile a function for which whe don't know an implementation!")
+                }
             }
         }
     }
@@ -94,7 +99,7 @@ pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &d
     let mut fn_logic = simplify.refactor.fn_logic;
 
     let exported_functions = simplify.refactor.explicit_functions.iter()
-        .map(|head| fn_logic.get(head).unwrap().as_implementation())
+        .map(|head| Ok((Rc::clone(head), fn_logic.get(head).unwrap().as_implementation()?)))
         .try_collect_many()?;
     let mut implicit_functions = vec![];
     let mut native_functions = HashMap::new();
@@ -103,7 +108,7 @@ pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &d
         // Either Refactor has it (because it invented it) or it's unchanged from source.
         match fn_logic.get(&head).unwrap() {
             FunctionLogic::Implementation(i) => {
-                implicit_functions.push(i.as_ref());
+                implicit_functions.push((head, i.as_ref()));
             }
             FunctionLogic::Descriptor(d) => {
                 native_functions.insert(head, d.clone());

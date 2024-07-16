@@ -80,7 +80,7 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
     //  If monomorphize was requested on a partially generic function, we continue to
     //  have some requirements.
     implementation.requirements_assumption = Box::new(RequirementsAssumption { conformance: Default::default() });
-    implementation.head = monomorphize_head(function_binding);
+    implementation.interface = Rc::new(map_interface_types(&function_binding.function.interface, &function_binding.requirements_fulfillment.generic_mapping));
 
     encountered_calls
 }
@@ -166,14 +166,6 @@ fn map_requirements_fulfillment(rc: &Rc<RequirementsFulfillment>, context: &Requ
             (Rc::clone(trait_), type_forest.resolve_type(type_).unwrap().replacing_structs(generic_replacement_map))
         }).collect(),
     }
-}
-
-pub fn monomorphize_head(binding: &FunctionBinding) -> Rc<FunctionHead> {
-    FunctionHead::new(
-        Rc::new(map_interface_types(&binding.function.interface, &binding.requirements_fulfillment.generic_mapping)),
-        binding.function.function_type.clone(),
-        binding.function.declared_representation.clone(),
-    )
 }
 
 pub fn map_variable(variable: &ObjectReference, type_forest: &TypeForest, type_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>) -> Rc<ObjectReference> {

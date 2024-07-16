@@ -51,12 +51,12 @@ pub fn resolve_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Ru
     // Resolve function bodies
     let mut errors = vec![];
     for (head, pbody) in global_resolver.function_bodies {
-        match resolve_function_body(head, pbody.value, &global_variable_scope, runtime).and_then(|mut imp| {
+        match resolve_function_body(&head, pbody.value, &global_variable_scope, runtime).and_then(|mut imp| {
             static_analysis::check(&mut imp)?;
             Ok(imp)
         }) {
             Ok(implementation) => {
-                runtime.source.fn_logic.insert(Rc::clone(&implementation.head), FunctionLogic::Implementation(implementation));
+                runtime.source.fn_logic.insert(head, FunctionLogic::Implementation(implementation));
             }
             Err(e) => {
                 errors.extend(e.iter().map(|e| e.clone().in_range(pbody.position.clone())));

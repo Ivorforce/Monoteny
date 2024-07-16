@@ -60,7 +60,7 @@ impl FunctionCompiler<'_> {
         // TODO If any of these were allocated, we need to deallocate them.
         // Clean up all locals that are currently allocated.
         for _ in self.alloced_locals.iter().rev() {
-            if !self.implementation.head.interface.return_type.unit.is_void() {
+            if !self.implementation.interface.return_type.unit.is_void() {
                 self.chunk.push(OpCode::SWAP64);
             }
             self.chunk.push(OpCode::POP64);
@@ -162,6 +162,6 @@ impl FunctionCompiler<'_> {
     pub fn get_variable_slot(&mut self, object: &Rc<ObjectReference>) -> i32 {
         // Later, locals will be on the stack and dynamically added and removed.
         // For now, all locals are allocated at function entry and deallocated at function exit.
-        i32::try_from(self.alloced_locals.iter().position(|l| l == object).unwrap()).unwrap() - i32::try_from(self.implementation.head.interface.parameters.len()).unwrap()
+        i32::try_from(self.alloced_locals.iter().position(|l| l == object).unwrap()).unwrap() - i32::try_from(self.implementation.interface.parameters.len()).unwrap()
     }
 }

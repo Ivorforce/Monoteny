@@ -22,14 +22,14 @@ pub struct FunctionContext<'a> {
     pub types: &'a TypeForest,
 }
 
-pub fn transpile_function(implementation: &FunctionImplementation, context: &FunctionContext) -> Box<ast::Statement> {
-    match &context.representations.function_forms[&implementation.head] {
+pub fn transpile_function(function_head: &Rc<FunctionHead>, implementation: &FunctionImplementation, context: &FunctionContext) -> Box<ast::Statement> {
+    match &context.representations.function_forms[function_head] {
         FunctionForm::Identity => panic!(),
         FunctionForm::Constant(id) => {
             Box::new(ast::Statement::VariableAssignment {
                 target: Box::new(ast::Expression::NamedReference(context.names[id].clone())),
                 value: Some(transpile_expression(implementation.expression_tree.root, context)),
-                type_annotation: Some(types::transpile(&implementation.head.interface.return_type, context)),
+                type_annotation: Some(types::transpile(&implementation.interface.return_type, context)),
             })
         }
         FunctionForm::FunctionCall(id) => Box::new(ast::Statement::Function(transpile_plain_function(implementation, context.names[id].clone(), context))),
@@ -51,9 +51,9 @@ pub fn transpile_plain_function(implementation: &FunctionImplementation, name: S
                 type_: types::transpile(&implementation.type_forest.resolve_type(&parameter.type_).unwrap(), context),
             })
         }).collect(),
-        return_type: match implementation.head.interface.return_type.unit.is_void() {
+        return_type: match implementation.interface.return_type.unit.is_void() {
             true => None,
-            false => Some(types::transpile(&implementation.type_forest.resolve_type(&implementation.head.interface.return_type).unwrap(), context))
+            false => Some(types::transpile(&implementation.type_forest.resolve_type(&implementation.interface.return_type).unwrap(), context))
         },
         block: Box::new(ast::Block { statements: vec![] }),
     });
@@ -151,7 +151,7 @@ fn transpile_as_block(implementation: &FunctionImplementation, context: &Functio
         _ => {
             let expression = transpile_expression(*expression, context);
 
-            Box::new(ast::Block { statements: vec![Box::new(match !auto_return && implementation.head.interface.return_type.unit.is_void() {
+            Box::new(ast::Block { statements: vec![Box::new(match !auto_return && implementation.interface.return_type.unit.is_void() {
                 true => ast::Statement::Expression(expression),
                 false => ast::Statement::Return(Some(expression)),
             })] })

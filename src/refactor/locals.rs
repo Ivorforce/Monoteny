@@ -5,7 +5,7 @@ use itertools::Itertools;
 
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::ExpressionOperation;
-use crate::program::functions::{FunctionHead, FunctionImplementation, FunctionInterface};
+use crate::program::functions::{FunctionImplementation, FunctionInterface};
 
 pub fn swizzle_retaining_parameters(function: &FunctionImplementation, removed: &HashSet<Rc<ObjectReference>>) -> Vec<usize> {
     function.parameter_locals.iter().enumerate()
@@ -61,17 +61,12 @@ pub fn remove_locals(implementation: &mut FunctionImplementation, removed_locals
         let swizzle = swizzle_retaining_parameters(implementation, removed_locals);
 
         // TODO We may be able to remove some generics and requirements.
-        let new_head = FunctionHead::new(
-            Rc::new(FunctionInterface {
-                parameters: swizzle.iter().map(|idx| implementation.head.interface.parameters[*idx].clone()).collect_vec(),
-                return_type: implementation.head.interface.return_type.clone(),
-                requirements: implementation.head.interface.requirements.clone(),
-                generics: implementation.head.interface.generics.clone(),
-            }), implementation.head.function_type.clone(),
-            implementation.head.declared_representation.clone(),
-        );
-
-        implementation.head = new_head;
+        implementation.interface = Rc::new(FunctionInterface {
+            parameters: swizzle.iter().map(|idx| implementation.interface.parameters[*idx].clone()).collect_vec(),
+            return_type: implementation.interface.return_type.clone(),
+            requirements: implementation.interface.requirements.clone(),
+            generics: implementation.interface.generics.clone(),
+        });
         implementation.parameter_locals = swizzle.iter().map(|idx| implementation.parameter_locals[*idx].clone()).collect_vec();
 
         return Some(swizzle)

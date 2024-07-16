@@ -3,13 +3,13 @@ use std::rc::Rc;
 
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::ExpressionTree;
-use crate::program::functions::FunctionHead;
+use crate::program::functions::FunctionInterface;
 use crate::program::generics::TypeForest;
 use crate::program::traits::RequirementsAssumption;
 
 #[derive(Clone)]
 pub struct FunctionImplementation {
-    pub head: Rc<FunctionHead>,
+    pub interface: Rc<FunctionInterface>,
 
     pub requirements_assumption: Box<RequirementsAssumption>,
 

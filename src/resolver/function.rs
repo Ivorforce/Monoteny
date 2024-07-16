@@ -15,7 +15,7 @@ use crate::resolver::imperative::ImperativeResolver;
 use crate::resolver::imperative_builder::ImperativeBuilder;
 use crate::resolver::scopes;
 
-pub fn resolve_function_body(head: Rc<FunctionHead>, body: &ast::Expression, scope: &scopes::Scope, runtime: &mut Runtime) -> RResult<Box<FunctionImplementation>> {
+pub fn resolve_function_body(head: &Rc<FunctionHead>, body: &ast::Expression, scope: &scopes::Scope, runtime: &mut Runtime) -> RResult<Box<FunctionImplementation>> {
     let mut scope = scope.subscope();
 
     let granted_requirements = scope.trait_conformance.assume_granted(
@@ -51,7 +51,7 @@ pub fn resolve_function_body(head: Rc<FunctionHead>, body: &ast::Expression, sco
     resolver.resolve_all_ambiguities()?;
 
     Ok(Box::new(FunctionImplementation {
-        head,
+        interface: Rc::clone(&head.interface),
         requirements_assumption: Box::new(RequirementsAssumption { conformance: HashMap::from_iter(granted_requirements.into_iter().map(|c| (Rc::clone(&c.binding), c))) }),
         expression_tree: resolver.builder.expression_tree,
         type_forest: resolver.builder.types,

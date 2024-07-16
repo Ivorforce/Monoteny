@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::rc::Rc;
 
-use display_with_options::DebugWithOptions;
+use display_with_options::{DebugWithOptions, with_options};
 
 use crate::program::functions::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::traits::{Trait, TraitBinding};
@@ -180,5 +180,11 @@ impl DebugWithOptions<FunctionRepresentation> for FunctionInterface {
 
         Ok(())
         // TODO Requirements?
+    }
+}
+
+impl Debug for FunctionInterface {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", with_options(self, &FunctionRepresentation::dummy()))
     }
 }

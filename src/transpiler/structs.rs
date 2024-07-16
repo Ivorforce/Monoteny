@@ -16,7 +16,7 @@ pub fn find_in_interfaces(heads: impl Iterator<Item=Rc<FunctionHead>>, map: &mut
     }
 }
 
-pub fn find_in_implementations(implementations: &Vec<&FunctionImplementation>, logic: &HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>, map: &mut LinkedHashMap<Rc<TypeProto>, Rc<StructInfo>>) {
+pub fn find_in_implementations<'a>(implementations: impl Iterator<Item=&'a FunctionImplementation>, logic: &HashMap<Rc<FunctionHead>, FunctionLogicDescriptor>, map: &mut LinkedHashMap<Rc<TypeProto>, Rc<StructInfo>>) {
     for implementation in implementations {
         for expression_id in implementation.expression_tree.deep_children(implementation.expression_tree.root) {
             let operation = &implementation.expression_tree.values[&expression_id];

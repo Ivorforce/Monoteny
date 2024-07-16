@@ -80,10 +80,11 @@ impl Context {
         // ================= Names ==================
 
         // Names for exported functions
-        for implementation in transpile.explicit_functions.iter() {
+        for (head, implementation) in transpile.explicit_functions.iter() {
             representations::find_for_function(
                 &mut representations.function_forms,
                 &mut exports_namespace,
+                head,
                 implementation,
             )
         }
@@ -93,7 +94,7 @@ impl Context {
         // TODO We only need to export structs that are mentioned in the interfaces of exported functions.
         //  But the following function doesn't work for now.
         // structs::find_in_interfaces(explicit_functions.iter().map(|i| &i.head), &mut structs);
-        structs::find_in_implementations(&transpile.explicit_functions, &transpile.used_native_functions, &mut structs);
+        structs::find_in_implementations(transpile.explicit_functions.iter().map(|p| *&p.1), &transpile.used_native_functions, &mut structs);
         let exported_structs = structs.keys().cloned().collect_vec();
         for struct_ in structs.values() {
             exports_namespace.insert_name(struct_.trait_.id, struct_.trait_.name.as_str());
@@ -103,7 +104,7 @@ impl Context {
 
         // We only really know from encountered calls which structs are left after monomorphization.
         // So let's just search the encountered calls.
-        for implementation in transpile.explicit_functions.iter().chain(transpile.implicit_functions.iter()) {
+        for (head, implementation) in transpile.explicit_functions.iter().chain(transpile.implicit_functions.iter()) {
             let function_namespace = internals_namespace.add_sublevel();
             // Map internal variable names
             for (ref_, name) in implementation.locals_names.iter() {
@@ -112,7 +113,7 @@ impl Context {
         }
 
         // Internal struct names
-        structs::find_in_implementations(&transpile.implicit_functions, &transpile.used_native_functions, &mut structs);
+        structs::find_in_implementations(transpile.implicit_functions.iter().map(|p| *&p.1), &transpile.used_native_functions, &mut structs);
         let internal_structs = structs.keys().filter(|s| !exported_structs.contains(s)).collect_vec();
         for type_ in internal_structs.iter() {
             let struct_ = &structs[*type_];
@@ -134,10 +135,11 @@ impl Context {
         }
 
         // Internal / generated functions
-        for implementation in transpile.implicit_functions.iter() {
+        for (head, implementation) in transpile.implicit_functions.iter() {
             representations::find_for_function(
                 &mut representations.function_forms,
                 &mut internals_namespace,
+                head,
                 implementation,
             )
         }
@@ -197,7 +199,7 @@ impl Context {
             (&transpile.explicit_functions, true),
             (&transpile.implicit_functions, false),
         ] {
-            for implementation in implementations.iter() {
+            for (head, implementation) in implementations.iter() {
                 let context = FunctionContext {
                     names: &names,
                     expressions: &implementation.expression_tree,
@@ -206,10 +208,10 @@ impl Context {
                     logic: &transpile.used_native_functions,
                 };
 
-                let transpiled = transpile_function(implementation, &context);
+                let transpiled = transpile_function(head, implementation, &context);
 
                 if is_exported {
-                    module.exported_names.insert(names[&implementation.head.function_id].clone());
+                    module.exported_names.insert(names[&head.function_id].clone());
                     module.exported_statements.push(transpiled);
                 }
                 else {

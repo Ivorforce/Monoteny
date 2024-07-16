@@ -20,6 +20,14 @@ pub struct FunctionRepresentation {
 
 
 impl FunctionRepresentation {
+    pub fn dummy() -> FunctionRepresentation {
+        FunctionRepresentation {
+            name: "fn".into(),
+            target_type: FunctionTargetType::Global,
+            call_explicity: FunctionCallExplicity::Explicit,
+        }
+    }
+
     pub fn new(name: &str, target_type: FunctionTargetType, explicity: FunctionCallExplicity) -> FunctionRepresentation {
         FunctionRepresentation {
             name: name.into(),

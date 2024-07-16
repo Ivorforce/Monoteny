@@ -41,12 +41,12 @@ impl CompileServer {
         }
     }
 
-    pub fn compile_deep(&mut self, source: &Source, function: &Rc<FunctionHead>) -> RResult<Rc<Chunk>> {
-        let FunctionLogic::Implementation(implementation) = source.fn_logic[function].clone() else {
+    pub fn compile_deep(&mut self, source: &Source, function_head: &Rc<FunctionHead>) -> RResult<Rc<Chunk>> {
+        let FunctionLogic::Implementation(implementation) = source.fn_logic[function_head].clone() else {
             return Err(RuntimeError::error("main! function was somehow internal.").to_array());
         };
 
-        self.simplify.refactor.add(implementation);
+        self.simplify.refactor.add(Rc::clone(function_head), implementation);
 
         self.simplify.run(source);
 
@@ -75,7 +75,7 @@ impl CompileServer {
             }
         }
 
-        let FunctionLogic::Implementation(implementation) = &self.simplify.refactor.fn_logic[function] else {
+        let FunctionLogic::Implementation(implementation) = &self.simplify.refactor.fn_logic[function_head] else {
             errors.push(RuntimeError::error("main! function was somehow internal after refactor."));
             return Err(errors);
         };

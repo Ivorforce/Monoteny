@@ -41,14 +41,12 @@ impl Refactor {
         }
     }
 
-    pub fn add(&mut self, mut implementation: Box<FunctionImplementation>) {
-        self.explicit_functions.push(Rc::clone(&implementation.head));
-        self._add(implementation)
+    pub fn add(&mut self, head: Rc<FunctionHead>, implementation: Box<FunctionImplementation>) {
+        self._add(&head, implementation);
+        self.explicit_functions.push(head);
     }
 
-    fn _add(&mut self, mut implementation: Box<FunctionImplementation>) {
-        let head = Rc::clone(&implementation.head);
-
+    fn _add(&mut self, head: &Rc<FunctionHead>, implementation: Box<FunctionImplementation>) {
         self.fn_logic.insert(Rc::clone(&head), FunctionLogic::Implementation(implementation));
         self.update_callees(&head);
 
@@ -134,7 +132,10 @@ impl Refactor {
 
         let mut new_implementation = implementation.clone();
         monomorphize_implementation(&mut new_implementation, binding);
-        let mono_head = Rc::clone(&new_implementation.head);
+        let mono_head = FunctionHead::new_static(
+            Rc::clone(&new_implementation.interface),
+            binding.function.declared_representation.clone(),
+        );
 
         self.fn_optimizations.insert(Rc::clone(binding), Rc::clone(&mono_head));
 
@@ -164,11 +165,13 @@ impl Refactor {
 
         if let Some(swizzle) = map(&mut implementation) {
             // The mapper changed the interface / function ID!
-            assert_ne!(function, &implementation.head);
-            let new_head = Rc::clone(&implementation.head);
+            let new_head = FunctionHead::new_static(
+                Rc::clone(&implementation.interface),
+                function.declared_representation.clone(),
+            );;
 
             self.invented_functions.insert(Rc::clone(&new_head));
-            self.fn_inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&implementation.head), swizzle));
+            self.fn_inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&new_head), swizzle));
             self.fn_logic.insert(Rc::clone(&new_head), FunctionLogic::Implementation(implementation));
 
             // Find the initial callees.
@@ -185,7 +188,7 @@ impl Refactor {
         }
         else {
             // The function kept its interface!
-            assert_eq!(function, &implementation.head);
+            assert_eq!(&function.interface, &implementation.interface);
 
             self.fn_logic.insert(Rc::clone(function), FunctionLogic::Implementation(implementation));
             self.update_callees(function);

@@ -6,7 +6,7 @@ use crate::error::{RResult, RuntimeError};
 use crate::interpreter::data::Value;
 use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::VM;
-use crate::program::functions::{FunctionHead, FunctionLogic};
+use crate::program::functions::FunctionHead;
 use crate::program::module::Module;
 use crate::transpiler::{TranspiledArtifact, Transpiler};
 
@@ -74,15 +74,6 @@ fn get_transpile_function(module: &Module) -> RResult<&Rc<FunctionHead>> {
 
 pub fn gather_functions_logic(runtime: &Runtime, transpile_functions: &Vec<Uuid>) -> Vec<TranspiledArtifact> {
     transpile_functions.iter().map(|uuid| {
-        let function_head = &runtime.source.fn_heads[uuid];
-        match &runtime.source.fn_logic[function_head] {
-            FunctionLogic::Implementation(implementation) => {
-                // TODO Why copy the implementation now?
-                TranspiledArtifact::Function(implementation.clone())
-            }
-            FunctionLogic::Descriptor(_) => {
-                panic!("Cannot transpile a function for which whe don't know an implementation!")
-            }
-        }
+        TranspiledArtifact::Function(Rc::clone(&runtime.source.fn_heads[uuid]))
     }).collect()
 }
