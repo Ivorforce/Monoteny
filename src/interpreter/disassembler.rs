@@ -1,5 +1,6 @@
 use std::mem::transmute;
 use std::ptr::read_unaligned;
+use uuid::Uuid;
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::opcode::{OpCode, Primitive};
 
@@ -19,7 +20,7 @@ pub fn disassemble_one(ip: *const u8) -> usize {
     unsafe {
         let code = transmute::<u8, OpCode>(*ip);
         // TODO Somehow, {:<20?} doesn't pad correctly.
-        print!("{:<15}", format!("{:?}", code));
+        print!("{:<20}", format!("{:?}", code));
 
         match code {
             OpCode::NEG | OpCode::ADD | OpCode::SUB | OpCode::MUL | OpCode::DIV |
@@ -48,7 +49,11 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("\t{:?}", read_unaligned(ip.add(1) as *mut i32));
                 return 1 + 4;
             }
-            OpCode::NOOP | OpCode::PANIC | OpCode::RETURN | OpCode::CALL | OpCode::TRANSPILE_ADD | OpCode::AND |
+            OpCode::CALL => {
+                print!("\t{}", Uuid::from_u128(read_unaligned(ip.add(1) as *mut u128)));
+                return 1 + 16;
+            }
+            OpCode::NOOP | OpCode::PANIC | OpCode::RETURN | OpCode::TRANSPILE_ADD | OpCode::AND |
             OpCode::OR | OpCode::POP64 | OpCode::PRINT | OpCode::NOT |
             OpCode::ADD_STRING | OpCode::DUP64 | OpCode::LOAD0 | OpCode::SWAP64 => {
                 return 1;
