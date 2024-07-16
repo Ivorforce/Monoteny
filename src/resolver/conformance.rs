@@ -25,16 +25,16 @@ pub struct ConformanceResolver<'a, 'b> {
 }
 
 impl <'a, 'b> ConformanceResolver<'a, 'b> {
-    pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
+    pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
                 //  to the ID of the parent abstract function. That way, we can avoid another
                 //  generic to generic mapping later.
-                let function = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
+                let function_head = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
 
                 self.functions.push(UnresolvedFunctionImplementation {
-                    function,
+                    function: function_head,
                     body: &syntax.body,
                 });
             }
@@ -52,7 +52,7 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
         Ok(())
     }
 
-    pub fn finalize_conformance(&self, binding: Rc<TraitBinding>, conformance_requirements: &HashSet<Rc<TraitBinding>>, conformance_generics: &HashMap<String, Rc<Trait>>) -> RResult<Rc<TraitConformance>> {
+    pub fn finalize_conformance(&self, binding: Rc<TraitBinding>, conformance_requirements: &HashSet<Rc<TraitBinding>>, conformance_generics: &HashSet<Rc<Trait>>) -> RResult<Rc<TraitConformance>> {
         let mut function_bindings = HashMap::new();
         let mut unmatched_implementations = self.functions.iter().collect_vec();
 

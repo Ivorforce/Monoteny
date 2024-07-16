@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use itertools::zip_eq;
 use uuid::Uuid;
 
 use crate::ast;
@@ -33,9 +34,9 @@ pub fn resolve_function_body(head: &Rc<FunctionHead>, body: &ast::Expression, sc
 
     // Register parameters as variables.
     let mut parameter_variables = vec![];
-    for parameter in head.interface.parameters.clone() {
+    for (parameter, internal_name) in zip_eq(head.interface.parameters.clone(), head.declared_internal_parameter_names.clone()) {
         let parameter_variable = ObjectReference::new_immutable(parameter.type_.clone());
-        _ = builder.register_local(&parameter.internal_name, Rc::clone(&parameter_variable), &mut scope)?;
+        _ = builder.register_local(&internal_name, Rc::clone(&parameter_variable), &mut scope)?;
         parameter_variables.push(parameter_variable);
     }
 

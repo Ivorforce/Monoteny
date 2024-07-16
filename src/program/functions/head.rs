@@ -3,9 +3,10 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
 use display_with_options::with_options;
+use itertools::Itertools;
 use uuid::Uuid;
 
-use crate::program::functions::{FunctionInterface, FunctionRepresentation};
+use crate::program::functions::{FunctionInterface, FunctionRepresentation, Parameter, ParameterKey};
 use crate::program::traits::TraitBinding;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -24,19 +25,23 @@ pub struct FunctionHead {
     pub function_type: FunctionType,
     pub interface: Rc<FunctionInterface>,
     pub declared_representation: FunctionRepresentation,
+    pub declared_internal_parameter_names: Vec<String>,
 }
 
 impl FunctionHead {
-    pub fn new_static(interface: Rc<FunctionInterface>, declared_representation: FunctionRepresentation) -> Rc<FunctionHead> {
-        Self::new(interface, FunctionType::Static, declared_representation)
+    pub fn new_static(declared_internal_parameter_names: Vec<String>, declared_representation: FunctionRepresentation, interface: Rc<FunctionInterface>) -> Rc<FunctionHead> {
+        Self::new(declared_internal_parameter_names, declared_representation, interface, FunctionType::Static)
     }
 
-    pub fn new(interface: Rc<FunctionInterface>, function_type: FunctionType, declared_representation: FunctionRepresentation) -> Rc<FunctionHead> {
+    pub fn new(declared_internal_parameter_names: Vec<String>, declared_representation: FunctionRepresentation, interface: Rc<FunctionInterface>, function_type: FunctionType) -> Rc<FunctionHead> {
+        assert_eq!(declared_internal_parameter_names.len(), interface.parameters.len());
+
         Rc::new(FunctionHead {
             function_id: Uuid::new_v4(),
             interface,
             function_type,
-            declared_representation
+            declared_representation,
+            declared_internal_parameter_names,
         })
     }
 
@@ -45,6 +50,17 @@ impl FunctionHead {
             FunctionType::Static => self.function_id,
             FunctionType::Polymorphic { .. } => panic!("Cannot unwrap polymorphic implementation ID"),
         }
+    }
+
+    pub fn dummy_param_names(count: usize) -> Vec<String> {
+        (0..count).map(|p| format!("p{}", count)).collect_vec()
+    }
+
+    pub fn infer_param_names(params: &Vec<Parameter>) -> Vec<String> {
+        params.iter().enumerate().map(|(idx, p)| match &p.external_key {
+            ParameterKey::Positional => format!("p{}", idx),
+            ParameterKey::Name(n) => n.clone(),
+        }).collect_vec()
     }
 }
 

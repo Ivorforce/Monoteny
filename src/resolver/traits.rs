@@ -9,7 +9,7 @@ use crate::interpreter::builtins::traits::make_any_functions;
 use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionLogicDescriptor, FunctionRepresentation, Parameter, ParameterKey};
-use crate::program::traits::{Trait, TraitBinding, TraitConformance, TraitConformanceRule, StructInfo};
+use crate::program::traits::{StructInfo, Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::TypeProto;
 use crate::resolver::{fields, scopes};
 use crate::resolver::global::GlobalResolver;
@@ -23,17 +23,18 @@ pub struct TraitResolver<'a> {
 }
 
 impl <'a> TraitResolver<'a> {
-    pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashMap<String, Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
+    pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
-                let function = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
+                // TODO What do we do with the parameter names? They don't belong in the interface. Probably the runtime source?
+                let function_head = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
                 if !syntax.body.is_none() {
                     return Err(
-                        RuntimeError::error(format!("Abstract function {:?} cannot have a body.", function).as_str()).to_array()
+                        RuntimeError::error(format!("Abstract function {:?} cannot have a body.", function_head).as_str()).to_array()
                     );
                 };
 
-                self.trait_.abstract_functions.insert(function);
+                self.trait_.abstract_functions.insert(function_head);
             }
             ast::Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment } => {
                 if let Some(_) = assignment {
@@ -108,7 +109,6 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
     let mut parameters = vec![
         Parameter {
             external_key: ParameterKey::Positional,
-            internal_name: "type".to_string(),
             type_: TypeProto::one_arg(&resolver.runtime.Metatype, struct_type.clone()),
         }
     ];
@@ -138,7 +138,6 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
 
         parameters.push(Parameter {
             external_key: ParameterKey::Name(abstract_field.name.clone()),
-            internal_name: abstract_field.name.clone(),
             type_: abstract_field.type_.clone(),
         });
         field_names.insert(Rc::clone(&variable_as_object), abstract_field.name.clone());
@@ -173,13 +172,14 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
     );
 
     let constructor = FunctionHead::new_static(
+        FunctionHead::infer_param_names(&parameters),
+        FunctionRepresentation::new_member_function("call_as_function"),
         Rc::new(FunctionInterface {
             parameters,
             return_type: struct_type,
             requirements: Default::default(),
             generics: Default::default(),
         }),
-        FunctionRepresentation::new_member_function("call_as_function"),
     );
 
     let struct_ = Rc::new(StructInfo {

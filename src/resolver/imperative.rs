@@ -529,7 +529,7 @@ impl <'a> ImperativeResolver<'a> {
                 continue;
             }
 
-            let generic_map = fun.interface.generics.values()
+            let generic_map = fun.interface.generics.iter()
                 .map(|trait_| (Rc::clone(trait_), TypeProto::unit(TypeUnit::Generic(Uuid::new_v4()))))
                 .collect();
 

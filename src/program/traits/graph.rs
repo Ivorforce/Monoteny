@@ -265,6 +265,8 @@ impl TraitGraph {
 
             for abstract_fun in requirement.trait_.abstract_functions.iter() {
                 let mapped_head = FunctionHead::new(
+                    abstract_fun.declared_internal_parameter_names.clone(),
+                    abstract_fun.declared_representation.clone(),
                     Rc::new(FunctionInterface {
                         parameters: abstract_fun.interface.parameters.iter().map(|x| {
                             x.mapping_type(&|type_| type_.replacing_structs(&requirement.generic_to_type))
@@ -280,7 +282,6 @@ impl TraitGraph {
                         assumed_requirement: Rc::clone(&requirement),
                         abstract_function: Rc::clone(abstract_fun)
                     },
-                    abstract_fun.declared_representation.clone(),
                 );
                 binding_resolution.insert(
                     Rc::clone(&abstract_fun),

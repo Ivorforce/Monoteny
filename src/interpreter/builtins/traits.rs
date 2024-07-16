@@ -60,12 +60,13 @@ pub struct AnyFunctions {
 pub fn make_any_functions(type_: &Rc<TypeProto>) -> AnyFunctions {
     AnyFunctions {
         clone: FunctionHead::new_static(
+            FunctionHead::dummy_param_names(1),
+            FunctionRepresentation::new_member_function("clone"),
             FunctionInterface::new_member(
                 type_.clone(),
                 [].into_iter(),
                 type_.clone()
             ),
-            FunctionRepresentation::new_member_function("clone")
         ),
     }
 }
@@ -79,12 +80,14 @@ pub struct EqFunctions {
 pub fn make_eq_functions(type_: &Rc<TypeProto>, bool_type: &Rc<TypeProto>) -> EqFunctions {
     EqFunctions {
         equal_to: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("is_equal"),
+            FunctionInterface::new_operator(2, type_, bool_type),
         ),
         not_equal_to: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("is_not_equal"),
+            FunctionInterface::new_operator(2, type_, bool_type),
         ),
     }
 }
@@ -100,20 +103,24 @@ pub struct OrdFunctions {
 pub fn make_ord_functions(type_: &Rc<TypeProto>, bool_type: &Rc<TypeProto>) -> OrdFunctions {
     OrdFunctions {
         greater_than: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("is_greater"),
+            FunctionInterface::new_operator(2, type_, bool_type),
         ),
         greater_than_or_equal_to: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("is_greater_or_equal"),
+            FunctionInterface::new_operator(2, type_, bool_type),
         ),
         lesser_than: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("is_lesser"),
+            FunctionInterface::new_operator(2, type_, bool_type),
         ),
         lesser_than_or_equal_to: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, bool_type),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("is_lesser_or_equal"),
+            FunctionInterface::new_operator(2, type_, bool_type),
         ),
     }
 }
@@ -136,30 +143,36 @@ pub struct NumberFunctions {
 pub fn make_number_functions(type_: &Rc<TypeProto>) -> NumberFunctions {
     NumberFunctions {
         add: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, type_),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("add"),
+            FunctionInterface::new_operator(2, type_, type_),
         ),
         subtract: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, type_),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("subtract"),
+            FunctionInterface::new_operator(2, type_, type_),
         ),
         multiply: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, type_),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("multiply"),
+            FunctionInterface::new_operator(2, type_, type_),
         ),
         divide: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, type_),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("divide"),
+            FunctionInterface::new_operator(2, type_, type_),
         ),
 
         negative: FunctionHead::new_static(
-            FunctionInterface::new_operator(1, type_, type_),
+            FunctionHead::dummy_param_names(1),
             FunctionRepresentation::new_global_function("negative"),
+            FunctionInterface::new_operator(1, type_, type_),
         ),
 
         modulo: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, type_),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("modulo"),
+            FunctionInterface::new_operator(2, type_, type_),
         ),
     }
 }
@@ -173,12 +186,14 @@ pub struct RealFunctions {
 pub fn make_real_functions(type_: &Rc<TypeProto>) -> RealFunctions {
     RealFunctions {
         pow: FunctionHead::new_static(
-            FunctionInterface::new_operator(2, type_, type_),
+            FunctionHead::dummy_param_names(2),
             FunctionRepresentation::new_global_function("pow"),
+            FunctionInterface::new_operator(2, type_, type_),
         ),
         log: FunctionHead::new_static(
-            FunctionInterface::new_operator(1, type_, type_),
+            FunctionHead::dummy_param_names(1),
             FunctionRepresentation::new_global_function("log"),
+            FunctionInterface::new_operator(1, type_, type_),
         ),
     }
 }
@@ -186,12 +201,13 @@ pub fn make_real_functions(type_: &Rc<TypeProto>) -> RealFunctions {
 #[allow(non_snake_case)]
 pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<FunctionHead> {
     FunctionHead::new_static(
+        FunctionHead::dummy_param_names(1),
+        FunctionRepresentation::new_member_function("to_string"),
         FunctionInterface::new_member(
             type_.create_generic_type("Self"),
             [].into_iter(),
             TypeProto::unit_struct(&String)
         ),
-        FunctionRepresentation::new_member_function("to_string"),
     )
 }
 
@@ -269,11 +285,12 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
 
     let mut ConstructableByIntLiteral = Trait::new_with_self("ConstructableByIntLiteral");
     let parse_int_literal_function = FunctionHead::new_static(
+        FunctionHead::dummy_param_names(1),
+        FunctionRepresentation::new_global_function("parse_int_literal"),
         FunctionInterface::new_simple(
             [TypeProto::unit_struct(&String)].into_iter(),
             ConstructableByIntLiteral.create_generic_type("Self"),
         ),
-        FunctionRepresentation::new_global_function("parse_int_literal"),
     );
     insert_functions(&mut ConstructableByIntLiteral, [
         &parse_int_literal_function
@@ -285,11 +302,12 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
 
     let mut ConstructableByRealLiteral = Trait::new_with_self("ConstructableByRealLiteral");
     let parse_real_literal_function = FunctionHead::new_static(
+        FunctionHead::dummy_param_names(1),
+        FunctionRepresentation::new_global_function("parse_real_literal"),
         FunctionInterface::new_simple(
             [TypeProto::unit_struct(&String)].into_iter(),
             ConstructableByRealLiteral.create_generic_type("Self")
         ),
-        FunctionRepresentation::new_global_function("parse_real_literal"),
     );
     insert_functions(&mut ConstructableByRealLiteral, [
         &parse_real_literal_function

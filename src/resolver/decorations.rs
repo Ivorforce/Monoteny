@@ -12,8 +12,6 @@ use crate::resolver::scopes;
 use crate::util::position::Positioned;
 
 pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead>, scope: &scopes::Scope) -> RResult<Rc<Pattern<Rc<FunctionHead>>>> {
-    let parameters = function.interface.parameters.iter().map(|p| p.internal_name.clone()).collect_vec();
-
     let parsed = expressions::parse(decoration, &scope.grammar)?;
 
     let expressions::Value::FunctionCall(target, call_struct) = &parsed.value else {
@@ -47,7 +45,7 @@ pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead
         .map(|pterm| {
             match &pterm.value {
                 ast::Term::Identifier(i) => {
-                    Ok(Box::new(parameters.iter()
+                    Ok(Box::new(function.declared_internal_parameter_names.iter()
                         .position(|p| p == i)
                         .map(|p| PatternPart::Parameter(p))
                         .unwrap_or(PatternPart::Keyword(i.clone()))))
@@ -61,6 +59,6 @@ pub fn try_parse_pattern(decoration: &ast::Expression, function: Rc<FunctionHead
         id: Uuid::new_v4(),
         precedence_group,
         parts,
-        function: function,
+        function,
     }))
 }

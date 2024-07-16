@@ -21,10 +21,6 @@ impl<'a> Display for MockFunctionInterface<'a> {
         let signature = FunctionInterface {
             parameters: self.argument_keys.iter().zip(&self.arguments).map(|(key, expression_id)| Parameter {
                 external_key: (*key).clone(),
-                internal_name: match key {
-                    ParameterKey::Positional => "_".to_string(),
-                    ParameterKey::Name(n) => n.clone(),
-                },
                 type_: self.types.prototype_binding_alias(expression_id),
             }).collect_vec(),
             return_type: TypeProto::unit(TypeUnit::Generic(Uuid::new_v4())),

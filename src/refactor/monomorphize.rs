@@ -180,7 +180,6 @@ pub fn map_interface_types(interface: &FunctionInterface, mapping: &HashMap<Rc<T
     FunctionInterface {
         parameters: interface.parameters.iter().map(|x| Parameter {
             external_key: x.external_key.clone(),
-            internal_name: x.internal_name.clone(),
             type_: x.type_.replacing_structs(mapping),
         }).collect(),
         return_type: interface.return_type.replacing_structs(mapping),
@@ -188,6 +187,6 @@ pub fn map_interface_types(interface: &FunctionInterface, mapping: &HashMap<Rc<T
         // TODO Not sure if this is correct - if the mapping introduces MORE generics again, the new
         //  value is wrong. Luckily, this is not a use-case of ours for now - it will only be relevant
         //  when generic transpilation is allowed.
-        generics: interface.generics.iter().filter(|(k, v)| !mapping.contains_key(*v)).map(|(a, b)| (a.clone(), b.clone())).collect(),
+        generics: interface.generics.iter().filter(|v| !mapping.contains_key(*v)).cloned().collect(),
     }
 }

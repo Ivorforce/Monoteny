@@ -75,15 +75,15 @@ impl <'a> GlobalResolver<'a> {
         match &pstatement.value.value {
             ast::Statement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
-                let function = resolve_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &HashMap::new())?;
+                let function_head = resolve_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &Default::default())?;
 
                 for decoration in pstatement.decorations_as_vec()? {
-                    let pattern = try_parse_pattern(decoration, Rc::clone(&function), &self.global_variables)?;
+                    let pattern = try_parse_pattern(decoration, Rc::clone(&function_head), &self.global_variables)?;
                     self.module.patterns.insert(Rc::clone(&pattern));
                     self.global_variables.grammar.add_pattern(pattern)?;
                 }
-                self.schedule_function_body(&function, syntax.body.as_ref(), pstatement.value.position.clone());
-                self.add_function_interface(&function)?;
+                self.schedule_function_body(&function_head, syntax.body.as_ref(), pstatement.value.position.clone());
+                self.add_function_interface(&function_head)?;
             }
             ast::Statement::Trait(syntax) => {
                 pstatement.no_decorations()?;
@@ -97,8 +97,9 @@ impl <'a> GlobalResolver<'a> {
                 // This is not the same reference as what module.add_trait returns - that reference is for the global metatype getter.
                 //  Inside, we use the Self getter.
                 let generic_self_self_getter = FunctionHead::new_static(
+                    vec![],
+                    FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit),
                     FunctionInterface::new_provider(&generic_self_meta_type, vec![]),
-                    FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit)
                 );
 
                 let mut scope = self.global_variables.subscope();
@@ -113,7 +114,7 @@ impl <'a> GlobalResolver<'a> {
                 for statement in syntax.block.statements.iter() {
                     statement.no_decorations()?;
 
-                    resolver.resolve_statement(&statement.value.value, requirements, &HashMap::new(), &scope)
+                    resolver.resolve_statement(&statement.value.value, requirements, &Default::default(), &scope)
                         .err_in_range(&statement.value.position)?;
                 }
 
@@ -150,8 +151,9 @@ impl <'a> GlobalResolver<'a> {
 
                 let self_meta_type = TypeProto::one_arg(&self.runtime.Metatype, self_type.clone());
                 let self_getter = FunctionHead::new_static(
-                    FunctionInterface::new_provider(&self_meta_type, vec![]),
-                    FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit)
+                    vec![],
+                    FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit),
+                    FunctionInterface::new_provider(&self_meta_type, vec![])
                 );
                 let self_binding = declared.create_generic_binding(vec![("Self", self_type)]);
 
@@ -163,13 +165,13 @@ impl <'a> GlobalResolver<'a> {
                 for statement in syntax.block.statements.iter() {
                     statement.no_decorations()?;
 
-                    resolver.resolve_statement(&statement.value.value, &requirements.union(&conformance_requirements).cloned().collect(), &generics, &scope)
+                    resolver.resolve_statement(&statement.value.value, &requirements.union(&conformance_requirements).cloned().collect(), &generics.values().cloned().collect(), &scope)
                         .err_in_range(&statement.value.position)?;
                 }
 
                 // TODO To be order independent, we should finalize after sorting...
                 //  ... Or check inconsistencies only at the very end.
-                let conformance = resolver.finalize_conformance(self_binding, &conformance_requirements, &generics)?;
+                let conformance = resolver.finalize_conformance(self_binding, &conformance_requirements, &generics.values().cloned().collect())?;
                 let functions = resolver.functions;
 
                 self.module.add_conformance_rule(

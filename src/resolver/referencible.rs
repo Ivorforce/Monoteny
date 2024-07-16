@@ -11,8 +11,9 @@ use crate::resolver::scopes;
 pub fn add_trait(runtime: &mut Runtime, module: &mut Module, scope: Option<&mut scopes::Scope>, trait_: &Rc<Trait>) -> RResult<()> {
     let meta_type = TypeProto::one_arg(&runtime.Metatype, TypeProto::unit_struct(trait_));
     let getter = FunctionHead::new_static(
+        vec![],
+        FunctionRepresentation::new_global_implicit(&trait_.name),
         FunctionInterface::new_provider(&meta_type, vec![]),
-        FunctionRepresentation::new_global_implicit(&trait_.name)
     );
 
     runtime.source.fn_heads.insert(getter.function_id, Rc::clone(&getter));
@@ -47,8 +48,9 @@ pub fn add_function(runtime: &mut Runtime, module: &mut Module, scope: Option<&m
     // The function should be implicit.
     // assert_eq!(function.declared_representation.call_explicity, FunctionCallExplicity::Explicit);
     let getter = FunctionHead::new_static(
+        vec![],
+        FunctionRepresentation::new(function.declared_representation.name.as_str(), function.declared_representation.target_type, FunctionCallExplicity::Implicit),
         FunctionInterface::new_provider(&TypeProto::unit_struct(&function_trait), vec![]),
-        FunctionRepresentation::new(function.declared_representation.name.as_str(), function.declared_representation.target_type, FunctionCallExplicity::Implicit)
     );
     runtime.source.fn_heads.insert(function.function_id, Rc::clone(&function));
     runtime.source.fn_heads.insert(getter.function_id, Rc::clone(&getter));

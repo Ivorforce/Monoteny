@@ -118,8 +118,9 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         add_function(&number_functions.negative, primitive_type, PrimitiveOperation::Negative, module, runtime);
 
         let _parse_int_literal = FunctionHead::new_static(
-            FunctionInterface::new_operator(1, &TypeProto::unit_struct(&traits.String), &type_),
+            FunctionHead::dummy_param_names(1),
             FunctionRepresentation::new_global_function("parse_int_literal"),
+            FunctionInterface::new_operator(1, &TypeProto::unit_struct(&traits.String), &type_),
         );
         add_function(&_parse_int_literal, primitive_type, PrimitiveOperation::ParseIntString, module, runtime);
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
@@ -164,8 +165,9 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         add_function(&real_functions.log, primitive_type, PrimitiveOperation::Log, module, runtime);
 
         let _parse_real_literal = FunctionHead::new_static(
-            FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_),
+            FunctionHead::dummy_param_names(1),
             FunctionRepresentation::new_global_function("parse_real_literal"),
+            FunctionInterface::new_operator(1, &TypeProto::unit(TypeUnit::Struct(Rc::clone(&traits.String))), &type_),
         );
         add_function(&_parse_real_literal, primitive_type, PrimitiveOperation::ParseRealString, module, runtime);
         module.trait_conformance.add_conformance_rule(TraitConformanceRule::manual(
@@ -185,20 +187,23 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
     }
 
     let and_op = FunctionHead::new_static(
-        FunctionInterface::new_operator(2, &bool_type, &bool_type),
+        FunctionHead::dummy_param_names(2),
         FunctionRepresentation::new_global_function("and_f"),
+        FunctionInterface::new_operator(2, &bool_type, &bool_type),
     );
     add_function(&and_op, primitives::Type::Bool, PrimitiveOperation::And, module, runtime);
 
     let or__op = FunctionHead::new_static(
-        FunctionInterface::new_operator(2, &bool_type, &bool_type),
+        FunctionHead::dummy_param_names(2),
         FunctionRepresentation::new_global_function("or_f"),
+        FunctionInterface::new_operator(2, &bool_type, &bool_type),
     );
     add_function(&or__op, primitives::Type::Bool, PrimitiveOperation::Or, module, runtime);
 
     let not_op = FunctionHead::new_static(
-        FunctionInterface::new_operator(1, &bool_type, &bool_type),
+        FunctionHead::dummy_param_names(1),
         FunctionRepresentation::new_global_function("not_f"),
+        FunctionInterface::new_operator(1, &bool_type, &bool_type),
     );
     add_function(&not_op, primitives::Type::Bool, PrimitiveOperation::Not, module, runtime);
 }

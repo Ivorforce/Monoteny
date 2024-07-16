@@ -133,8 +133,9 @@ impl Refactor {
         let mut new_implementation = implementation.clone();
         monomorphize_implementation(&mut new_implementation, binding);
         let mono_head = FunctionHead::new_static(
-            Rc::clone(&new_implementation.interface),
+            binding.function.declared_internal_parameter_names.clone(),
             binding.function.declared_representation.clone(),
+            Rc::clone(&new_implementation.interface),
         );
 
         self.fn_optimizations.insert(Rc::clone(binding), Rc::clone(&mono_head));
@@ -166,9 +167,10 @@ impl Refactor {
         if let Some(swizzle) = map(&mut implementation) {
             // The mapper changed the interface / function ID!
             let new_head = FunctionHead::new_static(
-                Rc::clone(&implementation.interface),
+                swizzle.iter().map(|idx| function.declared_internal_parameter_names[*idx].clone()).collect_vec(),
                 function.declared_representation.clone(),
-            );;
+                Rc::clone(&implementation.interface),
+            );
 
             self.invented_functions.insert(Rc::clone(&new_head));
             self.fn_inline_hints.insert(Rc::clone(function), InlineHint::ReplaceCall(Rc::clone(&new_head), swizzle));

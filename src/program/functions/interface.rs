@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
 use std::rc::Rc;
 
@@ -21,7 +21,6 @@ pub enum ParameterKey {
 #[derive(Clone, PartialEq, Eq)]
 pub struct Parameter {
     pub external_key: ParameterKey,
-    pub internal_name: String,
     pub type_: Rc<TypeProto>,
 }
 
@@ -37,7 +36,7 @@ pub struct FunctionInterface {
     pub requirements: HashSet<Rc<TraitBinding>>,
     /// All internally used generics. These are not guaranteed to not exist elsewhere,
     /// but for the purposes of this interface, they are to be regarded as generics.
-    pub generics: HashMap<String, Rc<Trait>>,
+    pub generics: HashSet<Rc<Trait>>,
 }
 
 impl FunctionInterface {
@@ -54,7 +53,6 @@ impl FunctionInterface {
         Rc::new(FunctionInterface {
             parameters: vec![Parameter {
                 external_key: ParameterKey::Positional,
-                internal_name: "arg".to_string(),
                 type_: parameter_type.clone(),
             }],
             return_type: TypeProto::void(),
@@ -67,7 +65,6 @@ impl FunctionInterface {
         let parameters: Vec<Parameter> = (0..count)
             .map(|x| { Parameter {
                 external_key: ParameterKey::Positional,
-                internal_name: format!("p{}", x),
                 type_: parameter_type.clone(),
             }
         }).collect();
@@ -85,7 +82,6 @@ impl FunctionInterface {
             .enumerate()
             .map(|(i, x)| Parameter {
                 external_key: ParameterKey::Positional,
-                internal_name: format!("p{}", i),
                 type_: x.clone(),
             })
             .collect();
@@ -101,13 +97,11 @@ impl FunctionInterface {
     pub fn new_member<'a, I>(self_type: Rc<TypeProto>, parameter_types: I, return_type: Rc<TypeProto>) -> Rc<FunctionInterface> where I: Iterator<Item=Rc<TypeProto>> {
         let parameters: Vec<Parameter> = [Parameter {
                 external_key: ParameterKey::Positional,
-                internal_name: "self".to_string(),
                 type_: self_type,
             }].into_iter().chain(parameter_types
             .enumerate()
             .map(|(i, x)| Parameter {
                 external_key: ParameterKey::Positional,
-                internal_name: format!("p{}", i),
                 type_: x.clone(),
             }))
             .collect();
@@ -125,7 +119,6 @@ impl Parameter {
     pub fn mapping_type(&self,  map: &dyn Fn(&Rc<TypeProto>) -> Rc<TypeProto>) -> Parameter {
         Parameter {
             external_key: self.external_key.clone(),
-            internal_name: self.internal_name.clone(),
             type_: map(&self.type_),
         }
     }
@@ -144,14 +137,10 @@ impl Debug for Parameter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.external_key {
             ParameterKey::Positional => {
-                write!(f, "{} '{:?}", self.internal_name, self.type_)
+                write!(f, "_ '{:?}", self.type_)
             }
             ParameterKey::Name(n) => {
-                if n != &self.internal_name {
-                    write!(f, "{}: {} '{:?}", n, self.internal_name, self.type_)
-                } else {
-                    write!(f, "{}: '{:?}", n, self.type_)
-                }
+                write!(f, "{}: '{:?}", n, self.type_)
             }
         }
     }

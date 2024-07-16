@@ -7,39 +7,38 @@ use crate::program::types::TypeProto;
 pub fn make(name: &str, self_type: &Rc<TypeProto>, field_type: &Rc<TypeProto>, add_getter: bool, add_setter: bool) -> FieldHint {
     let getter = add_getter.then_some({
         let head = FunctionHead::new_static(
+            vec!["self".into()],
+            FunctionRepresentation::new_member_implicit(name),
             Rc::new(FunctionInterface {
                 parameters: vec![
                     Parameter {
                         external_key: ParameterKey::Positional,
-                        internal_name: "self".to_string(),
                         type_: self_type.clone(),
                     }],
                 return_type: field_type.clone(),
                 requirements: Default::default(),
                 generics: Default::default(),
-            }),
-            FunctionRepresentation::new_member_implicit(name),
+            })
         );
         head
     });
 
     let setter = add_setter.then_some({
         let head = FunctionHead::new_static(
+            vec!["self".into(), "new_value".into()],
+            FunctionRepresentation::new_member_implicit(name),
             Rc::new(FunctionInterface {
                 parameters: vec![Parameter {
                     external_key: ParameterKey::Positional,
-                    internal_name: "self".to_string(),
                     type_: self_type.clone(),
                 }, Parameter {
                     external_key: ParameterKey::Positional,
-                    internal_name: name.to_string(),
                     type_: field_type.clone(),
                 }],
                 return_type: TypeProto::void(),
                 requirements: Default::default(),
                 generics: Default::default(),
-            }),
-            FunctionRepresentation::new_member_implicit(name),
+            })
         );
         head
     });
