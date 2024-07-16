@@ -1,20 +1,15 @@
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
 use itertools::Itertools;
-use uuid::Uuid;
 
 use crate::{ast, parser, program, resolver};
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::builtins;
-use crate::interpreter::chunks::Chunk;
-use crate::interpreter::compile::function_compiler::InlineFunction;
-use crate::interpreter::data_layout::{create_data_layout, DataLayout};
-use crate::program::functions::FunctionHead;
+use crate::interpreter::compile::compile_server::CompileServer;
 use crate::program::module::{Module, module_name, ModuleName};
-use crate::program::traits::{StructInfo, Trait};
+use crate::program::traits::Trait;
 use crate::repository::Repository;
 use crate::resolver::{imports, referencible, scopes};
 use crate::source::Source;
@@ -25,13 +20,7 @@ pub struct Runtime {
     pub primitives: Option<HashMap<program::primitives::Type, Rc<Trait>>>,
     pub traits: Option<builtins::traits::Traits>,
 
-    // These are optimized for running and may not reflect the source code itself.
-    // They are also only loaded on demand.
-    pub function_evaluators: HashMap<Uuid, Rc<Chunk>>,
-    // TODO We'll need these only in the future when we compile functions to constants.
-    // pub global_assignments: HashMap<Uuid, Value>,
-    pub function_inlines: HashMap<Rc<FunctionHead>, InlineFunction>,
-    pub data_layouts: HashMap<Rc<StructInfo>, Rc<DataLayout>>,
+    pub compile_server: CompileServer,
 
     // These remain unchanged after resolution.
     pub source: Source,
@@ -48,9 +37,7 @@ impl Runtime {
             Metatype: Rc::clone(&Metatype),
             primitives: None,
             traits: None,
-            function_evaluators: Default::default(),
-            function_inlines: Default::default(),
-            data_layouts: Default::default(),
+            compile_server: CompileServer::new(),
             source: Source::new(),
             repository: Repository::new(),
         });
@@ -119,15 +106,5 @@ impl Runtime {
         let mut module = Box::new(Module::new(name));
         resolver::resolve_file(syntax, &scope, self, &mut module)?;
         Ok(module)
-    }
-
-    pub fn get_data_layout(&mut self, struct_info: &Rc<StructInfo>) -> Rc<DataLayout> {
-        if let Some(layout) = self.data_layouts.get(struct_info) {
-            return Rc::clone(layout)
-        }
-
-        let layout = create_data_layout(self, Rc::clone(struct_info));
-        self.data_layouts.insert(Rc::clone(struct_info), Rc::clone(&layout));
-        layout
     }
 }

@@ -6,6 +6,6 @@ pub mod opcode;
 pub mod disassembler;
 pub mod data;
 pub mod runtime;
+pub mod data_layout;
+pub mod compile;
 mod tests;
-mod data_layout;
-mod compile;

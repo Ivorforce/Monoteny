@@ -1,33 +1,20 @@
 use std::collections::hash_map::RandomState;
 
 use linked_hash_set::LinkedHashSet;
-use crate::interpreter::runtime::Runtime;
+
 use crate::program::functions::FunctionLogic;
 use crate::refactor::{locals, Refactor};
-use crate::transpiler::Config;
+use crate::source::Source;
 
-pub struct Simplify<'a> {
-    pub refactor: &'a mut Refactor,
+pub struct Simplify {
+    pub refactor: Refactor,
     pub inline: bool,
     pub trim_locals: bool,
     pub monomorphize: bool,
 }
 
-impl<'a> Simplify<'a> {
-    pub fn new(refactor: &'a mut Refactor, config: &Config) -> Simplify<'a> {
-        if !config.should_monomorphize {
-            todo!();  // Lots of reasons non-monomorphization doesn't work right now.
-        }
-
-        Simplify {
-            refactor,
-            inline: config.should_inline,
-            trim_locals: config.should_trim_locals,
-            monomorphize: config.should_monomorphize,
-        }
-    }
-
-    pub fn run(&mut self, runtime: &mut Runtime) {
+impl Simplify {
+    pub fn run(&mut self, source: &Source) {
         if self.monomorphize {
             // First, monomorphize everything we call
             let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(
@@ -35,14 +22,14 @@ impl<'a> Simplify<'a> {
                     .flat_map(|head| self.refactor.call_graph.callees[head].iter().cloned())
             );
             while let Some(current) = next.pop_front() {
-                if let Some(monomorphized) = self.refactor.try_monomorphize(&current, runtime) {
+                if let Some(monomorphized) = self.refactor.try_monomorphize(&current, source) {
                     next.extend(self.refactor.call_graph.callees.get(&monomorphized).unwrap().iter().cloned());
                 }
             }
         }
 
         // Make sure refactor has everything that's needed so we can simplify it.
-        self.refactor.gather_needed_functions(runtime);
+        self.refactor.gather_needed_functions(source);
 
         // Now, let's simplify!
         let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(self.refactor.fn_logic.keys().cloned());

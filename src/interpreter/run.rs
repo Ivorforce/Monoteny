@@ -3,7 +3,6 @@ use std::rc::Rc;
 use uuid::Uuid;
 
 use crate::error::{RResult, RuntimeError};
-use crate::interpreter::compile::function_compiler::compile_deep;
 use crate::interpreter::data::Value;
 use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::VM;
@@ -16,7 +15,7 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
         .ok_or(RuntimeError::error("No main! function declared.").to_array())?;
 
     // TODO Should gather all used functions and compile them
-    let compiled = compile_deep(runtime, entry_function)?;
+    let compiled = runtime.compile_server.compile_deep(&runtime.source, entry_function)?;
 
     let mut out = std::io::stdout();
     let mut vm = VM::new(&mut out);
@@ -48,7 +47,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     assert!(entry_function.interface.return_type.unit.is_void(), "transpile! function has a return value.");
 
     // Set the transpiler object.
-    let compiled = compile_deep(runtime, entry_function)?;
+    let compiled = runtime.compile_server.compile_deep(&runtime.source, entry_function)?;
 
     let mut out = std::io::stdout();
     let mut vm = VM::new(&mut out);

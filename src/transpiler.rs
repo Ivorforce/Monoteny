@@ -73,17 +73,27 @@ pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &d
         }
     }
 
-    let mut simplify = Simplify::new(&mut refactor, config);
-    simplify.run(runtime);
+    if !config.should_monomorphize {
+        todo!();  // Lots of reasons non-monomorphization doesn't work right now.
+    }
+
+    let mut simplify = Simplify {
+        refactor,
+        inline: config.should_inline,
+        trim_locals: config.should_trim_locals,
+        monomorphize: config.should_monomorphize,
+    };
+
+    simplify.run(&runtime.source);
 
     // --- Reclaim from Refactor and make the ast
-    context.refactor_code(&mut refactor);
+    context.refactor_code(&mut simplify.refactor);
 
     // TODO The call_graph doesn't know about calls made outside the refactor. If there was no monomorphization, some functions may not even be caught by this.
-    let deep_calls = refactor.gather_needed_functions(runtime);
-    let mut fn_logic = refactor.fn_logic;
+    let deep_calls = simplify.refactor.gather_needed_functions(&runtime.source);
+    let mut fn_logic = simplify.refactor.fn_logic;
 
-    let exported_functions = refactor.explicit_functions.iter()
+    let exported_functions = simplify.refactor.explicit_functions.iter()
         .map(|head| fn_logic.get(head).unwrap().as_implementation())
         .try_collect_many()?;
     let mut implicit_functions = vec![];

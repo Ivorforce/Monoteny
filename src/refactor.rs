@@ -5,11 +5,11 @@ use std::rc::Rc;
 use itertools::Itertools;
 use linked_hash_set::LinkedHashSet;
 
-use crate::interpreter::runtime::Runtime;
 use crate::program::functions::{FunctionBinding, FunctionHead, FunctionImplementation, FunctionLogic, FunctionLogicDescriptor, FunctionType};
 use crate::refactor::call_graph::CallGraph;
 use crate::refactor::inline::{inline_calls, InlineHint, try_inline};
 use crate::refactor::monomorphize::monomorphize_implementation;
+use crate::source::Source;
 
 pub mod simplify;
 pub mod monomorphize;
@@ -119,12 +119,12 @@ impl Refactor {
         }
     }
 
-    pub fn try_monomorphize(&mut self, binding: &Rc<FunctionBinding>, runtime: &mut Runtime) -> Option<Rc<FunctionHead>> {
+    pub fn try_monomorphize(&mut self, binding: &Rc<FunctionBinding>, source: &Source) -> Option<Rc<FunctionHead>> {
         if self.fn_optimizations.contains_key(binding) {
             return None  // We already have an optimization; we need not monomorphize.
         }
 
-        let Some(logic) = self.fn_logic.get(&binding.function).or_else(|| runtime.source.fn_logic.get(&binding.function)) else {
+        let Some(logic) = self.fn_logic.get(&binding.function).or_else(|| source.fn_logic.get(&binding.function)) else {
             panic!("Cannot find logic for function {:?}", binding.function);
         };
 
@@ -194,11 +194,11 @@ impl Refactor {
         }
     }
 
-    pub fn gather_needed_functions(&mut self, runtime: &mut Runtime) -> LinkedHashSet<Rc<FunctionHead>> {
+    pub fn gather_needed_functions(&mut self, source: &Source) -> LinkedHashSet<Rc<FunctionHead>> {
         let callees = self.call_graph.deep_callees(self.explicit_functions.iter());
         for callee in callees.iter() {
             if !self.fn_logic.contains_key(callee) {
-                self.fn_logic.insert(Rc::clone(callee), runtime.source.fn_logic[callee].clone());
+                self.fn_logic.insert(Rc::clone(callee), source.fn_logic[callee].clone());
             }
         }
         callees

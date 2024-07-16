@@ -1,2 +1,3 @@
 pub mod function_compiler;
-mod compile_server;
+pub mod compile_server;
+pub mod function_descriptor_compiler;

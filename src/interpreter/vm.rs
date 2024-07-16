@@ -1,18 +1,20 @@
-pub mod call_frame;
-
 use std::alloc::{alloc, Layout};
-use std::mem::{swap, transmute};
-use monoteny_macro::{bin_expr, pop_ip, pop_sp, un_expr};
-use std::ptr::{read_unaligned, write_unaligned};
-use uuid::Uuid;
+use std::mem::transmute;
 use std::ops::Neg;
+use std::ptr::{read_unaligned, write_unaligned};
 use std::rc::Rc;
-use crate::error::{RuntimeError, RResult};
+
+use monoteny_macro::{bin_expr, pop_ip, pop_sp, un_expr};
+use uuid::Uuid;
+
+use crate::error::{RResult, RuntimeError};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{string_to_ptr, Value};
 use crate::interpreter::opcode::{OpCode, Primitive};
 use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::call_frame::CallFrame;
+
+pub mod call_frame;
 
 pub struct VM<'b> {
     pub pipe_out: &'b mut dyn std::io::Write,
@@ -83,7 +85,7 @@ impl<'b> VM<'b> {
                     },
                     OpCode::CALL => {
                         let uuid = Uuid::from_u128(pop_ip!(u128));
-                        let chunk = Rc::clone(&runtime.function_evaluators[&uuid]);
+                        let chunk = Rc::clone(&runtime.compile_server.function_evaluators[&uuid]);
                         self.call_frames.push(CallFrame {
                             chunk: current_chunk,
                             fp,
