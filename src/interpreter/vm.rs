@@ -135,9 +135,7 @@ impl<'b> VM<'b> {
                         sp = sp.offset(-8);
                     },
                     OpCode::SWAP64 => {
-                        println!("{} {}", (*sp.offset(-8)).u64, (*sp.offset(-16)).u64);
                         std::ptr::swap(sp.offset(-16), sp.offset(-8));
-                        println!("{} {}", (*sp.offset(-8)).u64, (*sp.offset(-16)).u64);
                     }
                     OpCode::JUMP => {
                         let jump_distance: i32 = pop_ip!(i32);

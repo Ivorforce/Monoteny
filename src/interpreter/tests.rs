@@ -106,6 +106,14 @@ mod tests {
     }
 
     #[test]
+    fn monomorphization_branch() -> RResult<()> {
+        let out = test_runs("test-code/monomorphization/branch.monoteny")?;
+        assert_eq!(out, "9\n9\n");
+
+        Ok(())
+    }
+
+    #[test]
     fn if_then_else() -> RResult<()> {
         let out = test_runs("test-code/control_flow/if_then_else.monoteny")?;
         assert_eq!(out, "true\n");
@@ -122,9 +130,17 @@ mod tests {
     }
 
     #[test]
-    fn traits_and_fields() -> RResult<()> {
+    fn traits_one_field() -> RResult<()> {
         let out = test_runs("test-code/traits/simple.monoteny")?;
         assert_eq!(out, "Height 1: 180cm\nHeight 2: 150cm\n");
+
+        Ok(())
+    }
+
+    #[test]
+    fn traits_fields() -> RResult<()> {
+        let out = test_runs("test-code/traits/fields.monoteny")?;
+        assert_eq!(out, "Noir (Cat) was: 180cm\nAnd is now: 25cm\n");
 
         Ok(())
     }
