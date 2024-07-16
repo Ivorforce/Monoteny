@@ -44,9 +44,9 @@ pub enum OpCode {
     ADD_STRING,
 
     // Member
-    ALLOC_8,
-    SET_MEMBER_8,
-    GET_MEMBER_8,
+    ALLOC_32,
+    SET_MEMBER_32,
+    GET_MEMBER_32,
 
     CALL,
     RETURN,

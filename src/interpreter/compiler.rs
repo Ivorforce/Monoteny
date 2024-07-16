@@ -250,7 +250,7 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
                 let arguments = &compiler.implementation.expression_tree.children[&expression];
                 assert_eq!(arguments.len(), data_layout.fields.len() + 1);
 
-                compiler.chunk.push_with_u8(OpCode::ALLOC_8, u8::try_from(data_layout.fields.len()).unwrap());
+                compiler.chunk.push_with_u32(OpCode::ALLOC_32, u32::try_from(data_layout.fields.len()).unwrap());
                 for (idx, arg) in arguments.iter().skip(1).enumerate() {
                     // If needed, duplicate the object pointer.
                     if idx < arguments.len() - 1 {
@@ -259,7 +259,7 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
 
                     // Evaluate the field at the given index.
                     compiler.compile_expression(arg)?;
-                    compiler.chunk.push_with_u8(OpCode::SET_MEMBER_8, u8::try_from(idx).unwrap());
+                    compiler.chunk.push_with_u32(OpCode::SET_MEMBER_32, u32::try_from(idx).unwrap());
                 }
 
                 Ok(())
@@ -274,7 +274,7 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
 
                 compiler.compile_expression(&arguments[0])?;
 
-                compiler.chunk.push_with_u8(OpCode::GET_MEMBER_8, u8::try_from(slot_index).unwrap());
+                compiler.chunk.push_with_u32(OpCode::GET_MEMBER_32, u32::try_from(slot_index).unwrap());
 
                 Ok(())
             }));
@@ -289,7 +289,7 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
                 compiler.compile_expression(&arguments[0])?;
                 compiler.compile_expression(&arguments[1])?;
 
-                compiler.chunk.push_with_u8(OpCode::SET_MEMBER_8, u8::try_from(slot_index).unwrap());
+                compiler.chunk.push_with_u32(OpCode::SET_MEMBER_32, u32::try_from(slot_index).unwrap());
 
                 Ok(())
             }));

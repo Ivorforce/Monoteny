@@ -29,7 +29,7 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("\t{:?}", transmute::<u8, Primitive>(*ip.add(1)));
                 return 1 + 1;
             },
-            OpCode::LOAD8 | OpCode::GET_MEMBER_8 | OpCode::SET_MEMBER_8 | OpCode::ALLOC_8 => {
+            OpCode::LOAD8 => {
                 print!("\t{:?}", *ip.add(1));
                 return 1 + 1;
             }
@@ -37,7 +37,7 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("\t{:?}", read_unaligned(ip.add(1) as *mut u16));
                 return 1 + 2;
             }
-            OpCode::LOAD32 | OpCode::LOAD_CONSTANT_32 => {
+            OpCode::LOAD32 | OpCode::LOAD_CONSTANT_32 | OpCode::GET_MEMBER_32 | OpCode::SET_MEMBER_32 | OpCode::ALLOC_32 => {
                 print!("\t{:?}", read_unaligned(ip.add(1) as *mut u32));
                 return 1 + 4;
             }

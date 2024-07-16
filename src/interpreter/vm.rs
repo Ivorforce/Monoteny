@@ -442,25 +442,25 @@ impl<'b> VM<'b> {
 
                         (*sp_last).ptr = to_str_ptr(lhs.to_string() + &rhs);
                     }
-                    OpCode::ALLOC_8 => {
-                        let size = pop_ip!(u8);
-                        let layout = Layout::from_size_align(usize::from(size) * 8, 8).unwrap();
+                    OpCode::ALLOC_32 => {
+                        let size = pop_ip!(u32);
+                        let layout = Layout::from_size_align(usize::try_from(size).unwrap() * 8, 8).unwrap();
 
                         (*sp).ptr = alloc(layout) as *mut ();
                         sp = sp.offset(8);
                     }
-                    OpCode::GET_MEMBER_8 => {
-                        let slot_idx = pop_ip!(u8);
+                    OpCode::GET_MEMBER_32 => {
+                        let slot_idx = pop_ip!(u32);
                         let sp_last = sp.offset(-8);
-                        let slot_ptr = (*sp_last).ptr.byte_add(usize::from(slot_idx) * 8);
+                        let slot_ptr = (*sp_last).ptr.byte_add(usize::try_from(slot_idx).unwrap() * 8);
 
                         *sp_last = read_unaligned(slot_ptr as *mut Value);
                     }
-                    OpCode::SET_MEMBER_8 => {
-                        let slot_idx = pop_ip!(u8);
+                    OpCode::SET_MEMBER_32 => {
+                        let slot_idx = pop_ip!(u32);
                         let value = pop_sp!();
                         let obj_ptr = pop_sp!().ptr;
-                        let slot_ptr = obj_ptr.byte_add(usize::from(slot_idx) * 8);
+                        let slot_ptr = obj_ptr.byte_add(usize::try_from(slot_idx).unwrap() * 8);
 
                         write_unaligned(slot_ptr as *mut Value, value);
                     }
