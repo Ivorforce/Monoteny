@@ -1,20 +1,20 @@
 use std::collections::hash_map::RandomState;
 
 use linked_hash_set::LinkedHashSet;
-
+use crate::interpreter::runtime::Runtime;
 use crate::program::functions::FunctionLogic;
 use crate::refactor::{locals, Refactor};
 use crate::transpiler::Config;
 
-pub struct Simplify<'a, 'b> {
-    pub refactor: &'a mut Refactor<'b>,
+pub struct Simplify<'a> {
+    pub refactor: &'a mut Refactor,
     pub inline: bool,
     pub trim_locals: bool,
     pub monomorphize: bool,
 }
 
-impl<'a, 'b> Simplify<'a, 'b> {
-    pub fn new(refactor: &'a mut Refactor<'b>, config: &Config) -> Simplify<'a, 'b> {
+impl<'a> Simplify<'a> {
+    pub fn new(refactor: &'a mut Refactor, config: &Config) -> Simplify<'a> {
         if !config.should_monomorphize {
             todo!();  // Lots of reasons non-monomorphization doesn't work right now.
         }
@@ -27,7 +27,7 @@ impl<'a, 'b> Simplify<'a, 'b> {
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self, runtime: &mut Runtime) {
         if self.monomorphize {
             // First, monomorphize everything we call
             let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(
@@ -35,14 +35,14 @@ impl<'a, 'b> Simplify<'a, 'b> {
                     .flat_map(|head| self.refactor.call_graph.callees[head].iter().cloned())
             );
             while let Some(current) = next.pop_front() {
-                if let Some(monomorphized) = self.refactor.try_monomorphize(&current) {
+                if let Some(monomorphized) = self.refactor.try_monomorphize(&current, runtime) {
                     next.extend(self.refactor.call_graph.callees.get(&monomorphized).unwrap().iter().cloned());
                 }
             }
         }
 
         // Make sure refactor has everything that's needed so we can simplify it.
-        self.refactor.gather_needed_functions();
+        self.refactor.gather_needed_functions(runtime);
 
         // Now, let's simplify!
         let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(self.refactor.fn_logic.keys().cloned());

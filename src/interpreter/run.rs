@@ -3,7 +3,7 @@ use std::rc::Rc;
 use uuid::Uuid;
 
 use crate::error::{RResult, RuntimeError};
-use crate::interpreter::compiler::compile_deep;
+use crate::interpreter::compile::function_compiler::compile_deep;
 use crate::interpreter::data::Value;
 use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::VM;

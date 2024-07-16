@@ -18,9 +18,7 @@ pub mod locals;
 pub mod analyze;
 pub mod call_graph;
 
-pub struct Refactor<'a> {
-    pub runtime: &'a mut Runtime,
-
+pub struct Refactor {
     pub explicit_functions: Vec<Rc<FunctionHead>>,
     pub invented_functions: HashSet<Rc<FunctionHead>>,
 
@@ -31,10 +29,9 @@ pub struct Refactor<'a> {
     pub call_graph: CallGraph,
 }
 
-impl<'a> Refactor<'a> {
-    pub fn new(runtime: &'a mut Runtime) -> Refactor<'a> {
+impl Refactor {
+    pub fn new() -> Refactor {
         Refactor {
-            runtime,
             explicit_functions: vec![],
             invented_functions: HashSet::new(),
             fn_logic: Default::default(),
@@ -122,12 +119,12 @@ impl<'a> Refactor<'a> {
         }
     }
 
-    pub fn try_monomorphize(&mut self, binding: &Rc<FunctionBinding>) -> Option<Rc<FunctionHead>> {
+    pub fn try_monomorphize(&mut self, binding: &Rc<FunctionBinding>, runtime: &mut Runtime) -> Option<Rc<FunctionHead>> {
         if self.fn_optimizations.contains_key(binding) {
             return None  // We already have an optimization; we need not monomorphize.
         }
 
-        let Some(logic) = self.fn_logic.get(&binding.function).or_else(|| self.runtime.source.fn_logic.get(&binding.function)) else {
+        let Some(logic) = self.fn_logic.get(&binding.function).or_else(|| runtime.source.fn_logic.get(&binding.function)) else {
             panic!("Cannot find logic for function {:?}", binding.function);
         };
 
@@ -197,11 +194,11 @@ impl<'a> Refactor<'a> {
         }
     }
 
-    pub fn gather_needed_functions(&mut self) -> LinkedHashSet<Rc<FunctionHead>> {
+    pub fn gather_needed_functions(&mut self, runtime: &mut Runtime) -> LinkedHashSet<Rc<FunctionHead>> {
         let callees = self.call_graph.deep_callees(self.explicit_functions.iter());
         for callee in callees.iter() {
             if !self.fn_logic.contains_key(callee) {
-                self.fn_logic.insert(Rc::clone(callee), self.runtime.source.fn_logic[callee].clone());
+                self.fn_logic.insert(Rc::clone(callee), runtime.source.fn_logic[callee].clone());
             }
         }
         callees

@@ -31,13 +31,13 @@ pub fn compile_deep(runtime: &mut Runtime, function: &Rc<FunctionHead>) -> RResu
         return Err(RuntimeError::error("main! function was somehow internal.").to_array());
     };
 
-    let mut refactor = Refactor::new(runtime);
+    let mut refactor = Refactor::new();
     refactor.add(implementation);
 
     let mut simplify = Simplify::new(&mut refactor, &transpiler::Config::default());
-    simplify.run();
+    simplify.run(runtime);
 
-    let needed_functions = refactor.gather_needed_functions();
+    let needed_functions = refactor.gather_needed_functions(runtime);
     let fn_logic = refactor.fn_logic;
 
     let mut errors = vec![];

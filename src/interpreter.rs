@@ -1,4 +1,3 @@
-pub mod compiler;
 pub mod vm;
 pub mod run;
 pub mod chunks;
@@ -9,3 +8,4 @@ pub mod data;
 pub mod runtime;
 mod tests;
 mod data_layout;
+mod compile;

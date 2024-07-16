@@ -6,7 +6,7 @@ mod tests {
     use crate::error::RResult;
     use crate::interpreter;
     use crate::interpreter::chunks::Chunk;
-    use crate::interpreter::compiler::compile_deep;
+    use crate::interpreter::compile::function_compiler::compile_deep;
     use crate::interpreter::data::Value;
     use crate::interpreter::opcode::{OpCode, Primitive};
     use crate::interpreter::runtime::Runtime;

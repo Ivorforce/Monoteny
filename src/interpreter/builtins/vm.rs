@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::path::PathBuf;
 use crate::error::RResult;
-use crate::interpreter::compiler::InlineFunction;
+use crate::interpreter::compile::function_compiler::InlineFunction;
 use crate::interpreter::opcode::{OpCode, Primitive};
 use crate::interpreter::runtime::Runtime;
 use crate::program;

@@ -10,7 +10,7 @@ use crate::{ast, parser, program, resolver};
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::builtins;
 use crate::interpreter::chunks::Chunk;
-use crate::interpreter::compiler::InlineFunction;
+use crate::interpreter::compile::function_compiler::InlineFunction;
 use crate::interpreter::data_layout::{create_data_layout, DataLayout};
 use crate::program::functions::FunctionHead;
 use crate::program::module::{Module, module_name, ModuleName};

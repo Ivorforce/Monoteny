@@ -62,7 +62,7 @@ pub trait LanguageContext {
 }
 
 pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &dyn LanguageContext, config: &Config, base_filename: &str) -> RResult<HashMap<String, String>>{
-    let mut refactor = Refactor::new(runtime);
+    let mut refactor = Refactor::new();
     context.register_builtins(&mut refactor);
 
     for artifact in transpiler.exported_artifacts {
@@ -74,13 +74,13 @@ pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &d
     }
 
     let mut simplify = Simplify::new(&mut refactor, config);
-    simplify.run();
+    simplify.run(runtime);
 
     // --- Reclaim from Refactor and make the ast
     context.refactor_code(&mut refactor);
 
     // TODO The call_graph doesn't know about calls made outside the refactor. If there was no monomorphization, some functions may not even be caught by this.
-    let deep_calls = refactor.gather_needed_functions();
+    let deep_calls = refactor.gather_needed_functions(runtime);
     let mut fn_logic = refactor.fn_logic;
 
     let exported_functions = refactor.explicit_functions.iter()
