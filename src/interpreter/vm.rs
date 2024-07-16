@@ -10,7 +10,6 @@ use std::rc::Rc;
 use crate::error::{RuntimeError, RResult};
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::data::{string_to_ptr, Value};
-use crate::interpreter::disassembler::disassemble_one;
 use crate::interpreter::opcode::{OpCode, Primitive};
 use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::call_frame::CallFrame;
@@ -52,9 +51,9 @@ impl<'b> VM<'b> {
             let mut current_chunk = initial_chunk;
 
             loop {
-                println!("sp: {:?}; ip: {:?}", sp, ip);
-                disassemble_one(ip);
-                print!("\n");
+                // println!("sp: {:?}; ip: {:?}", sp, ip);
+                // disassemble_one(ip);
+                // print!("\n");
 
                 let code = transmute::<u8, OpCode>(*ip);
                 ip = ip.add(1);
