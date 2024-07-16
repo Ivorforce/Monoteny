@@ -1,4 +1,4 @@
-name: Rust
+name: Rust Tests
 
 on:
   push:
@@ -16,6 +16,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - run: rustup toolchain install stable --profile minimal
+    - uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: "main"
+        save-if: ${{ github.ref == 'refs/heads/main' }}
     - name: Build
       run: cargo build --verbose
     - name: Run tests
