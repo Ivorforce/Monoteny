@@ -99,15 +99,16 @@ More code can be found in the [test-code](./test-code) (unit tests) and [monoten
 
 ## Targets
 
-The following languages are planned as compilation targets:
+The following languages are planned as compilation targets, in order of priority:
 
 * [WIP] Python with NumPy
+* [Future] Haxe (adding second-class support for: JavaScript, C++, C#, Java, JVM, Python, Lua, PHP, Flash)
 * [Future] Plain C
-* [Future] Monoteny Dialect (e.g. to the reader-centric "Math" dialect, which uses math-y symbols)
 * [Future] Octave / MatLab
-* [Future] C++ with Eigen
 * [Future] R
 * [Future] Julia
+* [Future] C++ with Eigen
+* [Future] Monoteny Dialect
 * [Future] LaTeX Expressions
 
 In addition, a transpilation API will allow 3rd parties to target custom ecosystems.
