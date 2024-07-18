@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
+    use std::cell::RefCell;
+    use std::io::Write;
     use std::path::PathBuf;
-    use std::rc::Rc;
+    use std::rc::{Rc, Weak};
 
     use uuid::Uuid;
 
@@ -36,8 +38,7 @@ mod tests {
         // stack: [true]
         chunk.push(OpCode::RETURN);
 
-        let mut out: Vec<u8> = vec![];
-        let result = runtime.vm.run(Rc::new(chunk), &runtime.compile_server, vec![], &mut out)?;
+        let result = runtime.vm.run(Rc::new(chunk), &runtime.compile_server, vec![])?;
 
         unsafe { assert_eq!(result.unwrap().bool, true); }
 
@@ -55,12 +56,13 @@ mod tests {
         // TODO Should gather all used functions and compile them
         let compiled = runtime.compile_server.compile_deep(&runtime.source, entry_function)?;
 
-        let mut out: Vec<u8> = vec![];
-        unsafe {
-            runtime.vm.run(compiled, &runtime.compile_server, vec![], &mut out)?;
-        }
+        runtime.vm.out = RefCell::new(Box::new(vec![]));
+        runtime.vm.run(compiled, &runtime.compile_server, vec![])?;
+        let out = unsafe {
+            ((runtime.vm.out.borrow_mut().as_mut() as *mut dyn Write) as *mut Vec<u8>).as_ref().unwrap()
+        };
 
-        Ok(std::str::from_utf8(&out).unwrap().to_string())
+        Ok(std::str::from_utf8(out).unwrap().to_string())
     }
 
     /// This tests the transpiler, interpreter and function calls.
@@ -160,7 +162,12 @@ mod tests {
 
         let mut out: Vec<u8> = vec![];
         unsafe {
-            let result = runtime.vm.run(compiled, &runtime.compile_server, vec![], &mut out);
+            runtime.vm.out = RefCell::new(Box::new(vec![]));
+            let result = runtime.vm.run(compiled, &runtime.compile_server, vec![]);
+            let out = unsafe {
+                ((runtime.vm.out.borrow_mut().as_mut() as *mut dyn Write) as *mut Vec<u8>).as_ref().unwrap()
+            };
+
             assert_eq!(std::str::from_utf8(&out).unwrap().to_string(), "Assertion failure.\n");
 
             if let Ok(_) = result {

@@ -152,7 +152,7 @@ impl Runtime {
         self.source.fn_logic.insert(Rc::clone(&dummy_head), FunctionLogic::Implementation(implementation));
 
         let compiled = self.compile_server.compile_deep(&self.source, &dummy_head)?;
-        let result = self.vm.run(compiled, &self.compile_server, vec![], &mut std::io::stdout())?;
+        let result = self.vm.run(compiled, &self.compile_server, vec![])?;
 
         // We know by now that the expression is supposed to evaluate to something.
         return Ok(result.ok_or(RuntimeError::error("").to_array())?)

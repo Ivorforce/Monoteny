@@ -1,8 +1,9 @@
 use std::alloc::{alloc, Layout};
+use std::cell::RefCell;
 use std::mem::transmute;
 use std::ops::Neg;
 use std::ptr::{read_unaligned, write_unaligned};
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use monoteny_macro::{bin_expr, pop_ip, pop_sp, un_expr};
 use uuid::Uuid;
@@ -12,12 +13,12 @@ use crate::interpreter::chunks::Chunk;
 use crate::interpreter::compile::compile_server::CompileServer;
 use crate::interpreter::data::{string_to_ptr, Value};
 use crate::interpreter::opcode::{OpCode, Primitive};
-use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::call_frame::CallFrame;
 
 pub mod call_frame;
 
 pub struct VM {
+    pub out: RefCell<Box<dyn std::io::Write>>,
     pub stack: Vec<Value>,
     pub transpile_functions: Vec<Uuid>,
     pub call_frames: Vec<CallFrame>,
@@ -32,13 +33,14 @@ impl VM {
     pub fn new() -> VM {
         VM {
             // TODO This should dynamically resize probably.
+            out: RefCell::new(Box::new(std::io::stdout())),
             stack: vec![Value::alloc(); 1024 * 1024],
             transpile_functions: vec![],
             call_frames: Default::default(),
         }
     }
 
-    pub fn run(&mut self, initial_chunk: Rc<Chunk>, compile_server: &CompileServer, parameters: Vec<Value>, pipe_out: &mut dyn std::io::Write) -> RResult<Option<Value>> {
+    pub fn run(&mut self, initial_chunk: Rc<Chunk>, compile_server: &CompileServer, parameters: Vec<Value>) -> RResult<Option<Value>> {
         unsafe {
             let mut sp: *mut Value = &mut self.stack[0] as *mut Value;
             for parameter in parameters {
@@ -332,7 +334,7 @@ impl VM {
                     OpCode::PRINT => {
                         // TODO Shouldn't need to copy it
                         let string: String = read_unaligned(pop_sp!().ptr as *mut String);
-                        writeln!(pipe_out, "{}", string)
+                        writeln!(self.out.borrow_mut(), "{}", string)
                             .map_err(|e| RuntimeError::error(&e.to_string()).to_array())?;
                     }
                     OpCode::NEG => {

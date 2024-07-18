@@ -18,7 +18,7 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
     let compiled = runtime.compile_server.compile_deep(&runtime.source, entry_function)?;
 
     unsafe {
-        runtime.vm.run(compiled, &runtime.compile_server, vec![], &mut std::io::stdout())?;
+        runtime.vm.run(compiled, &runtime.compile_server, vec![])?;
     }
 
     Ok(())
@@ -48,7 +48,7 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     let compiled = runtime.compile_server.compile_deep(&runtime.source, entry_function)?;
 
     unsafe {
-        runtime.vm.run(compiled, &runtime.compile_server, vec![Value { u8: 0 }], &mut std::io::stdout())?;
+        runtime.vm.run(compiled, &runtime.compile_server, vec![Value { u8: 0 }])?;
     }
 
     let exported_artifacts = gather_functions_logic(runtime, &runtime.vm.transpile_functions);
