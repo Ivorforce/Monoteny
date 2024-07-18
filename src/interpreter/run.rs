@@ -17,10 +17,8 @@ pub fn main(module: &Module, runtime: &mut Runtime) -> RResult<()> {
     // TODO Should gather all used functions and compile them
     let compiled = runtime.compile_server.compile_deep(&runtime.source, entry_function)?;
 
-    let mut out = std::io::stdout();
-    let mut vm = VM::new(&mut out);
     unsafe {
-        vm.run(compiled, runtime, vec![])?;
+        runtime.vm.run(compiled, &runtime.compile_server, vec![], &mut std::io::stdout())?;
     }
 
     Ok(())
@@ -49,13 +47,11 @@ pub fn transpile(module: &Module, runtime: &mut Runtime) -> RResult<Box<Transpil
     // Set the transpiler object.
     let compiled = runtime.compile_server.compile_deep(&runtime.source, entry_function)?;
 
-    let mut out = std::io::stdout();
-    let mut vm = VM::new(&mut out);
     unsafe {
-        vm.run(compiled, runtime, vec![Value { u8: 0 }])?;
+        runtime.vm.run(compiled, &runtime.compile_server, vec![Value { u8: 0 }], &mut std::io::stdout())?;
     }
 
-    let exported_artifacts = gather_functions_logic(runtime, &vm.transpile_functions);
+    let exported_artifacts = gather_functions_logic(runtime, &runtime.vm.transpile_functions);
 
     Ok(Box::new(Transpiler {
         // TODO This should be one of the exported artifacts

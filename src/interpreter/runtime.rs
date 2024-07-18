@@ -25,6 +25,7 @@ pub struct Runtime {
     pub traits: Option<builtins::traits::Traits>,
 
     pub compile_server: CompileServer,
+    pub vm: VM,
 
     // These remain unchanged after resolution.
     pub source: Source,
@@ -42,6 +43,7 @@ impl Runtime {
             primitives: None,
             traits: None,
             compile_server: CompileServer::new(),
+            vm: VM::new(),
             source: Source::new(),
             repository: Repository::new(),
         });
@@ -138,10 +140,7 @@ impl Runtime {
         self.source.fn_logic.insert(Rc::clone(&dummy_head), FunctionLogic::Implementation(implementation));
 
         let compiled = self.compile_server.compile_deep(&self.source, &dummy_head)?;
-
-        let mut out: Vec<u8> = vec![];
-        let mut vm = VM::new(&mut out);
-        let result = vm.run(compiled, self, vec![])?;
+        let result = self.vm.run(compiled, &self.compile_server, vec![], &mut std::io::stdout())?;
 
         // We know by now that the expression is supposed to evaluate to something.
         return Ok(result.ok_or(RuntimeError::error("").to_array())?)

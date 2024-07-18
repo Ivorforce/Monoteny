@@ -37,8 +37,7 @@ mod tests {
         chunk.push(OpCode::RETURN);
 
         let mut out: Vec<u8> = vec![];
-        let mut vm = VM::new(&mut out);
-        let result = vm.run(Rc::new(chunk), &mut runtime, vec![])?;
+        let result = runtime.vm.run(Rc::new(chunk), &runtime.compile_server, vec![], &mut out)?;
 
         unsafe { assert_eq!(result.unwrap().bool, true); }
 
@@ -57,9 +56,8 @@ mod tests {
         let compiled = runtime.compile_server.compile_deep(&runtime.source, entry_function)?;
 
         let mut out: Vec<u8> = vec![];
-        let mut vm = VM::new(&mut out);
         unsafe {
-            vm.run(compiled, &mut runtime, vec![])?;
+            runtime.vm.run(compiled, &runtime.compile_server, vec![], &mut out)?;
         }
 
         Ok(std::str::from_utf8(&out).unwrap().to_string())
@@ -161,9 +159,8 @@ mod tests {
         let compiled = runtime.compile_server.compile_deep(&runtime.source, entry_function)?;
 
         let mut out: Vec<u8> = vec![];
-        let mut vm = VM::new(&mut out);
         unsafe {
-            let result = vm.run(compiled, &mut runtime, vec![]);
+            let result = runtime.vm.run(compiled, &runtime.compile_server, vec![], &mut out);
             assert_eq!(std::str::from_utf8(&out).unwrap().to_string(), "Assertion failure.\n");
 
             if let Ok(_) = result {
@@ -190,7 +187,7 @@ mod tests {
 
         unsafe {
             let uuid = *(result.ptr as *mut Uuid);
-            assert_eq!(uuid, runtime.traits.unwrap().String.id);
+            assert_eq!(uuid, runtime.traits.as_ref().unwrap().String.id);
         }
 
         Ok(())

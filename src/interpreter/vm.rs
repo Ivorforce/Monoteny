@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::chunks::Chunk;
+use crate::interpreter::compile::compile_server::CompileServer;
 use crate::interpreter::data::{string_to_ptr, Value};
 use crate::interpreter::opcode::{OpCode, Primitive};
 use crate::interpreter::runtime::Runtime;
@@ -16,8 +17,7 @@ use crate::interpreter::vm::call_frame::CallFrame;
 
 pub mod call_frame;
 
-pub struct VM<'b> {
-    pub pipe_out: &'b mut dyn std::io::Write,
+pub struct VM {
     pub stack: Vec<Value>,
     pub transpile_functions: Vec<Uuid>,
     pub call_frames: Vec<CallFrame>,
@@ -28,10 +28,9 @@ pub unsafe fn to_str_ptr<A: ToString>(a: A) -> *mut () {
     string_to_ptr(&string)
 }
 
-impl<'b> VM<'b> {
-    pub fn new(pipe_out: &'b mut dyn std::io::Write) -> VM<'b> {
+impl VM {
+    pub fn new() -> VM {
         VM {
-            pipe_out,
             // TODO This should dynamically resize probably.
             stack: vec![Value::alloc(); 1024 * 1024],
             transpile_functions: vec![],
@@ -39,7 +38,7 @@ impl<'b> VM<'b> {
         }
     }
 
-    pub fn run(&mut self, initial_chunk: Rc<Chunk>, runtime: &mut Runtime, parameters: Vec<Value>) -> RResult<Option<Value>> {
+    pub fn run(&mut self, initial_chunk: Rc<Chunk>, compile_server: &CompileServer, parameters: Vec<Value>, pipe_out: &mut dyn std::io::Write) -> RResult<Option<Value>> {
         unsafe {
             let mut sp: *mut Value = &mut self.stack[0] as *mut Value;
             for parameter in parameters {
@@ -85,7 +84,7 @@ impl<'b> VM<'b> {
                     },
                     OpCode::CALL => {
                         let uuid = Uuid::from_u128(pop_ip!(u128));
-                        let chunk = Rc::clone(&runtime.compile_server.function_evaluators[&uuid]);
+                        let chunk = Rc::clone(&compile_server.function_evaluators[&uuid]);
                         self.call_frames.push(CallFrame {
                             chunk: current_chunk,
                             fp,
@@ -333,7 +332,7 @@ impl<'b> VM<'b> {
                     OpCode::PRINT => {
                         // TODO Shouldn't need to copy it
                         let string: String = read_unaligned(pop_sp!().ptr as *mut String);
-                        writeln!(self.pipe_out, "{}", string)
+                        writeln!(pipe_out, "{}", string)
                             .map_err(|e| RuntimeError::error(&e.to_string()).to_array())?;
                     }
                     OpCode::NEG => {
