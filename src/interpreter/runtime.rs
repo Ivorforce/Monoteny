@@ -25,7 +25,7 @@ pub struct Runtime {
     pub primitives: Option<HashMap<program::primitives::Type, Rc<Trait>>>,
     pub traits: Option<builtins::traits::Traits>,
 
-    pub base_scope: Option<Rc<scopes::Scope<'static>>>,
+    pub base_scope: Rc<scopes::Scope<'static>>,
     pub compile_server: CompileServer,
     pub vm: VM,
 
@@ -44,7 +44,7 @@ impl Runtime {
             Metatype: Rc::clone(&Metatype),
             primitives: None,
             traits: None,
-            base_scope: None,
+            base_scope: Rc::new(scopes::Scope::new()),  // Temporary empty scope.
             compile_server: CompileServer::new(),
             vm: VM::new(),
             source: Source::new(),
@@ -60,10 +60,19 @@ impl Runtime {
 
         referencible::add_trait(&mut runtime, &mut builtins_module, None, &Metatype).unwrap();
 
+        // Load builtins
         runtime.source.module_by_name.insert(builtins_module.name.clone(), builtins_module);
-        builtins::vm::load(&mut runtime)?;
+        runtime.base_scope = Rc::new(runtime.make_scope()?);
 
-        runtime.base_scope = Some(Rc::new(runtime.make_scope()?));
+        // Load core
+        runtime.repository.add("core", PathBuf::from("monoteny"));
+        runtime.get_or_load_module(&module_name("core"))?;
+
+        // Final scope can be loaded.
+        runtime.base_scope = Rc::new(runtime.make_scope()?);
+
+        // Load VM builtins.
+        builtins::vm::load(&mut runtime)?;
 
         Ok(runtime)
     }
@@ -119,15 +128,7 @@ impl Runtime {
 
     pub fn load_ast_as_module(&mut self, syntax: &ast::Block, name: ModuleName) -> RResult<Box<Module>> {
         let mut module = Box::new(Module::new(name));
-
-        if let Some(scope) = self.base_scope.as_ref() {
-            resolver::resolve_file(syntax, &Rc::clone(scope), self, &mut module)?;
-        }
-        else {
-            let scope = self.make_scope()?;
-            resolver::resolve_file(syntax, &scope, self, &mut module)?;
-        }
-
+        resolver::resolve_file(syntax, &Rc::clone(&self.base_scope), self, &mut module)?;
         Ok(module)
     }
 

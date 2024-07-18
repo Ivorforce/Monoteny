@@ -15,9 +15,6 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     // -------------------------------------- Monoteny files --------------------------------------
     // -------------------------------------- ------ --------------------------------------
 
-    runtime.repository.add("core", PathBuf::from("monoteny"));
-    runtime.get_or_load_module(&module_name("core"))?;
-
     for function in runtime.source.module_by_name[&module_name("core.debug")].explicit_functions(&runtime.source) {
         runtime.compile_server.function_inlines.insert(Rc::clone(function), match function.declared_representation.name.as_str() {
             "_write_line" => inline_fn_push(OpCode::PRINT),
