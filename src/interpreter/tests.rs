@@ -12,14 +12,10 @@ mod tests {
     use crate::interpreter::runtime::Runtime;
     use crate::interpreter::vm::VM;
     use crate::parser::parse_expression;
-    use crate::program::expression_tree::ExpressionTree;
-    use crate::program::functions::{FunctionHead, FunctionImplementation, FunctionInterface, FunctionLogic, FunctionRepresentation};
-    use crate::program::generics::TypeForest;
+    use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionRepresentation};
     use crate::program::module::module_name;
-    use crate::program::traits::RequirementsAssumption;
     use crate::program::types::TypeProto;
-    use crate::resolver::imperative::ImperativeResolver;
-    use crate::resolver::imperative_builder::ImperativeBuilder;
+    use crate::resolver::function::resolve_anonymous_expression;
     use crate::transpiler::LanguageContext;
 
     /// This tests the transpiler, interpreter and function calls.
@@ -193,32 +189,9 @@ mod tests {
 
         let mut scope = runtime.make_scope()?;
 
-        let mut builder = ImperativeBuilder {
-            runtime: &runtime,
-            types: Box::new(TypeForest::new()),
-            expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
-            locals_names: Default::default(),
-        };
-
-        let mut resolver = ImperativeResolver {
-            return_type: Rc::clone(&function_interface.return_type),
-            builder,
-            ambiguities: vec![],
-        };
-
-        let head_expression = resolver.resolve_expression(&parsed_source, &scope)?;
-        resolver.builder.types.bind(head_expression, &function_interface.return_type)?;
-        resolver.builder.expression_tree.root = head_expression;  // TODO This is kinda dumb; but we can't write into an existing head expression
-        resolver.resolve_all_ambiguities()?;
-
-        let implementation = Box::new(FunctionImplementation {
-            interface: Rc::clone(&function_interface),
-            requirements_assumption: RequirementsAssumption::empty(),
-            expression_tree: resolver.builder.expression_tree,
-            type_forest: resolver.builder.types,
-            parameter_locals: vec![],
-            locals_names: resolver.builder.locals_names,
-        });
+        let implementation = resolve_anonymous_expression(
+            &function_interface, &parsed_source, &scope, &mut runtime
+        )?;
 
         // TODO We shouldn't need a function head for this.
         let dummy_head = FunctionHead::new_static(

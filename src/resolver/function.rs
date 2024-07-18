@@ -9,7 +9,7 @@ use crate::error::RResult;
 use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::ExpressionTree;
-use crate::program::functions::{FunctionHead, FunctionImplementation};
+use crate::program::functions::{FunctionHead, FunctionImplementation, FunctionInterface};
 use crate::program::generics::TypeForest;
 use crate::program::traits::{RequirementsAssumption, TraitConformance, TraitConformanceRule};
 use crate::resolver::imperative::ImperativeResolver;
@@ -57,6 +57,38 @@ pub fn resolve_function_body(head: &Rc<FunctionHead>, body: &ast::Expression, sc
         expression_tree: resolver.builder.expression_tree,
         type_forest: resolver.builder.types,
         parameter_locals: parameter_variables,
+        locals_names: resolver.builder.locals_names,
+    }))
+}
+
+pub fn resolve_anonymous_expression(interface: &Rc<FunctionInterface>, body: &ast::Expression, scope: &scopes::Scope, runtime: &mut Runtime) -> RResult<Box<FunctionImplementation>> {
+    // TODO This is almost the same function as the above, with the difference that
+    //  1) We have no parameters
+    //  2) We have no requirements
+    let mut builder = ImperativeBuilder {
+        runtime: &runtime,
+        types: Box::new(TypeForest::new()),
+        expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
+        locals_names: Default::default(),
+    };
+
+    let mut resolver = ImperativeResolver {
+        return_type: Rc::clone(&interface.return_type),
+        builder,
+        ambiguities: vec![],
+    };
+
+    let head_expression = resolver.resolve_expression(&body, &scope)?;
+    resolver.builder.types.bind(head_expression, &interface.return_type)?;
+    resolver.builder.expression_tree.root = head_expression;  // TODO This is kinda dumb; but we can't write into an existing head expression
+    resolver.resolve_all_ambiguities()?;
+
+    Ok(Box::new(FunctionImplementation {
+        interface: Rc::clone(&interface),
+        requirements_assumption: RequirementsAssumption::empty(),
+        expression_tree: resolver.builder.expression_tree,
+        type_forest: resolver.builder.types,
+        parameter_locals: vec![],
         locals_names: resolver.builder.locals_names,
     }))
 }
