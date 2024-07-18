@@ -41,7 +41,7 @@ pub fn resolve_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Ru
 
     // Resolve global types / interfaces
     for statement in &syntax.statements {
-        global_resolver.resolve_global_statement(statement, &HashSet::new())
+        global_resolver.resolve_global_statement(statement)
             .err_in_range(&statement.value.position)?;
     }
 
@@ -71,11 +71,11 @@ pub fn resolve_file(syntax: &ast::Block, scope: &scopes::Scope, runtime: &mut Ru
 }
 
 impl <'a> GlobalResolver<'a> {
-    pub fn resolve_global_statement(&mut self, pstatement: &'a ast::Decorated<Positioned<ast::Statement>>, requirements: &HashSet<Rc<TraitBinding>>) -> RResult<()> {
+    pub fn resolve_global_statement(&mut self, pstatement: &'a ast::Decorated<Positioned<ast::Statement>>) -> RResult<()> {
         match &pstatement.value.value {
             ast::Statement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
-                let function_head = resolve_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, requirements, &Default::default())?;
+                let function_head = resolve_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, &Default::default(), &Default::default())?;
 
                 for decoration in pstatement.decorations_as_vec()? {
                     let pattern = try_parse_pattern(decoration, Rc::clone(&function_head), &self.global_variables)?;
@@ -114,7 +114,7 @@ impl <'a> GlobalResolver<'a> {
                 for statement in syntax.block.statements.iter() {
                     statement.no_decorations()?;
 
-                    resolver.resolve_statement(&statement.value.value, requirements, &Default::default(), &scope)
+                    resolver.resolve_statement(&statement.value.value, &Default::default(), &Default::default(), &scope)
                         .err_in_range(&statement.value.position)?;
                 }
 
@@ -165,7 +165,7 @@ impl <'a> GlobalResolver<'a> {
                 for statement in syntax.block.statements.iter() {
                     statement.no_decorations()?;
 
-                    resolver.resolve_statement(&statement.value.value, &requirements.union(&conformance_requirements).cloned().collect(), &generics.values().cloned().collect(), &scope)
+                    resolver.resolve_statement(&statement.value.value, &&conformance_requirements, &generics.values().cloned().collect(), &scope)
                         .err_in_range(&statement.value.position)?;
                 }
 
