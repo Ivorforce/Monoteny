@@ -3,13 +3,23 @@ mod tests {
     use std::path::PathBuf;
     use std::rc::Rc;
 
+    use uuid::Uuid;
+
     use crate::error::RResult;
     use crate::interpreter;
     use crate::interpreter::chunks::Chunk;
     use crate::interpreter::opcode::{OpCode, Primitive};
     use crate::interpreter::runtime::Runtime;
     use crate::interpreter::vm::VM;
+    use crate::parser::parse_expression;
+    use crate::program::expression_tree::ExpressionTree;
+    use crate::program::functions::{FunctionHead, FunctionImplementation, FunctionInterface, FunctionLogic, FunctionRepresentation};
+    use crate::program::generics::TypeForest;
     use crate::program::module::module_name;
+    use crate::program::traits::RequirementsAssumption;
+    use crate::program::types::TypeProto;
+    use crate::resolver::imperative::ImperativeResolver;
+    use crate::resolver::imperative_builder::ImperativeBuilder;
     use crate::transpiler::LanguageContext;
 
     /// This tests the transpiler, interpreter and function calls.
@@ -164,6 +174,70 @@ mod tests {
             if let Ok(_) = result {
                 assert!(false)
             }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn anonymous_type() -> RResult<()> {
+        let mut runtime = Runtime::new()?;
+        runtime.repository.add("common", PathBuf::from("monoteny"));
+
+        let (parsed_source, _) = parse_expression("String")?;
+
+        let function_interface = FunctionInterface::new_provider(
+            &TypeProto::one_arg(&runtime.Metatype, TypeProto::unit_struct(&runtime.traits.as_ref().unwrap().String)),
+            vec![]
+        );
+
+        let mut scope = runtime.make_scope()?;
+
+        let mut builder = ImperativeBuilder {
+            runtime: &runtime,
+            types: Box::new(TypeForest::new()),
+            expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
+            locals_names: Default::default(),
+        };
+
+        let mut resolver = ImperativeResolver {
+            return_type: Rc::clone(&function_interface.return_type),
+            builder,
+            ambiguities: vec![],
+        };
+
+        let head_expression = resolver.resolve_expression(&parsed_source, &scope)?;
+        resolver.builder.types.bind(head_expression, &function_interface.return_type)?;
+        resolver.builder.expression_tree.root = head_expression;  // TODO This is kinda dumb; but we can't write into an existing head expression
+        resolver.resolve_all_ambiguities()?;
+
+        let implementation = Box::new(FunctionImplementation {
+            interface: Rc::clone(&function_interface),
+            requirements_assumption: RequirementsAssumption::empty(),
+            expression_tree: resolver.builder.expression_tree,
+            type_forest: resolver.builder.types,
+            parameter_locals: vec![],
+            locals_names: resolver.builder.locals_names,
+        });
+
+        // TODO We shouldn't need a function head for this.
+        let dummy_head = FunctionHead::new_static(
+            vec![],
+            FunctionRepresentation::dummy(),
+            function_interface,
+        );
+        runtime.source.fn_heads.insert(dummy_head.function_id, Rc::clone(&dummy_head));
+        runtime.source.fn_logic.insert(Rc::clone(&dummy_head), FunctionLogic::Implementation(implementation));
+
+        let compiled = runtime.compile_server.compile_deep(&runtime.source, &dummy_head)?;
+
+        let mut out: Vec<u8> = vec![];
+        let mut vm = VM::new(&mut out);
+        let result = vm.run(compiled, &mut runtime, vec![])?;
+
+        unsafe {
+            let uuid = *(result.unwrap().ptr as *mut Uuid);
+            assert_eq!(uuid, runtime.traits.unwrap().String.id);
         }
 
         Ok(())

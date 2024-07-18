@@ -57,6 +57,22 @@ impl Runtime {
         Ok(runtime)
     }
 
+    pub fn make_scope(&mut self) -> RResult<scopes::Scope<'static>> {
+        let mut scope = scopes::Scope::new();
+
+        let builtins_name = module_name("builtins");
+        if self.source.module_by_name.contains_key(&builtins_name) {
+            imports::deep(self, builtins_name, &mut scope)?;
+        }
+
+        let core_name = module_name("core");
+        if self.source.module_by_name.contains_key(&core_name) {
+            imports::deep(self, core_name, &mut scope)?;
+        }
+
+        Ok(scope)
+    }
+
     pub fn get_or_load_module(&mut self, name: &ModuleName) -> RResult<&Module> {
         // FIXME this should be if let Some( ... but the compiler bugs out
         if self.source.module_by_name.contains_key(name) {
@@ -91,17 +107,7 @@ impl Runtime {
     }
 
     pub fn load_ast_as_module(&mut self, syntax: &ast::Block, name: ModuleName) -> RResult<Box<Module>> {
-        let mut scope = scopes::Scope::new();
-
-        let builtins_name = module_name("builtins");
-        if self.source.module_by_name.contains_key(&builtins_name) {
-            imports::deep(self, builtins_name, &mut scope)?;
-        }
-
-        let core_name = module_name("core");
-        if self.source.module_by_name.contains_key(&core_name) {
-            imports::deep(self, core_name, &mut scope)?;
-        }
+        let scope = self.make_scope()?;
 
         let mut module = Box::new(Module::new(name));
         resolver::resolve_file(syntax, &scope, self, &mut module)?;

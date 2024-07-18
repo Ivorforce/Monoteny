@@ -159,7 +159,7 @@ VariableDeclarationMutability: Mutability = {
 
 // =============================== Expression =====================================
 
-Expression: Expression = {
+pub Expression: Expression = {
     Box<Positioned<IfThenElseTerm>> => Expression::from(vec![<>]),
     ExpressionNoIfThenElse,
 }

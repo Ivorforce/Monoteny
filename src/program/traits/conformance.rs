@@ -90,6 +90,13 @@ impl Hash for RequirementsFulfillment {
     }
 }
 
+impl RequirementsAssumption {
+    pub fn empty() -> Box<RequirementsAssumption> {
+        Box::new(RequirementsAssumption {
+            conformance: Default::default(),
+        })
+    }
+}
 
 impl RequirementsFulfillment {
     pub fn empty() -> Rc<RequirementsFulfillment> {
