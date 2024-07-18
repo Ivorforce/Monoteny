@@ -5,6 +5,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 
 use crate::{ast, parser, program, resolver};
+use crate::cli::run::run;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::builtins;
 use crate::interpreter::compile::compile_server::CompileServer;
@@ -24,6 +25,7 @@ pub struct Runtime {
     pub primitives: Option<HashMap<program::primitives::Type, Rc<Trait>>>,
     pub traits: Option<builtins::traits::Traits>,
 
+    pub base_scope: Option<Rc<scopes::Scope<'static>>>,
     pub compile_server: CompileServer,
     pub vm: VM,
 
@@ -42,6 +44,7 @@ impl Runtime {
             Metatype: Rc::clone(&Metatype),
             primitives: None,
             traits: None,
+            base_scope: None,
             compile_server: CompileServer::new(),
             vm: VM::new(),
             source: Source::new(),
@@ -60,10 +63,12 @@ impl Runtime {
         runtime.source.module_by_name.insert(builtins_module.name.clone(), builtins_module);
         builtins::vm::load(&mut runtime)?;
 
+        runtime.base_scope = Some(Rc::new(runtime.make_scope()?));
+
         Ok(runtime)
     }
 
-    pub fn make_scope(&mut self) -> RResult<scopes::Scope<'static>> {
+    fn make_scope(&mut self) -> RResult<scopes::Scope<'static>> {
         let mut scope = scopes::Scope::new();
 
         let builtins_name = module_name("builtins");
@@ -113,10 +118,16 @@ impl Runtime {
     }
 
     pub fn load_ast_as_module(&mut self, syntax: &ast::Block, name: ModuleName) -> RResult<Box<Module>> {
-        let scope = self.make_scope()?;
-
         let mut module = Box::new(Module::new(name));
-        resolver::resolve_file(syntax, &scope, self, &mut module)?;
+
+        if let Some(scope) = self.base_scope.as_ref() {
+            resolver::resolve_file(syntax, &Rc::clone(scope), self, &mut module)?;
+        }
+        else {
+            let scope = self.make_scope()?;
+            resolver::resolve_file(syntax, &scope, self, &mut module)?;
+        }
+
         Ok(module)
     }
 
