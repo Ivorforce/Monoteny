@@ -12,10 +12,9 @@ mod tests {
     use crate::interpreter::runtime::Runtime;
     use crate::interpreter::vm::VM;
     use crate::parser::parse_expression;
-    use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionRepresentation};
+    use crate::program::functions::FunctionInterface;
     use crate::program::module::module_name;
     use crate::program::types::TypeProto;
-    use crate::resolver::function::resolve_anonymous_expression;
     use crate::transpiler::LanguageContext;
 
     /// This tests the transpiler, interpreter and function calls.
@@ -180,36 +179,17 @@ mod tests {
         let mut runtime = Runtime::new()?;
         runtime.repository.add("common", PathBuf::from("monoteny"));
 
-        let (parsed_source, _) = parse_expression("String")?;
-
-        let function_interface = FunctionInterface::new_provider(
-            &TypeProto::one_arg(&runtime.Metatype, TypeProto::unit_struct(&runtime.traits.as_ref().unwrap().String)),
-            vec![]
-        );
-
-        let mut scope = runtime.make_scope()?;
-
-        let implementation = resolve_anonymous_expression(
-            &function_interface, &parsed_source, &scope, &mut runtime
+        let (expression, _) = parse_expression("String")?;
+        let result = runtime.evaluate_anonymous_expression(
+            &expression,
+            FunctionInterface::new_provider(
+                &TypeProto::one_arg(&runtime.Metatype, TypeProto::unit_struct(&runtime.traits.as_ref().unwrap().String)),
+                vec![]
+            ),
         )?;
 
-        // TODO We shouldn't need a function head for this.
-        let dummy_head = FunctionHead::new_static(
-            vec![],
-            FunctionRepresentation::dummy(),
-            function_interface,
-        );
-        runtime.source.fn_heads.insert(dummy_head.function_id, Rc::clone(&dummy_head));
-        runtime.source.fn_logic.insert(Rc::clone(&dummy_head), FunctionLogic::Implementation(implementation));
-
-        let compiled = runtime.compile_server.compile_deep(&runtime.source, &dummy_head)?;
-
-        let mut out: Vec<u8> = vec![];
-        let mut vm = VM::new(&mut out);
-        let result = vm.run(compiled, &mut runtime, vec![])?;
-
         unsafe {
-            let uuid = *(result.unwrap().ptr as *mut Uuid);
+            let uuid = *(result.ptr as *mut Uuid);
             assert_eq!(uuid, runtime.traits.unwrap().String.id);
         }
 

@@ -8,10 +8,14 @@ use crate::{ast, parser, program, resolver};
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::builtins;
 use crate::interpreter::compile::compile_server::CompileServer;
+use crate::interpreter::data::Value;
+use crate::interpreter::vm::VM;
+use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionRepresentation};
 use crate::program::module::{Module, module_name, ModuleName};
 use crate::program::traits::Trait;
 use crate::repository::Repository;
 use crate::resolver::{imports, referencible, scopes};
+use crate::resolver::function::resolve_anonymous_expression;
 use crate::source::Source;
 
 pub struct Runtime {
@@ -112,5 +116,34 @@ impl Runtime {
         let mut module = Box::new(Module::new(name));
         resolver::resolve_file(syntax, &scope, self, &mut module)?;
         Ok(module)
+    }
+
+    pub fn evaluate_anonymous_expression(&mut self, expression: &ast::Expression, interface: Rc<FunctionInterface>) -> RResult<Value> {
+        // It doesn't make sense to evaluate something that isn't supposed to return anything.
+        assert!(!interface.return_type.unit.is_void());
+
+        let scope = self.make_scope()?;
+
+        let implementation = resolve_anonymous_expression(
+            &interface, &expression, &scope, self
+        )?;
+
+        // TODO We shouldn't need a function head for this, I think.
+        let dummy_head = FunctionHead::new_static(
+            vec![],
+            FunctionRepresentation::dummy(),
+            interface,
+        );
+        self.source.fn_heads.insert(dummy_head.function_id, Rc::clone(&dummy_head));
+        self.source.fn_logic.insert(Rc::clone(&dummy_head), FunctionLogic::Implementation(implementation));
+
+        let compiled = self.compile_server.compile_deep(&self.source, &dummy_head)?;
+
+        let mut out: Vec<u8> = vec![];
+        let mut vm = VM::new(&mut out);
+        let result = vm.run(compiled, self, vec![])?;
+
+        // We know by now that the expression is supposed to evaluate to something.
+        return Ok(result.ok_or(RuntimeError::error("").to_array())?)
     }
 }
