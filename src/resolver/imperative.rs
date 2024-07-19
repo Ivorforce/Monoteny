@@ -55,6 +55,10 @@ impl <'a> ImperativeResolver<'a> {
             }
         }
 
+        if !self.builder.type_factory.requirements.is_empty() {
+            panic!()
+        }
+
         Ok(())
     }
 
@@ -591,16 +595,12 @@ impl <'a> ImperativeResolver<'a> {
     }
 
     pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &ast::Expression, scope: &scopes::Scope) -> RResult<()> {
-        let mut type_factory = TypeFactory::new(&scope, &self.builder.runtime);
+        let type_declaration = self.builder.type_factory.resolve_type(&type_declaration,true)?;
 
-        let type_declaration = type_factory.resolve_type(&type_declaration,true)?;
-
-        for requirement in type_factory.requirements {
-            todo!("Implicit imperative requirements are not implemented yet")
-        }
-
-        for (name, generic) in type_factory.generics.into_iter() {
-            panic!("Anonymous type hints are not supported yet") // need a mut scope
+        for (name, generic) in self.builder.type_factory.generics.iter() {
+            // need a mut scope
+            // also, we'd need to insert it into our types
+            panic!("Anonymous type hints are not supported yet")
             // scope.insert_singleton(
             //     scopes::Environment::Global,
             //     Reference::make_immutable_type(TypeProto::unit(generic.clone())),

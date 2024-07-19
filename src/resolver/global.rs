@@ -123,7 +123,7 @@ impl <'a> GlobalResolver<'a> {
             ast::Statement::Conformance(syntax) => {
                 pstatement.no_decorations()?;
 
-                let mut type_factory = TypeFactory::new(&self.global_variables, &mut self.runtime);
+                let mut type_factory = TypeFactory::new(&self.global_variables, &mut self.runtime.source);
                 let self_type = type_factory.resolve_type(&syntax.declared_for, true)?;
                 let declared_type = type_factory.resolve_type(&syntax.declared, false)?;
                 let TypeUnit::Struct(declared) = &declared_type.unit else {

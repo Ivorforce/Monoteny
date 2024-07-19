@@ -5,15 +5,15 @@ use itertools::Itertools;
 
 use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError};
-use crate::interpreter::runtime::Runtime;
 use crate::parser::expressions;
 use crate::program::functions::FunctionTargetType;
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::resolver::scopes;
+use crate::source::Source;
 
 pub struct TypeFactory<'a> {
-    pub runtime: &'a Runtime,
+    pub source: &'a Source,
     pub scope: &'a scopes::Scope<'a>,
 
     pub generics: HashMap<String, Rc<Trait>>,
@@ -23,12 +23,12 @@ pub struct TypeFactory<'a> {
 // TODO Essentially this is a form of mini interpreter.
 //  In the future it might be easier to rewrite it as such.
 impl <'a> TypeFactory<'a> {
-    pub fn new(scope: &'a scopes::Scope<'a>, runtime: &'a Runtime) -> TypeFactory<'a> {
+    pub fn new(scope: &'a scopes::Scope<'a>, source: &'a Source) -> TypeFactory<'a> {
         TypeFactory {
             scope,
             generics: HashMap::new(),
             requirements: HashSet::new(),
-            runtime,
+            source,
         }
     }
 
@@ -38,7 +38,7 @@ impl <'a> TypeFactory<'a> {
 
         let function = overload.functions.iter().exactly_one()
             .map_err(|_| RuntimeError::error("Function overload cannot be resolved to a type.").to_array())?;
-        let trait_ = self.runtime.source.trait_references.get(function)
+        let trait_ = self.source.trait_references.get(function)
             .ok_or_else(|| RuntimeError::error(format!("Interpreted types aren't supported yet; please use an explicit type for now.\n{}", name).as_str()).to_array())?;
 
         return Ok(Rc::clone(trait_))

@@ -15,8 +15,17 @@ use crate::program::traits::{RequirementsAssumption, TraitConformance, TraitConf
 use crate::resolver::imperative::ImperativeResolver;
 use crate::resolver::imperative_builder::ImperativeBuilder;
 use crate::resolver::scopes;
+use crate::resolver::type_factory::TypeFactory;
 
 pub fn resolve_function_body(head: &Rc<FunctionHead>, body: &ast::Expression, scope: &scopes::Scope, runtime: &mut Runtime) -> RResult<Box<FunctionImplementation>> {
+    let mut builder = ImperativeBuilder {
+        runtime,
+        type_factory: TypeFactory::new(scope, &runtime.source),
+        types: Box::new(TypeForest::new()),
+        expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
+        locals_names: Default::default(),
+    };
+
     let mut scope = scope.subscope();
 
     let granted_requirements = scope.trait_conformance.assume_granted(
@@ -24,13 +33,6 @@ pub fn resolve_function_body(head: &Rc<FunctionHead>, body: &ast::Expression, sc
     );
 
     add_conformances_to_scope(&mut scope, &granted_requirements)?;
-
-    let mut builder = ImperativeBuilder {
-        runtime,
-        types: Box::new(TypeForest::new()),
-        expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
-        locals_names: Default::default(),
-    };
 
     // Register parameters as variables.
     let mut parameter_variables = vec![];
@@ -67,6 +69,7 @@ pub fn resolve_anonymous_expression(interface: &Rc<FunctionInterface>, body: &as
     //  2) We have no requirements
     let mut builder = ImperativeBuilder {
         runtime: &runtime,
+        type_factory: TypeFactory::new(scope, &runtime.source),
         types: Box::new(TypeForest::new()),
         expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
         locals_names: Default::default(),

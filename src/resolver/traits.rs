@@ -54,7 +54,7 @@ impl <'a> TraitResolver<'a> {
                     );
                 };
 
-                let mut type_factory = TypeFactory::new(scope, &self.runtime);
+                let mut type_factory = TypeFactory::new(scope, &self.runtime.source);
 
                 let variable_type = type_factory.resolve_type(type_declaration, true)?;
 

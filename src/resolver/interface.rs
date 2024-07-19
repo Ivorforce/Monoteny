@@ -17,7 +17,7 @@ use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
 pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Trait>>) -> RResult<Rc<FunctionHead>> {
-    let mut type_factory = TypeFactory::new(scope, runtime);
+    let mut type_factory = TypeFactory::new(scope, &runtime.source);
 
     let parsed = expressions::parse(&interface.expression, &scope.grammar)?;
 

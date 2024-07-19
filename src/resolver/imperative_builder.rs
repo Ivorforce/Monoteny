@@ -11,10 +11,12 @@ use crate::program::functions::{FunctionBinding, FunctionOverload, FunctionTarge
 use crate::program::generics::TypeForest;
 use crate::program::types::TypeProto;
 use crate::resolver::scopes;
+use crate::resolver::type_factory::TypeFactory;
 
 /// Note: This object should not know about the AST.
 pub struct ImperativeBuilder<'a> {
     pub runtime: &'a Runtime,
+    pub type_factory: TypeFactory<'a>,
     pub types: Box<TypeForest>,
     pub expression_tree: Box<ExpressionTree>,
     pub locals_names: HashMap<Rc<ObjectReference>, String>,
