@@ -65,11 +65,14 @@ pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &d
     let mut refactor = Refactor::new();
     context.register_builtins(&mut refactor);
 
+    let mut exported_function_order = vec![];
+
     for artifact in transpiler.exported_artifacts {
         match artifact {
             TranspiledArtifact::Function(function_head) => {
                 match &runtime.source.fn_logic[&function_head] {
                     FunctionLogic::Implementation(implementation) => {
+                        exported_function_order.push(Rc::clone(&function_head));
                         refactor.add(function_head, implementation.clone());
                     }
                     FunctionLogic::Descriptor(_) => panic!("Cannot transpile a function for which whe don't know an implementation!")
@@ -89,13 +92,13 @@ pub fn transpile(transpiler: Box<Transpiler>, runtime: &mut Runtime, context: &d
         monomorphize: config.should_monomorphize,
     };
 
-    simplify.run(&runtime.source);
+    simplify.run(exported_function_order.iter(), &runtime.source);
 
     // --- Reclaim from Refactor and make the ast
     context.refactor_code(&mut simplify.refactor);
 
     // TODO The call_graph doesn't know about calls made outside the refactor. If there was no monomorphization, some functions may not even be caught by this.
-    let deep_calls = simplify.refactor.gather_needed_functions(&runtime.source);
+    let deep_calls = simplify.refactor.gather_deep_functions(exported_function_order.iter(), &runtime.source);
     let mut fn_logic = simplify.refactor.fn_logic;
 
     let exported_functions = simplify.refactor.explicit_functions.iter()

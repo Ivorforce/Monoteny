@@ -11,7 +11,7 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
         FunctionLogicDescriptor::Clone(_) => todo!("{:?}", function),
         FunctionLogicDescriptor::TraitProvider(trait_) => {
             let uuid = trait_.id;
-            compile_server.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
+            compile_server.function_inlines.insert(function.function_id, Rc::new(move |compiler, expression| {
                 unsafe { compiler.chunk.constants.push(Value { ptr: uuid_to_ptr(uuid) }); }
                 compiler.chunk.push_with_u32(OpCode::LOAD_CONSTANT_32, u32::try_from(compiler.chunk.constants.len() - 1).unwrap());
                 Ok(())
@@ -19,7 +19,7 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
         }
         FunctionLogicDescriptor::FunctionProvider(f) => {
             let uuid = f.function_id;
-            compile_server.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
+            compile_server.function_inlines.insert(function.function_id, Rc::new(move |compiler, expression| {
                 unsafe { compiler.chunk.constants.push(Value { ptr: uuid_to_ptr(uuid) }); }
                 compiler.chunk.push_with_u32(OpCode::LOAD_CONSTANT_32, u32::try_from(compiler.chunk.constants.len() - 1).unwrap());
                 Ok(())
@@ -29,7 +29,7 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
         FunctionLogicDescriptor::Constructor(struct_info) => {
             let data_layout = compile_server.get_data_layout(struct_info);
 
-            compile_server.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
+            compile_server.function_inlines.insert(function.function_id, Rc::new(move |compiler, expression| {
                 let arguments = &compiler.implementation.expression_tree.children[&expression];
                 assert_eq!(arguments.len(), data_layout.fields.len() + 1);
 
@@ -52,7 +52,7 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
             let data_layout = compile_server.get_data_layout(struct_info);
             let slot_index = data_layout.fields.iter().position(|r| r == ref_).unwrap();
 
-            compile_server.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
+            compile_server.function_inlines.insert(function.function_id, Rc::new(move |compiler, expression| {
                 let arguments = &compiler.implementation.expression_tree.children[&expression];
 
                 compiler.compile_expression(&arguments[0])?;
@@ -66,7 +66,7 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
             let data_layout = compile_server.get_data_layout(struct_info);
             let slot_index = data_layout.fields.iter().position(|r| r == ref_).unwrap();
 
-            compile_server.function_inlines.insert(Rc::clone(function), Rc::new(move |compiler, expression| {
+            compile_server.function_inlines.insert(function.function_id, Rc::new(move |compiler, expression| {
                 let arguments = &compiler.implementation.expression_tree.children[&expression];
 
                 compiler.compile_expression(&arguments[0])?;

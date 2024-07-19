@@ -1,8 +1,8 @@
 use std::collections::hash_map::RandomState;
-
+use std::rc::Rc;
 use linked_hash_set::LinkedHashSet;
 
-use crate::program::functions::FunctionLogic;
+use crate::program::functions::{FunctionHead, FunctionLogic};
 use crate::refactor::{locals, Refactor};
 use crate::source::Source;
 
@@ -14,7 +14,7 @@ pub struct Simplify {
 }
 
 impl Simplify {
-    pub fn run(&mut self, source: &Source) {
+    pub fn run<'a>(&mut self, from_functions: impl Iterator<Item=&'a Rc<FunctionHead>>, source: &Source) {
         if self.monomorphize {
             // First, monomorphize everything we call
             let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(
@@ -29,11 +29,12 @@ impl Simplify {
         }
 
         // Make sure refactor has everything that's needed so we can simplify it.
-        self.refactor.gather_needed_functions(source);
+        self.refactor.gather_deep_functions(from_functions, source);
 
         // Now, let's simplify!
         let mut next: LinkedHashSet<_, RandomState> = LinkedHashSet::from_iter(self.refactor.fn_logic.keys().cloned());
         while let Some(current) = next.pop_front() {
+            // TODO The explicit functions should be refactorable too, I think.
             let is_explicit = self.refactor.explicit_functions.contains(&current);
 
             if !is_explicit && self.inline {

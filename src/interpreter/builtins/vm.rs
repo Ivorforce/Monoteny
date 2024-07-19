@@ -16,7 +16,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     // -------------------------------------- ------ --------------------------------------
 
     for function in runtime.source.module_by_name[&module_name("core.debug")].explicit_functions(&runtime.source) {
-        runtime.compile_server.function_inlines.insert(Rc::clone(function), match function.declared_representation.name.as_str() {
+        runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "_write_line" => inline_fn_push(OpCode::PRINT),
             "_exit_with_error" => inline_fn_push(OpCode::PANIC),
             _ => continue,
@@ -24,14 +24,14 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     }
 
     for function in runtime.source.module_by_name[&module_name("core.transpilation")].explicit_functions(&runtime.source) {
-        runtime.compile_server.function_inlines.insert(Rc::clone(function), match function.declared_representation.name.as_str() {
+        runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "add" => inline_fn_push(OpCode::TRANSPILE_ADD),
             _ => continue,
         });
     }
 
     for function in runtime.source.module_by_name[&module_name("core.bool")].explicit_functions(&runtime.source) {
-        runtime.compile_server.function_inlines.insert(Rc::clone(function), match function.declared_representation.name.as_str() {
+        runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "true" => inline_fn_push_with_u8(OpCode::LOAD8, true as u8),
             "false" => inline_fn_push_with_u8(OpCode::LOAD8, false as u8),
             _ => continue,
@@ -39,7 +39,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     }
 
     for function in runtime.source.module_by_name[&module_name("core.strings")].explicit_functions(&runtime.source) {
-        runtime.compile_server.function_inlines.insert(Rc::clone(function), match function.declared_representation.name.as_str() {
+        runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "add" => inline_fn_push(OpCode::ADD_STRING),
             _ => continue,
         });
@@ -54,7 +54,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
             continue;
         };
 
-        runtime.compile_server.function_inlines.insert(Rc::clone(function), match descriptor {
+        runtime.compile_server.function_inlines.insert(function.function_id, match descriptor {
             FunctionLogicDescriptor::Stub => todo!(),
             FunctionLogicDescriptor::Clone(type_) => {
                 if type_ == &TypeProto::unit_struct(&runtime.traits.as_ref().unwrap().String) {

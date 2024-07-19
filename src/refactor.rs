@@ -19,7 +19,7 @@ pub mod analyze;
 pub mod call_graph;
 
 pub struct Refactor {
-    pub explicit_functions: Vec<Rc<FunctionHead>>,
+    pub explicit_functions: HashSet<Rc<FunctionHead>>,
     pub invented_functions: HashSet<Rc<FunctionHead>>,
 
     pub fn_logic: HashMap<Rc<FunctionHead>, FunctionLogic>,
@@ -32,7 +32,7 @@ pub struct Refactor {
 impl Refactor {
     pub fn new() -> Refactor {
         Refactor {
-            explicit_functions: vec![],
+            explicit_functions: HashSet::new(),
             invented_functions: HashSet::new(),
             fn_logic: Default::default(),
             fn_inline_hints: Default::default(),
@@ -43,7 +43,7 @@ impl Refactor {
 
     pub fn add(&mut self, head: Rc<FunctionHead>, implementation: Box<FunctionImplementation>) {
         self._add(&head, implementation);
-        self.explicit_functions.push(head);
+        self.explicit_functions.insert(head);
     }
 
     fn _add(&mut self, head: &Rc<FunctionHead>, implementation: Box<FunctionImplementation>) {
@@ -74,6 +74,7 @@ impl Refactor {
     }
 
     pub fn try_inline(&mut self, head: &Rc<FunctionHead>) -> Result<HashSet<Rc<FunctionHead>>, ()> {
+        // TODO The explicit functions should be refactorable too.
         if self.explicit_functions.contains(head) {
             return Err(())
         }
@@ -199,8 +200,8 @@ impl Refactor {
         }
     }
 
-    pub fn gather_needed_functions(&mut self, source: &Source) -> LinkedHashSet<Rc<FunctionHead>> {
-        let callees = self.call_graph.deep_callees(self.explicit_functions.iter());
+    pub fn gather_deep_functions<'a>(&mut self, from_functions: impl Iterator<Item=&'a Rc<FunctionHead>>, source: &Source) -> LinkedHashSet<Rc<FunctionHead>> {
+        let callees = self.call_graph.deep_callees(from_functions);
         for callee in callees.iter() {
             if !self.fn_logic.contains_key(callee) {
                 self.fn_logic.insert(Rc::clone(callee), source.fn_logic[callee].clone());

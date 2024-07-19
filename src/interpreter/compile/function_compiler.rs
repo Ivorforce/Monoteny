@@ -106,7 +106,7 @@ impl FunctionCompiler<'_> {
                 self.compile_return();
             },
             ExpressionOperation::FunctionCall(function_binding) => {
-                if let Some(inline_fn) = self.compile_server.function_inlines.get(&function_binding.function) {
+                if let Some(inline_fn) = self.compile_server.function_inlines.get(&function_binding.function.function_id) {
                     inline_fn(self, expression)?;
                 }
                 else {
