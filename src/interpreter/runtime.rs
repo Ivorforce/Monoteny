@@ -136,10 +136,8 @@ impl Runtime {
         // It doesn't make sense to evaluate something that isn't supposed to return anything.
         assert!(!interface.return_type.unit.is_void());
 
-        let scope = self.make_scope()?;
-
         let implementation = resolve_anonymous_expression(
-            &interface, &expression, &scope, self
+            &interface, &expression, &Rc::clone(&self.base_scope), self
         )?;
 
         // TODO We shouldn't need a function head for this, I think.
