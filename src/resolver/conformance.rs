@@ -20,7 +20,7 @@ pub struct UnresolvedFunctionImplementation<'a> {
 }
 
 pub struct ConformanceResolver<'a, 'b> {
-    pub runtime: &'b Runtime,
+    pub runtime: &'b mut Runtime,
     pub functions: Vec<UnresolvedFunctionImplementation<'a>>,
 }
 
@@ -31,7 +31,7 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
                 //  to the ID of the parent abstract function. That way, we can avoid another
                 //  generic to generic mapping later.
-                let function_head = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
+                let function_head = resolve_function_interface(&syntax.interface, &scope, None, &mut self.runtime, requirements, generics)?;
 
                 self.functions.push(UnresolvedFunctionImplementation {
                     function: function_head,

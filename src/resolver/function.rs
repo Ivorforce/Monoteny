@@ -20,7 +20,7 @@ use crate::resolver::type_factory::TypeFactory;
 pub fn resolve_function_body(head: &Rc<FunctionHead>, body: &ast::Expression, scope: &scopes::Scope, runtime: &mut Runtime) -> RResult<Box<FunctionImplementation>> {
     let mut builder = ImperativeBuilder {
         runtime,
-        type_factory: TypeFactory::new(scope, &runtime.source),
+        type_factory: TypeFactory::new(scope),
         types: Box::new(TypeForest::new()),
         expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
         locals_names: Default::default(),
@@ -68,8 +68,8 @@ pub fn resolve_anonymous_expression(interface: &Rc<FunctionInterface>, body: &as
     //  1) We have no parameters
     //  2) We have no requirements
     let mut builder = ImperativeBuilder {
-        runtime: &runtime,
-        type_factory: TypeFactory::new(scope, &runtime.source),
+        runtime,
+        type_factory: TypeFactory::new(scope),
         types: Box::new(TypeForest::new()),
         expression_tree: Box::new(ExpressionTree::new(Uuid::new_v4())),
         locals_names: Default::default(),

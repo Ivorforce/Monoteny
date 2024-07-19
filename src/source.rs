@@ -13,6 +13,9 @@ pub struct Source {
     // Cache of aggregated module_by_name fields for quick reference.
 
     /// For every getter, which trait it provides.
+    pub trait_heads: HashMap<Uuid, Rc<Trait>>,
+    /// For referencible functions, the trait for it as an object.
+    /// For every getter, which trait it provides.
     pub trait_references: HashMap<Rc<FunctionHead>, Rc<Trait>>,
     /// For referencible functions, the trait for it as an object.
     pub function_traits: HashMap<Rc<Trait>, Rc<FunctionHead>>,
@@ -32,6 +35,7 @@ impl Source {
     pub fn new() -> Source {
         Source {
             module_by_name: Default::default(),
+            trait_heads: Default::default(),
             trait_references: Default::default(),
             function_traits: Default::default(),
             struct_by_trait: Default::default(),

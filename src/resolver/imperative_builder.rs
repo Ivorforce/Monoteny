@@ -15,7 +15,7 @@ use crate::resolver::type_factory::TypeFactory;
 
 /// Note: This object should not know about the AST.
 pub struct ImperativeBuilder<'a> {
-    pub runtime: &'a Runtime,
+    pub runtime: &'a mut Runtime,
     pub type_factory: TypeFactory<'a>,
     pub types: Box<TypeForest>,
     pub expression_tree: Box<ExpressionTree>,
@@ -66,12 +66,12 @@ impl<'a> ImperativeBuilder<'a> {
     pub fn add_function_reference(&mut self, overload: &Rc<FunctionOverload>) -> RResult<ExpressionID> {
         match overload.functions.iter().exactly_one() {
             Ok(function) => {
-                let getter = &self.runtime.source.fn_getters[function];
+                let getter = Rc::clone(&self.runtime.source.fn_getters[function]);
                 let expression_id = self.make_full_expression(
                     vec![],
-                    &getter.interface.return_type,
+                    &getter.interface.return_type.clone(),
                     // Call the getter of the function 'object' instead of the function itself.
-                    ExpressionOperation::FunctionCall(FunctionBinding::pure(Rc::clone(getter)))
+                    ExpressionOperation::FunctionCall(FunctionBinding::pure(getter))
                 )?;
 
                 Ok(expression_id)

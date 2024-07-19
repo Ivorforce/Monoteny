@@ -16,8 +16,8 @@ use crate::resolver::scopes;
 use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
-pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Trait>>) -> RResult<Rc<FunctionHead>> {
-    let mut type_factory = TypeFactory::new(scope, &runtime.source);
+pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &mut Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Trait>>) -> RResult<Rc<FunctionHead>> {
+    let mut type_factory = TypeFactory::new(scope);
 
     let parsed = expressions::parse(&interface.expression, &scope.grammar)?;
 
@@ -36,7 +36,7 @@ pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &sc
                 name: identifier.to_string(),
                 target_type: FunctionTargetType::Global,
                 call_explicity: FunctionCallExplicity::Implicit,
-            }, [].into_iter(), &interface.return_type, type_factory, requirements, generics)
+            }, [].into_iter(), &interface.return_type, type_factory, requirements, generics, runtime)
         }
         expressions::Value::MemberAccess(target, member) => {
             // Member constant like
@@ -45,7 +45,7 @@ pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &sc
                 name: member.to_string(),
                 target_type: FunctionTargetType::Member,
                 call_explicity: FunctionCallExplicity::Implicit,
-            }, Some(target).into_iter(), &interface.return_type, type_factory, requirements, generics)
+            }, Some(target).into_iter(), &interface.return_type, type_factory, requirements, generics, runtime)
         }
         expressions::Value::FunctionCall(target, call_struct) => {
             match &target.value {
@@ -55,7 +55,7 @@ pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &sc
                         name: identifier.to_string(),
                         target_type: FunctionTargetType::Global,
                         call_explicity: FunctionCallExplicity::Explicit,
-                    }, call_struct.arguments.iter().map(|a| &a.value), &interface.return_type, type_factory, requirements, generics)
+                    }, call_struct.arguments.iter().map(|a| &a.value), &interface.return_type, type_factory, requirements, generics, runtime)
                 }
                 expressions::Value::MemberAccess(target, member) => {
                     // Member function like
@@ -64,7 +64,7 @@ pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &sc
                         name: member.to_string(),
                         target_type: FunctionTargetType::Member,
                         call_explicity: FunctionCallExplicity::Explicit,
-                    }, Some(target).into_iter().chain(call_struct.arguments.iter().map(|a| &a.value)), &interface.return_type, type_factory, requirements, generics)
+                    }, Some(target).into_iter().chain(call_struct.arguments.iter().map(|a| &a.value)), &interface.return_type, type_factory, requirements, generics, runtime)
                 }
                 _ => return Err(RuntimeError::error("Invalid function definition.").to_array()),
             }
@@ -113,13 +113,13 @@ fn resolve_macro_function_interface(module: Option<&mut Module>, runtime: &Runti
     }
 }
 
-pub fn _resolve_function_interface<'a>(representation: FunctionRepresentation, parameters: impl Iterator<Item=&'a ast::StructArgument>, return_type: &Option<ast::Expression>, mut type_factory: TypeFactory, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Trait>>) -> RResult<Rc<FunctionHead>> {
+pub fn _resolve_function_interface<'a>(representation: FunctionRepresentation, parameters: impl Iterator<Item=&'a ast::StructArgument>, return_type: &Option<ast::Expression>, mut type_factory: TypeFactory, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Trait>>, runtime: &mut Runtime) -> RResult<Rc<FunctionHead>> {
     let return_type = return_type.as_ref()
-        .try_map(|x| type_factory.resolve_type(&x, true))?
+        .try_map(|x| type_factory.resolve_type(&x, true, runtime))?
         .unwrap_or(TypeProto::void());
 
     let (parameters, internal_parameter_names) = parameters
-        .map(|p| resolve_function_parameter(p, &mut type_factory))
+        .map(|p| resolve_function_parameter(p, &mut type_factory, runtime))
         .process_results(|i| i.unzip())?;
 
     let mut generics = generics.clone();
@@ -144,7 +144,7 @@ pub fn _resolve_function_interface<'a>(representation: FunctionRepresentation, p
     ))
 }
 
-pub fn resolve_function_parameter(parameter: &ast::StructArgument, type_factory: &mut TypeFactory) -> RResult<(Parameter, String)> {
+pub fn resolve_function_parameter(parameter: &ast::StructArgument, type_factory: &mut TypeFactory, runtime: &mut Runtime) -> RResult<(Parameter, String)> {
     let Some(type_declaration) = &parameter.type_declaration else {
         return Err(
             RuntimeError::error("Parameters must have a type.").to_array()
@@ -161,7 +161,7 @@ pub fn resolve_function_parameter(parameter: &ast::StructArgument, type_factory:
 
     Ok((Parameter {
         external_key: parameter.key.clone(),
-        type_: type_factory.resolve_type(type_declaration, true)?,
+        type_: type_factory.resolve_type(type_declaration, true, runtime)?,
     }, internal_name.clone()))
 }
 

@@ -17,7 +17,7 @@ use crate::resolver::interface::resolve_function_interface;
 use crate::resolver::type_factory::TypeFactory;
 
 pub struct TraitResolver<'a> {
-    pub runtime: &'a Runtime,
+    pub runtime: &'a mut Runtime,
     pub trait_: &'a mut Trait,
     pub generic_self_type: Rc<TypeProto>,
 }
@@ -27,7 +27,7 @@ impl <'a> TraitResolver<'a> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
                 // TODO What do we do with the parameter names? They don't belong in the interface. Probably the runtime source?
-                let function_head = resolve_function_interface(&syntax.interface, &scope, None, &self.runtime, requirements, generics)?;
+                let function_head = resolve_function_interface(&syntax.interface, &scope, None, &mut self.runtime, requirements, generics)?;
                 if !syntax.body.is_none() {
                     return Err(
                         RuntimeError::error(format!("Abstract function {:?} cannot have a body.", function_head).as_str()).to_array()
@@ -54,9 +54,9 @@ impl <'a> TraitResolver<'a> {
                     );
                 };
 
-                let mut type_factory = TypeFactory::new(scope, &self.runtime.source);
+                let mut type_factory = TypeFactory::new(scope);
 
-                let variable_type = type_factory.resolve_type(type_declaration, true)?;
+                let variable_type = type_factory.resolve_type(type_declaration, true, &mut self.runtime)?;
 
                 if TypeProto::contains_generics([&variable_type].into_iter()) {
                     return Err(

@@ -75,7 +75,7 @@ impl <'a> GlobalResolver<'a> {
         match &pstatement.value.value {
             ast::Statement::FunctionDeclaration(syntax) => {
                 let scope = &self.global_variables;
-                let function_head = resolve_function_interface(&syntax.interface, &scope, Some(&mut self.module), &self.runtime, &Default::default(), &Default::default())?;
+                let function_head = resolve_function_interface(&syntax.interface, &scope, Some(&mut self.module), &mut self.runtime, &Default::default(), &Default::default())?;
 
                 for decoration in pstatement.decorations_as_vec()? {
                     let pattern = try_parse_pattern(decoration, Rc::clone(&function_head), &self.global_variables)?;
@@ -107,7 +107,7 @@ impl <'a> GlobalResolver<'a> {
                 self.runtime.source.trait_references.insert(Rc::clone(&generic_self_self_getter), Rc::clone(&trait_.generics["Self"]));
 
                 let mut resolver = TraitResolver {
-                    runtime: &self.runtime,
+                    runtime: &mut self.runtime,
                     trait_: &mut trait_,
                     generic_self_type,
                 };
@@ -123,9 +123,9 @@ impl <'a> GlobalResolver<'a> {
             ast::Statement::Conformance(syntax) => {
                 pstatement.no_decorations()?;
 
-                let mut type_factory = TypeFactory::new(&self.global_variables, &mut self.runtime.source);
-                let self_type = type_factory.resolve_type(&syntax.declared_for, true)?;
-                let declared_type = type_factory.resolve_type(&syntax.declared, false)?;
+                let mut type_factory = TypeFactory::new(&self.global_variables);
+                let self_type = type_factory.resolve_type(&syntax.declared_for, true, &mut self.runtime)?;
+                let declared_type = type_factory.resolve_type(&syntax.declared, false, &mut self.runtime)?;
                 let TypeUnit::Struct(declared) = &declared_type.unit else {
                     panic!("Somehow, the resolved type wasn't a struct.")
                 };
@@ -161,7 +161,7 @@ impl <'a> GlobalResolver<'a> {
                 scope.overload_function(&self_getter, self_getter.declared_representation.clone())?;
                 self.runtime.source.trait_references.insert(Rc::clone(&self_getter), self_trait);
 
-                let mut resolver = ConformanceResolver { runtime: &self.runtime, functions: vec![], };
+                let mut resolver = ConformanceResolver { runtime: &mut self.runtime, functions: vec![], };
                 for statement in syntax.block.statements.iter() {
                     statement.no_decorations()?;
 

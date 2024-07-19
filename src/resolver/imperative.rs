@@ -595,7 +595,7 @@ impl <'a> ImperativeResolver<'a> {
     }
 
     pub fn hint_type(&mut self, value: GenericAlias, type_declaration: &ast::Expression, scope: &scopes::Scope) -> RResult<()> {
-        let type_declaration = self.builder.type_factory.resolve_type(&type_declaration,true)?;
+        let type_declaration = self.builder.type_factory.resolve_type(&type_declaration,true, &mut self.builder.runtime)?;
 
         for (name, generic) in self.builder.type_factory.generics.iter() {
             // need a mut scope
