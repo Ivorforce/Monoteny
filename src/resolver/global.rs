@@ -197,11 +197,11 @@ impl <'a> GlobalResolver<'a> {
                 let parsed = expressions::parse(e, &self.global_variables.grammar)?;
 
                 let expressions::Value::FunctionCall(target, call_struct) = &parsed.value else {
-                    return Err(RuntimeError::error("Statement is not supported in a global context.").to_array())
+                    return Err(RuntimeError::error("Unexpected statement in global context.").to_array())
                 };
 
                 let expressions::Value::MacroIdentifier(macro_name) = &target.value else {
-                    return Err(RuntimeError::error("Statement is not supported in a global context.").to_array())
+                    return Err(RuntimeError::error("Unexpected statement in global context.").to_array())
                 };
 
                 match macro_name.as_str() {
@@ -232,7 +232,7 @@ impl <'a> GlobalResolver<'a> {
             }
             _ => {
                 return Err(
-                    RuntimeError::error("Statement is not supported in a global context.").to_array()
+                    RuntimeError::error("Unexpected statement in global context.").to_array()
                 )
             }
         }
