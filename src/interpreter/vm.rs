@@ -24,10 +24,7 @@ pub struct VM {
     pub call_frames: Vec<CallFrame>,
 }
 
-pub unsafe fn to_str_ptr<A: ToString>(a: A) -> *mut () {
-    let string = a.to_string();
-    string_to_ptr(&string)
-}
+pub type IntrinsicFunction = fn(&mut VM, &mut *mut Value);
 
 impl VM {
     pub fn new() -> VM {
@@ -95,6 +92,12 @@ impl VM {
                         ip = transmute(&chunk.code[0]);
                         fp = sp;
                         current_chunk = chunk;
+                    }
+                    OpCode::CALL_INTRINSIC => {
+                        // TODO Should be platform dependent int (32bit / 64bit)
+                        let fun_ptr_int = pop_ip!(u64);
+                        let fun: IntrinsicFunction = transmute(fun_ptr_int);
+                        fun(self, &mut sp);
                     }
                     OpCode::LOAD0 => {
                         sp = sp.add(8);
@@ -418,23 +421,6 @@ impl VM {
                             _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     }
-                    OpCode::TO_STRING => {
-                        let arg: Primitive = transmute(pop_ip!(u8));
-
-                        match arg {
-                            Primitive::U8 => un_expr!(u8, ptr, to_str_ptr(val)),
-                            Primitive::U16 => un_expr!(u16, ptr, to_str_ptr(val)),
-                            Primitive::U32 => un_expr!(u32, ptr, to_str_ptr(val)),
-                            Primitive::U64 => un_expr!(u64, ptr, to_str_ptr(val)),
-                            Primitive::I8 => un_expr!(i8, ptr, to_str_ptr(val)),
-                            Primitive::I16 => un_expr!(i16, ptr, to_str_ptr(val)),
-                            Primitive::I32 => un_expr!(i32, ptr, to_str_ptr(val)),
-                            Primitive::I64 => un_expr!(i64, ptr, to_str_ptr(val)),
-                            Primitive::F32 => un_expr!(f32, ptr, to_str_ptr(val)),
-                            Primitive::F64 => un_expr!(f64, ptr, to_str_ptr(val)),
-                            Primitive::BOOL => un_expr!(bool, ptr, to_str_ptr(val)),
-                        }
-                    }
                     OpCode::ADD_STRING => {
                         // TODO Shouldn't need to copy
                         let rhs = read_unaligned(pop_sp!().ptr as *mut String);
@@ -443,7 +429,7 @@ impl VM {
                         let sp_last = sp.offset(-8);
                         let lhs = read_unaligned((*sp_last).ptr as *mut String);
 
-                        (*sp_last).ptr = to_str_ptr(lhs.to_string() + &rhs);
+                        (*sp_last).ptr = string_to_ptr(&(lhs + &rhs));
                     }
                     OpCode::ALLOC_32 => {
                         let size = pop_ip!(u32);

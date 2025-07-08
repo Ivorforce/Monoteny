@@ -39,7 +39,6 @@ pub enum OpCode {
     LE,
     LE_EQ,
     PARSE,
-    TO_STRING,
     // TODO This can probably be done in-code some time (?)
     ADD_STRING,
 
@@ -49,6 +48,7 @@ pub enum OpCode {
     GET_MEMBER_32,
 
     CALL,
+    CALL_INTRINSIC,
     RETURN,
 }
 
