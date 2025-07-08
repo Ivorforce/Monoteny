@@ -1,5 +1,4 @@
 use std::mem::transmute;
-use std::ptr::read_unaligned;
 use std::rc::Rc;
 use std::str::FromStr;
 use monoteny_macro::{pop_ip, un_expr, un_expr_try};

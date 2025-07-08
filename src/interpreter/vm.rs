@@ -401,7 +401,7 @@ impl VM {
                         let sp_last = sp.offset(-8);
                         let slot_ptr = (*sp_last).ptr.byte_add(usize::try_from(slot_idx).unwrap() * 8);
 
-                        *sp_last = read_unaligned(slot_ptr as *mut Value);
+                        *sp_last = *(slot_ptr as *mut Value);
                     }
                     OpCode::SET_MEMBER_32 => {
                         let slot_idx = pop_ip!(u32);
@@ -409,7 +409,7 @@ impl VM {
                         let obj_ptr = pop_stack(&mut sp).ptr;
                         let slot_ptr = obj_ptr.byte_add(usize::try_from(slot_idx).unwrap() * 8);
 
-                        write_unaligned(slot_ptr as *mut Value, value);
+                        *(slot_ptr as *mut Value) = value;
                     }
                 }
             }

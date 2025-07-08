@@ -1,8 +1,6 @@
 use std::alloc::{alloc, Layout};
 use std::intrinsics::transmute;
-use std::ptr::write_unaligned;
 use uuid::Uuid;
-use crate::program::types::TypeProto;
 
 #[derive(Copy, Clone)]
 pub union Value {
@@ -29,12 +27,12 @@ impl Value {
 // TODO The constants should probably be alloced in the chunk's constants, not 'anywhere'.
 pub unsafe fn string_to_ptr(string: &String) -> *mut () {
     let data = alloc(Layout::new::<String>());
-    write_unaligned(data as *mut String, string.clone());
+    *(data as *mut String) = string.clone();
     transmute(data)
 }
 
 pub unsafe fn uuid_to_ptr(uuid: Uuid) -> *mut () {
     let data = alloc(Layout::new::<Uuid>());
-    write_unaligned(data as *mut Uuid, uuid);
+    *(data as *mut Uuid) = uuid;
     transmute(data)
 }
