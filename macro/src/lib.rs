@@ -32,6 +32,18 @@ pub fn pop_sp(_item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+pub fn pop_sp_intrin(_item: TokenStream) -> TokenStream {
+    assert!(_item.is_empty());
+
+    format!("
+{{
+            *sp = (*sp).offset(-8);
+            **sp
+}}
+    ").parse().unwrap()
+}
+
+#[proc_macro]
 pub fn un_expr(_item: TokenStream) -> TokenStream {
     let args_str = _item.to_string();
     let mut args = args_str.split(",");

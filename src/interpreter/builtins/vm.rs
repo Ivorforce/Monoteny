@@ -1,7 +1,7 @@
 use std::mem::transmute;
 use std::ptr::read_unaligned;
 use std::rc::Rc;
-use monoteny_macro::{pop_sp, un_expr};
+use monoteny_macro::{pop_sp, pop_sp_intrin, un_expr};
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compile::function_compiler::InlineFunction;
@@ -23,9 +23,8 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "_write_line" => {
                 inline_fn_push_intrinsic_call(|vm, sp| unsafe {
-                    *sp = sp.offset(-8);
                     // // TODO Shouldn't need to copy
-                    let string = read_unaligned((**sp).ptr as *mut String);
+                    let string = read_unaligned(pop_sp_intrin!().ptr as *mut String);
 
                     writeln!(vm.out.borrow_mut(), "{}", string)
                         .map_err(|e| RuntimeError::error(&e.to_string()).to_array())?;
@@ -41,11 +40,9 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "add" => {
                 inline_fn_push_intrinsic_call(|vm, sp| unsafe {
-                    *sp = sp.offset(-8);
                     // // TODO Shouldn't need to copy
-                    let ptr = (**sp).ptr;
-                    *sp = sp.offset(-8);
-                    let transpiler = (**sp).ptr;
+                    let ptr = pop_sp_intrin!().ptr;
+                    let transpiler = pop_sp_intrin!().ptr;
 
                     let uuid = *(ptr as *mut Uuid);
                     vm.transpile_functions.push(uuid);
@@ -68,12 +65,11 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "add" => {
                 inline_fn_push_intrinsic_call(|vm, sp| unsafe {
-                    *sp = sp.offset(-8);
                     // // TODO Shouldn't need to copy
-                    let rhs = read_unaligned((**sp).ptr as *mut String);
+                    let rhs = read_unaligned(pop_sp_intrin!().ptr as *mut String);
 
                     // // TODO Shouldn't need to copy
-                    let sp_last = sp.offset(-8);
+                    let sp_last = (*sp).offset(-8);
                     let lhs = read_unaligned((*sp_last).ptr as *mut String);
 
                     (*sp_last).ptr = string_to_ptr(&(lhs + &rhs));
