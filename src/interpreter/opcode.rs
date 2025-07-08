@@ -6,8 +6,6 @@ pub enum OpCode {
     PANIC,
     // TODO Replace with function call?
     TRANSPILE_ADD,
-    // TODO Replace with function call?
-    PRINT,
     LOAD0,
     LOAD8,
     LOAD16,

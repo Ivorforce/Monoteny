@@ -54,7 +54,7 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 return 1 + 16;
             }
             OpCode::NOOP | OpCode::PANIC | OpCode::RETURN | OpCode::TRANSPILE_ADD | OpCode::AND |
-            OpCode::OR | OpCode::POP64 | OpCode::PRINT | OpCode::NOT |
+            OpCode::OR | OpCode::POP64 | OpCode::NOT |
             OpCode::DUP64 | OpCode::LOAD0 | OpCode::SWAP64 => {
                 return 1;
             },

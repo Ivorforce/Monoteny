@@ -2,7 +2,7 @@ use std::mem::transmute;
 use std::ptr::read_unaligned;
 use std::rc::Rc;
 use monoteny_macro::{pop_sp, un_expr};
-use crate::error::RResult;
+use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compile::function_compiler::InlineFunction;
 use crate::interpreter::data::string_to_ptr;
 use crate::interpreter::opcode::{OpCode, Primitive};
@@ -21,7 +21,18 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
 
     for function in runtime.source.module_by_name[&module_name("core.debug")].explicit_functions(&runtime.source) {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
-            "_write_line" => inline_fn_push(OpCode::PRINT),
+            "_write_line" => {
+                let fun: IntrinsicFunction = |vm, sp| unsafe {
+                    *sp = sp.offset(-8);
+                    // // TODO Shouldn't need to copy
+                    let string = read_unaligned((**sp).ptr as *mut String);
+
+                    writeln!(vm.out.borrow_mut(), "{}", string)
+                        .map_err(|e| RuntimeError::error(&e.to_string()).to_array())?;
+                    Ok(())
+                };
+                inline_fn_push_with_u64(CALL_INTRINSIC, unsafe { transmute(fun) })
+            },
             "_exit_with_error" => inline_fn_push(OpCode::PANIC),
             _ => continue,
         });
@@ -55,6 +66,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
                     let lhs = read_unaligned((*sp_last).ptr as *mut String);
                     
                     (*sp_last).ptr = string_to_ptr(&(lhs + &rhs));
+                    Ok(())
                 };
                 inline_fn_push_with_u64(CALL_INTRINSIC, unsafe { transmute(fun) })
             },
@@ -223,17 +235,17 @@ pub fn compile_primitive_operation(operation: &PrimitiveOperation, type_: &progr
         PrimitiveOperation::ParseRealString => inline_fn_push_with_u8(OpCode::PARSE, primitive_u8),
         PrimitiveOperation::ToString => {
             let fun: IntrinsicFunction = match primitive {
-                Primitive::U8 => |vm, sp| unsafe { un_expr!(u8, ptr, to_str_ptr(val)); },
-                Primitive::U16 => |vm, sp| unsafe { un_expr!(u16, ptr, to_str_ptr(val)); },
-                Primitive::U32 => |vm, sp| unsafe { un_expr!(u32, ptr, to_str_ptr(val)); },
-                Primitive::U64 => |vm, sp| unsafe { un_expr!(u64, ptr, to_str_ptr(val)); },
-                Primitive::I8 => |vm, sp| unsafe { un_expr!(i8, ptr, to_str_ptr(val)); },
-                Primitive::I16 => |vm, sp| unsafe { un_expr!(i16, ptr, to_str_ptr(val)); },
-                Primitive::I32 => |vm, sp| unsafe { un_expr!(i32, ptr, to_str_ptr(val)); },
-                Primitive::I64 => |vm, sp| unsafe { un_expr!(i64, ptr, to_str_ptr(val)); },
-                Primitive::F32 => |vm, sp| unsafe { un_expr!(f32, ptr, to_str_ptr(val)); },
-                Primitive::F64 => |vm, sp| unsafe { un_expr!(f64, ptr, to_str_ptr(val)); },
-                Primitive::BOOL => |vm, sp| unsafe { un_expr!(bool, ptr, to_str_ptr(val)); },
+                Primitive::U8 => |vm, sp| unsafe { un_expr!(u8, ptr, to_str_ptr(val)); Ok(()) },
+                Primitive::U16 => |vm, sp| unsafe { un_expr!(u16, ptr, to_str_ptr(val)); Ok(()) },
+                Primitive::U32 => |vm, sp| unsafe { un_expr!(u32, ptr, to_str_ptr(val)); Ok(()) },
+                Primitive::U64 => |vm, sp| unsafe { un_expr!(u64, ptr, to_str_ptr(val)); Ok(()) },
+                Primitive::I8 => |vm, sp| unsafe { un_expr!(i8, ptr, to_str_ptr(val)); Ok(()) },
+                Primitive::I16 => |vm, sp| unsafe { un_expr!(i16, ptr, to_str_ptr(val)); Ok(()) },
+                Primitive::I32 => |vm, sp| unsafe { un_expr!(i32, ptr, to_str_ptr(val)); Ok(()) },
+                Primitive::I64 => |vm, sp| unsafe { un_expr!(i64, ptr, to_str_ptr(val)); Ok(()) },
+                Primitive::F32 => |vm, sp| unsafe { un_expr!(f32, ptr, to_str_ptr(val)); Ok(()) },
+                Primitive::F64 => |vm, sp| unsafe { un_expr!(f64, ptr, to_str_ptr(val)); Ok(()) },
+                Primitive::BOOL => |vm, sp| unsafe { un_expr!(bool, ptr, to_str_ptr(val)); Ok(()) },
             };
 
             inline_fn_push_with_u64(CALL_INTRINSIC, unsafe { transmute(fun) })

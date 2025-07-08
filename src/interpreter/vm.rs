@@ -24,7 +24,7 @@ pub struct VM {
     pub call_frames: Vec<CallFrame>,
 }
 
-pub type IntrinsicFunction = fn(&mut VM, &mut *mut Value);
+pub type IntrinsicFunction = fn(&mut VM, &mut *mut Value) -> RResult<()>;
 
 impl VM {
     pub fn new() -> VM {
@@ -333,12 +333,6 @@ impl VM {
 
                         let uuid = *(ptr as *mut Uuid);
                         self.transpile_functions.push(uuid);
-                    }
-                    OpCode::PRINT => {
-                        // TODO Shouldn't need to copy it
-                        let string: String = read_unaligned(pop_sp!().ptr as *mut String);
-                        writeln!(self.out.borrow_mut(), "{}", string)
-                            .map_err(|e| RuntimeError::error(&e.to_string()).to_array())?;
                     }
                     OpCode::NEG => {
                         let arg: Primitive = transmute(pop_ip!(u8));
