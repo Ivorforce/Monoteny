@@ -13,14 +13,14 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          - { platform: linux, arch: x86_64, os: ubuntu-latest }
+          - { platform: linux, arch: x86_64, os: ubuntu-latest, executable-name: "monoteny" }
 #          - { platform: linux, arch: x86_32, os: ubuntu-22.04 }
 #          - { platform: linux, arch: arm64, os: ubuntu-22.04-arm }
 #          - { platform: linux, arch: arm32, os: ubuntu-22.04-arm }
-          - { platform: windows, arch: x86_64, os: windows-latest }
+          - { platform: windows, arch: x86_64, os: windows-latest, executable-name: "monoteny" }
 #          - { platform: windows, arch: x86_32, os: windows-latest }
 #          - { platform: windows, arch: arm64, os: windows-latest }
-          - { platform: macos, arch: universal, os: macos-latest }
+          - { platform: macos, arch: universal, os: macos-latest, executable-name: "monoteny.exe" }
 
     runs-on: ${{ matrix.target.os }}
 
@@ -38,4 +38,4 @@ jobs:
       with:
         name: Monoteny-${{ matrix.target.platform }}-${{ matrix.target.arch }}
         path: |
-          ${{ github.workspace }}/target/release/monoteny
+          ${{ github.workspace }}/target/release/${{ matrix.target.executable-name }}
