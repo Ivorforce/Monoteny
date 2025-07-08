@@ -12,15 +12,15 @@ Monoteny specializes in reusability, runtime safety and readability. Why not che
 
 Let's quick-fire some language design decisions:
 
-- **Many transpilation targets:** Writing your code in Monoteny ensures it can be used by everyone.
-- **Simplicity:** Monoteny is all about *your* logic. You can keep it simple; the compiler will figure out how to make it fast.
+- **Many transpilation targets:** Writing your code in Monoteny ensures it can be used by everyone (well, eventually).
+- **Simplicity:** Monoteny is all about the logic. You can keep it simple; the compiler will figure out how to make it fast.
 - **Implicit Safety:** Code compiled from Monoteny cannot do anything bad to you except crash or freeze the program.
 - **Flexible Runtime:** Monoteny bends to your will. Change grammar, decorate classes, generate code - it supports it all.
-- **Monomorphization:** Compiled monoteny code doesn't use dynamic dispatch. This makes it fast and safe!
-- **Monads:** Monoteny loves monads. Monads make your code short, easy to read, and fast!
-- **Infinite Re-Usability:** All types are composable, inheritable and constructable. Define a concept once; use it forever!
+- **Monomorphization:** Compiled monoteny code doesn't use dynamic dispatch. This makes it fast and safe.
+- **Monads:** Monoteny loves monads. Monads make your code short, easy to read, and fast.
+- **Infinite Re-Usability:** All types are composable, inheritable and constructable. Define a concept once; use it forever.
 
-## Code
+## Example Code
 
 ```
 -- Define structural named tuples.
@@ -70,7 +70,6 @@ More code can be found in the [test-code](./test-code) (unit tests) and [monoten
 
 
 #### You'll like Monoteny for these tasks:
-
 
 - **Create safe and reusable libraries**
     - Parse a **.yaml** file to a data structure.
