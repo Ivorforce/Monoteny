@@ -6,10 +6,17 @@ use annotate_snippets::{Annotation, Level, Message, Renderer, Snippet};
 use itertools::Itertools;
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum Source {
+    None,
+    Intrinsic(&'static str),
+    Path(PathBuf),
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct RuntimeError {
     pub level: Level,
     pub title: String,
-    pub path: Option<PathBuf>,
+    pub source: Source,
     pub range: Option<Range<usize>>,
     pub notes: Vec<Box<RuntimeError>>,
 }
@@ -18,15 +25,16 @@ pub type RResult<V> = Result<V, Vec<RuntimeError>>;
 
 impl RuntimeError {
     pub fn print(&self) {
-        match &self.path {
-            None => println!("{}", self.title),
-            Some(path) => match fs::read_to_string(path) {
+        match &self.source {
+            Source::None => println!("{}", self.title), // TODO Can do better probably
+            Source::Intrinsic(string) => self.print_snippet(Snippet::source(string)),
+            Source::Path(path) => match fs::read_to_string(path) {
                 Ok(source) => self.print_snippet(
                     Snippet::source(source.as_str())
                         .origin(path.to_str().unwrap())
                         .fold(true)
                 ),
-                Err(err) => self.print_snippet(Snippet::source(err.to_string().as_str())),
+                Err(err) => println!("{}", self.title), // TODO Can do better probably
             }
         };
     }
@@ -58,7 +66,7 @@ impl RuntimeError {
         RuntimeError {
             level,
             title: title.to_string(),
-            path: None,
+            source: Source::None,
             range: None,
             notes: vec![],
         }
@@ -120,11 +128,20 @@ impl RuntimeError {
     }
 
     pub fn in_file(mut self, path: PathBuf) -> RuntimeError {
-        if self.path.is_some() {
+        if self.source != Source::None {
             return self;
         }
 
-        self.path = Some(path);
+        self.source = Source::Path(path);
+        self
+    }
+
+    pub fn in_string(mut self, string: &'static str) -> RuntimeError {
+        if self.source != Source::None {
+            return self;
+        }
+
+        self.source = Source::Intrinsic(string);
         self
     }
 
