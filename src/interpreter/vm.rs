@@ -96,9 +96,7 @@ impl VM {
                         current_chunk = chunk;
                     }
                     OpCode::CALL_INTRINSIC => {
-                        // TODO Should be platform dependent int (32bit / 64bit)
-                        let fun_ptr_int = pop_ip!(u64);
-                        let fun: IntrinsicFunction = transmute(fun_ptr_int);
+                        let fun = pop_ip!(IntrinsicFunction);
                         fun(self, &mut sp)?;
                     }
                     OpCode::LOAD0 => {

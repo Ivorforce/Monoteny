@@ -56,6 +56,19 @@ impl Chunk {
         }
     }
 
+    pub fn push_with_usize(&mut self, code: OpCode, arg: usize) {
+        // TODO Should be constexpr
+        if size_of::<usize>() == size_of::<u64>() {
+            self.push_with_u64(code, arg as u64);
+        }
+        else if size_of::<usize>() == size_of::<u32>() {
+            self.push_with_u64(code, arg as u64);
+        }
+        else {
+            panic!()
+        }
+    }
+
     pub fn push_with_u128(&mut self, code: OpCode, arg: u128) {
         let len = self.code.len();
 

@@ -40,9 +40,13 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("\t{:?}", *(ip.add(1) as *mut u32));
                 return 1 + 4;
             }
-            OpCode::LOAD64 | OpCode::CALL_INTRINSIC => {
+            OpCode::LOAD64 => {
                 print!("\t{:?}", *(ip.add(1) as *mut u64));
                 return 1 + 8;
+            }
+            OpCode::CALL_INTRINSIC => {
+                print!("\t{:?}", *(ip.add(1) as *mut usize));
+                return 1 + size_of::<usize>();
             }
             OpCode::JUMP | OpCode::JUMP_IF_FALSE | OpCode::LOAD_LOCAL_32 | OpCode::STORE_LOCAL_32 => {
                 print!("\t{:?}", *(ip.add(1) as *mut i32));

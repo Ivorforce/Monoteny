@@ -163,18 +163,18 @@ pub fn inline_fn_push_with_u8(opcode: OpCode, arg: u8) -> InlineFunction {
     }})
 }
 
-pub fn inline_fn_push_with_u64(opcode: OpCode, arg: u64) -> InlineFunction {
+pub fn inline_fn_push_with_usize(opcode: OpCode, arg: usize) -> InlineFunction {
     Rc::new(move |compiler, expression| {{
         let arguments = &compiler.implementation.expression_tree.children[expression];
         for arg in arguments { compiler.compile_expression(arg)? }
 
-        compiler.chunk.push_with_u64(opcode, arg);
+        compiler.chunk.push_with_usize(opcode, arg);
         Ok(())
     }})
 }
 
 pub fn inline_fn_push_intrinsic_call(arg: IntrinsicFunction) -> InlineFunction {
-    inline_fn_push_with_u64(OpCode::CALL_INTRINSIC, unsafe { transmute(arg) })
+    inline_fn_push_with_usize(OpCode::CALL_INTRINSIC, unsafe { transmute(arg) })
 }
 
 pub unsafe fn to_str_ptr<A: ToString>(a: A) -> *mut () {
