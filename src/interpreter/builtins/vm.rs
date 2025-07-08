@@ -24,8 +24,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "_write_line" => {
                 inline_fn_push_intrinsic_call(|vm, sp| unsafe {
-                    // // TODO Shouldn't need to copy
-                    let string = read_unaligned(pop_sp_intrin!().ptr as *mut String);
+                    let string = &*(pop_sp_intrin!().ptr as *mut String);
 
                     writeln!(vm.out.borrow_mut(), "{}", string)
                         .map_err(|e| RuntimeError::error(&e.to_string()).to_array())?;
@@ -66,14 +65,12 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "add" => {
                 inline_fn_push_intrinsic_call(|vm, sp| unsafe {
-                    // // TODO Shouldn't need to copy
-                    let rhs = read_unaligned(pop_sp_intrin!().ptr as *mut String);
+                    let rhs = &*(pop_sp_intrin!().ptr as *mut String);
 
-                    // // TODO Shouldn't need to copy
                     let sp_last = (*sp).offset(-8);
-                    let lhs = read_unaligned((*sp_last).ptr as *mut String);
+                    let lhs = &*((*sp_last).ptr as *mut String);
 
-                    (*sp_last).ptr = string_to_ptr(&(lhs + &rhs));
+                    (*sp_last).ptr = string_to_ptr(&(lhs.to_owned() + rhs));
                     Ok(())
                 })
             },
