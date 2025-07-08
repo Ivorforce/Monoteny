@@ -5,13 +5,13 @@ use std::process::ExitCode;
 use clap::{arg, ArgAction, ArgMatches, Command};
 use itertools::Itertools;
 
+use crate::cli::logging::{dump_failure, dump_start, dump_success};
 use crate::error::RResult;
 use crate::interpreter::runtime::Runtime;
-use crate::program::module::{Module, module_name};
-use crate::{interpreter, repository, transpiler};
-use crate::cli::logging::{dump_failure, dump_start, dump_success};
+use crate::program::module::{module_name, Module};
 use crate::transpiler::LanguageContext;
 use crate::util::file_writer::write_file_safe;
+use crate::{interpreter, transpiler};
 
 pub fn make_command() -> Command {
     Command::new("transpile")

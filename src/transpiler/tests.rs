@@ -1,15 +1,15 @@
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
     use std::path::PathBuf;
     use std::rc::Rc;
-    use itertools::Itertools;
 
-    use crate::{interpreter, parser, transpiler};
-    use crate::error::{RResult, RuntimeError};
+    use crate::error::RResult;
     use crate::interpreter::run::gather_functions_logic;
     use crate::interpreter::runtime::Runtime;
     use crate::program::module::module_name;
     use crate::transpiler::{LanguageContext, Transpiler};
+    use crate::{interpreter, transpiler};
 
     fn test_transpiles(path: &str) -> RResult<String> {
         let mut runtime = Runtime::new()?;

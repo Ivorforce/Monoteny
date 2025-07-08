@@ -6,9 +6,9 @@ use crate::program::functions::{FunctionLogic, FunctionLogicDescriptor, Primitiv
 use crate::program::module::module_name;
 use crate::program::primitives;
 use crate::program::types::TypeProto;
-use crate::transpiler::python::{Context, keywords};
 use crate::transpiler::python::keywords::{KEYWORD_IDS, PSEUDO_KEYWORD_IDS};
 use crate::transpiler::python::representations::FunctionForm;
+use crate::transpiler::python::{keywords, Context};
 
 pub fn register_global(runtime: &Runtime, context: &mut Context) {
     let representations = &mut context.representations;

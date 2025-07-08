@@ -1,9 +1,9 @@
+use annotate_snippets::{Annotation, Level, Message, Renderer, Snippet};
+use itertools::Itertools;
 use std::fmt::{Debug, Display};
 use std::fs;
 use std::ops::Range;
 use std::path::PathBuf;
-use annotate_snippets::{Annotation, Level, Message, Renderer, Snippet};
-use itertools::Itertools;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Source {

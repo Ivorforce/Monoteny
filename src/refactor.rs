@@ -1,5 +1,5 @@
-use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use itertools::Itertools;
@@ -7,7 +7,7 @@ use linked_hash_set::LinkedHashSet;
 
 use crate::program::functions::{FunctionBinding, FunctionHead, FunctionImplementation, FunctionLogic, FunctionLogicDescriptor, FunctionType};
 use crate::refactor::call_graph::CallGraph;
-use crate::refactor::inline::{inline_calls, InlineHint, try_inline};
+use crate::refactor::inline::{inline_calls, try_inline, InlineHint};
 use crate::refactor::monomorphize::monomorphize_implementation;
 use crate::source::Source;
 

@@ -5,7 +5,6 @@ use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::data::Value;
 use crate::interpreter::runtime::Runtime;
-use crate::interpreter::vm::VM;
 use crate::program::functions::FunctionHead;
 use crate::program::module::Module;
 use crate::transpiler::{TranspiledArtifact, Transpiler};

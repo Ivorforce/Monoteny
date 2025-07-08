@@ -1,8 +1,8 @@
 use std::ops::Range;
 use std::rc::Rc;
 
-use itertools::{Either, Itertools};
 use itertools::Either::{Left, Right};
+use itertools::{Either, Itertools};
 use uuid::Uuid;
 
 use crate::ast;
@@ -20,7 +20,6 @@ use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, Ambiguo
 use crate::resolver::imperative_builder::ImperativeBuilder;
 use crate::resolver::scopes;
 use crate::resolver::structs::AnonymousStruct;
-use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
 pub struct ImperativeResolver<'a> {

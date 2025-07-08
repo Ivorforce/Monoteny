@@ -1,17 +1,15 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-use itertools::Itertools;
-use uuid::Uuid;
 use crate::ast;
 use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
-use crate::parser::{expressions, parse_expression};
-use crate::program::functions::{FunctionInterface, FunctionTargetType};
+use crate::parser::expressions;
+use crate::program::functions::FunctionTargetType;
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::resolver::scopes;
-use crate::source::Source;
+use itertools::Itertools;
 
 pub struct TypeFactory<'a> {
     pub scope: &'a scopes::Scope<'a>,

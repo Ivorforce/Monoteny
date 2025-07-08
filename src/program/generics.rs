@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-use itertools::{Itertools, zip_eq};
+use itertools::{zip_eq, Itertools};
 use uuid::Uuid;
 
 use crate::error::{RResult, RuntimeError, TryCollectMany};

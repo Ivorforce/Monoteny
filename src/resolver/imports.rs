@@ -8,7 +8,6 @@ use crate::program::functions::ParameterKey;
 use crate::program::module::ModuleName;
 use crate::resolver::{interpreter_mock, scopes};
 use crate::util::iter::omega;
-use crate::util::position::Positioned;
 
 pub struct Import {
     pub is_relative: bool,

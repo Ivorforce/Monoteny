@@ -1,7 +1,7 @@
-use std::mem::transmute;
-use uuid::Uuid;
 use crate::interpreter::chunks::Chunk;
 use crate::interpreter::opcode::{OpCode, Primitive};
+use std::mem::transmute;
+use uuid::Uuid;
 
 pub fn disassemble(chunk: &Chunk) {
     unsafe {

@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use std::ops::Range;
 use std::rc::Rc;
 
-use itertools::{Itertools, zip_eq};
+use itertools::{zip_eq, Itertools};
 
 use crate::error::{RResult, RuntimeError};
 use crate::program::debug::MockFunctionInterface;

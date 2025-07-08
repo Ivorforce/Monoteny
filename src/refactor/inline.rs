@@ -4,7 +4,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
-use crate::program::functions::{FunctionBinding, FunctionHead, FunctionImplementation, resolve_binding};
+use crate::program::functions::{resolve_binding, FunctionBinding, FunctionHead, FunctionImplementation};
 use crate::program::traits::RequirementsFulfillment;
 
 #[derive(Clone, Debug)]

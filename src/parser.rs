@@ -1,8 +1,8 @@
 use itertools::Itertools;
 use lalrpop_util::ErrorRecovery;
 
-use crate::{ast, monoteny_grammar};
 use crate::error::RResult;
+use crate::{ast, monoteny_grammar};
 
 pub mod strings;
 pub mod lexer;

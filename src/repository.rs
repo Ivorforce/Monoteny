@@ -1,6 +1,6 @@
+use crate::program::module::ModuleName;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use crate::program::module::ModuleName;
 
 pub enum Loader {
     Path(PathBuf),

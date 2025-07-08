@@ -1,6 +1,6 @@
+use crate::cli::logging::dump_failure;
 use clap::Command;
 use std::process::ExitCode;
-use crate::cli::logging::dump_failure;
 
 pub mod run;
 pub mod expression;

@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 use std::rc::Rc;
 
+use crate::parser::grammar::{Pattern, PrecedenceGroup};
 use itertools::Itertools;
 use uuid::Uuid;
-use crate::parser::grammar::{Pattern, PrecedenceGroup};
 
 use crate::program::functions::FunctionHead;
 use crate::program::traits::{TraitConformanceRule, TraitGraph};

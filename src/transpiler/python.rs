@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-use display_with_options::{IndentOptions, with_options};
+use display_with_options::{with_options, IndentOptions};
 use itertools::Itertools;
 use linked_hash_map::LinkedHashMap;
 
@@ -10,11 +10,11 @@ use crate::interpreter::runtime::Runtime;
 use crate::program::functions::FunctionLogicDescriptor;
 use crate::refactor::Refactor;
 use crate::transpiler;
-use crate::transpiler::{namespaces, structs, TranspilePackage};
 use crate::transpiler::python::ast::Statement;
-use crate::transpiler::python::class::{ClassContext, transpile_class};
-use crate::transpiler::python::imperative::{FunctionContext, transpile_function};
+use crate::transpiler::python::class::{transpile_class, ClassContext};
+use crate::transpiler::python::imperative::{transpile_function, FunctionContext};
 use crate::transpiler::python::representations::{FunctionForm, Representations};
+use crate::transpiler::{namespaces, structs, TranspilePackage};
 
 pub mod types;
 pub mod builtins;

@@ -8,10 +8,10 @@ use crate::interpreter::chunks::Chunk;
 use crate::interpreter::compile::function_compiler::{compile_function, InlineFunction};
 use crate::interpreter::compile::function_descriptor_compiler::compile_descriptor;
 use crate::interpreter::data_layout::{create_data_layout, DataLayout};
-use crate::program::functions::{FunctionHead, FunctionLogic, FunctionLogicDescriptor};
+use crate::program::functions::{FunctionHead, FunctionLogic};
 use crate::program::traits::StructInfo;
-use crate::refactor::Refactor;
 use crate::refactor::simplify::Simplify;
+use crate::refactor::Refactor;
 use crate::source::Source;
 
 pub struct CompileServer {

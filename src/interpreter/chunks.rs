@@ -1,6 +1,6 @@
-use std::ptr::write_unaligned;
 use crate::interpreter::data::Value;
 use crate::interpreter::opcode::OpCode;
+use std::ptr::write_unaligned;
 
 pub struct Chunk {
     pub code: Vec<u8>,

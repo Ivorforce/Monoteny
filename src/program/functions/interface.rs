@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
 use std::rc::Rc;
 
-use display_with_options::{DebugWithOptions, with_options};
+use display_with_options::{with_options, DebugWithOptions};
 
 use crate::program::functions::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
 use crate::program::traits::{Trait, TraitBinding};

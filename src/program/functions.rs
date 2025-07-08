@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 
 use display_with_options::{DebugWithOptions, DisplayWithOptions};
 
-pub use function_binding::{FunctionBinding, resolve_binding};
+pub use function_binding::{resolve_binding, FunctionBinding};
 pub use head::{FunctionHead, FunctionType};
 pub use implementation::FunctionImplementation;
 pub use interface::{FunctionInterface, Parameter, ParameterKey};

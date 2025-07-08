@@ -4,11 +4,11 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use crate::error::{ErrInRange, RResult};
-use crate::resolver::ambiguous::{AmbiguityResult, ResolverAmbiguity};
-use crate::resolver::imperative::ImperativeResolver;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionBinding, FunctionHead};
 use crate::program::traits::{RequirementsFulfillment, Trait, TraitGraph};
+use crate::resolver::ambiguous::{AmbiguityResult, ResolverAmbiguity};
+use crate::resolver::imperative::ImperativeResolver;
 
 pub struct AmbiguousAbstractCall {
     pub expression_id: ExpressionID,

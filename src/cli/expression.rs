@@ -1,14 +1,10 @@
-use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{arg, ArgMatches, Command};
 
 use crate::error::RResult;
-use crate::{interpreter, parser};
 use crate::interpreter::runtime::Runtime;
-use crate::program::functions::FunctionInterface;
-use crate::program::module::{module_name, ModuleName};
-use crate::program::types::TypeProto;
+use crate::interpreter;
 
 pub fn make_command() -> Command {
     Command::new("expression")

@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
 use itertools::Itertools;
 use lalrpop_util::{ErrorRecovery, ParseError};
+use std::fmt::{Display, Formatter};
 
 use crate::error::RuntimeError;
 use crate::parser::lexer::Token;

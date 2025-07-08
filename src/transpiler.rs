@@ -6,8 +6,8 @@ use itertools::Itertools;
 use crate::error::{RResult, TryCollectMany};
 use crate::interpreter::runtime::Runtime;
 use crate::program::functions::{FunctionHead, FunctionImplementation, FunctionLogic, FunctionLogicDescriptor};
-use crate::refactor::Refactor;
 use crate::refactor::simplify::Simplify;
+use crate::refactor::Refactor;
 
 pub mod python;
 pub mod namespaces;

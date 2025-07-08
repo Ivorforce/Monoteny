@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use clap::{arg, ArgMatches, Command};
 use crate::cli::logging::{dump_named_failure, dump_start, dump_success};
+use clap::{arg, ArgMatches, Command};
 
 use crate::error::RResult;
 use crate::interpreter::runtime::Runtime;

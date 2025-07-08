@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use itertools::{Either, Itertools, zip_eq};
 use itertools::Either::{Left, Right};
+use itertools::{zip_eq, Either, Itertools};
 use regex;
 use uuid::Uuid;
 
 use crate::program::expression_tree::*;
 use crate::program::functions::{FunctionHead, FunctionImplementation, FunctionLogicDescriptor, ParameterKey, PrimitiveOperation};
 use crate::program::generics::TypeForest;
-use crate::transpiler::python::{ast, types};
 use crate::transpiler::python::representations::{FunctionForm, Representations};
+use crate::transpiler::python::{ast, types};
 
 pub struct FunctionContext<'a> {
     pub names: &'a HashMap<Uuid, String>,

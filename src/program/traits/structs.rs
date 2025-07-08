@@ -1,9 +1,9 @@
-use std::rc::Rc;
-use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use crate::program::allocation::ObjectReference;
 use crate::program::functions::FunctionHead;
 use crate::program::traits::Trait;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct StructInfo {

@@ -1,9 +1,9 @@
 use std::collections::HashSet;
-use std::fmt::{Display, Formatter};
 use std::fmt::Write;
+use std::fmt::{Display, Formatter};
 
+use display_with_options::{with_options, DisplayWithOptions, IndentOptions, IndentingFormatter};
 use itertools::Itertools;
-use display_with_options::{DisplayWithOptions, IndentingFormatter, IndentOptions, with_options};
 
 use crate::program::functions::ParameterKey;
 use crate::transpiler::python::strings::escape_string;

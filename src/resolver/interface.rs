@@ -9,7 +9,7 @@ use crate::error::{RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
 use crate::parser::expressions;
 use crate::program::functions::{FunctionCallExplicity, FunctionHead, FunctionInterface, FunctionRepresentation, FunctionTargetType, Parameter};
-use crate::program::module::{Module, module_name};
+use crate::program::module::{module_name, Module};
 use crate::program::traits::{Trait, TraitBinding};
 use crate::program::types::TypeProto;
 use crate::resolver::scopes;

@@ -11,10 +11,10 @@ use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionLogicDescriptor, FunctionRepresentation, Parameter, ParameterKey};
 use crate::program::traits::{StructInfo, Trait, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::TypeProto;
-use crate::resolver::{fields, scopes};
 use crate::resolver::global::GlobalResolver;
 use crate::resolver::interface::resolve_function_interface;
 use crate::resolver::type_factory::TypeFactory;
+use crate::resolver::{fields, scopes};
 
 pub struct TraitResolver<'a> {
     pub runtime: &'a mut Runtime,

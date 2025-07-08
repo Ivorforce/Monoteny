@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -10,17 +10,17 @@ use crate::interpreter::runtime::Runtime;
 use crate::parser::expressions;
 use crate::program::functions::{FunctionCallExplicity, FunctionHead, FunctionInterface, FunctionLogic, FunctionLogicDescriptor, FunctionRepresentation, FunctionTargetType};
 use crate::program::module::Module;
-use crate::program::traits::{Trait, TraitBinding, TraitConformanceRule};
+use crate::program::traits::{Trait, TraitConformanceRule};
 use crate::program::types::*;
-use crate::resolver::{imports, referencible, scopes};
 use crate::resolver::conformance::ConformanceResolver;
 use crate::resolver::decorations::try_parse_pattern;
 use crate::resolver::function::resolve_function_body;
 use crate::resolver::imports::resolve_imports;
 use crate::resolver::interface::resolve_function_interface;
 use crate::resolver::precedence_order::resolve_precedence_order;
-use crate::resolver::traits::{TraitResolver, try_make_struct};
+use crate::resolver::traits::{try_make_struct, TraitResolver};
 use crate::resolver::type_factory::TypeFactory;
+use crate::resolver::{imports, referencible, scopes};
 use crate::static_analysis;
 use crate::util::position::Positioned;
 

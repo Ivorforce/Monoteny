@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter};
+use std::fmt::Display;
 use std::iter::Peekable;
 use std::str::CharIndices;
 

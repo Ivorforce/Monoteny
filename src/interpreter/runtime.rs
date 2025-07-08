@@ -4,19 +4,19 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 
-use crate::{ast, parser, program, repository, resolver};
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::builtins;
 use crate::interpreter::compile::compile_server::CompileServer;
 use crate::interpreter::data::Value;
 use crate::interpreter::vm::VM;
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionRepresentation};
-use crate::program::module::{Module, module_name, ModuleName};
+use crate::program::module::{module_name, Module, ModuleName};
 use crate::program::traits::Trait;
 use crate::repository::Repository;
-use crate::resolver::{imports, referencible, scopes};
 use crate::resolver::function::resolve_anonymous_expression;
+use crate::resolver::{imports, referencible, scopes};
 use crate::source::Source;
+use crate::{ast, parser, program, repository, resolver};
 
 pub struct Runtime {
     #[allow(non_snake_case)]

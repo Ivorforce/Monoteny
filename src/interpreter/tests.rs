@@ -3,7 +3,7 @@ mod tests {
     use std::cell::RefCell;
     use std::io::Write;
     use std::path::PathBuf;
-    use std::rc::{Rc, Weak};
+    use std::rc::Rc;
 
     use uuid::Uuid;
 
@@ -12,7 +12,6 @@ mod tests {
     use crate::interpreter::chunks::Chunk;
     use crate::interpreter::opcode::{OpCode, Primitive};
     use crate::interpreter::runtime::Runtime;
-    use crate::interpreter::vm::VM;
     use crate::parser::parse_expression;
     use crate::program::functions::FunctionInterface;
     use crate::program::module::module_name;

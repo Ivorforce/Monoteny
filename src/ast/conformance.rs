@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
-use crate::ast::Block;
 use crate::ast::expression::Expression;
+use crate::ast::Block;
 
 #[derive(Eq, PartialEq, Clone)]
 pub struct TraitConformanceDeclaration {

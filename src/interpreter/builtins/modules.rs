@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::repository;
+use std::collections::HashMap;
 
 pub fn create_core_loader() -> repository::Loader {
     repository::Loader::Intrinsic(

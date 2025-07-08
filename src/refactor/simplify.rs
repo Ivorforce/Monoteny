@@ -1,6 +1,6 @@
+use linked_hash_set::LinkedHashSet;
 use std::collections::hash_map::RandomState;
 use std::rc::Rc;
-use linked_hash_set::LinkedHashSet;
 
 use crate::program::functions::{FunctionHead, FunctionLogic};
 use crate::refactor::{locals, Refactor};
