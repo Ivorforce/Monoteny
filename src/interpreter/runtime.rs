@@ -119,7 +119,6 @@ impl Runtime {
             },
             repository::Loader::Intrinsic(map) => {
                 let text = map.get(name)
-                    .map(ToString::to_string) // TODO Expensive copy from string literal :/
                     .ok_or(RuntimeError::error(format!("Error loading {:?}: missing intrinsic", name).as_str()).to_array())?;
                 self.load_text_as_module(&text, name.clone())?
                 // TODO Should map error as 'in string xx', like in load_file_as_module
