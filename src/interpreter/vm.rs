@@ -97,7 +97,7 @@ impl VM {
                         // TODO Should be platform dependent int (32bit / 64bit)
                         let fun_ptr_int = pop_ip!(u64);
                         let fun: IntrinsicFunction = transmute(fun_ptr_int);
-                        fun(self, &mut sp);
+                        fun(self, &mut sp)?;
                     }
                     OpCode::LOAD0 => {
                         sp = sp.add(8);
