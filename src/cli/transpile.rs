@@ -6,7 +6,7 @@ use clap::{arg, ArgAction, ArgMatches, Command};
 use itertools::Itertools;
 
 use crate::cli::logging::{dump_failure, dump_start, dump_success};
-use crate::error::RResult;
+use crate::error::{RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
 use crate::program::module::{module_name, Module};
 use crate::transpiler::LanguageContext;
@@ -46,7 +46,7 @@ pub fn run(args: &ArgMatches) -> RResult<ExitCode> {
 
     let output_extensions: Vec<&str> = match should_output_all {
         true => vec!["py"],
-        false => vec![output_path_proto.extension().and_then(OsStr::to_str).unwrap()]
+        false => vec![output_path_proto.extension().and_then(OsStr::to_str).ok_or_else(|| vec![RuntimeError::error("Error: must provide either output path or --all")])?]
     };
 
     let mut runtime = Runtime::new()?;
