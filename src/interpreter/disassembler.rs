@@ -53,7 +53,7 @@ pub fn disassemble_one(ip: *const u8) -> usize {
                 print!("\t{}", Uuid::from_u128(read_unaligned(ip.add(1) as *mut u128)));
                 return 1 + 16;
             }
-            OpCode::NOOP | OpCode::PANIC | OpCode::RETURN | OpCode::TRANSPILE_ADD | OpCode::AND |
+            OpCode::NOOP | OpCode::PANIC | OpCode::RETURN | OpCode::AND |
             OpCode::OR | OpCode::POP64 | OpCode::NOT |
             OpCode::DUP64 | OpCode::LOAD0 | OpCode::SWAP64 => {
                 return 1;

@@ -2,6 +2,7 @@ use std::mem::transmute;
 use std::ptr::read_unaligned;
 use std::rc::Rc;
 use monoteny_macro::{pop_sp, un_expr};
+use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compile::function_compiler::InlineFunction;
 use crate::interpreter::data::string_to_ptr;
@@ -40,7 +41,20 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
 
     for function in runtime.source.module_by_name[&module_name("core.transpilation")].explicit_functions(&runtime.source) {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
-            "add" => inline_fn_push(OpCode::TRANSPILE_ADD),
+            "add" => {
+                let fun: IntrinsicFunction = |vm, sp| unsafe {
+                    *sp = sp.offset(-8);
+                    // // TODO Shouldn't need to copy
+                    let ptr = (**sp).ptr;
+                    *sp = sp.offset(-8);
+                    let transpiler = (**sp).ptr;
+                    
+                    let uuid = *(ptr as *mut Uuid);
+                    vm.transpile_functions.push(uuid);
+                    Ok(())
+                };
+                inline_fn_push_with_u64(CALL_INTRINSIC, unsafe { transmute(fun) })
+            },
             _ => continue,
         });
     }
@@ -64,7 +78,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
                     // // TODO Shouldn't need to copy
                     let sp_last = sp.offset(-8);
                     let lhs = read_unaligned((*sp_last).ptr as *mut String);
-                    
+
                     (*sp_last).ptr = string_to_ptr(&(lhs + &rhs));
                     Ok(())
                 };

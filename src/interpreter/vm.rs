@@ -327,13 +327,6 @@ impl VM {
                             _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     },
-                    OpCode::TRANSPILE_ADD => {
-                        let ptr = pop_sp!().ptr;
-                        let transpiler = pop_sp!();
-
-                        let uuid = *(ptr as *mut Uuid);
-                        self.transpile_functions.push(uuid);
-                    }
                     OpCode::NEG => {
                         let arg: Primitive = transmute(pop_ip!(u8));
 
