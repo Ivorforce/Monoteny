@@ -100,7 +100,7 @@ impl<'i> Lexer<'i> {
                     return self.make_token_from(start, Token::Symbol)
                 }
                 '0'..='9' => {
-                    self.input.by_ref().peeking_take_while(|(_, ch)| matches!(ch, '0'..='9')).count() + 1;
+                    self.input.by_ref().peeking_take_while(|(_, ch)| matches!(ch, '0'..='9')).count();
 
                     let Some((dot_start, '.')) = self.input.peek().cloned() else {
                         return self.make_token_from(start, Token::IntLiteral);
