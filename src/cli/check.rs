@@ -25,7 +25,7 @@ pub fn run(args: &ArgMatches) -> RResult<ExitCode> {
     let start = dump_start(format!("check for {} file(s)", paths.len()).as_str());
 
     let mut runtime = Runtime::new()?;
-    runtime.repository.add("common", PathBuf::from("monoteny"));
+    runtime.add_common_repository();
 
     let mut error_count = 0;
     for path in paths {

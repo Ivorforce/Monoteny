@@ -19,7 +19,7 @@ pub fn run(args: &ArgMatches) -> RResult<ExitCode> {
     let input_path = args.get_one::<PathBuf>("PATH").unwrap();
 
     let mut runtime = Runtime::new()?;
-    runtime.repository.add("common", PathBuf::from("monoteny"));
+    runtime.add_common_repository();
 
     let module = runtime.load_file_as_module(input_path, module_name("main"))?;
 

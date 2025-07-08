@@ -8,7 +8,7 @@ use itertools::Itertools;
 use crate::error::RResult;
 use crate::interpreter::runtime::Runtime;
 use crate::program::module::{Module, module_name};
-use crate::{interpreter, transpiler};
+use crate::{interpreter, repository, transpiler};
 use crate::cli::logging::{dump_failure, dump_start, dump_success};
 use crate::transpiler::LanguageContext;
 use crate::util::file_writer::write_file_safe;
@@ -50,7 +50,7 @@ pub fn run(args: &ArgMatches) -> RResult<ExitCode> {
     };
 
     let mut runtime = Runtime::new()?;
-    runtime.repository.add("common", PathBuf::from("monoteny"));
+    runtime.add_common_repository();
 
     let module = runtime.load_file_as_module(input_path, module_name("main"))?;
 

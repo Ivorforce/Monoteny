@@ -19,7 +19,7 @@ pub type RResult<V> = Result<V, Vec<RuntimeError>>;
 impl RuntimeError {
     pub fn print(&self) {
         match &self.path {
-            None => self.print_snippet(Snippet::source(&self.title)),
+            None => println!("{}", self.title),
             Some(path) => match fs::read_to_string(path) {
                 Ok(source) => self.print_snippet(
                     Snippet::source(source.as_str())

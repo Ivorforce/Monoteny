@@ -4,8 +4,7 @@ use std::rc::Rc;
 
 use itertools::Itertools;
 
-use crate::{ast, parser, program, resolver};
-use crate::cli::run::run;
+use crate::{ast, parser, program, repository, resolver};
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::builtins;
 use crate::interpreter::compile::compile_server::CompileServer;
@@ -65,7 +64,7 @@ impl Runtime {
         runtime.base_scope = Rc::new(runtime.make_scope()?);
 
         // Load core
-        runtime.repository.add("core", PathBuf::from("monoteny"));
+        runtime.repository.add("core", builtins::modules::create_core_loader());
         runtime.get_or_load_module(&module_name("core"))?;
 
         // Final scope can be loaded.
@@ -75,6 +74,10 @@ impl Runtime {
         builtins::vm::load(&mut runtime)?;
 
         Ok(runtime)
+    }
+
+    pub fn add_common_repository(&mut self) {
+        self.repository.add("common", builtins::modules::create_common_loader());
     }
 
     fn make_scope(&mut self) -> RResult<scopes::Scope<'static>> {
@@ -101,8 +104,28 @@ impl Runtime {
         }
 
         // Gotta load the module first.
-        let path = self.repository.resolve_module_path(name)?;
-        let module = self.load_file_as_module(&path, name.clone())?;
+        let Some(first_part) = name.first() else {
+            return Err(RuntimeError::error("Module name is empty...").to_array());
+        };
+
+        let Some(loader) = self.repository.entries.get(first_part) else {
+            return Err(RuntimeError::error(format!("Module not in repository: {}", first_part).as_str()).to_array());
+        };
+
+        let module = match loader {
+            repository::Loader::Path(base_path) => {
+                let path = base_path.join(PathBuf::from(format!("{}.monoteny", name.join("/").as_str())));
+                self.load_file_as_module(&path, name.clone())?
+            },
+            repository::Loader::Intrinsic(map) => {
+                let text = map.get(name)
+                    .map(ToString::to_string) // TODO Expensive copy from string literal :/
+                    .ok_or(RuntimeError::error(format!("Error loading {:?}: missing intrinsic", name).as_str()).to_array())?;
+                self.load_text_as_module(&text, name.clone())?
+                // TODO Should map error as 'in string xx', like in load_file_as_module
+            }
+        };
+
         self.source.module_by_name.insert(name.clone(), module);
         Ok(&self.source.module_by_name[name])
     }

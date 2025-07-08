@@ -13,7 +13,7 @@ mod tests {
 
     fn test_transpiles(path: &str) -> RResult<String> {
         let mut runtime = Runtime::new()?;
-        runtime.repository.add("common", PathBuf::from("monoteny"));
+        runtime.add_common_repository();
 
         let module = runtime.load_file_as_module(&PathBuf::from(path), module_name("main"))?;
         let context = transpiler::python::Context::new(&runtime);
@@ -30,7 +30,7 @@ mod tests {
     #[test]
     fn uninterpreted_hello_world() -> RResult<()> {
         let mut runtime = Runtime::new()?;
-        runtime.repository.add("common", PathBuf::from("monoteny"));
+        runtime.add_common_repository();
 
         let module = runtime.load_file_as_module(&PathBuf::from("test-code/hello_world.monoteny"), module_name("main"))?;
         let main_function = module.main_functions.iter().at_most_one().unwrap().unwrap();

@@ -23,7 +23,7 @@ mod tests {
     #[test]
     fn run_expression() -> RResult<()> {
         let mut runtime = Runtime::new()?;
-        runtime.repository.add("common", PathBuf::from("monoteny"));
+        runtime.add_common_repository();
 
         let mut chunk = Chunk::new();
         chunk.push_with_u16(OpCode::LOAD16, 2);
@@ -47,7 +47,7 @@ mod tests {
 
     fn test_runs(path: &str) -> RResult<String> {
         let mut runtime = Runtime::new()?;
-        runtime.repository.add("common", PathBuf::from("monoteny"));
+        runtime.add_common_repository();
 
         let module = runtime.load_file_as_module(&PathBuf::from(path), module_name("main"))?;
 
@@ -151,7 +151,7 @@ mod tests {
     #[test]
     fn assertions() -> RResult<()> {
         let mut runtime = Runtime::new()?;
-        runtime.repository.add("common", PathBuf::from("monoteny"));
+        runtime.add_common_repository();
 
         let module = runtime.load_file_as_module(&PathBuf::from("test-code/debug/assert.monoteny"), module_name("main"))?;
 
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn anonymous_type() -> RResult<()> {
         let mut runtime = Runtime::new()?;
-        runtime.repository.add("common", PathBuf::from("monoteny"));
+        runtime.add_common_repository();
 
         let (expression, _) = parse_expression("String")?;
         let result = runtime.evaluate_anonymous_expression(
