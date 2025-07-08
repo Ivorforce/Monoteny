@@ -7,7 +7,6 @@ use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compile::function_compiler::InlineFunction;
 use crate::interpreter::data::string_to_ptr;
 use crate::interpreter::opcode::{OpCode, Primitive};
-use crate::interpreter::opcode::OpCode::CALL_INTRINSIC;
 use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::IntrinsicFunction;
 use crate::program;
@@ -23,7 +22,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     for function in runtime.source.module_by_name[&module_name("core.debug")].explicit_functions(&runtime.source) {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "_write_line" => {
-                let fun: IntrinsicFunction = |vm, sp| unsafe {
+                inline_fn_push_intrinsic_call(|vm, sp| unsafe {
                     *sp = sp.offset(-8);
                     // // TODO Shouldn't need to copy
                     let string = read_unaligned((**sp).ptr as *mut String);
@@ -31,8 +30,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
                     writeln!(vm.out.borrow_mut(), "{}", string)
                         .map_err(|e| RuntimeError::error(&e.to_string()).to_array())?;
                     Ok(())
-                };
-                inline_fn_push_with_u64(CALL_INTRINSIC, unsafe { transmute(fun) })
+                })
             },
             "_exit_with_error" => inline_fn_push(OpCode::PANIC),
             _ => continue,
@@ -42,18 +40,17 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     for function in runtime.source.module_by_name[&module_name("core.transpilation")].explicit_functions(&runtime.source) {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "add" => {
-                let fun: IntrinsicFunction = |vm, sp| unsafe {
+                inline_fn_push_intrinsic_call(|vm, sp| unsafe {
                     *sp = sp.offset(-8);
                     // // TODO Shouldn't need to copy
                     let ptr = (**sp).ptr;
                     *sp = sp.offset(-8);
                     let transpiler = (**sp).ptr;
-                    
+
                     let uuid = *(ptr as *mut Uuid);
                     vm.transpile_functions.push(uuid);
                     Ok(())
-                };
-                inline_fn_push_with_u64(CALL_INTRINSIC, unsafe { transmute(fun) })
+                })
             },
             _ => continue,
         });
@@ -70,7 +67,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
     for function in runtime.source.module_by_name[&module_name("core.strings")].explicit_functions(&runtime.source) {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "add" => {
-                let fun: IntrinsicFunction = |vm, sp| unsafe {
+                inline_fn_push_intrinsic_call(|vm, sp| unsafe {
                     *sp = sp.offset(-8);
                     // // TODO Shouldn't need to copy
                     let rhs = read_unaligned((**sp).ptr as *mut String);
@@ -81,8 +78,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
 
                     (*sp_last).ptr = string_to_ptr(&(lhs + &rhs));
                     Ok(())
-                };
-                inline_fn_push_with_u64(CALL_INTRINSIC, unsafe { transmute(fun) })
+                })
             },
             _ => continue,
         });
@@ -183,6 +179,10 @@ pub fn inline_fn_push_with_u64(opcode: OpCode, arg: u64) -> InlineFunction {
     }})
 }
 
+pub fn inline_fn_push_intrinsic_call(arg: IntrinsicFunction) -> InlineFunction {
+    inline_fn_push_with_u64(OpCode::CALL_INTRINSIC, unsafe { transmute(arg) })
+}
+
 pub unsafe fn to_str_ptr<A: ToString>(a: A) -> *mut () {
     let string = a.to_string();
     string_to_ptr(&string)
@@ -248,7 +248,7 @@ pub fn compile_primitive_operation(operation: &PrimitiveOperation, type_: &progr
         PrimitiveOperation::ParseIntString => inline_fn_push_with_u8(OpCode::PARSE, primitive_u8),
         PrimitiveOperation::ParseRealString => inline_fn_push_with_u8(OpCode::PARSE, primitive_u8),
         PrimitiveOperation::ToString => {
-            let fun: IntrinsicFunction = match primitive {
+            inline_fn_push_intrinsic_call(match primitive {
                 Primitive::U8 => |vm, sp| unsafe { un_expr!(u8, ptr, to_str_ptr(val)); Ok(()) },
                 Primitive::U16 => |vm, sp| unsafe { un_expr!(u16, ptr, to_str_ptr(val)); Ok(()) },
                 Primitive::U32 => |vm, sp| unsafe { un_expr!(u32, ptr, to_str_ptr(val)); Ok(()) },
@@ -260,9 +260,7 @@ pub fn compile_primitive_operation(operation: &PrimitiveOperation, type_: &progr
                 Primitive::F32 => |vm, sp| unsafe { un_expr!(f32, ptr, to_str_ptr(val)); Ok(()) },
                 Primitive::F64 => |vm, sp| unsafe { un_expr!(f64, ptr, to_str_ptr(val)); Ok(()) },
                 Primitive::BOOL => |vm, sp| unsafe { un_expr!(bool, ptr, to_str_ptr(val)); Ok(()) },
-            };
-
-            inline_fn_push_with_u64(CALL_INTRINSIC, unsafe { transmute(fun) })
+            })
         },
         PrimitiveOperation::Clone => inline_fn_push_identity(),  // Primitives are already pass-by-value.
     }
