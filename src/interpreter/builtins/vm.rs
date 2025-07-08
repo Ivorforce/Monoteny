@@ -1,7 +1,8 @@
 use std::mem::transmute;
 use std::ptr::read_unaligned;
 use std::rc::Rc;
-use monoteny_macro::{pop_sp, pop_sp_intrin, un_expr};
+use std::str::FromStr;
+use monoteny_macro::{pop_ip, pop_sp, pop_sp_intrin, un_expr, un_expr_try};
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compile::function_compiler::InlineFunction;
@@ -184,6 +185,10 @@ pub unsafe fn to_str_ptr<A: ToString>(a: A) -> *mut () {
     string_to_ptr(&string)
 }
 
+pub unsafe fn from_str_ptr<A: FromStr>(a: *mut ()) -> RResult<A> {
+    (*(a as *const String)).parse().map_err(|_e| RuntimeError::error("Parse Error").to_array())
+}
+
 pub fn compile_primitive_operation(operation: &PrimitiveOperation, type_: &program::primitives::Type) -> InlineFunction {
     let primitive = primitive_from_primitive(type_);
     let primitive_u8 = primitive as u8;
@@ -241,8 +246,28 @@ pub fn compile_primitive_operation(operation: &PrimitiveOperation, type_: &progr
         PrimitiveOperation::LesserThan => inline_fn_push_with_u8(OpCode::LE, primitive_u8),
         PrimitiveOperation::GreaterThanOrEqual => inline_fn_push_with_u8(OpCode::GR_EQ, primitive_u8),
         PrimitiveOperation::LesserThanOrEqual => inline_fn_push_with_u8(OpCode::LE_EQ, primitive_u8),
-        PrimitiveOperation::ParseIntString => inline_fn_push_with_u8(OpCode::PARSE, primitive_u8),
-        PrimitiveOperation::ParseRealString => inline_fn_push_with_u8(OpCode::PARSE, primitive_u8),
+        PrimitiveOperation::ParseIntString => {
+            inline_fn_push_intrinsic_call(match primitive {
+                Primitive::U8 => |vm, sp| unsafe { un_expr_try!(ptr, u8, from_str_ptr(val)); Ok(()) },
+                Primitive::U16 => |vm, sp| unsafe { un_expr_try!(ptr, u16, from_str_ptr(val)); Ok(()) },
+                Primitive::U32 => |vm, sp| unsafe { un_expr_try!(ptr, u32, from_str_ptr(val)); Ok(()) },
+                Primitive::U64 => |vm, sp| unsafe { un_expr_try!(ptr, u64, from_str_ptr(val)); Ok(()) },
+                Primitive::I8 => |vm, sp| unsafe { un_expr_try!(ptr, i8, from_str_ptr(val)); Ok(()) },
+                Primitive::I16 => |vm, sp| unsafe { un_expr_try!(ptr, i16, from_str_ptr(val)); Ok(()) },
+                Primitive::I32 => |vm, sp| unsafe { un_expr_try!(ptr, i32, from_str_ptr(val)); Ok(()) },
+                Primitive::I64 => |vm, sp| unsafe { un_expr_try!(ptr, i64, from_str_ptr(val)); Ok(()) },
+                Primitive::F32 => |vm, sp| unsafe { un_expr_try!(ptr, f32, from_str_ptr(val)); Ok(()) },
+                Primitive::F64 => |vm, sp| unsafe { un_expr_try!(ptr, f64, from_str_ptr(val)); Ok(()) },
+                _ => |vm, sp| { Err(RuntimeError::error("Unexpected primitive.").to_array()) },
+            })
+        },
+        PrimitiveOperation::ParseRealString => {
+            inline_fn_push_intrinsic_call(match primitive {
+                Primitive::F32 => |vm, sp| unsafe { un_expr_try!(ptr, f32, from_str_ptr(val)); Ok(()) },
+                Primitive::F64 => |vm, sp| unsafe { un_expr_try!(ptr, f64, from_str_ptr(val)); Ok(()) },
+                _ => |vm, sp| { Err(RuntimeError::error("Unexpected primitive.").to_array()) },
+            })
+        },
         PrimitiveOperation::ToString => {
             inline_fn_push_intrinsic_call(match primitive {
                 Primitive::U8 => |vm, sp| unsafe { un_expr!(u8, ptr, to_str_ptr(val)); Ok(()) },

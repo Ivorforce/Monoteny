@@ -387,27 +387,6 @@ impl VM {
                             _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     }
-                    OpCode::PARSE => {
-                        let arg: Primitive = transmute(pop_ip!(u8));
-
-                        let sp_last = sp.offset(-8);
-                        // TODO Shouldn't need to copy
-                        let string = read_unaligned((*sp_last).ptr as *mut String);
-
-                        match arg {
-                            Primitive::U8 => (*sp_last).u8 = string.parse().unwrap(),
-                            Primitive::U16 => (*sp_last).u16 = string.parse().unwrap(),
-                            Primitive::U32 => (*sp_last).u32 = string.parse().unwrap(),
-                            Primitive::U64 => (*sp_last).u64 = string.parse().unwrap(),
-                            Primitive::I8 => (*sp_last).i8 = string.parse().unwrap(),
-                            Primitive::I16 => (*sp_last).i16 = string.parse().unwrap(),
-                            Primitive::I32 => (*sp_last).i32 = string.parse().unwrap(),
-                            Primitive::I64 => (*sp_last).i64 = string.parse().unwrap(),
-                            Primitive::F32 => (*sp_last).f32 = string.parse().unwrap(),
-                            Primitive::F64 => (*sp_last).f64 = string.parse().unwrap(),
-                            _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
-                        }
-                    }
                     OpCode::ALLOC_32 => {
                         let size = pop_ip!(u32);
                         let layout = Layout::from_size_align(usize::try_from(size).unwrap() * 8, 8).unwrap();

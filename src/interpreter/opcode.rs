@@ -34,7 +34,6 @@ pub enum OpCode {
     GR_EQ,
     LE,
     LE_EQ,
-    PARSE,
 
     // Member
     ALLOC_32,
