@@ -13,14 +13,13 @@ jobs:
       fail-fast: false
       matrix:
         target:
-          - { platform: linux, arch: x86_64, os: ubuntu-latest, executable-name: "monoteny" }
-#          - { platform: linux, arch: x86_32, os: ubuntu-22.04 }
-#          - { platform: linux, arch: arm64, os: ubuntu-22.04-arm }
-#          - { platform: linux, arch: arm32, os: ubuntu-22.04-arm }
-          - { platform: windows, arch: x86_64, os: windows-latest, executable-name: "monoteny.exe" }
-#          - { platform: windows, arch: x86_32, os: windows-latest }
-#          - { platform: windows, arch: arm64, os: windows-latest }
-          - { platform: macos, arch: universal, os: macos-latest, executable-name: "monoteny" }
+          - { name: "linux-x86", target: "i686-unknown-linux-gnu", executable-name: "monoteny", os: ubuntu-latest }
+          - { name: "linux-x86_64", target: "x86_64-unknown-linux-gnu", executable-name: "monoteny", os: ubuntu-latest, }
+          - { name: "linux-aarch64", target: "aarch64-unknown-linux-gnu", executable-name: "monoteny", os: ubuntu-latest, }
+          - { name: "windows-x86", target: "i686-pc-windows-msvc", os: windows-latest, executable-name: "monoteny.exe" }
+          - { name: "windows-x86_64", target: "x86_64-pc-windows-msvc", os: windows-latest, executable-name: "monoteny.exe" }
+          - { name: "macos-x86", target: "x86_64-apple-darwin", executable-name: "monoteny", os: macos-latest }
+          - { name: "macos-aarch64", target: "aarch64-apple-darwin", executable-name: "monoteny", os: macos-latest }
 
     runs-on: ${{ matrix.target.os }}
 
@@ -32,10 +31,10 @@ jobs:
         prefix-key: "main"
         save-if: ${{ github.ref == 'refs/heads/main' }}
     - name: Build
-      run: cargo build --release --verbose
+      run: cargo build --release --verbose --target ${{ matrix.target.target }}
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Monoteny-${{ matrix.target.platform }}-${{ matrix.target.arch }}
+        name: Monoteny-${{ matrix.target.name }}
         path: |
           ${{ github.workspace }}/target/release/${{ matrix.target.executable-name }}
