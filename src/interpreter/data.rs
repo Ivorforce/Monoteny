@@ -27,12 +27,12 @@ impl Value {
 // TODO The constants should probably be alloced in the chunk's constants, not 'anywhere'.
 pub unsafe fn string_to_ptr(string: &String) -> *mut () {
     let data = alloc(Layout::new::<String>());
-    *(data as *mut String) = string.clone();
+    std::ptr::write(data as *mut String, string.clone());
     transmute(data)
 }
 
 pub unsafe fn uuid_to_ptr(uuid: Uuid) -> *mut () {
     let data = alloc(Layout::new::<Uuid>());
-    *(data as *mut Uuid) = uuid;
+    std::ptr::write(data as *mut Uuid, uuid.clone());
     transmute(data)
 }
