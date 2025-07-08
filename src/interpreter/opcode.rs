@@ -39,8 +39,6 @@ pub enum OpCode {
     LE,
     LE_EQ,
     PARSE,
-    // TODO This can probably be done in-code some time (?)
-    ADD_STRING,
 
     // Member
     ALLOC_32,

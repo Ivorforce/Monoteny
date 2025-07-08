@@ -421,16 +421,6 @@ impl VM {
                             _ => return Err(RuntimeError::error("Unexpected primitive.").to_array()),
                         }
                     }
-                    OpCode::ADD_STRING => {
-                        // TODO Shouldn't need to copy
-                        let rhs = read_unaligned(pop_sp!().ptr as *mut String);
-
-                        // TODO Shouldn't need to copy
-                        let sp_last = sp.offset(-8);
-                        let lhs = read_unaligned((*sp_last).ptr as *mut String);
-
-                        (*sp_last).ptr = string_to_ptr(&(lhs + &rhs));
-                    }
                     OpCode::ALLOC_32 => {
                         let size = pop_ip!(u32);
                         let layout = Layout::from_size_align(usize::try_from(size).unwrap() * 8, 8).unwrap();
