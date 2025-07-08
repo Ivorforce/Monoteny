@@ -1,5 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Check" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <option name="buildProfileId" value="dev" />
     <option name="command" value="run -- check notebooks/example.monoteny" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <envs />
