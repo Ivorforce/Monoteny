@@ -5,7 +5,7 @@ use std::ops::Neg;
 use std::ptr::{read_unaligned, write_unaligned};
 use std::rc::{Rc, Weak};
 
-use monoteny_macro::{bin_expr, pop_ip, pop_sp, un_expr};
+use monoteny_macro::{bin_expr, pop_ip, un_expr};
 use uuid::Uuid;
 
 use crate::error::{RResult, RuntimeError};
@@ -14,8 +14,10 @@ use crate::interpreter::compile::compile_server::CompileServer;
 use crate::interpreter::data::{string_to_ptr, Value};
 use crate::interpreter::opcode::{OpCode, Primitive};
 use crate::interpreter::vm::call_frame::CallFrame;
+use crate::interpreter::vm::util::pop_stack;
 
 pub mod call_frame;
+pub mod util;
 
 pub struct VM {
     pub out: RefCell<Box<dyn std::io::Write>>,
@@ -149,7 +151,7 @@ impl VM {
                     }
                     OpCode::JUMP_IF_FALSE => {
                         let jump_distance: i32 = pop_ip!(i32);
-                        let condition = pop_sp!().bool;
+                        let condition = pop_stack(&mut sp).bool;
                         if !condition {
                             ip = ip.offset(isize::try_from(jump_distance).unwrap());
                         }
@@ -403,8 +405,8 @@ impl VM {
                     }
                     OpCode::SET_MEMBER_32 => {
                         let slot_idx = pop_ip!(u32);
-                        let value = pop_sp!();
-                        let obj_ptr = pop_sp!().ptr;
+                        let value = pop_stack(&mut sp);
+                        let obj_ptr = pop_stack(&mut sp).ptr;
                         let slot_ptr = obj_ptr.byte_add(usize::try_from(slot_idx).unwrap() * 8);
 
                         write_unaligned(slot_ptr as *mut Value, value);

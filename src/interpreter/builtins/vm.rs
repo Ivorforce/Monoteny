@@ -2,7 +2,7 @@ use std::mem::transmute;
 use std::ptr::read_unaligned;
 use std::rc::Rc;
 use std::str::FromStr;
-use monoteny_macro::{pop_ip, pop_sp, pop_sp_intrin, un_expr, un_expr_try};
+use monoteny_macro::{pop_ip, un_expr, un_expr_try};
 use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::compile::function_compiler::InlineFunction;
@@ -10,6 +10,7 @@ use crate::interpreter::data::string_to_ptr;
 use crate::interpreter::opcode::{OpCode, Primitive};
 use crate::interpreter::runtime::Runtime;
 use crate::interpreter::vm::IntrinsicFunction;
+use crate::interpreter::vm::util::pop_stack;
 use crate::program;
 use crate::program::functions::{FunctionLogic, FunctionLogicDescriptor, PrimitiveOperation};
 use crate::program::module::module_name;
@@ -24,7 +25,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "_write_line" => {
                 inline_fn_push_intrinsic_call(|vm, sp| unsafe {
-                    let string = &*(pop_sp_intrin!().ptr as *mut String);
+                    let string = &*(pop_stack(sp).ptr as *mut String);
 
                     writeln!(vm.out.borrow_mut(), "{}", string)
                         .map_err(|e| RuntimeError::error(&e.to_string()).to_array())?;
@@ -41,8 +42,8 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
             "add" => {
                 inline_fn_push_intrinsic_call(|vm, sp| unsafe {
                     // // TODO Shouldn't need to copy
-                    let ptr = pop_sp_intrin!().ptr;
-                    let transpiler = pop_sp_intrin!().ptr;
+                    let ptr = pop_stack(sp).ptr;
+                    let transpiler = pop_stack(sp).ptr;
 
                     let uuid = *(ptr as *mut Uuid);
                     vm.transpile_functions.push(uuid);
@@ -65,7 +66,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
         runtime.compile_server.function_inlines.insert(function.function_id, match function.declared_representation.name.as_str() {
             "add" => {
                 inline_fn_push_intrinsic_call(|vm, sp| unsafe {
-                    let rhs = &*(pop_sp_intrin!().ptr as *mut String);
+                    let rhs = &*(pop_stack(sp).ptr as *mut String);
 
                     let sp_last = (*sp).offset(-8);
                     let lhs = &*((*sp_last).ptr as *mut String);
