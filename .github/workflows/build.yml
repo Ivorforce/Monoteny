@@ -39,4 +39,4 @@ jobs:
       with:
         name: Monoteny-${{ matrix.target.name }}
         path: |
-          ${{ github.workspace }}/target/release/${{ matrix.target.executable-name }}
+          ${{ github.workspace }}/target/${{ matrix.target.target }}/release/${{ matrix.target.executable-name }}
