@@ -4,7 +4,7 @@
 
 Welcome to the mathemagical land of Monoteny! 
 
-Monoteny is a programming language intended for making libraries. It transpiles to many other programming languages and ecosystems so nobody needs to reinvent the wheel!
+Monoteny is a programming language for writing portable algorithm and numerical kernels — write your logic once, and transpile it as readable native code into multiple languages and ecosystems, so nobody needs to reinvent the wheel.
 
 Monoteny specializes in reusability, runtime safety and readability. Why not check out [Monoteny 101](https://www.craft.me/s/dYSfJhYM9TAsne)? Also, come join the community on [Discord](https://discord.gg/zgyNx9K7mE)!
 
@@ -16,8 +16,8 @@ Let's quick-fire some language design decisions:
 - **Simplicity:** Monoteny is all about the logic. You can keep it simple; the compiler will figure out how to make it fast.
 - **Implicit Safety:** Code compiled from Monoteny cannot do anything bad to you except crash or freeze the program.
 - **Flexible Runtime:** Monoteny bends to your will. Change grammar, decorate classes, generate code - it supports it all.
-- **Monomorphization:** Compiled monoteny code doesn't use dynamic dispatch. This makes it fast and safe.
-- **Monads:** Monoteny loves monads. Monads make your code short, easy to read, and fast.
+- **Monomorphization:** Compiled Monoteny code doesn't use dynamic dispatch. This makes it fast and safe.
+- **Broadcasting:** Write the same code to apply logic to one object or many at once.
 - **Infinite Re-Usability:** All types are composable, inheritable and constructable. Define a concept once; use it forever.
 
 ## Example Code
@@ -98,19 +98,14 @@ More code can be found in the [test-code](./test-code) (unit tests) and [monoten
 
 ## Targets
 
-The following languages are planned as compilation targets, in order of priority:
+The compiler itself is built around an interpreter VM (the substrate that powers compile-time evaluation, macros, and shape inference). On top of that, the following transpilation targets are planned, in priority order:
 
 * [WIP] Python with NumPy
-* [Future] Haxe (adding second-class support for: JavaScript, C++, C#, Java, JVM, Python, Lua, PHP, Flash)
-* [Future] Plain C
-* [Future] Octave / MatLab
-* [Future] R
-* [Future] Julia
-* [Future] C++ with Eigen
-* [Future] Monoteny Dialect
-* [Future] LaTeX Expressions
+* [Some time later] Plain C
 
-In addition, a transpilation API will allow 3rd parties to target custom ecosystems.
+Further targets under consideration (no active work): Haxe, Octave/MATLAB, R, Julia, C++ with Eigen, Monoteny dialect, LaTeX expressions.
+
+A transpilation API will allow 3rd parties to target custom ecosystems.
 
 ## How to run
 
