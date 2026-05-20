@@ -130,7 +130,7 @@ pub fn register_global(runtime: &Runtime, context: &mut Context) {
                     todo!()
                 }
             },
-            FunctionLogicDescriptor::TraitProvider(_) => continue,
+            FunctionLogicDescriptor::NominalProvider(_) => continue,
             FunctionLogicDescriptor::FunctionProvider(_) => continue,
         };
 

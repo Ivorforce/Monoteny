@@ -6,7 +6,7 @@ use itertools::{zip_eq, Itertools};
 use uuid::Uuid;
 
 use crate::error::{RResult, RuntimeError, TryCollectMany};
-use crate::program::traits::Trait;
+use crate::program::traits::Nominal;
 use crate::program::types::{TypeProto, TypeUnit};
 
 pub type GenericIdentity = Uuid;
@@ -123,11 +123,11 @@ impl TypeForest {
         self.bind_identity(*identity, t)
     }
 
-    pub fn rebind_structs_as_generic(&mut self, structs: &HashMap<Rc<Trait>, Rc<TypeProto>>) -> RResult<()>{
+    pub fn rebind_structs_as_generic(&mut self, structs: &HashMap<Rc<Nominal>, Rc<TypeProto>>) -> RResult<()>{
         let map: HashMap<_, _> = structs.into_iter().map(|(struct_, type_)| {
             let identity = self._register(struct_.id);
             self.bind_identity(identity, type_)?;
-            Ok::<(&Rc<Trait>, Uuid), Vec<RuntimeError>>((struct_, identity))
+            Ok::<(&Rc<Nominal>, Uuid), Vec<RuntimeError>>((struct_, identity))
         }).try_collect_many()?;
 
         let mut replace_map = HashMap::new();

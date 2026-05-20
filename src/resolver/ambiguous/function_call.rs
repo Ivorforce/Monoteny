@@ -10,14 +10,14 @@ use crate::program::debug::MockFunctionInterface;
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionBinding, FunctionHead, FunctionRepresentation, ParameterKey};
 use crate::program::generics::TypeForest;
-use crate::program::traits::{RequirementsFulfillment, Trait, TraitBinding, TraitGraph};
+use crate::program::traits::{RequirementsFulfillment, Nominal, TraitBinding, TraitGraph};
 use crate::program::types::TypeProto;
 use crate::resolver::ambiguous::{AmbiguityResult, ResolverAmbiguity};
 use crate::resolver::imperative::ImperativeResolver;
 
 pub struct AmbiguousFunctionCandidate {
     pub function: Rc<FunctionHead>,
-    pub generic_map: HashMap<Rc<Trait>, Rc<TypeProto>>,
+    pub generic_map: HashMap<Rc<Nominal>, Rc<TypeProto>>,
     // All these are seeded already
     pub param_types: Vec<Rc<TypeProto>>,
     pub return_type: Rc<TypeProto>,

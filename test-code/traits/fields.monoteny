@@ -1,8 +1,8 @@
--- Tests traits with fields.
+-- Tests structs with fields.
 
 use!(module!("common"));
 
-trait Animal {
+struct Animal {
     -- Immutable Field
     let species 'String;
     let name 'String;

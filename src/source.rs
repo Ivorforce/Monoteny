@@ -5,22 +5,20 @@ use uuid::Uuid;
 
 use crate::program::functions::{FunctionHead, FunctionLogic};
 use crate::program::module::{Module, ModuleName};
-use crate::program::traits::{StructInfo, Trait};
+use crate::program::traits::Nominal;
 
 pub struct Source {
     pub module_by_name: HashMap<ModuleName, Box<Module>>,
 
     // Cache of aggregated module_by_name fields for quick reference.
 
-    /// For every getter, which trait it provides.
-    pub trait_heads: HashMap<Uuid, Rc<Trait>>,
-    /// For referencible functions, the trait for it as an object.
-    /// For every getter, which trait it provides.
-    pub trait_references: HashMap<Rc<FunctionHead>, Rc<Trait>>,
-    /// For referencible functions, the trait for it as an object.
-    pub function_traits: HashMap<Rc<Trait>, Rc<FunctionHead>>,
-    /// For instantiatable traits, their struct info
-    pub struct_by_trait: HashMap<Rc<Trait>, Rc<StructInfo>>,
+    /// For every getter, which nominal it provides.
+    pub nominal_heads: HashMap<Uuid, Rc<Nominal>>,
+    /// For referencible functions, the nominal for it as an object.
+    /// For every getter, which nominal it provides.
+    pub nominal_references: HashMap<Rc<FunctionHead>, Rc<Nominal>>,
+    /// For referencible functions, the nominal for it as an object.
+    pub function_nominals: HashMap<Rc<Nominal>, Rc<FunctionHead>>,
 
     /// For each function_id, its head.
     pub fn_heads: HashMap<Uuid, Rc<FunctionHead>>,
@@ -35,10 +33,9 @@ impl Source {
     pub fn new() -> Source {
         Source {
             module_by_name: Default::default(),
-            trait_heads: Default::default(),
-            trait_references: Default::default(),
-            function_traits: Default::default(),
-            struct_by_trait: Default::default(),
+            nominal_heads: Default::default(),
+            nominal_references: Default::default(),
+            function_nominals: Default::default(),
             fn_heads: Default::default(),
             fn_getters: Default::default(),
             fn_logic: Default::default(),

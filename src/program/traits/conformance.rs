@@ -5,7 +5,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 
 use crate::program::functions::FunctionHead;
-use crate::program::traits::{Trait, TraitBinding};
+use crate::program::traits::{Nominal, TraitBinding};
 use crate::program::types::TypeProto;
 use crate::util::hash;
 
@@ -46,7 +46,7 @@ pub struct RequirementsAssumption {
 pub struct RequirementsFulfillment {
     // Requirement: (tail, conformance)
     pub conformance: HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>,
-    pub generic_mapping: HashMap<Rc<Trait>, Rc<TypeProto>>,
+    pub generic_mapping: HashMap<Rc<Nominal>, Rc<TypeProto>>,
 }
 
 

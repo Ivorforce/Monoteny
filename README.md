@@ -18,7 +18,7 @@ Let's quick-fire some language design decisions:
 - **Flexible Runtime:** Monoteny bends to your will. Change grammar, decorate classes, generate code - it supports it all.
 - **Monomorphization:** Compiled Monoteny code doesn't use dynamic dispatch. This makes it fast and safe.
 - **Broadcasting:** Write the same code to apply logic to one object or many at once.
-- **Infinite Re-Usability:** All types are composable, inheritable and constructable. Define a concept once; use it forever.
+- **Infinite Re-Usability:** All types are composable and reusable. Define a concept once; use it forever.
 
 ## Example Code
 
@@ -28,14 +28,14 @@ tuple Cartesian(x, y, z);
 tuple Spherical(l, e, a);
 
 -- Define a function with a monadic input and a monadic output.
-def (self '$Real[Cartesian]).to_spherical() -> $Real[Spherical] = {
-  -- Destructure to x, y, z arrays, each '$Real
+def (self 'Real[Cartesian]).to_spherical() -> Real[Spherical] = {
+  -- Destructure to x, y, z arrays, each 'Real
   let #(x, y, z) = self;
 
   -- Pre-compute xz_sq
   let xz_sq = x ** 2 + z ** 2;
 
-  -- Construct a monad $Real[Spherical] using a generic constructor.
+  -- Construct a monad Real[Spherical] using a generic constructor.
   return #(
     l: (xz_sq + y ** 2).sqrt(),
     e: xz_sq.sqrt().atan2(y),

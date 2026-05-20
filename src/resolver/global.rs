@@ -10,7 +10,7 @@ use crate::interpreter::runtime::Runtime;
 use crate::parser::expressions;
 use crate::program::functions::{FunctionCallExplicity, FunctionHead, FunctionInterface, FunctionLogic, FunctionLogicDescriptor, FunctionRepresentation, FunctionTargetType};
 use crate::program::module::Module;
-use crate::program::traits::{Trait, TraitConformanceRule};
+use crate::program::traits::{Nominal, NominalKind, TraitConformanceRule};
 use crate::program::types::*;
 use crate::resolver::conformance::ConformanceResolver;
 use crate::resolver::decorations::try_parse_pattern;
@@ -18,7 +18,7 @@ use crate::resolver::function::resolve_function_body;
 use crate::resolver::imports::resolve_imports;
 use crate::resolver::interface::resolve_function_interface;
 use crate::resolver::precedence_order::resolve_precedence_order;
-use crate::resolver::traits::{try_make_struct, TraitResolver};
+use crate::resolver::traits::{make_struct, DefinitionResolver};
 use crate::resolver::type_factory::TypeFactory;
 use crate::resolver::{imports, referencible, scopes};
 use crate::static_analysis;
@@ -87,38 +87,11 @@ impl <'a> GlobalResolver<'a> {
             }
             ast::Statement::Trait(syntax) => {
                 pstatement.no_decorations()?;
-
-                let mut trait_ = Trait::new_with_self(&syntax.name);
-
-                trait_.add_simple_parent_requirement(&self.runtime.traits.as_ref().unwrap().Any);
-
-                let generic_self_type = trait_.create_generic_type("Self");
-                let generic_self_meta_type = TypeProto::one_arg(&self.runtime.Metatype, generic_self_type.clone());
-                // This is not the same reference as what module.add_trait returns - that reference is for the global metatype getter.
-                //  Inside, we use the Self getter.
-                let generic_self_self_getter = FunctionHead::new_static(
-                    vec![],
-                    FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit),
-                    FunctionInterface::new_provider(&generic_self_meta_type, vec![]),
-                );
-
-                let mut scope = self.global_variables.subscope();
-                scope.overload_function(&generic_self_self_getter, generic_self_self_getter.declared_representation.clone())?;
-                self.runtime.source.trait_references.insert(Rc::clone(&generic_self_self_getter), Rc::clone(&trait_.generics["Self"]));
-
-                let mut resolver = TraitResolver {
-                    runtime: &mut self.runtime,
-                    trait_: &mut trait_,
-                    generic_self_type,
-                };
-                for statement in syntax.block.statements.iter() {
-                    statement.no_decorations()?;
-
-                    resolver.resolve_statement(&statement.value.value, &Default::default(), &Default::default(), &scope)
-                        .err_in_range(&statement.value.position)?;
-                }
-
-                self.add_trait(&Rc::new(trait_))?;
+                self.resolve_nominal_definition(&syntax.name, &syntax.block, false)?;
+            }
+            ast::Statement::Struct(syntax) => {
+                pstatement.no_decorations()?;
+                self.resolve_nominal_definition(&syntax.name, &syntax.block, true)?;
             }
             ast::Statement::Conformance(syntax) => {
                 pstatement.no_decorations()?;
@@ -129,6 +102,9 @@ impl <'a> GlobalResolver<'a> {
                 let TypeUnit::Struct(declared) = &declared_type.unit else {
                     panic!("Somehow, the resolved type wasn't a struct.")
                 };
+                if declared.kind != NominalKind::Trait {
+                    return Err(RuntimeError::error(format!("Can only declare conformance to a trait; '{}' is a {:?}.", declared.name, declared.kind).as_str()).to_array());
+                }
                 if !declared_type.arguments.is_empty() {
                     return Err(RuntimeError::error("Conformance cannot be declared with bindings for now.").to_array());
                 }
@@ -141,7 +117,7 @@ impl <'a> GlobalResolver<'a> {
                 let generics = type_factory.generics;
                 let conformance_requirements = type_factory.requirements;
 
-                // FIXME This is not ideal; technically the trait_references thing should be a BOUND trait,
+                // FIXME This is not ideal; technically the nominal_references thing should be a BOUND trait,
                 //  because the user may have bound some generics of self in the declaration.
                 //  For now it's fine - determining the self type will be the task of the interpreter in the future anyway.
                 let self_trait = match &self_type.unit {
@@ -159,7 +135,7 @@ impl <'a> GlobalResolver<'a> {
 
                 let mut scope = self.global_variables.subscope();
                 scope.overload_function(&self_getter, self_getter.declared_representation.clone())?;
-                self.runtime.source.trait_references.insert(Rc::clone(&self_getter), self_trait);
+                self.runtime.source.nominal_references.insert(Rc::clone(&self_getter), self_trait);
 
                 let mut resolver = ConformanceResolver { runtime: &mut self.runtime, functions: vec![], };
                 for statement in syntax.block.statements.iter() {
@@ -247,9 +223,54 @@ impl <'a> GlobalResolver<'a> {
         Ok(())
     }
 
-    fn add_trait(&mut self, trait_: &Rc<Trait>) -> RResult<()> {
-        referencible::add_trait(self.runtime, &mut self.module, Some(&mut self.global_variables), &trait_)?;
-        try_make_struct(trait_, self)?;
+    /// Resolves a `trait` or `struct` body (both are backed by a `Nominal` in the IR).
+    /// When `is_struct` is set, the body accepts only fields (methods are rejected) and
+    /// the concrete constructor/getter/setter machinery is generated via `make_struct`.
+    fn resolve_nominal_definition(&mut self, name: &str, block: &'a ast::Block, is_struct: bool) -> RResult<()> {
+        let mut nominal = match is_struct {
+            true => Nominal::new_struct(name),
+            false => Nominal::new_trait(name),
+        };
+
+        nominal.add_simple_parent_requirement(&self.runtime.traits.as_ref().unwrap().Any);
+
+        let generic_self_type = nominal.create_generic_type("Self");
+        let generic_self_meta_type = TypeProto::one_arg(&self.runtime.Metatype, generic_self_type.clone());
+        // This is not the same reference as what module.add_nominal returns - that reference is for the global metatype getter.
+        //  Inside, we use the Self getter.
+        let generic_self_self_getter = FunctionHead::new_static(
+            vec![],
+            FunctionRepresentation::new("Self", FunctionTargetType::Global, FunctionCallExplicity::Implicit),
+            FunctionInterface::new_provider(&generic_self_meta_type, vec![]),
+        );
+
+        let mut scope = self.global_variables.subscope();
+        scope.overload_function(&generic_self_self_getter, generic_self_self_getter.declared_representation.clone())?;
+        self.runtime.source.nominal_references.insert(Rc::clone(&generic_self_self_getter), Rc::clone(&nominal.generics["Self"]));
+
+        let mut resolver = DefinitionResolver {
+            runtime: &mut self.runtime,
+            nominal: &mut nominal,
+            generic_self_type,
+            is_struct,
+        };
+        for statement in block.statements.iter() {
+            statement.no_decorations()?;
+
+            resolver.resolve_statement(&statement.value.value, &Default::default(), &Default::default(), &scope)
+                .err_in_range(&statement.value.position)?;
+        }
+
+        let trait_ = Rc::new(nominal);
+        self.add_nominal(&trait_)?;
+        if is_struct {
+            make_struct(&trait_, self)?;
+        }
+        Ok(())
+    }
+
+    fn add_nominal(&mut self, trait_: &Rc<Nominal>) -> RResult<()> {
+        referencible::add_nominal(self.runtime, &mut self.module, Some(&mut self.global_variables), &trait_)?;
         Ok(())
     }
 

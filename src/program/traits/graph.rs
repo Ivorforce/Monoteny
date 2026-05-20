@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::error::{RResult, RuntimeError};
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionType};
 use crate::program::generics::TypeForest;
-use crate::program::traits::{RequirementsFulfillment, Trait, TraitBinding, TraitConformance, TraitConformanceWithTail};
+use crate::program::traits::{RequirementsFulfillment, Nominal, TraitBinding, TraitConformance, TraitConformanceWithTail};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::resolver::ambiguous::AmbiguityResult;
 
@@ -22,7 +22,7 @@ use crate::resolver::ambiguous::AmbiguityResult;
 pub struct TraitConformanceRule {
     /// Generics declared for this conformance, by name (via its declaration).
     /// Used in requirements and the conformance itself (collect_generics on those would yield the same GenericAliases).
-    pub generics: HashMap<String, Rc<Trait>>,
+    pub generics: HashMap<String, Rc<Nominal>>,
 
     /// To use this conformance, these other conformances are required.
     pub requirements: HashSet<Rc<TraitBinding>>,
@@ -43,7 +43,7 @@ pub struct TraitGraph {
     /// A list of conformance declarations that allow for dynamic conformance.
     /// All these use generics in the conformance, which are provided by the requirements.
     /// To use the conformance, these generics should be replaced by the matching bindings.
-    pub conformance_rules: HashMap<Rc<Trait>, Vec<Rc<TraitConformanceRule>>>,
+    pub conformance_rules: HashMap<Rc<Nominal>, Vec<Rc<TraitConformanceRule>>>,
 }
 
 impl TraitGraph {
@@ -215,7 +215,7 @@ impl TraitGraph {
         }
     }
 
-    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, generics_map: &HashMap<Rc<Trait>, Rc<TypeProto>>, mapping: &TypeForest) -> RResult<AmbiguityResult<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>>> {
+    pub fn test_requirements(&mut self, requirements: &HashSet<Rc<TraitBinding>>, generics_map: &HashMap<Rc<Nominal>, Rc<TypeProto>>, mapping: &TypeForest) -> RResult<AmbiguityResult<HashMap<Rc<TraitBinding>, Rc<TraitConformanceWithTail>>>> {
         let mut conformance = HashMap::new();
 
         for requirement in self.gather_deep_requirements(requirements.iter().cloned()) {

@@ -104,7 +104,7 @@ pub fn load(runtime: &mut Runtime) -> RResult<()> {
                     todo!()
                 }
             },
-            FunctionLogicDescriptor::TraitProvider(_) => continue,
+            FunctionLogicDescriptor::NominalProvider(_) => continue,
             FunctionLogicDescriptor::FunctionProvider(_) => continue,
             FunctionLogicDescriptor::PrimitiveOperation { type_, operation } => {
                 compile_primitive_operation(operation, type_)

@@ -10,13 +10,13 @@ use crate::interpreter::runtime::Runtime;
 use crate::parser::expressions;
 use crate::program::functions::{FunctionCallExplicity, FunctionHead, FunctionInterface, FunctionRepresentation, FunctionTargetType, Parameter};
 use crate::program::module::{module_name, Module};
-use crate::program::traits::{Trait, TraitBinding};
+use crate::program::traits::{Nominal, TraitBinding};
 use crate::program::types::TypeProto;
 use crate::resolver::scopes;
 use crate::resolver::type_factory::TypeFactory;
 use crate::util::position::Positioned;
 
-pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &mut Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Trait>>) -> RResult<Rc<FunctionHead>> {
+pub fn resolve_function_interface(interface: &ast::FunctionInterface, scope: &scopes::Scope, module: Option<&mut Module>, runtime: &mut Runtime, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Nominal>>) -> RResult<Rc<FunctionHead>> {
     let mut type_factory = TypeFactory::new(scope);
 
     let parsed = expressions::parse(&interface.expression, &scope.grammar)?;
@@ -113,7 +113,7 @@ fn resolve_macro_function_interface(module: Option<&mut Module>, runtime: &Runti
     }
 }
 
-pub fn _resolve_function_interface<'a>(representation: FunctionRepresentation, parameters: impl Iterator<Item=&'a ast::StructArgument>, return_type: &Option<ast::Expression>, mut type_factory: TypeFactory, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Trait>>, runtime: &mut Runtime) -> RResult<Rc<FunctionHead>> {
+pub fn _resolve_function_interface<'a>(representation: FunctionRepresentation, parameters: impl Iterator<Item=&'a ast::StructArgument>, return_type: &Option<ast::Expression>, mut type_factory: TypeFactory, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Nominal>>, runtime: &mut Runtime) -> RResult<Rc<FunctionHead>> {
     let return_type = return_type.as_ref()
         .try_map(|x| type_factory.resolve_type(&x, true, runtime))?
         .unwrap_or(TypeProto::void());

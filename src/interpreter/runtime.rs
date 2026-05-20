@@ -11,7 +11,7 @@ use crate::interpreter::data::Value;
 use crate::interpreter::vm::VM;
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionRepresentation};
 use crate::program::module::{module_name, Module, ModuleName};
-use crate::program::traits::Trait;
+use crate::program::traits::Nominal;
 use crate::repository::Repository;
 use crate::resolver::function::resolve_anonymous_expression;
 use crate::resolver::{imports, referencible, scopes};
@@ -20,8 +20,8 @@ use crate::{ast, parser, program, repository, resolver};
 
 pub struct Runtime {
     #[allow(non_snake_case)]
-    pub Metatype: Rc<Trait>,
-    pub primitives: Option<HashMap<program::primitives::Type, Rc<Trait>>>,
+    pub Metatype: Rc<Nominal>,
+    pub primitives: Option<HashMap<program::primitives::Type, Rc<Nominal>>>,
     pub traits: Option<builtins::traits::Traits>,
 
     pub base_scope: Rc<scopes::Scope<'static>>,
@@ -36,8 +36,8 @@ pub struct Runtime {
 impl Runtime {
     #[allow(non_snake_case)]
     pub fn new() -> RResult<Box<Runtime>> {
-        let mut Metatype = Trait::new_with_self("Type");
-        let Metatype = Rc::new(Metatype);
+        // Metatype<X> is a concrete container (instantiated everywhere), not an interface.
+        let Metatype = Rc::new(Nominal::new_struct("Type"));
 
         let mut runtime = Box::new(Runtime {
             Metatype: Rc::clone(&Metatype),
@@ -57,7 +57,7 @@ impl Runtime {
         builtins::traits::create_functions(&mut runtime, &mut builtins_module);
         builtins::primitives::create_functions(&mut runtime, &mut builtins_module);
 
-        referencible::add_trait(&mut runtime, &mut builtins_module, None, &Metatype).unwrap();
+        referencible::add_nominal(&mut runtime, &mut builtins_module, None, &Metatype).unwrap();
 
         // Load builtins
         runtime.source.module_by_name.insert(builtins_module.name.clone(), builtins_module);

@@ -7,12 +7,14 @@ pub use function::{Function, FunctionInterface};
 pub use statement::Statement;
 pub use string::StringPart;
 pub use struct_::{Struct, StructArgument};
+pub use struct_def::StructDefinition;
 pub use term::{IfThenElse, Term};
 pub use trait_::TraitDefinition;
 
 mod array;
 mod block;
 mod struct_;
+mod struct_def;
 mod trait_;
 mod conformance;
 mod statement;

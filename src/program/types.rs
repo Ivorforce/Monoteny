@@ -7,7 +7,7 @@ use itertools::Itertools;
 use uuid::Uuid;
 
 use crate::program::generics::GenericAlias;
-use crate::program::traits::Trait;
+use crate::program::traits::Nominal;
 use crate::util::fmt::write_separated_debug;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -26,8 +26,9 @@ pub enum TypeUnit {
     Void,
     /// some type that isn't bound yet. This is fully unique and should not be created statically or imported.
     Generic(GenericAlias),
-    /// Bound to an instance of a trait. The arguments are the generic bindings.
-    Struct(Rc<Trait>),
+    /// Bound to an instance of a named type (struct, trait, or generic placeholder).
+    /// The arguments are the generic bindings.
+    Struct(Rc<Nominal>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -67,15 +68,15 @@ impl TypeProto {
         Rc::new(TypeProto { unit, arguments: vec![] })
     }
 
-    pub fn one_arg(trait_: &Rc<Trait>, subtype: Rc<TypeProto>) -> Rc<TypeProto> {
+    pub fn one_arg(nominal: &Rc<Nominal>, subtype: Rc<TypeProto>) -> Rc<TypeProto> {
         Rc::new(TypeProto {
-            unit: TypeUnit::Struct(Rc::clone(trait_)),
+            unit: TypeUnit::Struct(Rc::clone(nominal)),
             arguments: vec![subtype]
         })
     }
 
-    pub fn unit_struct(trait_: &Rc<Trait>) -> Rc<TypeProto> {
-        TypeProto::unit(TypeUnit::Struct(Rc::clone(trait_)))
+    pub fn unit_struct(nominal: &Rc<Nominal>) -> Rc<TypeProto> {
+        TypeProto::unit(TypeUnit::Struct(Rc::clone(nominal)))
     }
 
     pub fn replacing_generics(self: &Rc<TypeProto>, map: &HashMap<Uuid, Rc<TypeProto>>) -> Rc<TypeProto> {
@@ -90,7 +91,7 @@ impl TypeProto {
         }
     }
 
-    pub fn replacing_structs(self: &Rc<TypeProto>, map: &HashMap<Rc<Trait>, Rc<TypeProto>>) -> Rc<TypeProto> {
+    pub fn replacing_structs(self: &Rc<TypeProto>, map: &HashMap<Rc<Nominal>, Rc<TypeProto>>) -> Rc<TypeProto> {
         match &self.unit {
             TypeUnit::Struct(struct_) => map.get(struct_)
                 .cloned()

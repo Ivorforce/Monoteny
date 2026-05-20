@@ -5,7 +5,7 @@ use std::rc::Rc;
 use display_with_options::{with_options, DebugWithOptions};
 
 use crate::program::functions::{FunctionCallExplicity, FunctionRepresentation, FunctionTargetType};
-use crate::program::traits::{Trait, TraitBinding};
+use crate::program::traits::{Nominal, TraitBinding};
 use crate::program::types::TypeProto;
 use crate::util::fmt::write_separated_debug;
 
@@ -36,7 +36,7 @@ pub struct FunctionInterface {
     pub requirements: HashSet<Rc<TraitBinding>>,
     /// All internally used generics. These are not guaranteed to not exist elsewhere,
     /// but for the purposes of this interface, they are to be regarded as generics.
-    pub generics: HashSet<Rc<Trait>>,
+    pub generics: HashSet<Rc<Nominal>>,
 }
 
 impl FunctionInterface {

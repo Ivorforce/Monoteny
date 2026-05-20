@@ -29,7 +29,7 @@ pub fn map_parse_error(e: &ParseError<usize, Token, Error>) -> RuntimeError {
             RuntimeError::error("Extraneous token.").in_range(*start..*end)
         }
         ParseError::User { error } => {
-            panic!()
+            RuntimeError::error(error.0.as_str())
         }
     }
 }

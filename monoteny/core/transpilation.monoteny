@@ -4,7 +4,7 @@ use!(
     module!("core.debug"),
 );
 
-trait Transpiler {
+struct Transpiler {
 };
 
 def (self 'Transpiler).add(object '#A);

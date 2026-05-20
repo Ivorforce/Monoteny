@@ -14,7 +14,7 @@ use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionCallExplicity, FunctionHead, FunctionOverload, FunctionRepresentation, FunctionTargetType, ParameterKey};
 use crate::program::generics::GenericAlias;
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitGraph};
+use crate::program::traits::{Nominal, NominalKind, TraitGraph};
 use crate::program::types::*;
 use crate::resolver::ambiguous::{AmbiguityResult, AmbiguousAbstractCall, AmbiguousFunctionCall, AmbiguousFunctionCandidate, ResolverAmbiguity};
 use crate::resolver::imperative_builder::ImperativeBuilder;
@@ -70,7 +70,7 @@ impl <'a> ImperativeResolver<'a> {
         Ok(())
     }
 
-    pub fn resolve_abstract_function_call(&mut self, arguments: Vec<ExpressionID>, interface: Rc<Trait>, abstract_function: Rc<FunctionHead>, traits: TraitGraph, range: Range<usize>) -> RResult<ExpressionID> {
+    pub fn resolve_abstract_function_call(&mut self, arguments: Vec<ExpressionID>, interface: Rc<Nominal>, abstract_function: Rc<FunctionHead>, traits: TraitGraph, range: Range<usize>) -> RResult<ExpressionID> {
         let expression_id = self.builder.make_expression(arguments.clone());
 
         self.register_ambiguity(Box::new(AmbiguousAbstractCall {
@@ -297,6 +297,19 @@ impl <'a> ImperativeResolver<'a> {
                 // Check if we can do a direct function call
                 let target_expression = match &call_target.value {
                     expressions::Value::Identifier(identifier) => {
+                        // Only structs can be instantiated. If this names a non-struct nominal
+                        // (a trait), reject construction with a clear error rather than letting it
+                        // fail obscurely later in overload resolution against some other constructor.
+                        if let Ok(scopes::Reference::FunctionOverload(overload)) = scope.resolve(FunctionTargetType::Global, identifier) {
+                            if let Ok(getter) = overload.functions.iter().exactly_one() {
+                                if let Some(nominal) = self.builder.runtime.source.nominal_references.get(getter) {
+                                    if nominal.kind != NominalKind::Struct {
+                                        return Err(RuntimeError::error(format!("Cannot instantiate '{}': it is a {:?}, not a struct.", nominal.name, nominal.kind).as_str()).in_range(range.clone()).to_array());
+                                    }
+                                }
+                            }
+                        }
+
                         // Found an identifier target. We may just be calling a global function!
                         match self.resolve_global(scope, range, identifier)? {
                             Left(expr) => expr, // It was more complicated after all.

@@ -6,21 +6,21 @@ trait Animal {
     def (self 'Self).talk() -> String;
 };
 
-trait Cat {};
+struct Cat {};
 
--- Declare every Cat subtype is Animal.
-declare $Cat is Animal = {
+-- Declare the Cat struct is Animal.
+declare Cat is Animal = {
     def (self 'Self).talk() -> String = "Meow";
 };
 
-trait Dog {};
+struct Dog {};
 
--- Declare just the Dog struct is Animal.
+-- Declare the Dog struct is Animal.
 declare Dog is Animal = {
    def (self 'Self).talk() -> String = "Bark";
 };
 
-def converse(lhs '$Animal#lhs, rhs '$Animal#rhs) = {
+def converse(lhs 'Animal#lhs, rhs 'Animal#rhs) = {
     write_line("Conversation: \n    \(lhs.talk()) \n    \(rhs.talk())");
 };
 

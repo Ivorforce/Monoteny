@@ -1,8 +1,8 @@
--- Tests traits with fields.
+-- Tests structs with fields.
 
 use!(module!("common"));
 
-trait Animal {
+struct Animal {
     var height_cm 'Float32;
 };
 

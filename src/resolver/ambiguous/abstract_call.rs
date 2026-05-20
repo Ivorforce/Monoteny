@@ -6,7 +6,7 @@ use std::rc::Rc;
 use crate::error::{ErrInRange, RResult};
 use crate::program::expression_tree::{ExpressionID, ExpressionOperation};
 use crate::program::functions::{FunctionBinding, FunctionHead};
-use crate::program::traits::{RequirementsFulfillment, Trait, TraitGraph};
+use crate::program::traits::{RequirementsFulfillment, Nominal, TraitGraph};
 use crate::resolver::ambiguous::{AmbiguityResult, ResolverAmbiguity};
 use crate::resolver::imperative::ImperativeResolver;
 
@@ -17,7 +17,7 @@ pub struct AmbiguousAbstractCall {
 
     pub range: Range<usize>,
 
-    pub trait_: Rc<Trait>,
+    pub trait_: Rc<Nominal>,
     pub abstract_function: Rc<FunctionHead>,
 }
 

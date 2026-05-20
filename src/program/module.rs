@@ -20,7 +20,7 @@ pub struct Module {
     pub id: Uuid,
     pub name: ModuleName,
 
-    /// For each trait, its metatype getter function.
+    /// Modules pulled in via `include!`, re-exported as part of this module.
     pub included_modules: Vec<Vec<String>>,
 
     pub precedence_order: Option<Vec<Rc<PrecedenceGroup>>>,

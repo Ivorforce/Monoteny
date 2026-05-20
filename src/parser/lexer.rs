@@ -112,8 +112,8 @@ impl<'i> Lexer<'i> {
                         return self.make_token_from_to(start, Token::IntLiteral, dot_start);
                     }
                 }
-                'a'..='z' | 'A'..='Z' | '_' | '$' | '#' => {
-                    let len = self.input.by_ref().peeking_take_while(|(_, ch)| ch.is_alphanumeric() || matches!(ch, '_' | '$' | '#')).count() + 1;
+                'a'..='z' | 'A'..='Z' | '_' | '#' => {
+                    let len = self.input.by_ref().peeking_take_while(|(_, ch)| ch.is_alphanumeric() || matches!(ch, '_' | '#')).count() + 1;
 
                     if let Some((_, '!')) = self.input.peek() {
                         let macro_token = self.make_token_from(start, Token::MacroIdentifier);
@@ -126,7 +126,7 @@ impl<'i> Lexer<'i> {
 
                     if match len {
                         7 => matches!(slice, "declare"),
-                        6 => matches!(slice, "return"),
+                        6 => matches!(slice, "return" | "struct"),
                         5 => matches!(slice, "trait"),
                         4 => matches!(slice, "else"),
                         3 => matches!(slice, "let" | "var" | "upd" | "def"),

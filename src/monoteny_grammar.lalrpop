@@ -26,6 +26,7 @@ extern {
 
         "def" => Token::Symbol("def"),
         "trait" => Token::Symbol("trait"),
+        "struct" => Token::Symbol("struct"),
         "declare" => Token::Symbol("declare"),
 
         "!" => Token::Symbol("!"),
@@ -131,6 +132,10 @@ Trait: TraitDefinition = {
     "trait" <name: Identifier> <block: Box<Block>> => TraitDefinition { <> },
 }
 
+StructDef: StructDefinition = {
+    "struct" <name: Identifier> <block: Box<Block>> => StructDefinition { <> },
+}
+
 Conformance: TraitConformanceDeclaration = {
     "declare" <declared_for: Expression> "is" <declared: Expression> "=" <block: Box<Block>> => TraitConformanceDeclaration { <> },
 }
@@ -148,6 +153,7 @@ StatementNoSemicolon: Statement = {
     Box<Expression> => Statement::Expression(<>),
     Box<Function> => Statement::FunctionDeclaration(<>),
     Box<Trait> => Statement::Trait(<>),
+    Box<StructDef> => Statement::Struct(<>),
     Box<Conformance> => Statement::Conformance(<>),
 }
 

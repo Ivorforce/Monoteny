@@ -7,10 +7,10 @@ pub use binding::TraitBinding;
 pub use conformance::{RequirementsAssumption, RequirementsFulfillment, TraitConformance, TraitConformanceWithTail};
 pub use graph::{TraitConformanceRule, TraitGraph};
 pub use structs::StructInfo;
-pub use trait_::{FieldHint, Trait};
+pub use nominal::{FieldHint, Nominal, NominalKind};
 
 mod conformance;
 mod binding;
 mod graph;
-mod trait_;
+mod nominal;
 mod structs;

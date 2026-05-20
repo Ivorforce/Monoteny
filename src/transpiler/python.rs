@@ -97,7 +97,7 @@ impl Context {
         structs::find_in_implementations(transpile.explicit_functions.iter().map(|p| *&p.1), &transpile.used_native_functions, &mut structs);
         let exported_structs = structs.keys().cloned().collect_vec();
         for struct_ in structs.values() {
-            exports_namespace.insert_name(struct_.trait_.id, struct_.trait_.name.as_str());
+            exports_namespace.insert_name(struct_.nominal.id, struct_.nominal.name.as_str());
         }
 
         let mut internals_namespace = exports_namespace.add_sublevel();
@@ -117,7 +117,7 @@ impl Context {
         let internal_structs = structs.keys().filter(|s| !exported_structs.contains(s)).collect_vec();
         for type_ in internal_structs.iter() {
             let struct_ = &structs[*type_];
-            internals_namespace.insert_name(struct_.trait_.id, struct_.trait_.name.as_str());
+            internals_namespace.insert_name(struct_.nominal.id, struct_.nominal.name.as_str());
         }
 
         // Other struct pertaining functions
@@ -131,7 +131,7 @@ impl Context {
                 representations.function_forms.insert(Rc::clone(getter), FunctionForm::SetMemberField(field.id));
             }
             representations.function_forms.insert(Rc::clone(&struct_.constructor), FunctionForm::CallAsFunction);
-            representations.type_ids.insert(type_.clone(), struct_.trait_.id);
+            representations.type_ids.insert(type_.clone(), struct_.nominal.id);
         }
 
         // Internal / generated functions
@@ -148,7 +148,7 @@ impl Context {
             match descriptor {
                 FunctionLogicDescriptor::Stub => {}
                 FunctionLogicDescriptor::Clone(_) => {}
-                FunctionLogicDescriptor::TraitProvider(trait_) => {
+                FunctionLogicDescriptor::NominalProvider(trait_) => {
                     representations.function_forms.insert(Rc::clone(&native_function), FunctionForm::Constant(trait_.id));
                 }
                 FunctionLogicDescriptor::FunctionProvider(_) => {}

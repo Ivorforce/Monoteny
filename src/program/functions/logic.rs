@@ -4,7 +4,7 @@ use crate::error::{RResult, RuntimeError};
 use crate::program::allocation::ObjectReference;
 use crate::program::functions::{FunctionHead, FunctionImplementation};
 use crate::program::primitives;
-use crate::program::traits::{StructInfo, Trait};
+use crate::program::traits::{StructInfo, Nominal};
 use crate::program::types::TypeProto;
 
 #[derive(Clone)]
@@ -19,7 +19,7 @@ pub enum FunctionLogicDescriptor {
     /// This function was not described by the implementer and is expected not to be called,
     ///  or to be injected by a transpiler.
     Stub,
-    TraitProvider(Rc<Trait>),
+    NominalProvider(Rc<Nominal>),
     FunctionProvider(Rc<FunctionHead>),
     PrimitiveOperation { operation: PrimitiveOperation, type_: primitives::Type },
     Clone(Rc<TypeProto>),

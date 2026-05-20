@@ -1,6 +1,6 @@
 -- Tests whether monomorphization can yield two separate functions.
 
-def (self '$Number).square() -> $Number = multiply(self, self);
+def (self 'Number).square() -> Number = multiply(self, self);
 
 def main! = {
     _write_line("\(3.square() 'Int32)");

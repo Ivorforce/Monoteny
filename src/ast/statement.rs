@@ -4,6 +4,7 @@ use crate::ast::conformance::TraitConformanceDeclaration;
 use crate::ast::expression::Expression;
 use crate::ast::function::Function;
 use crate::ast::trait_::TraitDefinition;
+use crate::ast::struct_def::StructDefinition;
 use crate::program::allocation::Mutability;
 
 #[derive(Eq, PartialEq, Clone)]
@@ -19,6 +20,7 @@ pub enum Statement {
     Return(Option<Box<Expression>>),
     FunctionDeclaration(Box<Function>),
     Trait(Box<TraitDefinition>),
+    Struct(Box<StructDefinition>),
     Conformance(Box<TraitConformanceDeclaration>),
 }
 
@@ -44,6 +46,7 @@ impl Display for Statement {
             Statement::Expression(ref expression) => write!(fmt, "{}", expression),
             Statement::FunctionDeclaration(function) => write!(fmt, "{}", function),
             Statement::Trait(trait_) => write!(fmt, "{}", trait_),
+            Statement::Struct(struct_) => write!(fmt, "{}", struct_),
             Statement::Conformance(conformance) => write!(fmt, "{}", conformance),
         }
     }

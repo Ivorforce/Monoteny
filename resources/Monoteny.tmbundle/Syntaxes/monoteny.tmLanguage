@@ -409,7 +409,7 @@
 				</dict>
 				<dict>
 					<key>match</key>
-					<string>\b(trait)\b</string>
+					<string>\b(trait|struct)\b</string>
 					<key>name</key>
 					<string>storage.type.monoteny</string>
 				</dict>

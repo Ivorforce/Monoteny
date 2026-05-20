@@ -1,31 +1,36 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-use itertools::Itertools;
-
 use crate::ast;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::builtins::traits::make_any_functions;
 use crate::interpreter::runtime::Runtime;
 use crate::program::allocation::{Mutability, ObjectReference};
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionLogicDescriptor, FunctionRepresentation, Parameter, ParameterKey};
-use crate::program::traits::{StructInfo, Trait, TraitBinding, TraitConformance, TraitConformanceRule};
+use crate::program::traits::{StructInfo, Nominal, TraitBinding, TraitConformance, TraitConformanceRule};
 use crate::program::types::TypeProto;
 use crate::resolver::global::GlobalResolver;
 use crate::resolver::interface::resolve_function_interface;
 use crate::resolver::type_factory::TypeFactory;
 use crate::resolver::{fields, scopes};
 
-pub struct TraitResolver<'a> {
+pub struct DefinitionResolver<'a> {
     pub runtime: &'a mut Runtime,
-    pub trait_: &'a mut Trait,
+    pub nominal: &'a mut Nominal,
     pub generic_self_type: Rc<TypeProto>,
+    /// When true, the body being resolved is a `struct` (fields only); methods are rejected.
+    pub is_struct: bool,
 }
 
-impl <'a> TraitResolver<'a> {
-    pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
+impl <'a> DefinitionResolver<'a> {
+    pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Nominal>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
+                if self.is_struct {
+                    return Err(
+                        RuntimeError::error("Structs cannot declare methods; use an extension function 'def (self 'Foo).bar() = ...' outside the struct.").to_array()
+                    );
+                }
                 // TODO What do we do with the parameter names? They don't belong in the interface. Probably the runtime source?
                 let function_head = resolve_function_interface(&syntax.interface, &scope, None, &mut self.runtime, requirements, generics)?;
                 if !syntax.body.is_none() {
@@ -34,23 +39,23 @@ impl <'a> TraitResolver<'a> {
                     );
                 };
 
-                self.trait_.abstract_functions.insert(function_head);
+                self.nominal.abstract_functions.insert(function_head);
             }
             ast::Statement::VariableDeclaration { mutability, identifier, type_declaration, assignment } => {
                 if let Some(_) = assignment {
                     return Err(
-                        RuntimeError::error("Trait variables cannot have defaults until default monads are supported.").to_array()
+                        RuntimeError::error("Fields cannot have defaults until default monads are supported.").to_array()
                     );
                 }
                 if !requirements.is_empty() {
                     return Err(
-                        RuntimeError::error("Trait variables cannot have requirements.").to_array()
+                        RuntimeError::error("Fields cannot have requirements.").to_array()
                     );
                 }
 
                 let Some(type_declaration) = type_declaration else {
                     return Err(
-                        RuntimeError::error("Trait variables must have explicit types.").to_array()
+                        RuntimeError::error("Fields must have explicit types.").to_array()
                     );
                 };
 
@@ -58,9 +63,11 @@ impl <'a> TraitResolver<'a> {
 
                 let variable_type = type_factory.resolve_type(type_declaration, true, &mut self.runtime)?;
 
-                if TypeProto::contains_generics([&variable_type].into_iter()) {
+                // A field type must be concrete. A bare trait (or anonymous `#`) would invent a
+                // generic, leaving `type_factory.generics` non-empty; reject that.
+                if !type_factory.generics.is_empty() || TypeProto::contains_generics([&variable_type].into_iter()) {
                     return Err(
-                        RuntimeError::error(format!("Variables cannot be generic: {}", identifier).as_str()).to_array()
+                        RuntimeError::error(format!("Field '{}' must have a concrete type, not a trait or generic.", identifier).as_str()).to_array()
                     );
                 }
 
@@ -71,7 +78,7 @@ impl <'a> TraitResolver<'a> {
                     true,
                     mutability == &Mutability::Mutable,
                 );
-                fields::add_to_trait(&mut self.trait_, field);
+                fields::add_to_nominal(&mut self.nominal, field);
             }
             _ => {
                 if let ast::Statement::Expression(exp) = statement {
@@ -79,7 +86,7 @@ impl <'a> TraitResolver<'a> {
                     exp.no_errors()?;
                 }
                 return Err(
-                    RuntimeError::error("Statement not valid in a trait context.").to_array()
+                    RuntimeError::error("Statement not valid in a trait or struct body.").to_array()
                 );
             }
         }
@@ -88,23 +95,17 @@ impl <'a> TraitResolver<'a> {
     }
 }
 
-pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RResult<Option<Rc<StructInfo>>> {
-    let mut unaccounted_for_abstract_functions = trait_.abstract_functions.clone();
-    trait_.field_hints.iter().for_each(|hint| {
-        [&hint.getter, &hint.setter].into_iter().flatten().map(|g| unaccounted_for_abstract_functions.remove(g)).collect_vec();
-    });
-
-    if !unaccounted_for_abstract_functions.is_empty() {
-        return Ok(None)
-    }
-
+/// Build the concrete machinery (constructor, getters/setters, clone + Any conformance)
+/// for a `struct` (a `Nominal` of kind `Struct`). Its only abstract functions are the
+/// field getters/setters, which hold by construction because struct bodies reject methods.
+pub fn make_struct(nominal: &Rc<Nominal>, resolver: &mut GlobalResolver) -> RResult<Rc<StructInfo>> {
     let mut field_names = HashMap::new();
     let mut field_getters = HashMap::new();
     let mut field_setters = HashMap::new();
 
     // Can be instantiated as a struct!
 
-    let struct_type = TypeProto::unit_struct(trait_);
+    let struct_type = TypeProto::unit_struct(nominal);
     let mut function_mapping = HashMap::new();
     let mut parameters = vec![
         Parameter {
@@ -114,7 +115,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
     ];
     let mut fields = vec![];
 
-    for abstract_field in trait_.field_hints.iter() {
+    for abstract_field in nominal.field_hints.iter() {
         let variable_as_object = ObjectReference::new_immutable(abstract_field.type_.clone());
         let struct_field = fields::make(
             &abstract_field.name,
@@ -146,7 +147,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
 
     resolver.module.add_conformance_rule(
         TraitConformanceRule::direct(TraitConformance::new(
-            trait_.create_generic_binding(vec![("Self", struct_type.clone())]),
+            nominal.create_generic_binding(vec![("Self", struct_type.clone())]),
             function_mapping,
         )),
         &mut resolver.global_variables
@@ -183,7 +184,7 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
     );
 
     let struct_ = Rc::new(StructInfo {
-        trait_: Rc::clone(trait_),
+        nominal: Rc::clone(nominal),
         clone: any_functions.clone.clone(),
         constructor: Rc::clone(&constructor),
         fields,
@@ -218,5 +219,5 @@ pub fn try_make_struct(trait_: &Rc<Trait>, resolver: &mut GlobalResolver) -> RRe
         resolver.add_function_interface(head )?;
     }
 
-    Ok(Some(struct_))
+    Ok(struct_)
 }

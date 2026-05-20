@@ -6,7 +6,7 @@ use crate::error::{ErrInRange, RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
 use crate::parser::expressions;
 use crate::program::functions::FunctionTargetType;
-use crate::program::traits::{Trait, TraitBinding};
+use crate::program::traits::{Nominal, NominalKind, TraitBinding};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::resolver::scopes;
 use itertools::Itertools;
@@ -14,7 +14,7 @@ use itertools::Itertools;
 pub struct TypeFactory<'a> {
     pub scope: &'a scopes::Scope<'a>,
 
-    pub generics: HashMap<String, Rc<Trait>>,
+    pub generics: HashMap<String, Rc<Nominal>>,
     pub requirements: HashSet<Rc<TraitBinding>>,
 }
 
@@ -29,20 +29,20 @@ impl <'a> TypeFactory<'a> {
         }
     }
 
-    pub fn resolve_trait(&mut self, name: &str, runtime: &mut Runtime) -> RResult<Rc<Trait>> {
+    pub fn resolve_nominal(&mut self, name: &str, runtime: &mut Runtime) -> RResult<Rc<Nominal>> {
         let reference = self.scope.resolve(FunctionTargetType::Global, &name)?;
         let overload = reference.as_function_overload()?;
 
         let function = overload.functions.iter().exactly_one()
             .map_err(|_| RuntimeError::error("Function overload cannot be resolved to a type.").to_array())?;
-        let trait_ = runtime.source.trait_references.get(function)
+        let trait_ = runtime.source.nominal_references.get(function)
             .ok_or_else(|| RuntimeError::error(format!("Interpreted types aren't supported yet; please use an explicit type for now.\n{}", name).as_str()).to_array())?;
 
         return Ok(Rc::clone(trait_))
     }
 
-    fn register_generic(&mut self, name: &str) -> Rc<Trait> {
-        let trait_ = Rc::new(Trait::new_flat(name));
+    fn register_generic(&mut self, name: &str) -> Rc<Nominal> {
+        let trait_ = Rc::new(Nominal::new_flat(name));
         self.generics.insert(name.to_string(), Rc::clone(&trait_));
         trait_
     }
@@ -72,7 +72,7 @@ impl <'a> TypeFactory<'a> {
         //
         // unsafe {
         //     let uuid = *(result.ptr as *mut Uuid);
-        //     return Ok(TypeProto::unit_struct(&runtime.source.trait_heads[&uuid]));
+        //     return Ok(TypeProto::unit_struct(&runtime.source.nominal_heads[&uuid]));
         // }
 
         self.resolve_type_by_name(allow_anonymous_generics, &identifier, runtime)
@@ -80,37 +80,55 @@ impl <'a> TypeFactory<'a> {
     }
 
     fn resolve_type_by_name(&mut self, allow_anonymous_generics: bool, type_name: &str, runtime: &mut Runtime) -> RResult<Rc<TypeProto>> {
-        let arguments = vec![];
-
+        // A name we've already invented a generic for (shared by name within this function).
         if let Some(type_) = self.generics.get(type_name) {
             return Ok(TypeProto::unit_struct(type_))
         }
 
-        if !allow_anonymous_generics || !(type_name.starts_with("#") || type_name.starts_with("$")) {
-            // No special generic; let's try just resolving it normally.
-            let trait_ = self.resolve_trait(type_name, runtime)?;
-            // Found a trait! Until we actually interpret the expression, this is guaranteed to be unbound.
-            return Ok(TypeProto::unit_struct(&trait_));
+        // `#` / `#A` is an unconstrained anonymous generic with no backing trait.
+        if type_name.starts_with("#") {
+            if !allow_anonymous_generics {
+                return Err(RuntimeError::error(format!("Anonymous generic '{}' is not allowed here.", type_name).as_str()).to_array());
+            }
+            return Ok(TypeProto::unit_struct(&self.register_generic(type_name)));
         }
 
-        let type_ = Rc::new(TypeProto {
-            unit: TypeUnit::Struct(self.register_generic(type_name).clone()),
-            arguments
-        });
+        // A `Trait#label` discriminator names a distinct generic; the trait is the part before '#'.
+        let (base_name, has_discriminator) = match type_name.find("#") {
+            None => (type_name, false),
+            Some(hash_start_index) => (&type_name[..hash_start_index], true),
+        };
 
-        if type_name.starts_with("$") {
-            let type_name = match type_name.find("#") {
-                None => { String::from(&type_name[1..]) }
-                Some(hash_start_index) => { String::from(&type_name[1..hash_start_index]) }
-            };
+        let nominal = self.resolve_nominal(base_name, runtime)?;
 
-            let requirement_trait = self.resolve_trait(&type_name, runtime)?;
-            self.register_requirement(Rc::new(TraitBinding {
-                generic_to_type: HashMap::from([(Rc::clone(&requirement_trait.generics["Self"]), type_.clone())]),
-                trait_: requirement_trait,
-            }));
+        match nominal.kind {
+            // A concrete type (struct or builtin primitive) always resolves to itself.
+            NominalKind::Struct => {
+                if has_discriminator {
+                    return Err(RuntimeError::error(format!("Concrete type '{}' cannot take a generic discriminator ('#').", base_name).as_str()).to_array());
+                }
+                Ok(TypeProto::unit_struct(&nominal))
+            }
+            // A generic placeholder (e.g. `Self`) refers to itself.
+            NominalKind::Generic => Ok(TypeProto::unit_struct(&nominal)),
+            // A bare trait name invents one generic conforming to it (shared by name within
+            // this function); `Trait#A` / `Trait#B` create distinct generics. The exception
+            // is a position that disallows generics (e.g. the `is` side of a conformance),
+            // where the trait refers to itself.
+            NominalKind::Trait => {
+                if !allow_anonymous_generics {
+                    return Ok(TypeProto::unit_struct(&nominal));
+                }
+                let type_ = Rc::new(TypeProto {
+                    unit: TypeUnit::Struct(self.register_generic(type_name)),
+                    arguments: vec![],
+                });
+                self.register_requirement(Rc::new(TraitBinding {
+                    generic_to_type: HashMap::from([(Rc::clone(&nominal.generics["Self"]), type_.clone())]),
+                    trait_: nominal,
+                }));
+                Ok(type_)
+            }
         }
-
-        Ok(type_)
     }
 }

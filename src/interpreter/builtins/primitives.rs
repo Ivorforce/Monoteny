@@ -7,12 +7,12 @@ use crate::interpreter::runtime::Runtime;
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionLogicDescriptor, FunctionRepresentation, PrimitiveOperation};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitConformanceRule};
+use crate::program::traits::{Nominal, TraitConformanceRule};
 use crate::program::types::{TypeProto, TypeUnit};
 use crate::resolver::referencible;
 
-pub fn create_traits(runtime: &mut Runtime, module: &mut Module) -> HashMap<primitives::Type, Rc<Trait>> {
-    let mut traits: HashMap<primitives::Type, Rc<Trait>> = Default::default();
+pub fn create_traits(runtime: &mut Runtime, module: &mut Module) -> HashMap<primitives::Type, Rc<Nominal>> {
+    let mut traits: HashMap<primitives::Type, Rc<Nominal>> = Default::default();
 
     for primitive_type in [
         primitives::Type::Bool,
@@ -27,8 +27,9 @@ pub fn create_traits(runtime: &mut Runtime, module: &mut Module) -> HashMap<prim
         primitives::Type::Float(32),
         primitives::Type::Float(64),
     ] {
-        let trait_ = Rc::new(Trait::new_with_self(&primitive_type.identifier_string()));
-        referencible::add_trait(runtime, module, None, &trait_).unwrap();
+        // Primitives are concrete types: a bare use resolves to the type, never a generic.
+        let trait_ = Rc::new(Nominal::new_struct(&primitive_type.identifier_string()));
+        referencible::add_nominal(runtime, module, None, &trait_).unwrap();
         traits.insert(primitive_type, trait_);
     }
 
@@ -40,8 +41,8 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
     // TODO Cloning is dumb but we can't hold a runtime reference.
     //  It's not too bad because it's all Rcs though.
     let traits = runtime.traits.as_ref().unwrap().clone();
-    let primitive_traits = runtime.primitives.as_ref().unwrap().clone();
-    let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
+    let primitive_nominals = runtime.primitives.as_ref().unwrap().clone();
+    let bool_type = TypeProto::unit_struct(&primitive_nominals[&primitives::Type::Bool]);
 
     let mut add_function = |function: &Rc<FunctionHead>, primitive_type: primitives::Type, operation: PrimitiveOperation, module: &mut Module, runtime: &mut Runtime| {
         referencible::add_function(runtime, module, None, function).unwrap();
@@ -51,8 +52,8 @@ pub fn create_functions(runtime: &mut Runtime, module: &mut Module) {
         );
     };
 
-    for (primitive_type, trait_) in primitive_traits.iter() {
-        let type_ = TypeProto::unit_struct(&primitive_traits[primitive_type]);
+    for (primitive_type, _) in primitive_nominals.iter() {
+        let type_ = TypeProto::unit_struct(&primitive_nominals[primitive_type]);
         let primitive_type = *primitive_type;
 
         // Any!

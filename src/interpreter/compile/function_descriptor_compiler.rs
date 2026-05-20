@@ -9,7 +9,7 @@ pub fn compile_descriptor(function: &Rc<FunctionHead>, descriptor: &FunctionLogi
     match descriptor {
         FunctionLogicDescriptor::Stub => todo!("{:?}", function),
         FunctionLogicDescriptor::Clone(_) => todo!("{:?}", function),
-        FunctionLogicDescriptor::TraitProvider(trait_) => {
+        FunctionLogicDescriptor::NominalProvider(trait_) => {
             let uuid = trait_.id;
             compile_server.function_inlines.insert(function.function_id, Rc::new(move |compiler, expression| {
                 unsafe { compiler.chunk.constants.push(Value { ptr: uuid_to_ptr(uuid) }); }

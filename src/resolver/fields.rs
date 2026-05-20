@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionRepresentation, Parameter, ParameterKey};
-use crate::program::traits::{FieldHint, Trait};
+use crate::program::traits::{FieldHint, Nominal};
 use crate::program::types::TypeProto;
 
 pub fn make(name: &str, self_type: &Rc<TypeProto>, field_type: &Rc<TypeProto>, add_getter: bool, add_setter: bool) -> FieldHint {
@@ -51,12 +51,12 @@ pub fn make(name: &str, self_type: &Rc<TypeProto>, field_type: &Rc<TypeProto>, a
     }
 }
 
-pub fn add_to_trait(trait_: &mut Trait, field: FieldHint) {
+pub fn add_to_nominal(nominal: &mut Nominal, field: FieldHint) {
     if let Some(getter) = &field.getter {
-        trait_.abstract_functions.insert(Rc::clone(getter));
+        nominal.abstract_functions.insert(Rc::clone(getter));
     }
     if let Some(setter) = &field.setter {
-        trait_.abstract_functions.insert(Rc::clone(setter));
+        nominal.abstract_functions.insert(Rc::clone(setter));
     }
-    trait_.field_hints.push(field)
+    nominal.field_hints.push(field)
 }

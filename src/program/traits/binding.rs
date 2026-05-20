@@ -6,7 +6,7 @@ use std::rc::Rc;
 use itertools::Itertools;
 
 use crate::program::generics::GenericAlias;
-use crate::program::traits::Trait;
+use crate::program::traits::Nominal;
 use crate::program::types::TypeProto;
 use crate::util::fmt::write_keyval;
 
@@ -14,10 +14,10 @@ use crate::util::fmt::write_keyval;
 #[derive(Clone, Eq, PartialEq)]
 pub struct TraitBinding {
     /// The trait that is bound.
-    pub trait_: Rc<Trait>,
+    pub trait_: Rc<Nominal>,
 
     /// A mapping from each of the trait's generics to some type.
-    pub generic_to_type: HashMap<Rc<Trait>, Rc<TypeProto>>,
+    pub generic_to_type: HashMap<Rc<Nominal>, Rc<TypeProto>>,
 }
 
 impl TraitBinding {

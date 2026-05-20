@@ -9,7 +9,7 @@ use crate::ast;
 use crate::error::{RResult, RuntimeError};
 use crate::interpreter::runtime::Runtime;
 use crate::program::functions::FunctionHead;
-use crate::program::traits::{Trait, TraitBinding, TraitConformance};
+use crate::program::traits::{Nominal, TraitBinding, TraitConformance};
 use crate::refactor::monomorphize::map_interface_types;
 use crate::resolver::interface::resolve_function_interface;
 use crate::resolver::scopes;
@@ -25,7 +25,7 @@ pub struct ConformanceResolver<'a, 'b> {
 }
 
 impl <'a, 'b> ConformanceResolver<'a, 'b> {
-    pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Trait>>, scope: &scopes::Scope) -> RResult<()> {
+    pub fn resolve_statement(&mut self, statement: &'a ast::Statement, requirements: &HashSet<Rc<TraitBinding>>, generics: &HashSet<Rc<Nominal>>, scope: &scopes::Scope) -> RResult<()> {
         match statement {
             ast::Statement::FunctionDeclaration(syntax) => {
                 // TODO For simplicity's sake, we should match the generics IDs of all conformances
@@ -52,7 +52,7 @@ impl <'a, 'b> ConformanceResolver<'a, 'b> {
         Ok(())
     }
 
-    pub fn finalize_conformance(&self, binding: Rc<TraitBinding>, conformance_requirements: &HashSet<Rc<TraitBinding>>, conformance_generics: &HashSet<Rc<Trait>>) -> RResult<Rc<TraitConformance>> {
+    pub fn finalize_conformance(&self, binding: Rc<TraitBinding>, conformance_requirements: &HashSet<Rc<TraitBinding>>, conformance_generics: &HashSet<Rc<Nominal>>) -> RResult<Rc<TraitConformance>> {
         let mut function_bindings = HashMap::new();
         let mut unmatched_implementations = self.functions.iter().collect_vec();
 

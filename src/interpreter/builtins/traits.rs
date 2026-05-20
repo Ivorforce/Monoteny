@@ -5,11 +5,11 @@ use crate::interpreter::runtime::Runtime;
 use crate::program::functions::{FunctionHead, FunctionInterface, FunctionLogic, FunctionLogicDescriptor, FunctionRepresentation};
 use crate::program::module::Module;
 use crate::program::primitives;
-use crate::program::traits::{Trait, TraitConformanceRule};
+use crate::program::traits::{Nominal, TraitConformanceRule};
 use crate::program::types::TypeProto;
 use crate::resolver::referencible;
 
-pub fn insert_functions<'a, I>(trait_: &mut Trait, functions: I) where I: Iterator<Item=&'a Rc<FunctionHead>> {
+pub fn insert_functions<'a, I>(trait_: &mut Nominal, functions: I) where I: Iterator<Item=&'a Rc<FunctionHead>> {
     for ptr in functions {
         trait_.abstract_functions.insert(Rc::clone(ptr));
     }
@@ -19,37 +19,37 @@ pub fn insert_functions<'a, I>(trait_: &mut Trait, functions: I) where I: Iterat
 #[derive(Clone)]
 pub struct Traits {
     /// Supertype of all objects.
-    pub Any: Rc<Trait>,
+    pub Any: Rc<Nominal>,
     pub Any_functions: AnyFunctions,
 
     /// Supertype of all function objects.
     /// No requirements yet (will require call_as_function to return self!).
-    pub Function: Rc<Trait>,
+    pub Function: Rc<Nominal>,
 
-    pub Eq: Rc<Trait>,
+    pub Eq: Rc<Nominal>,
     pub Eq_functions: EqFunctions,
 
-    pub Ord: Rc<Trait>,
+    pub Ord: Rc<Nominal>,
     pub Ord_functions: OrdFunctions,
 
-    pub String: Rc<Trait>,
-    pub ToString: Rc<Trait>,
+    pub String: Rc<Nominal>,
+    pub ToString: Rc<Nominal>,
     pub to_string_function: Rc<FunctionHead>,
 
-    pub ConstructableByIntLiteral: Rc<Trait>,
+    pub ConstructableByIntLiteral: Rc<Nominal>,
     pub parse_int_literal_function: Rc<FunctionHead>,
 
-    pub ConstructableByRealLiteral: Rc<Trait>,
+    pub ConstructableByRealLiteral: Rc<Nominal>,
     pub parse_real_literal_function: Rc<FunctionHead>,
 
-    pub Number: Rc<Trait>,
+    pub Number: Rc<Nominal>,
     pub Number_functions: NumberFunctions,
 
-    pub Real: Rc<Trait>,
+    pub Real: Rc<Nominal>,
     pub Real_functions: RealFunctions,
 
-    pub Int: Rc<Trait>,
-    pub Natural: Rc<Trait>,
+    pub Int: Rc<Nominal>,
+    pub Natural: Rc<Nominal>,
 }
 
 #[derive(Clone)]
@@ -199,7 +199,7 @@ pub fn make_real_functions(type_: &Rc<TypeProto>) -> RealFunctions {
 }
 
 #[allow(non_snake_case)]
-pub fn make_to_string_function(type_: &Trait, String: &Rc<Trait>) -> Rc<FunctionHead> {
+pub fn make_to_string_function(type_: &Nominal, String: &Rc<Nominal>) -> Rc<FunctionHead> {
     FunctionHead::new_static(
         FunctionHead::dummy_param_names(1),
         FunctionRepresentation::new_member_function("to_string"),
@@ -216,20 +216,20 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     let primitive_traits = runtime.primitives.as_ref().unwrap();
     let bool_type = TypeProto::unit_struct(&primitive_traits[&primitives::Type::Bool]);
 
-    let mut Any = Trait::new_with_self("Any");
+    let mut Any = Nominal::new_trait("Any");
     let any_functions = make_any_functions(&Any.create_generic_type("Self"));
     insert_functions(&mut Any, [
         &any_functions.clone,
     ].into_iter());
     let Any = Rc::new(Any);
-    referencible::add_trait(runtime, module, None, &Any).unwrap();
+    referencible::add_nominal(runtime, module, None, &Any).unwrap();
 
-    let mut Function = Trait::new_with_self("Function");
+    let mut Function = Nominal::new_trait("Function");
     Function.add_simple_parent_requirement(&Any);
     let Function = Rc::new(Function);
-    referencible::add_trait(runtime, module, None, &Function).unwrap();
+    referencible::add_nominal(runtime, module, None, &Function).unwrap();
 
-    let mut Eq = Trait::new_with_self("Eq");
+    let mut Eq = Nominal::new_trait("Eq");
     let eq_functions = make_eq_functions(&Eq.create_generic_type("Self"), &bool_type);
     insert_functions(&mut Eq, [
         &eq_functions.equal_to,
@@ -237,9 +237,9 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     ].into_iter());
     Eq.add_simple_parent_requirement(&Any);
     let Eq = Rc::new(Eq);
-    referencible::add_trait(runtime, module, None, &Eq).unwrap();
+    referencible::add_nominal(runtime, module, None, &Eq).unwrap();
 
-    let mut Ord = Trait::new_with_self("Ord");
+    let mut Ord = Nominal::new_trait("Ord");
     let ord_functions = make_ord_functions(&Ord.create_generic_type("Self"), &bool_type);
     insert_functions(&mut Ord, [
         &ord_functions.greater_than,
@@ -250,9 +250,9 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     Ord.add_simple_parent_requirement(&Any);
     Ord.add_simple_parent_requirement(&Eq);
     let Ord = Rc::new(Ord);
-    referencible::add_trait(runtime, module, None, &Ord).unwrap();
+    referencible::add_nominal(runtime, module, None, &Ord).unwrap();
 
-    let mut Number = Trait::new_with_self("Number");
+    let mut Number = Nominal::new_trait("Number");
     let number_functions = make_number_functions(&Number.create_generic_type("Self"));
     insert_functions(&mut Number, [
         &number_functions.add,
@@ -265,25 +265,26 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     Number.add_simple_parent_requirement(&Any);
     Number.add_simple_parent_requirement(&Ord);
     let Number = Rc::new(Number);
-    referencible::add_trait(runtime, module, None, &Number).unwrap();
+    referencible::add_nominal(runtime, module, None, &Number).unwrap();
 
-    let mut String = Trait::new_with_self("String");
+    // String is a concrete type: a bare use resolves to the type, never a generic.
+    let mut String = Nominal::new_struct("String");
     String.add_simple_parent_requirement(&Any);
     let String = Rc::new(String);
-    referencible::add_trait(runtime, module, None, &String).unwrap();
+    referencible::add_nominal(runtime, module, None, &String).unwrap();
 
     // TODO String is not ToString. We could declare it on the struct, but that seems counterintuitive, no?
     //  Maybe a candidate for return self.strip().
-    let mut ToString = Trait::new_with_self("ToString");
+    let mut ToString = Nominal::new_trait("ToString");
     let to_string_function = make_to_string_function(&ToString, &String);
     insert_functions(&mut ToString, [
         &to_string_function
     ].into_iter());
     ToString.add_simple_parent_requirement(&Any);
     let ToString = Rc::new(ToString);
-    referencible::add_trait(runtime, module, None, &ToString).unwrap();
+    referencible::add_nominal(runtime, module, None, &ToString).unwrap();
 
-    let mut ConstructableByIntLiteral = Trait::new_with_self("ConstructableByIntLiteral");
+    let mut ConstructableByIntLiteral = Nominal::new_trait("ConstructableByIntLiteral");
     let parse_int_literal_function = FunctionHead::new_static(
         FunctionHead::dummy_param_names(1),
         FunctionRepresentation::new_global_function("parse_int_literal"),
@@ -297,10 +298,10 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     ].into_iter());
     ConstructableByIntLiteral.add_simple_parent_requirement(&Any);
     let ConstructableByIntLiteral = Rc::new(ConstructableByIntLiteral);
-    referencible::add_trait(runtime, module, None, &ConstructableByIntLiteral).unwrap();
+    referencible::add_nominal(runtime, module, None, &ConstructableByIntLiteral).unwrap();
 
 
-    let mut ConstructableByRealLiteral = Trait::new_with_self("ConstructableByRealLiteral");
+    let mut ConstructableByRealLiteral = Nominal::new_trait("ConstructableByRealLiteral");
     let parse_real_literal_function = FunctionHead::new_static(
         FunctionHead::dummy_param_names(1),
         FunctionRepresentation::new_global_function("parse_real_literal"),
@@ -314,10 +315,10 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     ].into_iter());
     ConstructableByRealLiteral.add_simple_parent_requirement(&Any);
     let ConstructableByRealLiteral = Rc::new(ConstructableByRealLiteral);
-    referencible::add_trait(runtime, module, None, &ConstructableByRealLiteral).unwrap();
+    referencible::add_nominal(runtime, module, None, &ConstructableByRealLiteral).unwrap();
 
 
-    let mut Real = Trait::new_with_self("Real");
+    let mut Real = Nominal::new_trait("Real");
     let float_functions = make_real_functions(&Real.create_generic_type("Self"));
     insert_functions(&mut Real, [
         &float_functions.pow,
@@ -328,20 +329,20 @@ pub fn create(runtime: &mut Runtime, module: &mut Module) -> Traits {
     Real.add_simple_parent_requirement(&ConstructableByIntLiteral);
     Real.add_simple_parent_requirement(&Any);
     let Real = Rc::new(Real);
-    referencible::add_trait(runtime, module, None, &Real).unwrap();
+    referencible::add_nominal(runtime, module, None, &Real).unwrap();
 
-    let mut Int = Trait::new_with_self("Int");
+    let mut Int = Nominal::new_trait("Int");
     Int.add_simple_parent_requirement(&Number);
     Int.add_simple_parent_requirement(&ConstructableByIntLiteral);
     Int.add_simple_parent_requirement(&Any);
     let Int = Rc::new(Int);
-    referencible::add_trait(runtime, module, None, &Int).unwrap();
+    referencible::add_nominal(runtime, module, None, &Int).unwrap();
 
-    let mut Natural = Trait::new_with_self("Natural");
+    let mut Natural = Nominal::new_trait("Natural");
     Natural.add_simple_parent_requirement(&Any);
     Natural.add_simple_parent_requirement(&Int);
     let Natural = Rc::new(Natural);
-    referencible::add_trait(runtime, module, None, &Natural).unwrap();
+    referencible::add_nominal(runtime, module, None, &Natural).unwrap();
 
     Traits {
         Any,

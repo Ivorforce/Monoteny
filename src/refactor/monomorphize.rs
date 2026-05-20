@@ -8,7 +8,7 @@ use crate::program::allocation::ObjectReference;
 use crate::program::expression_tree::ExpressionOperation;
 use crate::program::functions::{FunctionBinding, FunctionHead, FunctionImplementation, FunctionInterface, FunctionType, Parameter};
 use crate::program::generics::TypeForest;
-use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, Trait, TraitConformanceWithTail};
+use crate::program::traits::{RequirementsAssumption, RequirementsFulfillment, Nominal, TraitConformanceWithTail};
 use crate::program::types::TypeProto;
 
 pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, function_binding: &FunctionBinding) -> LinkedHashSet<Rc<FunctionBinding>> {
@@ -85,7 +85,7 @@ pub fn monomorphize_implementation(implementation: &mut FunctionImplementation, 
     encountered_calls
 }
 
-pub fn resolve_call(call: &Rc<FunctionBinding>, context: &RequirementsFulfillment, generic_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
+pub fn resolve_call(call: &Rc<FunctionBinding>, context: &RequirementsFulfillment, generic_replacement_map: &HashMap<Rc<Nominal>, Rc<TypeProto>>, type_forest: &TypeForest) -> Rc<FunctionBinding> {
     // A function can have multiple requirements. They must be fully fulfilled after monomorphization.
     // Each requirement has two routes it can be fulfilled from:
     // 1) The caller has already fulfilled the requirement, and it is passed here in the function replacement map as its tail.
@@ -123,7 +123,7 @@ pub fn resolve_call(call: &Rc<FunctionBinding>, context: &RequirementsFulfillmen
     })
 }
 
-fn map_requirements_fulfillment(rc: &Rc<RequirementsFulfillment>, context: &RequirementsFulfillment, generic_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>, type_forest: &TypeForest) -> RequirementsFulfillment {
+fn map_requirements_fulfillment(rc: &Rc<RequirementsFulfillment>, context: &RequirementsFulfillment, generic_replacement_map: &HashMap<Rc<Nominal>, Rc<TypeProto>>, type_forest: &TypeForest) -> RequirementsFulfillment {
     // A requirements fulfillment (for a function call) consists of many conformances to requirements.
     // Every conformance either:
     // 1) Uses some global conformance declaration. In this case, it's already correct - except for
@@ -168,7 +168,7 @@ fn map_requirements_fulfillment(rc: &Rc<RequirementsFulfillment>, context: &Requ
     }
 }
 
-pub fn map_variable(variable: &ObjectReference, type_forest: &TypeForest, type_replacement_map: &HashMap<Rc<Trait>, Rc<TypeProto>>) -> Rc<ObjectReference> {
+pub fn map_variable(variable: &ObjectReference, type_forest: &TypeForest, type_replacement_map: &HashMap<Rc<Nominal>, Rc<TypeProto>>) -> Rc<ObjectReference> {
     Rc::new(ObjectReference {
         id: variable.id.clone(),
         type_: type_forest.resolve_type(&variable.type_).unwrap().replacing_structs(type_replacement_map),
@@ -176,7 +176,7 @@ pub fn map_variable(variable: &ObjectReference, type_forest: &TypeForest, type_r
     })
 }
 
-pub fn map_interface_types(interface: &FunctionInterface, mapping: &HashMap<Rc<Trait>, Rc<TypeProto>>) -> FunctionInterface {
+pub fn map_interface_types(interface: &FunctionInterface, mapping: &HashMap<Rc<Nominal>, Rc<TypeProto>>) -> FunctionInterface {
     FunctionInterface {
         parameters: interface.parameters.iter().map(|x| Parameter {
             external_key: x.external_key.clone(),
