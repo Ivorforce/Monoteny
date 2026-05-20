@@ -12,6 +12,6 @@ pub struct TraitConformanceDeclaration {
 
 impl Display for TraitConformanceDeclaration {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "declare {} is {} {{}} :: {{\n{}}}", self.declared_for, self.declared, self.block)
+        write!(fmt, "declare {} is {} {{}} = {{\n{}}}", self.declared_for, self.declared, self.block)
     }
 }

@@ -15,7 +15,7 @@ pub fn make_command() -> Command {
 
 pub fn run(args: &ArgMatches) -> RResult<ExitCode> {
     let expression = args.get_one::<String>("EXPRESSION").unwrap();
-    let full_expression = format!("use!(module!(\"common\")); def main! :: write_line({});", expression);
+    let full_expression = format!("use!(module!(\"common\")); def main! = write_line({});", expression);
 
     let mut runtime = Runtime::new()?;
     runtime.add_common_repository();

@@ -84,12 +84,6 @@ impl<'i> Lexer<'i> {
                     return self.make_token_from(start, Token::Symbol);
                 }
                 '{' | '}' | '(' | ')' | '[' | ']' | ':' | '@' | '\'' | ',' | ';' => {
-                    if let Some((_, ':')) = self.input.peek() {
-                        // Consume :
-                        self.input.next();
-                        self.make_token_from(start, Token::Symbol);
-                    }
-
                     // If it's ( or ), we need to modify the current string context.
                     match ch {
                         '(' => _ = self.string_context.last_mut().map(|i| *i += 1),

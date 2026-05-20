@@ -13,7 +13,7 @@ impl Display for Function {
         write!(fmt, "def {}", self.interface)?;
 
         if let Some(body) = &self.body {
-            write!(fmt, " :: {}", body)?;
+            write!(fmt, " = {}", body)?;
         }
         return Ok(())
     }

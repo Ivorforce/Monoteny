@@ -6,7 +6,7 @@ trait Animal {
     var height_cm 'Float32;
 };
 
-def main! :: {
+def main! = {
     -- Create a cat with pre-defined name and height.
     var animal = Animal(height_cm: 180);
 
@@ -16,6 +16,6 @@ def main! :: {
     write_line("Height 2: \(animal.height_cm)cm");
 };
 
-def transpile! :: {
+def transpile! = {
     transpiler.add(main);
 };

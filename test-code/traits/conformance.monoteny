@@ -9,22 +9,22 @@ trait Animal {
 trait Cat {};
 
 -- Declare every Cat subtype is Animal.
-declare $Cat is Animal :: {
-    def (self 'Self).talk() -> String :: "Meow";
+declare $Cat is Animal = {
+    def (self 'Self).talk() -> String = "Meow";
 };
 
 trait Dog {};
 
 -- Declare just the Dog struct is Animal.
-declare Dog is Animal :: {
-   def (self 'Self).talk() -> String :: "Bark";
+declare Dog is Animal = {
+   def (self 'Self).talk() -> String = "Bark";
 };
 
-def converse(lhs '$Animal#lhs, rhs '$Animal#rhs) :: {
+def converse(lhs '$Animal#lhs, rhs '$Animal#rhs) = {
     write_line("Conversation: \n    \(lhs.talk()) \n    \(rhs.talk())");
 };
 
-def main! :: {
+def main! = {
     let dog = Dog();
     let cat = Cat();
 
@@ -34,6 +34,6 @@ def main! :: {
     converse(dog, cat);
 };
 
-def transpile! :: {
+def transpile! = {
     transpiler.add(main);
 };

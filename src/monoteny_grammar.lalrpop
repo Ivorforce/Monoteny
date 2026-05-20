@@ -35,7 +35,6 @@ extern {
         ")" => Token::Symbol(")"),
         "[" => Token::Symbol("["),
         "]" => Token::Symbol("]"),
-        "::" => Token::Symbol("::"),
         ":" => Token::Symbol(":"),
         "@" => Token::Symbol("@"),
         "'" => Token::Symbol("'"),
@@ -115,7 +114,7 @@ ArrayArgument: ArrayArgument = {
 }
 
 Function: Function = {
-    "def" <interface: FunctionInterface> <body: ("::" <FunctionBody>)?> => Function { <> },
+    "def" <interface: FunctionInterface> <body: ("=" <FunctionBody>)?> => Function { <> },
 }
 
 FunctionInterface: FunctionInterface = {
@@ -133,7 +132,7 @@ Trait: TraitDefinition = {
 }
 
 Conformance: TraitConformanceDeclaration = {
-    "declare" <declared_for: Expression> "is" <declared: Expression> "::" <block: Box<Block>> => TraitConformanceDeclaration { <> },
+    "declare" <declared_for: Expression> "is" <declared: Expression> "=" <block: Box<Block>> => TraitConformanceDeclaration { <> },
 }
 
 // =============================== Statement =====================================
@@ -165,7 +164,7 @@ pub Expression: Expression = {
 }
 
 IfThenElseTerm: Term = {
-    "if" <condition: ExpressionNoIfThenElse> "::" <consequent: ExpressionNoIfThenElse> <alternative: ("else" "::" <Expression>)?> => Term::IfThenElse(Box::new(IfThenElse { <> })),
+    "if" <condition: ExpressionNoIfThenElse> "=" <consequent: ExpressionNoIfThenElse> <alternative: ("else" "=" <Expression>)?> => Term::IfThenElse(Box::new(IfThenElse { <> })),
 }
 
 ExpressionNoIfThenElse: Expression = {

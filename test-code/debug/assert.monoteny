@@ -2,10 +2,10 @@
 
 use!(module!("common"));
 
-def main! :: {
+def main! = {
     assert(false);
 };
 
-def transpile! :: {
+def transpile! = {
     transpiler.add(main);
 };

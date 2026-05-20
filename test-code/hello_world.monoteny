@@ -1,9 +1,9 @@
 use!(module!("common"));
 
-def main! :: {
+def main! = {
     write_line("Hello World!");
 };
 
-def transpile! :: {
+def transpile! = {
     transpiler.add(main);
 };
