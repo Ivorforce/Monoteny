@@ -164,7 +164,7 @@ pub Expression: Expression = {
 }
 
 IfThenElseTerm: Term = {
-    "if" <condition: ExpressionNoIfThenElse> "=" <consequent: ExpressionNoIfThenElse> <alternative: ("else" "=" <Expression>)?> => Term::IfThenElse(Box::new(IfThenElse { <> })),
+    "if" <condition: ExpressionNoIfThenElse> ":" <consequent: ExpressionNoIfThenElse> <alternative: ("else" ":" <Expression>)?> => Term::IfThenElse(Box::new(IfThenElse { <> })),
 }
 
 ExpressionNoIfThenElse: Expression = {

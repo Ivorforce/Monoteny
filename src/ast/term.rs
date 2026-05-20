@@ -39,9 +39,9 @@ impl Display for Term {
             Term::Block(block) => write!(fmt, "{{\n{}}}", block),
             Term::Dot => write!(fmt, "."),
             Term::IfThenElse(if_then_else) => {
-                write!(fmt, "if {} = {}", if_then_else.condition, if_then_else.consequent)?;
+                write!(fmt, "if {}: {}", if_then_else.condition, if_then_else.consequent)?;
                 if let Some(alternative) = &if_then_else.alternative {
-                    write!(fmt, "else = {}", alternative)?;
+                    write!(fmt, "else: {}", alternative)?;
                 }
                 Ok(())
             }
