@@ -1,7 +1,19 @@
 def main! = {
-    if true: _write_line("true")
-    else: if false: _write_line("false")
-    else: _write_line("maybe");
+    -- then branch
+    if true: _write_line("a-then") else: _write_line("a-else");
+
+    -- else branch
+    if false: _write_line("b-then") else: _write_line("b-else");
+
+    -- chained else-if, middle branch (first false, second true)
+    if false: _write_line("c1")
+    else: if true: _write_line("c2")
+    else: _write_line("c3");
+
+    -- chained else-if, final branch (both false)
+    if false: _write_line("d1")
+    else: if false: _write_line("d2")
+    else: _write_line("d3");
 };
 
 def transpile! = {

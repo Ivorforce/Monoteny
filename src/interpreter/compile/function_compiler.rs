@@ -135,15 +135,21 @@ impl FunctionCompiler<'_> {
 
                 // Consequent
                 self.compile_expression(&arguments[1])?;
-                self.fix_jump_location_i32(jump_location_skip_consequent);
 
                 if let Some(alternative) = arguments.get(2) {
+                    // Having run the consequent, skip over the alternative.
                     let jump_location_skip_alternative = self.chunk.code.len();
                     self.chunk.push_with_u32(OpCode::JUMP, 0);
+
+                    // A false condition jumps here, to the start of the alternative.
+                    self.fix_jump_location_i32(jump_location_skip_consequent);
 
                     // Alternative
                     self.compile_expression(alternative)?;
                     self.fix_jump_location_i32(jump_location_skip_alternative);
+                } else {
+                    // A false condition jumps past the consequent.
+                    self.fix_jump_location_i32(jump_location_skip_consequent);
                 }
             },
         }
